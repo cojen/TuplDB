@@ -19,6 +19,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -27,24 +28,26 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  */
 abstract class MergeCursor implements Cursor {
-    // Actual values are important for xor as used by the select method to work properly.
+    // Actual values are important for xor, as used by the select method, to work properly.
     static final int DIRECTION_NORMAL = 0, DIRECTION_REVERSE = -1;
 
     final MergeView mView;
-    final Comparator<byte[]> mComparator;
     final Cursor mFirst;
     final Cursor mSecond;
+
+    Transaction mTxn;
+    boolean mKeyOnly;
 
     int mDirection;
     byte[] mKey;
     byte[] mValue;
     int mCompare;
 
-    MergeCursor(MergeView view, Comparator<byte[]> comparator, Cursor first, Cursor second) {
+    MergeCursor(Transaction txn, MergeView view, Cursor first, Cursor second) {
         mView = view;
-        mComparator = comparator;
         mFirst = first;
         mSecond = second;
+        mTxn = txn;
     }
 
     @Override
@@ -54,19 +57,19 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public Comparator<byte[]> getComparator() {
-        return mComparator;
+        return mView.getComparator();
     }
 
     @Override
     public Transaction link(Transaction txn) {
-        Transaction old = mFirst.link(txn);
-        mSecond.link(txn);
+        Transaction old = mTxn;
+        mTxn = txn;
         return old;
     }
 
     @Override
     public Transaction link() {
-        return mFirst.link();
+        return mTxn;
     }
 
     @Override
@@ -81,12 +84,14 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public boolean autoload(boolean mode) {
-        return mFirst.autoload(mode) | mSecond.autoload(mode);
+        boolean old = !mKeyOnly;
+        mKeyOnly = !mode;
+        return old;
     }
 
     @Override
     public boolean autoload() {
-        return mFirst.autoload();
+        return !mKeyOnly;
     }
 
     @Override
@@ -102,22 +107,20 @@ abstract class MergeCursor implements Cursor {
 
     @FunctionalInterface
     static interface Action {
-        LockResult perform() throws IOException;
+        LockResult perform(Transaction txn) throws IOException;
     }
 
     /**
      * Performs the given action with an appropriate lock mode.
      */
     private LockResult perform(Action action) throws IOException {
-        Transaction txn = link();
+        Transaction txn = mTxn;
         if (txn == null) {
             txn = mView.newTransaction(null);
             try {
-                link(txn);
                 txn.lockMode(LockMode.REPEATABLE_READ);
-                action.perform();
+                action.perform(txn);
             } finally {
-                link(null);
                 txn.reset();
             }
             return LockResult.UNOWNED;
@@ -126,7 +129,7 @@ abstract class MergeCursor implements Cursor {
             final LockMode original = txn.lockMode();
             try {
                 txn.lockMode(LockMode.REPEATABLE_READ);
-                result = action.perform();
+                result = action.perform(txn);
                 if (result.isAcquired()) {
                     txn.unlock();
                     result = LockResult.UNOWNED;
@@ -136,63 +139,33 @@ abstract class MergeCursor implements Cursor {
             }
             return result;
         } else {
-            return action.perform();
+            return action.perform(txn);
         }
     }
 
     @Override
     public LockResult first() throws IOException {
-        return perform(() -> {
-            LockResult r1 = mFirst.first();
-            LockResult r2;
-            try {
-                r2 = mSecond.first();
-            } catch (LockFailureException e) {
-                lockCleanup(e, r1);
-                throw e;
-            }
+        return perform(txn -> {
+            mKey = null;
+            mValue = null;
+            mCompare = 0;
             mDirection = DIRECTION_NORMAL;
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = mFirst.next();
-                try {
-                    r2 = mSecond.next();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            mFirst.first();
+            mSecond.first();
+            return selectNext(txn);
         });
     }
 
     @Override
     public LockResult last() throws IOException {
-        return perform(() -> {
-            LockResult r1 = mFirst.last();
-            LockResult r2;
-            try {
-                r2 = mSecond.last();
-            } catch (LockFailureException e) {
-                lockCleanup(e, r1);
-                throw e;
-            }
+        return perform(txn -> {
+            mKey = null;
+            mValue = null;
+            mCompare = 0;
             mDirection = DIRECTION_REVERSE;
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = mFirst.previous();
-                try {
-                    r2 = mSecond.previous();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            mFirst.last();
+            mSecond.last();
+            return selectPrevious(txn);
         });
     }
 
@@ -211,50 +184,47 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public LockResult next() throws IOException {
-        return perform(() -> {
-            LockResult r1, r2;
+        return perform(txn -> {
             int cmp = mCompare;
             if (cmp == 0) {
-                r1 = mFirst.next();
-                try {
-                    r2 = mSecond.next();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
+                mFirst.next();
+                mSecond.next();
                 mDirection = DIRECTION_NORMAL;
             } else {
                 if (mDirection == DIRECTION_REVERSE) {
-                    switchToNormal();
+                    switchToNormal(txn);
                     cmp = mCompare;
                 }
                 if (cmp < 0) {
-                    r1 = mFirst.next();
-                    r2 = LockResult.UNOWNED;
+                    mFirst.next();
                 } else {
-                    r1 = LockResult.UNOWNED;
-                    r2 = mSecond.next();
+                    mSecond.next();
                 }
             }
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = mFirst.next();
-                try {
-                    r2 = mSecond.next();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            return selectNext(txn);
         });
+    }
+
+    private LockResult selectNext(Transaction txn) throws IOException {
+        while (true) {
+            LockResult result = select(txn);
+            if (result != null) {
+                return result;
+            }
+            boolean fn = mFirst.value() == null;
+            boolean sn = mSecond.value() == null;
+            if (fn | !sn) {
+                mFirst.next();
+            }
+            if (sn | !fn) {
+                mSecond.next();
+            }
+        }
     }
 
     @FunctionalInterface
     static interface KeyAction {
-        LockResult perform(Cursor c, byte[] key) throws IOException;
+        void perform(Cursor c, byte[] key) throws IOException;
     }
 
     @Override
@@ -268,106 +238,88 @@ abstract class MergeCursor implements Cursor {
     }
 
     private LockResult nextCmp(byte[] limitKey, KeyAction action) throws IOException {
-        return perform(() -> {
-            LockResult r1, r2;
+        return perform(txn -> {
             int cmp = mCompare;
             if (cmp == 0) {
-                r1 = action.perform(mFirst, limitKey);
-                try {
-                    r2 = action.perform(mSecond, limitKey);
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
+                action.perform(mFirst, limitKey);
+                action.perform(mSecond, limitKey);
                 mDirection = DIRECTION_NORMAL;
             } else {
                 if (mDirection == DIRECTION_REVERSE) {
-                    switchToNormal();
+                    switchToNormal(txn);
                     cmp = mCompare;
                 }
-                if (cmp < 0) {
-                    r1 = action.perform(mFirst, limitKey);
-                    r2 = LockResult.UNOWNED;
-                } else {
-                    r1 = LockResult.UNOWNED;
-                    r2 = action.perform(mSecond, limitKey);
-                }
+                action.perform(cmp < 0 ? mFirst : mSecond, limitKey);
             }
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = action.perform(mFirst, limitKey);
-                try {
-                    r2 = action.perform(mSecond, limitKey);
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            return select(txn, limitKey, action);
         });
     }
 
-    private void switchToNormal() throws IOException {
-        mDirection = DIRECTION_NORMAL;
-        try {
-            // FIXME: Define seekGt (et al) methods in ViewUtils. TransformedCursor uses this
-            // if the inverse key transform returns null, when calling findNearbyGt (et al).
-            (mKey == mFirst.key() ? mSecond : mFirst).findNearbyGt(mKey);
-        } catch (LockFailureException e) {
-            try {
-                select(LockResult.UNOWNED, LockResult.UNOWNED);
-            } catch (Throwable e2) {
-                Utils.suppress(e, e2);
+    private LockResult select(Transaction txn, byte[] limitKey, KeyAction action)
+        throws IOException
+    {
+        while (true) {
+            LockResult result = select(txn);
+            if (result != null) {
+                return result;
             }
-            throw e;
+            boolean fn = mFirst.value() == null;
+            boolean sn = mSecond.value() == null;
+            if (fn | !sn) {
+                action.perform(mFirst, limitKey);
+            }
+            if (sn | !fn) {
+                action.perform(mSecond, limitKey);
+            }
         }
-        select(LockResult.UNOWNED, LockResult.UNOWNED);
+    }
+
+    private void switchToNormal(Transaction txn) throws IOException {
+        mDirection = DIRECTION_NORMAL;
+        // FIXME: Define seekGt (et al) methods in ViewUtils. TransformedCursor uses this
+        // if the inverse key transform returns null, when calling findNearbyGt (et al).
+        (mKey == mFirst.key() ? mSecond : mFirst).findNearbyGt(mKey);
+        select(txn);
     }
 
     @Override
     public LockResult previous() throws IOException {
-        return perform(() -> {
-            LockResult r1, r2;
+        return perform(txn -> {
             int cmp = mCompare;
             if (cmp == 0) {
-                r1 = mFirst.previous();
-                try {
-                    r2 = mSecond.previous();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
+                mFirst.previous();
+                mSecond.previous();
                 mDirection = DIRECTION_REVERSE;
             } else {
                 if (mDirection == DIRECTION_NORMAL) {
-                    switchToReverse();
+                    switchToReverse(txn);
                     cmp = mCompare;
                 }
                 if (cmp > 0) {
-                    r1 = mFirst.previous();
-                    r2 = LockResult.UNOWNED;
+                    mFirst.previous();
                 } else {
-                    r1 = LockResult.UNOWNED;
-                    r2 = mSecond.previous();
+                    mSecond.previous();
                 }
             }
-
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = mFirst.previous();
-                try {
-                    r2 = mSecond.previous();
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            return selectPrevious(txn);
         });
+    }
+
+    private LockResult selectPrevious(Transaction txn) throws IOException {
+        while (true) {
+            LockResult result = select(txn);
+            if (result != null) {
+                return result;
+            }
+            boolean fn = mFirst.value() == null;
+            boolean sn = mSecond.value() == null;
+            if (fn | !sn) {
+                mFirst.previous();
+            }
+            if (sn | !fn) {
+                mSecond.previous();
+            }
+        }
     }
 
     @Override
@@ -381,61 +333,29 @@ abstract class MergeCursor implements Cursor {
     }
 
     private LockResult previousCmp(byte[] limitKey, KeyAction action) throws IOException {
-        return perform(() -> {
+        return perform(txn -> {
             LockResult r1, r2;
             int cmp = mCompare;
             if (cmp == 0) {
-                r1 = action.perform(mFirst, limitKey);
-                try {
-                    r2 = action.perform(mSecond, limitKey);
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
+                action.perform(mFirst, limitKey);
+                action.perform(mSecond, limitKey);
                 mDirection = DIRECTION_REVERSE;
             } else {
                 if (mDirection == DIRECTION_NORMAL) {
-                    switchToReverse();
+                    switchToReverse(txn);
                     cmp = mCompare;
                 }
-                if (cmp > 0) {
-                    r1 = action.perform(mFirst, limitKey);
-                    r2 = LockResult.UNOWNED;
-                } else {
-                    r1 = LockResult.UNOWNED;
-                    r2 = action.perform(mSecond, limitKey);
-                }
+                action.perform(cmp > 0 ? mFirst : mSecond, limitKey);
             }
-            while (true) {
-                LockResult result = select(r1, r2);
-                if (result != null) {
-                    return result;
-                }
-                r1 = action.perform(mFirst, limitKey);
-                try {
-                    r2 = action.perform(mSecond, limitKey);
-                } catch (LockFailureException e) {
-                    lockCleanup(e, r1);
-                    throw e;
-                }
-            }
+            return select(txn, limitKey, action);
         });
     }
 
-    private void switchToReverse() throws IOException {
+    private void switchToReverse(Transaction txn) throws IOException {
         mDirection = DIRECTION_REVERSE;
-        try {
-            // FIXME: scan instead of find
-            (mKey == mFirst.key() ? mSecond : mFirst).findNearbyLt(mKey);
-        } catch (LockFailureException e) {
-            try {
-                select(LockResult.UNOWNED, LockResult.UNOWNED);
-            } catch (Throwable e2) {
-                Utils.suppress(e, e2);
-            }
-            throw e;
-        }
-        select(LockResult.UNOWNED, LockResult.UNOWNED);
+        // FIXME: scan instead of find
+        (mKey == mFirst.key() ? mSecond : mFirst).findNearbyLt(mKey);
+        select(txn);
     }
 
     @Override
@@ -489,17 +409,11 @@ abstract class MergeCursor implements Cursor {
     }
 
     private LockResult doFind(byte[] key, KeyAction action) throws IOException {
-        return perform(() -> {
-            LockResult r1 = action.perform(mFirst, key);
-            LockResult r2;
-            try {
-                r2 = action.perform(mSecond, key);
-            } catch (LockFailureException e) {
-                lockCleanup(e, r1);
-                throw e;
-            }
+        return perform(txn -> {
+            action.perform(mFirst, key);
+            action.perform(mSecond, key);
             mDirection = DIRECTION_NORMAL;
-            LockResult result = select(r1, r2);
+            LockResult result = select(txn);
             return result == null ? LockResult.UNOWNED : result;
         });
     }
@@ -514,69 +428,90 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
-        return perform(() -> {
-            LockResult r1 = mFirst.lock();
-            LockResult r2;
-            try {
-                r2 = mSecond.lock();
-            } catch (LockFailureException e) {
-                lockCleanup(e, r1);
-                throw e;
-            }
-            LockResult result = select(r1, r2);
-            return result == null ? LockResult.UNOWNED : result;
-        });
+        return load(false);
     }
 
     @Override
     public LockResult load() throws IOException {
-        return perform(() -> {
-            LockResult r1 = mFirst.load();
-            LockResult r2;
+        return load(true);
+    }
+
+    private LockResult load(boolean autoload) throws IOException {
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
+
+        return perform(txn -> {
+            alignKeys(key);
+            final boolean original = autoload(autoload);
             try {
-                r2 = mSecond.load();
-            } catch (LockFailureException e) {
-                lockCleanup(e, r1);
-                throw e;
+                LockResult result = select(txn);
+                return result == null ? LockResult.UNOWNED : result;
+            } finally {
+                autoload(original);
             }
-            LockResult result = select(r1, r2);
-            return result == null ? LockResult.UNOWNED : result;
         });
     }
 
     @Override
     public void store(byte[] value) throws IOException {
-        byte[] key = key();
+        byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
-        Transaction txn = link();
+        Transaction txn = mTxn;
         if (txn == null) {
             txn = mView.newTransaction(null);
             try {
-                link(txn);
-                doStore(txn, key, value);
+                store(txn, key, value);
                 txn.commit();
             } finally {
-                link(null);
                 txn.reset();
             }
         } else if (txn.lockMode() != LockMode.UNSAFE) {
             txn.enter();
             try {
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                doStore(txn, key, value);
+                store(txn, key, value);
                 txn.commit();
             } finally {
                 txn.exit();
             }
         } else {
-            doStore(txn, key, value);
+            store(txn, key, value);
+        }
+    }
+
+    private void store(Transaction txn, byte[] key, byte[] value) throws IOException {
+        alignKeys(key);
+
+        try {
+            mFirst.link(txn);
+            mSecond.link(txn);
+            doStore(key, value);
+        } finally {
+            mFirst.link(Transaction.BOGUS);
+            mSecond.link(Transaction.BOGUS);
+        }
+
+        mValue = value;
+    }
+
+    private void alignKeys(byte[] key) throws IOException {
+        if (mCompare != 0) {
+            if (!Arrays.equals(key, mFirst.key())) {
+                mFirst.findNearby(key);
+            }
+            if (!Arrays.equals(key, mSecond.key())) {
+                mSecond.findNearby(key);
+            }
+            mCompare = 0;
         }
     }
 
     @Override
     public Cursor copy() {
         MergeCursor copy = newCursor(mFirst.copy(), mSecond.copy());
+        copy.mTxn = mTxn;
+        copy.mKeyOnly = mKeyOnly;
         copy.mDirection = mDirection;
         copy.mKey = mKey;
         copy.mValue = ViewUtils.copyValue(mValue);
@@ -595,21 +530,135 @@ abstract class MergeCursor implements Cursor {
         mSecond.reset();
     }
 
-    private void lockCleanup(Throwable e, LockResult r1) {
+    /**
+     * Called by select method when the first value must be selected and the corresponding
+     * second value doesn't exist. This cursor's key and value is set as a side effect.
+     *
+     * @return null if cursor must be moved before select can be called again
+     */
+    protected LockResult selectFirst(Transaction txn, byte[] key) throws IOException {
+        mKey = key;
+        mValue = Cursor.NOT_LOADED;
+
+        mFirst.link(txn);
         try {
-            if (r1.isAcquired()) {
-                mFirst.link().unlock();
+            LockResult r1 = autoload() ? mFirst.load() : mFirst.lock();
+            LockResult r2 = mView.mSecond.touch(txn, key);
+            byte[] value = mFirst.value();
+            mValue = value;
+            if (value == null) {
+                if (r1.isAcquired()) {
+                    txn.unlock();
+                }
+                if (r2.isAcquired()) {
+                    txn.unlock();
+                }
+                return null;
             }
-            select(LockResult.UNOWNED, LockResult.UNOWNED);
-        } catch (Throwable e2) {
-            Utils.suppress(e, e2);
+            return resultCombine(txn, r1, r2);
+        } finally {
+            mFirst.link(Transaction.BOGUS);
         }
     }
 
-    protected LockResult combine(LockResult r1, LockResult r2) {
+    /**
+     * Called by select method when the second value must be selected and the corresponding
+     * first value doesn't exist. This cursor's key and value are set as a side effect.
+     *
+     * @return null if cursor must be moved before select can be called again
+     */
+    protected LockResult selectSecond(Transaction txn, byte[] key) throws IOException {
+        mKey = key;
+        mValue = Cursor.NOT_LOADED;
+
+        mSecond.link(txn);
+        try {
+            LockResult r1 = mView.mFirst.touch(txn, key);
+            LockResult r2 = autoload() ? mSecond.load() : mSecond.lock();
+            byte[] value = mSecond.value();
+            mValue = value;
+            if (value == null) {
+                if (r1.isAcquired()) {
+                    txn.unlock();
+                }
+                if (r2.isAcquired()) {
+                    txn.unlock();
+                }
+                return null;
+            }
+            return resultCombine(txn, r1, r2);
+        } finally {
+            mSecond.link(Transaction.BOGUS);
+        }
+    }
+
+    private LockResult lockOrLoad(Combiner combiner, Cursor from) throws IOException {
+        return (autoload() || combiner.requireValue()) ? from.load() : from.lock();
+    }
+
+    /**
+     * Called by select method when keys from both sources match. This cursor's key and value
+     * are set as a side effect.
+     *
+     * @return null if cursor must be moved before select can be called again
+     */
+    protected LockResult selectCombine(Transaction txn, byte[] key) throws IOException {
+        mKey = key;
+        mValue = Cursor.NOT_LOADED;
+
+        final Combiner combiner = mView.mCombiner;
+
+        final LockResult r1, r2;
+        final byte[] v1, v2;
+
+        mFirst.link(txn);
+        try {
+            r1 = lockOrLoad(combiner, mFirst);
+            v1 = mFirst.value();
+        } finally {
+            mFirst.link(Transaction.BOGUS);
+        }
+
+        mSecond.link(txn);
+        try {
+            r2 = lockOrLoad(combiner, mSecond);
+            v2 = mSecond.value();
+        } finally {
+            mSecond.link(Transaction.BOGUS);
+        }
+
+        doCombine: {
+            final byte[] value;
+            if (v1 == null) {
+                value = v2;
+            } else if (v2 == null) {
+                value = v1;
+                mValue = value;
+                break doCombine;
+            } else {
+                value = mView.mCombiner.combine(key, v1, v2);
+            }
+
+            mValue = value;
+
+            if (value == null) {
+                if (r1.isAcquired()) {
+                    txn.unlock();
+                }
+                if (r2.isAcquired()) {
+                    txn.unlock();
+                }
+                return null;
+            }
+        }
+
+        return resultCombine(txn, r1, r2);
+    }
+
+    private LockResult resultCombine(Transaction txn, LockResult r1, LockResult r2) {
         if (r1.isAcquired()) {
             if (r1 == r2) {
-                mFirst.link().unlockCombine();
+                txn.unlockCombine();
             }
             return r1;
         } else if (r2.isAcquired()) {
@@ -624,12 +673,12 @@ abstract class MergeCursor implements Cursor {
     /**
      * @return null if cursor must be moved before select can be called again
      */
-    protected abstract LockResult select(LockResult r1, LockResult r2) throws IOException;
+    protected abstract LockResult select(Transaction txn) throws IOException;
 
     /**
      * @param txn transaction with UPGRADABLE_READ or UNSAFE mode
      */
-    protected abstract void doStore(Transaction txn, byte[] key, byte[] value) throws IOException;
+    protected abstract void doStore(byte[] key, byte[] value) throws IOException;
 
     protected ViewConstraintException storeFail() {
         return new ViewConstraintException("Cannot separate value for " + mView.type() + " view");

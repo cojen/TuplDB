@@ -58,6 +58,10 @@ public class CursorTest {
         return (TreeCursor) c;
     }
 
+    protected boolean equalPositions(Cursor a, Cursor b) throws Exception {
+        return treeCursor(a).equalPositions(treeCursor(b));
+    }
+
     protected Database mDb;
 
     @Test
@@ -175,6 +179,11 @@ public class CursorTest {
         }
         c.next();
         assertNull(c.key());
+
+        // Necessary for CursorDisjointUnionTest. Unions and other merge cursors read ahead,
+        // and so they can't always observe values being added back in. Calling lock, load,
+        // store, or a find method re-aligns the source cursors.
+        c2.lock();
 
         for (int i=499; i>=0; i--) {
             c2.previous();
@@ -538,6 +547,7 @@ public class CursorTest {
         // Must fully skip past key 1.
         c.nextLe(key(2));
 
+        fastAssertArrayEquals(key(2), c.key());
         fastAssertArrayEquals(value(2), c.value());
     }
 
@@ -886,11 +896,11 @@ public class CursorTest {
 
         Cursor c1 = ix.newCursor(Transaction.BOGUS);
         for (c1.first(); c1.key() != null; c1.next()) {
-            TreeCursor c2 = treeCursor(ix.newCursor(Transaction.BOGUS));
+            Cursor c2 = ix.newCursor(Transaction.BOGUS);
             for (c2.first(); c2.key() != null; c2.next()) {
-                TreeCursor ref = treeCursor(c1.copy());
+                Cursor ref = c1.copy();
                 ref.findNearby(c2.key());
-                assertTrue(ref.equalPositions(c2));
+                assertTrue(equalPositions(ref, c2));
                 ref.reset();
             }
             c2.reset();
@@ -1332,10 +1342,14 @@ public class CursorTest {
 
         assertTrue(verify(ix));
 
-        assertEquals(foundCursors.length + notFoundCursors.length, mDb.stats().cursorCount());
+        assertEquals(foundCursors.length + notFoundCursors.length, cursorCount());
 
         verifyPositions(ix, foundCursors);
         verifyPositions(ix, notFoundCursors);
+    }
+
+    protected long cursorCount() {
+        return mDb.stats().cursorCount();
     }
 
     @Test
@@ -1414,7 +1428,7 @@ public class CursorTest {
             Cursor c = ix.newCursor(Transaction.BOGUS);
             byte[] key = existing.key();
             c.find(key);
-            assertTrue(treeCursor(c).equalPositions(treeCursor(existing)));
+            assertTrue(equalPositions(c, existing));
             c.reset();
             existing.reset();
         }

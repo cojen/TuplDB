@@ -33,14 +33,14 @@ public interface Combiner {
      * Returns a Combiner that chooses the first value and discards the second value.
      */
     public static Combiner first() {
-        return (k, first, second) -> first;
+        return SelectCombiner.First.THE;
     }
 
     /**
      * Returns a Combiner that chooses the second value and discards the first value.
      */
     public static Combiner second() {
-        return (k, first, second) -> second;
+        return SelectCombiner.Second.THE;
     }
 
     /**
@@ -48,7 +48,7 @@ public interface Combiner {
      * {@link View#viewUnion union}, this causes it to compute the <i>symmetric set difference</i>.
      */
     public static Combiner discard() {
-        return (k, first, second) -> null;
+        return SelectCombiner.Discard.THE;
     }
 
     /**
@@ -61,6 +61,16 @@ public interface Combiner {
      * @return combined value or null to discard both values
      */
     public byte[] combine(byte[] key, byte[] first, byte[] second) throws IOException;
+
+    /**
+     * Returns true by default, indicating that the combine method always requires loaded value
+     * instances to be provided.
+     *
+     * @return true if loaded values must always be passed into the combine method
+     */
+    public default boolean requireValue() {
+        return true;
+    }
 
     /**
      * Separates a combined result, for use when storing a value into a view which uses this

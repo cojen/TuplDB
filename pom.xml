@@ -130,6 +130,9 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.20</version>
         <configuration>
+          <!-- WTF? Why in the world does Surefire trim traces? -->
+          <trimStackTrace>false</trimStackTrace>
+          <useFile>false</useFile>
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>

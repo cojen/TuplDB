@@ -19,8 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Comparator;
-
 /**
  * 
  *
@@ -39,10 +37,10 @@ final class UnionView extends MergeView {
     }
 
     @Override
-    protected MergeCursor newCursor(MergeView view, Comparator<byte[]> comparator,
+    protected MergeCursor newCursor(Transaction txn, MergeView view,
                                     Cursor first, Cursor second)
     {
-        return new UnionCursor(view, comparator, first, second);
+        return new UnionCursor(txn, view, first, second);
     }
 
     @Override

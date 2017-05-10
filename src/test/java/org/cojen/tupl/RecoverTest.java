@@ -925,6 +925,7 @@ public class RecoverTest {
         // checkpoint with a live open transaction
         Transaction txn = db.newTransaction(DurabilityMode.NO_REDO);
         ix.store(txn, "key1".getBytes(), "val1".getBytes());
+        // FIXME: This sometimes fails with UnmodifiableReplicaException.
         db.checkpoint();
         db.close();
 

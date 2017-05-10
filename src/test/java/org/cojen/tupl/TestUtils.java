@@ -429,8 +429,10 @@ class TestUtils {
             db.close();
 
             if (deleteRedo) {
+                String baseName = baseFile.getName();
                 for (File f : baseFile.getParentFile().listFiles()) {
-                    if (f.getName().indexOf(".redo.") > 0) {
+                    String name = f.getName();
+                    if (name.startsWith(baseName) && name.indexOf(".redo.") > 0) {
                         f.delete();
                     }
                 }

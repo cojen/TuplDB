@@ -65,7 +65,11 @@ abstract class MergeView implements View {
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return newCursor(this, mComparator, mFirst.newCursor(txn), mSecond.newCursor(txn));
+        Cursor first = mFirst.newCursor(Transaction.BOGUS);
+        first.autoload(false);
+        Cursor second = mSecond.newCursor(Transaction.BOGUS);
+        second.autoload(false);
+        return newCursor(txn, this, first, second);
     }
 
     // FIXME: Return scanners and updaters that check if txn is null and create an explicit txn
@@ -208,7 +212,7 @@ abstract class MergeView implements View {
         }
     }
 
-    protected abstract MergeCursor newCursor(MergeView view, Comparator<byte[]> comparator,
+    protected abstract MergeCursor newCursor(Transaction txn, MergeView view,
                                              Cursor first, Cursor second);
 
     protected abstract String type();
