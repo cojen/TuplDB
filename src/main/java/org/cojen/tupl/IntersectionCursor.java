@@ -19,84 +19,50 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Comparator;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class IntersectionCursor extends MergeCursor {
-    IntersectionCursor(MergeView view, Comparator<byte[]> comparator,
-                       Cursor first, Cursor second)
-    {
-        super(view, comparator, first, second);
+    IntersectionCursor(Transaction txn, MergeView view, Cursor first, Cursor second) {
+        super(txn, view, first, second);
     }
 
     @Override
     protected MergeCursor newCursor(Cursor first, Cursor second) {
-        return new IntersectionCursor(mView, mComparator, first, second);
+        return new IntersectionCursor(mTxn, mView, first, second);
     }
 
     @Override
-    protected LockResult select(LockResult r1, LockResult r2) throws IOException {
+    protected LockResult select(Transaction txn) throws IOException {
         while (true) {
-            byte[] k1 = mFirst.key();
+            final byte[] k1 = mFirst.key();
             if (k1 == null) {
                 reset();
                 return LockResult.UNOWNED;
             }
-
-            byte[] k2 = mSecond.key();
+            final byte[] k2 = mSecond.key();
             if (k2 == null) {
                 reset();
                 return LockResult.UNOWNED;
             }
-
-            byte[] value;
-            int cmp = mComparator.compare(k1, k2);
-
+            final int cmp = getComparator().compare(k1, k2);
             if (cmp == 0) {
-                mKey = k1;
-                value = mView.mCombiner.combine(k1, mFirst.value(), mSecond.value());
-                LockResult result;
-                if (value != null) {
-                    result = combine(r1, r2);
-                } else {
-                    if (r1.isAcquired()) {
-                        mFirst.link().unlock();
-                    }
-                    if (r2.isAcquired()) {
-                        mSecond.link().unlock();
-                    }
-                    result = null;
-                }
-
-                mValue = value;
                 mCompare = cmp;
-            
-                return result;
-            }
-
-            if ((cmp ^ mDirection) < 0) {
-                if (r1.isAcquired()) {
-                    mFirst.link().unlock();
-                }
-                r1 = mFirst.findNearbyGe(k2);
+                return selectCombine(txn, k1);
+            } else if ((cmp ^ mDirection) < 0) {
+                mFirst.findNearbyGe(k2);
             } else {
-                if (r2.isAcquired()) {
-                    mSecond.link().unlock();
-                }
-                r2 = mSecond.findNearbyGe(k1);
+                mSecond.findNearbyGe(k1);
             }
         }
     }
 
     @Override
-    protected void doStore(Transaction txn, byte[] key, byte[] value) throws IOException {
+    protected void doStore(byte[] key, byte[] value) throws IOException {
         if (value == null) {
             mFirst.store(null);
-            mView.mSecond.touch(txn, key);
         } else {
             byte[][] values = mView.mCombiner.separate(key, value);
 

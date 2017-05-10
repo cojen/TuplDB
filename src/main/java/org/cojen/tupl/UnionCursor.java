@@ -19,83 +19,54 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Comparator;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class UnionCursor extends MergeCursor {
-    UnionCursor(MergeView view, Comparator<byte[]> comparator, Cursor first, Cursor second) {
-        super(view, comparator, first, second);
+    UnionCursor(Transaction txn, MergeView view, Cursor first, Cursor second) {
+        super(txn, view, first, second);
     }
 
     @Override
     protected MergeCursor newCursor(Cursor first, Cursor second) {
-        return new UnionCursor(mView, mComparator, first, second);
+        return new UnionCursor(mTxn, mView, first, second);
     }
 
     @Override
-    protected LockResult select(LockResult r1, LockResult r2) throws IOException {
-        byte[] k1 = mFirst.key();
-        byte[] k2 = mSecond.key();
-
-        byte[] value;
-        int cmp;
-        LockResult result;
+    protected LockResult select(Transaction txn) throws IOException {
+        final byte[] k1 = mFirst.key();
+        final byte[] k2 = mSecond.key();
 
         if (k1 == null) {
-            mKey = k2;
             if (k2 == null) {
-                value = null;
-                cmp = 0;
-                result = LockResult.UNOWNED;
+                mCompare = 0;
+                mKey = null;
+                mValue = null;
+                return LockResult.UNOWNED;
             } else {
-                value = mSecond.value();
-                cmp = 1 ^ mDirection; // is -2 when reversed
-                result = r2;
+                mCompare = 1 ^ mDirection; // is -2 when reversed
+                return selectSecond(txn, k2);
             }
         } else if (k2 == null) {
-            mKey = k1;
-            value = mFirst.value();
-            cmp = -2 ^ mDirection; // is 1 when reversed
-            result = r1;
+            mCompare = -2 ^ mDirection; // is 1 when reversed
+            return selectFirst(txn, k1);
         } else {
-            cmp = mComparator.compare(k1, k2);
+            final int cmp = getComparator().compare(k1, k2);
+            mCompare = cmp;
             if (cmp == 0) {
-                mKey = k1;
-                value = mView.mCombiner.combine(k1, mFirst.value(), mSecond.value());
-                if (value != null) {
-                    result = combine(r1, r2);
-                } else {
-                    if (r1.isAcquired()) {
-                        mFirst.link().unlock();
-                    }
-                    if (r2.isAcquired()) {
-                        mSecond.link().unlock();
-                    }
-                    result = null;
-                }
+                return selectCombine(txn, k1);
             } else if ((cmp ^ mDirection) < 0) {
-                mKey = k1;
-                value = mFirst.value();
-                result = r1;
+                return selectFirst(txn, k1);
             } else {
-                mKey = k2;
-                value = mSecond.value();
-                result = r2;
+                return selectSecond(txn, k2);
             }
         }
-
-        mValue = value;
-        mCompare = cmp;
-
-        return result;
     }
 
     @Override
-    protected void doStore(Transaction txn, byte[] key, byte[] value) throws IOException {
+    protected void doStore(byte[] key, byte[] value) throws IOException {
         if (value == null) {
             mFirst.store(null);
             mSecond.store(null);
