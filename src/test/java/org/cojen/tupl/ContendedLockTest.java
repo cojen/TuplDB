@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -34,7 +36,11 @@ public class ContendedLockTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase(getClass());
+        DatabaseConfig config = new DatabaseConfig()
+            .durabilityMode(DurabilityMode.NO_FLUSH)
+            .directPageAccess(false)
+            .lockTimeout(3, TimeUnit.SECONDS);
+        mDb = newTempDatabase(getClass(), config);
     }
 
     @After
