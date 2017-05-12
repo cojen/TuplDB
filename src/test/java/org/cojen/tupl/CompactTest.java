@@ -456,6 +456,10 @@ public class CompactTest {
         // Nothing happened because most pages were in the undo log and not moved.
         assertEquals(stats2, mDb.stats());
 
+        // Store it in a volatile field to prevent the garbage collector from closing the index
+        // and messing up the above stats equality assertion.
+        reachabilityFence = ix;
+
         txn.commit();
 
         // Compact will work this time now that undo log is gone.
@@ -465,6 +469,8 @@ public class CompactTest {
         assertTrue(stats3.freePages() < stats2.freePages());
         assertTrue(stats3.totalPages() < stats2.totalPages());
     }
+
+    private static volatile Object reachabilityFence;
 
     @Test
     public void trashHiding() throws Exception {
