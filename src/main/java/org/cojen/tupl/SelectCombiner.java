@@ -51,7 +51,7 @@ abstract class SelectCombiner implements Combiner {
     };
 
     @Override
-    public boolean requireValue() {
+    public boolean requireValues() {
         return false;
     }
 }

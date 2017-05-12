@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":17,"i2":17,"i3":18,"i4":17,"i5":18};
+var methods = {"i0":6,"i1":17,"i2":17,"i3":18,"i4":18,"i5":17,"i6":18};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -153,18 +153,25 @@ public interface <span class="typeNameLabel">Combiner</span></pre>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Combiner.html#requireValue--">requireValue</a></span>()</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Combiner.html#joinLocks--">joinLocks</a></span>()</code>
+<div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
+ doesn't need to be held while a lock on the second key is acquired.</div>
+</td>
+</tr>
+<tr id="i4" class="altColor">
+<td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Combiner.html#requireValues--">requireValues</a></span>()</code>
 <div class="block">Returns true by default, indicating that the combine method always requires loaded value
  instances to be provided.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>static <a href="../../../org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Combiner.html#second--">second</a></span>()</code>
 <div class="block">Returns a Combiner that chooses the second value and discards the first value.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>default byte[][]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-">separate</a></span>(byte[]&nbsp;key,
         byte[]&nbsp;value)</code>
@@ -242,19 +249,32 @@ public interface <span class="typeNameLabel">Combiner</span></pre>
 </dl>
 </li>
 </ul>
-<a name="requireValue--">
+<a name="requireValues--">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>requireValue</h4>
-<pre>default&nbsp;boolean&nbsp;requireValue()</pre>
+<h4>requireValues</h4>
+<pre>default&nbsp;boolean&nbsp;requireValues()</pre>
 <div class="block">Returns true by default, indicating that the combine method always requires loaded value
  instances to be provided.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>true if loaded values must always be passed into the combine method</dd>
 </dl>
+</li>
+</ul>
+<a name="joinLocks--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>joinLocks</h4>
+<pre>default&nbsp;boolean&nbsp;joinLocks()</pre>
+<div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
+ doesn't need to be held while a lock on the second key is acquired. This option is
+ applicable when using the <a href="../../../org/cojen/tupl/LockMode.html#READ_COMMITTED"><code>READ_COMMITTED</code></a> lock mode or a
+ null transaction. When storing into a view, acquired locks are always joined.</div>
 </li>
 </ul>
 <a name="separate-byte:A-byte:A-">

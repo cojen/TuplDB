@@ -57,7 +57,7 @@ public class CrudDisjointUnionTest extends CrudNonDurableTest {
         }
 
         @Override
-        public boolean requireValue() {
+        public boolean requireValues() {
             return false;
         }
 
