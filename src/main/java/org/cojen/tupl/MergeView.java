@@ -85,14 +85,14 @@ abstract class MergeView implements View {
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
-        if (mCombiner.joinLocks()) join: {
+        if (mCombiner.combineLocks()) combine: {
             if (txn == null) {
                 txn = newTransaction(null);
                 txn.lockMode(LockMode.REPEATABLE_READ);
             } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
                 txn.enter();
             } else {
-                break join;
+                break combine;
             }
             try {
                 return doLoad(txn, key);
@@ -108,7 +108,7 @@ abstract class MergeView implements View {
 
     @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
-        if (mCombiner.joinLocks()) {
+        if (mCombiner.combineLocks()) {
             if (txn == null) {
                 txn = newTransaction(null);
                 try {

@@ -115,7 +115,7 @@ abstract class MergeCursor implements Cursor {
      */
     private LockResult perform(Action action) throws IOException {
         Transaction txn = mTxn;
-        if (mView.mCombiner.joinLocks()) {
+        if (mView.mCombiner.combineLocks()) {
             if (txn == null) {
                 txn = mView.newTransaction(null);
                 try {
