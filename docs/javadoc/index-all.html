@@ -1458,6 +1458,11 @@
 <dd>
 <div class="block">Waits until all the worker queues are drained.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#joinLocks--">joinLocks()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
+<dd>
+<div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
+ doesn't need to be held while a lock on the second key is acquired.</div>
+</dd>
 </dl>
 <a name="I:K">
 <!--   -->
@@ -2148,15 +2153,15 @@
 <dd>
 <div class="block">Invoked by default implementation of <a href="org/cojen/tupl/VerificationObserver.html#indexNodeFailed-long-int-java.lang.String-"><code>indexNodeFailed</code></a>.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#requireValue--">requireValue()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
-<dd>
-<div class="block">Returns true by default, indicating that the combine method always requires loaded value
- instances to be provided.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transformer.html#requireValue--">requireValue()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl">Transformer</a></dt>
 <dd>
 <div class="block">Returns true by default, indicating that the transform methods always require a value
  instance to be provided.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#requireValues--">requireValues()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
+<dd>
+<div class="block">Returns true by default, indicating that the combine method always requires loaded value
+ instances to be provided.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>

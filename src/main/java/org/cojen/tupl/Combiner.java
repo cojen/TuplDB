@@ -68,8 +68,18 @@ public interface Combiner {
      *
      * @return true if loaded values must always be passed into the combine method
      */
-    public default boolean requireValue() {
+    public default boolean requireValues() {
         return true;
+    }
+
+    /**
+     * Returns false by default, indicating that when loads of the first key acquire a lock, it
+     * doesn't need to be held while a lock on the second key is acquired. This option is
+     * applicable when using the {@link LockMode#READ_COMMITTED READ_COMMITTED} lock mode or a
+     * null transaction. When storing into a view, acquired locks are always joined.
+     */
+    public default boolean joinLocks() {
+        return false;
     }
 
     /**

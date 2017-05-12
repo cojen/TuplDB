@@ -72,8 +72,11 @@ abstract class MergeView implements View {
         return newCursor(txn, this, first, second);
     }
 
-    // FIXME: Return scanners and updaters that check if txn is null and create an explicit txn
-    // to use.
+    // FIXME: If combineLocks is true, return scanners and updaters that check if txn is null
+    // and create an explicit txn to use. This is cheaper than creating a transaction for each
+    // entry.
+
+    // FIXME: Scanner returns null for trySplit, because random positioning isn't supported.
 
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
@@ -82,55 +85,61 @@ abstract class MergeView implements View {
 
     @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
-        if (txn == null) {
-            txn = newTransaction(null);
-            txn.lockMode(LockMode.REPEATABLE_READ);
-        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
-            txn.enter();
-        } else {
-            return doLoad(txn, key);
+        if (mCombiner.joinLocks()) join: {
+            if (txn == null) {
+                txn = newTransaction(null);
+                txn.lockMode(LockMode.REPEATABLE_READ);
+            } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
+                txn.enter();
+            } else {
+                break join;
+            }
+            try {
+                return doLoad(txn, key);
+            } finally {
+                txn.exit();
+            }
         }
-        try {
-            return doLoad(txn, key);
-        } finally {
-            txn.exit();
-        }
+
+        return doLoad(txn, key);
     }
 
     protected abstract byte[] doLoad(Transaction txn, byte[] key) throws IOException;
 
     @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
-        if (txn == null) {
-            txn = newTransaction(null);
-            try {
-                txn.lockMode(LockMode.REPEATABLE_READ);
-                doTouch(txn, key);
-            } finally {
+        if (mCombiner.joinLocks()) {
+            if (txn == null) {
+                txn = newTransaction(null);
                 try {
-                    txn.reset();
-                } catch (IOException e) {
-                    // Not expected.
+                    txn.lockMode(LockMode.REPEATABLE_READ);
+                    doTouch(txn, key);
+                } finally {
+                    try {
+                        txn.reset();
+                    } catch (IOException e) {
+                        // Not expected.
+                    }
                 }
-            }
-            return LockResult.UNOWNED;
-        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
-            LockResult result;
-            final LockMode original = txn.lockMode();
-            try {
-                txn.lockMode(LockMode.REPEATABLE_READ);
-                result = doTouch(txn, key);
-                if (result.isAcquired()) {
-                    txn.unlock();
-                    result = LockResult.UNOWNED;
+                return LockResult.UNOWNED;
+            } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
+                LockResult result;
+                final LockMode original = txn.lockMode();
+                try {
+                    txn.lockMode(LockMode.REPEATABLE_READ);
+                    result = doTouch(txn, key);
+                    if (result.isAcquired()) {
+                        txn.unlock();
+                        result = LockResult.UNOWNED;
+                    }
+                } finally {
+                    txn.lockMode(original);
                 }
-            } finally {
-                txn.lockMode(original);
+                return result;
             }
-            return result;
-        } else {
-            return doTouch(txn, key);
         }
+
+        return doTouch(txn, key);
     }
 
     private LockResult doTouch(Transaction txn, byte[] key) throws LockFailureException {

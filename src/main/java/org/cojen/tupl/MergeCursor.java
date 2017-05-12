@@ -115,32 +115,34 @@ abstract class MergeCursor implements Cursor {
      */
     private LockResult perform(Action action) throws IOException {
         Transaction txn = mTxn;
-        if (txn == null) {
-            txn = mView.newTransaction(null);
-            try {
-                txn.lockMode(LockMode.REPEATABLE_READ);
-                action.perform(txn);
-            } finally {
-                txn.reset();
-            }
-            return LockResult.UNOWNED;
-        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
-            LockResult result;
-            final LockMode original = txn.lockMode();
-            try {
-                txn.lockMode(LockMode.REPEATABLE_READ);
-                result = action.perform(txn);
-                if (result.isAcquired()) {
-                    txn.unlock();
-                    result = LockResult.UNOWNED;
+        if (mView.mCombiner.joinLocks()) {
+            if (txn == null) {
+                txn = mView.newTransaction(null);
+                try {
+                    txn.lockMode(LockMode.REPEATABLE_READ);
+                    action.perform(txn);
+                } finally {
+                    txn.reset();
                 }
-            } finally {
-                txn.lockMode(original);
+                return LockResult.UNOWNED;
+            } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
+                LockResult result;
+                final LockMode original = txn.lockMode();
+                try {
+                    txn.lockMode(LockMode.REPEATABLE_READ);
+                    result = action.perform(txn);
+                    if (result.isAcquired()) {
+                        txn.unlock();
+                        result = LockResult.UNOWNED;
+                    }
+                } finally {
+                    txn.lockMode(original);
+                }
+                return result;
             }
-            return result;
-        } else {
-            return action.perform(txn);
         }
+        
+        return action.perform(txn);
     }
 
     @Override
@@ -276,8 +278,6 @@ abstract class MergeCursor implements Cursor {
 
     private void switchToNormal(Transaction txn) throws IOException {
         mDirection = DIRECTION_NORMAL;
-        // FIXME: Define seekGt (et al) methods in ViewUtils. TransformedCursor uses this
-        // if the inverse key transform returns null, when calling findNearbyGt (et al).
         (mKey == mFirst.key() ? mSecond : mFirst).findNearbyGt(mKey);
         select(txn);
     }
@@ -353,7 +353,6 @@ abstract class MergeCursor implements Cursor {
 
     private void switchToReverse(Transaction txn) throws IOException {
         mDirection = DIRECTION_REVERSE;
-        // FIXME: scan instead of find
         (mKey == mFirst.key() ? mSecond : mFirst).findNearbyLt(mKey);
         select(txn);
     }
@@ -422,8 +421,8 @@ abstract class MergeCursor implements Cursor {
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
         // Implementing this is problematic. Common entries must be passed to the combiner. If
         // it returns null, then another random entry must be selected and so on, indefinitely.
-        throw new UnsupportedOperationException
-            ("Cannot move " + mView.type() + " cursor to a random entry");
+        reset();
+        return LockResult.UNOWNED;
     }
 
     @Override
@@ -593,7 +592,7 @@ abstract class MergeCursor implements Cursor {
     }
 
     private LockResult lockOrLoad(Combiner combiner, Cursor from) throws IOException {
-        return (autoload() || combiner.requireValue()) ? from.load() : from.lock();
+        return (autoload() || combiner.requireValues()) ? from.load() : from.lock();
     }
 
     /**
