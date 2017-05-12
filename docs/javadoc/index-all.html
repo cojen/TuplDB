@@ -391,6 +391,11 @@
 <dd>
 <div class="block">Return a combined value derived from the given key and value pair.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#combineLocks--">combineLocks()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
+<dd>
+<div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
+ doesn't need to be held while a lock on the second key is acquired.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Combiner</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Represents an operation which combines two values that map to the same key.</div>
@@ -1457,11 +1462,6 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/WorkerGroup.html#join-boolean-">join(boolean)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/WorkerGroup.html" title="class in org.cojen.tupl.util">WorkerGroup</a></dt>
 <dd>
 <div class="block">Waits until all the worker queues are drained.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#joinLocks--">joinLocks()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
-<dd>
-<div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
- doesn't need to be held while a lock on the second key is acquired.</div>
 </dd>
 </dl>
 <a name="I:K">
