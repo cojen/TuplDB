@@ -57,7 +57,7 @@ public class TestAll {
             LargeValueDirectTest.class,
             LargeValueDirectMappedTest.class,
             LargeValueNonDurableTest.class,
-            LargeValueChaosTest.class,
+            LargeValueFuzzTest.class,
             ExtraLargeValueTest.class,
             ExtraLargeValueDirectTest.class,
             ExtraLargeValueNonDurableTest.class,

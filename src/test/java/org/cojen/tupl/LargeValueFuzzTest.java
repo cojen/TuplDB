@@ -29,9 +29,9 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class LargeValueChaosTest {
+public class LargeValueFuzzTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(LargeValueChaosTest.class.getName());
+        org.junit.runner.JUnitCore.main(LargeValueFuzzTest.class.getName());
     }
 
     @Before
@@ -48,46 +48,46 @@ public class LargeValueChaosTest {
     protected Database mDb;
 
     @Test
-    public void insertChaos1() throws Exception {
+    public void insertFuzz1() throws Exception {
         // Running with these parameters found several bugs. A large number of iterations was
         // required to find one of them.
 
-        doInsertChaos(2,        // threads
-                      500_000,  // iterationsPerThread
-                      2, 7,     // count min/max
-                      10, 4000, // key min/max
-                      10, 4000  // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     500_000,  // iterationsPerThread
+                     2, 7,     // count min/max
+                     10, 4000, // key min/max
+                     10, 4000  // value min/max
+                     );
     }
 
     @Test
-    public void insertChaos2() throws Exception {
+    public void insertFuzz2() throws Exception {
         // Test with small keys and large values. Use a higher count to cover more cases.
 
-        doInsertChaos(2,        // threads
-                      100_000,  // iterationsPerThread
-                      2, 20,    // count min/max
-                      10, 40,   // key min/max
-                      10, 4000  // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     100_000,  // iterationsPerThread
+                     2, 20,    // count min/max
+                     10, 40,   // key min/max
+                     10, 4000  // value min/max
+                     );
     }
 
     @Test
-    public void insertChaos3() throws Exception {
+    public void insertFuzz3() throws Exception {
         // Test with large keys and small values. Use a higher count to cover more cases.
 
-        doInsertChaos(2,        // threads
-                      100_000,  // iterationsPerThread
-                      2, 20,    // count min/max
-                      10, 4000, // key min/max
-                      10, 40    // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     100_000,  // iterationsPerThread
+                     2, 20,    // count min/max
+                     10, 4000, // key min/max
+                     10, 40    // value min/max
+                     );
     }
 
-    private void doInsertChaos(int threads, int iterationsPerThread,
-                               int countMin, int countMax,
-                               int keyMin, int keyMax,
-                               int valueMin, int valueMax)
+    private void doInsertFuzz(int threads, int iterationsPerThread,
+                              int countMin, int countMax,
+                              int keyMin, int keyMax,
+                              int valueMin, int valueMax)
         throws Exception
     {
         class Runner extends Thread {
@@ -101,8 +101,8 @@ public class LargeValueChaosTest {
             @Override
             public void run() {
                 try {
-                    doInsertChaos(seed, iterationsPerThread,
-                                  countMin, countMax, keyMin, keyMax, valueMin, valueMax);
+                    doInsertFuzz(seed, iterationsPerThread,
+                                 countMin, countMax, keyMin, keyMax, valueMin, valueMax);
                 } catch (Throwable e) {
                     error = e;
                 }
@@ -129,10 +129,10 @@ public class LargeValueChaosTest {
         }
     }
 
-    private void doInsertChaos(long seed, int iterations,
-                               int countMin, int countMax,
-                               int keyMin, int keyMax,
-                               int valueMin, int valueMax)
+    private void doInsertFuzz(long seed, int iterations,
+                              int countMin, int countMax,
+                              int keyMin, int keyMax,
+                              int valueMin, int valueMax)
         throws Exception
     {
         Random rnd = new Random(seed);
