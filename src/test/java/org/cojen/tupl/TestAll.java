@@ -112,6 +112,7 @@ public class TestAll {
             ReplicationTest.class,
             TempIndexTest.class,
             WorkerTest.class,
+            MergeViewTest.class,
         };
 
         String[] names = new String[classes.length];

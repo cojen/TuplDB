@@ -55,8 +55,10 @@ final class DifferenceCursor extends MergeCursor {
                 } else if ((cmp ^ mDirection) < 0) {
                     mCompare = cmp;
                     return selectFirst(txn, k1);
-                } else {
+                } else if (mDirection == DIRECTION_FORWARD) {
                     mSecond.findNearbyGe(k1);
+                } else {
+                    mSecond.findNearbyLe(k1);
                 }
             }
         }

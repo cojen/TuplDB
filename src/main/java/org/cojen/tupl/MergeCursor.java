@@ -29,7 +29,7 @@ import java.util.Comparator;
  */
 abstract class MergeCursor implements Cursor {
     // Actual values are important for xor, as used by the select method, to work properly.
-    static final int DIRECTION_NORMAL = 0, DIRECTION_REVERSE = -1;
+    static final int DIRECTION_FORWARD = 0, DIRECTION_REVERSE = -1;
 
     final MergeView mView;
     final Cursor mFirst;
@@ -151,7 +151,7 @@ abstract class MergeCursor implements Cursor {
             mKey = null;
             mValue = null;
             mCompare = 0;
-            mDirection = DIRECTION_NORMAL;
+            mDirection = DIRECTION_FORWARD;
             mFirst.first();
             mSecond.first();
             return selectNext(txn);
@@ -191,10 +191,10 @@ abstract class MergeCursor implements Cursor {
             if (cmp == 0) {
                 mFirst.next();
                 mSecond.next();
-                mDirection = DIRECTION_NORMAL;
+                mDirection = DIRECTION_FORWARD;
             } else {
                 if (mDirection == DIRECTION_REVERSE) {
-                    switchToNormal(txn);
+                    switchToForward(txn);
                     cmp = mCompare;
                 }
                 if (cmp < 0) {
@@ -215,10 +215,10 @@ abstract class MergeCursor implements Cursor {
             }
             boolean fn = mFirst.value() == null;
             boolean sn = mSecond.value() == null;
-            if (fn | !sn) {
+            if ((fn | !sn) && mFirst.key() != null) {
                 mFirst.next();
             }
-            if (sn | !fn) {
+            if ((sn | !fn) && mSecond.key() != null) {
                 mSecond.next();
             }
         }
@@ -245,10 +245,10 @@ abstract class MergeCursor implements Cursor {
             if (cmp == 0) {
                 action.perform(mFirst, limitKey);
                 action.perform(mSecond, limitKey);
-                mDirection = DIRECTION_NORMAL;
+                mDirection = DIRECTION_FORWARD;
             } else {
                 if (mDirection == DIRECTION_REVERSE) {
-                    switchToNormal(txn);
+                    switchToForward(txn);
                     cmp = mCompare;
                 }
                 action.perform(cmp < 0 ? mFirst : mSecond, limitKey);
@@ -276,8 +276,8 @@ abstract class MergeCursor implements Cursor {
         }
     }
 
-    private void switchToNormal(Transaction txn) throws IOException {
-        mDirection = DIRECTION_NORMAL;
+    private void switchToForward(Transaction txn) throws IOException {
+        mDirection = DIRECTION_FORWARD;
         (mKey == mFirst.key() ? mSecond : mFirst).findNearbyGt(mKey);
         select(txn);
     }
@@ -291,7 +291,7 @@ abstract class MergeCursor implements Cursor {
                 mSecond.previous();
                 mDirection = DIRECTION_REVERSE;
             } else {
-                if (mDirection == DIRECTION_NORMAL) {
+                if (mDirection == DIRECTION_FORWARD) {
                     switchToReverse(txn);
                     cmp = mCompare;
                 }
@@ -313,10 +313,10 @@ abstract class MergeCursor implements Cursor {
             }
             boolean fn = mFirst.value() == null;
             boolean sn = mSecond.value() == null;
-            if (fn | !sn) {
+            if ((fn | !sn) && mFirst.key() != null) {
                 mFirst.previous();
             }
-            if (sn | !fn) {
+            if ((sn | !fn) && mSecond.key() != null) {
                 mSecond.previous();
             }
         }
@@ -341,7 +341,7 @@ abstract class MergeCursor implements Cursor {
                 action.perform(mSecond, limitKey);
                 mDirection = DIRECTION_REVERSE;
             } else {
-                if (mDirection == DIRECTION_NORMAL) {
+                if (mDirection == DIRECTION_FORWARD) {
                     switchToReverse(txn);
                     cmp = mCompare;
                 }
@@ -359,59 +359,60 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public LockResult find(byte[] key) throws IOException {
-        return doFind(key, Cursor::find);
+        return doFind(DIRECTION_FORWARD, key, Cursor::find);
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
-        return doFind(key, Cursor::findGe);
+        return doFind(DIRECTION_FORWARD, key, Cursor::findGe);
     }
 
     @Override
     public LockResult findGt(byte[] key) throws IOException {
-        return doFind(key, Cursor::findGt);
+        return doFind(DIRECTION_FORWARD, key, Cursor::findGt);
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
-        return doFind(key, Cursor::findLe);
+        return doFind(DIRECTION_REVERSE, key, Cursor::findLe);
     }
 
     @Override
     public LockResult findLt(byte[] key) throws IOException {
-        return doFind(key, Cursor::findLt);
+        return doFind(DIRECTION_REVERSE, key, Cursor::findLt);
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        return doFind(key, Cursor::findNearby);
+        return doFind(DIRECTION_FORWARD, key, Cursor::findNearby);
     }
 
     @Override
     public LockResult findNearbyGe(byte[] key) throws IOException {
-        return doFind(key, Cursor::findNearbyGe);
+        return doFind(DIRECTION_FORWARD, key, Cursor::findNearbyGe);
     }
 
     @Override
     public LockResult findNearbyGt(byte[] key) throws IOException {
-        return doFind(key, Cursor::findNearbyGt);
+        return doFind(DIRECTION_FORWARD, key, Cursor::findNearbyGt);
     }
 
     @Override
     public LockResult findNearbyLe(byte[] key) throws IOException {
-        return doFind(key, Cursor::findNearbyLe);
+        return doFind(DIRECTION_REVERSE, key, Cursor::findNearbyLe);
     }
 
     @Override
     public LockResult findNearbyLt(byte[] key) throws IOException {
-        return doFind(key, Cursor::findNearbyLt);
+        return doFind(DIRECTION_REVERSE, key, Cursor::findNearbyLt);
     }
 
-    private LockResult doFind(byte[] key, KeyAction action) throws IOException {
+    private LockResult doFind(int direction, byte[] key, KeyAction action) throws IOException {
         return perform(txn -> {
             action.perform(mFirst, key);
             action.perform(mSecond, key);
-            mDirection = DIRECTION_NORMAL;
+            // Initial direction is just a hint. It can be switched later.
+            mDirection = direction;
             LockResult result = select(txn);
             return result == null ? LockResult.UNOWNED : result;
         });
@@ -520,7 +521,7 @@ abstract class MergeCursor implements Cursor {
 
     @Override
     public void reset() {
-        mDirection = DIRECTION_NORMAL;
+        mDirection = DIRECTION_FORWARD;
         mKey = null;
         mValue = null;
         mCompare = 0;
