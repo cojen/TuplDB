@@ -1,17 +1,18 @@
 /*
- *  Copyright 2012-2017 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -491,7 +492,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     }
 
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -532,7 +533,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -573,7 +574,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -623,7 +624,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 Index ix;
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     ix = getIndex(indexId);
@@ -670,7 +671,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             runTask(te, new Worker.Task() {
                 public void run() {
                     try {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
                         return;
@@ -695,7 +696,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             runTask(te, new Worker.Task() {
                 public void run() {
                     try {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
                         return;
@@ -721,7 +722,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
@@ -770,7 +771,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             public void run() {
                 try {
                     if (lock != null) {
-                        txn.push(lock, 0);
+                        txn.push(lock);
                     }
 
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
@@ -787,36 +788,40 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * Returns the position of the next operation to decode. Call suspend to capture a stable
-     * pairing of the position and transaction id.
+     * Returns the position of the next operation to decode. To avoid deadlocks, engine must
+     * not be suspended when calling this method. Instead, call suspendedDecodePosition.
      */
     long decodePosition() {
         mDecodeLatch.acquireShared();
         try {
-            ReplRedoDecoder decoder = mDecoder;
-            return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+            return getDecodePosition();
         } finally {
             mDecodeLatch.releaseShared();
         }
     }
 
+    private long getDecodePosition() {
+        ReplRedoDecoder decoder = mDecoder;
+        return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+    }
+
     /**
-     * Returns the last transaction id which was decoded. Call suspend to capture a stable
-     * pairing of the position and transaction id.
+     * Returns the position of the next operation to decode, while engine is suspended.
+     */
+    long suspendedDecodePosition() {
+        return getDecodePosition();
+    }
+
+    /**
+     * Returns the last transaction id which was decoded, while engine is suspended.
      *
      * @throws IllegalStateException if not decoding
      */
-    long decodeTransactionId() {
-        mDecodeLatch.acquireShared();
-        try {
-            ReplRedoDecoder decoder = mDecoder;
-            if (decoder != null) {
-                return decoder.mDecodeTransactionId;
-            }
-        } finally {
-            mDecodeLatch.releaseShared();
+    long suspendedDecodeTransactionId() {
+        ReplRedoDecoder decoder = mDecoder;
+        if (decoder != null) {
+            return decoder.mDecodeTransactionId;
         }
-
         throw new IllegalStateException("Not decoding");
     }
 

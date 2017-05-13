@@ -1,22 +1,25 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
 
 import java.io.IOException;
+
+import java.util.Comparator;
 
 /**
  * Maintains a logical position in a {@link View}. Cursor instances can only be
@@ -51,6 +54,13 @@ public interface Cursor {
      * Returns the key ordering for this cursor.
      */
     public Ordering getOrdering();
+
+    /**
+     * Returns a comparator for the ordering of this view, or null if unordered.
+     */
+    public default Comparator<byte[]> getComparator() {
+        return null;
+    }
 
     /**
      * Link to a transaction, which can be null for auto-commit mode. All
@@ -397,6 +407,94 @@ public interface Cursor {
      */
     public default LockResult findNearby(byte[] key) throws IOException {
         return find(key);
+    }
+
+    /**
+     * Optimized version of the regular findGe method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyGe(byte[] key) throws IOException {
+        LockResult result = findNearby(key);
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = next();
+        }
+        return result;
+    }
+
+    /**
+     * Optimized version of the regular findGt method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyGt(byte[] key) throws IOException {
+        ViewUtils.findNearbyNoLock(this, key);
+        return next();
+    }
+
+    /**
+     * Optimized version of the regular findLe method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyLe(byte[] key) throws IOException {
+        LockResult result = findNearby(key);
+        if (value() == null) {
+            if (result == LockResult.ACQUIRED) {
+                link().unlock();
+            }
+            result = previous();
+        }
+        return result;
+    }
+
+    /**
+     * Optimized version of the regular findLt method, which can perform fewer search steps if
+     * the given key is in close proximity to the current one. Even if not in close proximity,
+     * the find outcome is identical, although it may perform more slowly.
+     *
+     * <p>Ownership of the key instance transfers to the Cursor, and it must
+     * not be modified after calling this method.
+     *
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     * @throws NullPointerException if key is null
+     */
+    public default LockResult findNearbyLt(byte[] key) throws IOException {
+        ViewUtils.findNearbyNoLock(this, key);
+        return previous();
     }
 
     /**

@@ -1,17 +1,18 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -240,8 +241,13 @@ final class _LocalDatabase extends AbstractDatabase {
     static _LocalDatabase open(DatabaseConfig config) throws IOException {
         config = config.clone();
         _LocalDatabase db = new _LocalDatabase(config, OPEN_REGULAR);
-        db.finishInit(config);
-        return db;
+        try {
+            db.finishInit(config);
+            return db;
+        } catch (Throwable e) {
+            closeQuietly(null, db);
+            throw e;
+        }
     }
 
     /**
@@ -255,8 +261,13 @@ final class _LocalDatabase extends AbstractDatabase {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
         _LocalDatabase db = new _LocalDatabase(config, OPEN_DESTROY);
-        db.finishInit(config);
-        return db;
+        try {
+            db.finishInit(config);
+            return db;
+        } catch (Throwable e) {
+            closeQuietly(null, db);
+            throw e;
+        }
     }
 
     /**
@@ -632,8 +643,8 @@ final class _LocalDatabase extends AbstractDatabase {
                                      decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID));
                 debugListener.notify(EventType.DEBUG, "TRANSACTION_ID: %1$d", txnId);
                 debugListener.notify(EventType.DEBUG, "CHECKPOINT_NUMBER: %1$d", redoNum);
-                debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoPos);
-                debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoTxnId);
+                debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoTxnId);
+                debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoPos);
             }
 
             if (openMode == OPEN_TEMP) {
@@ -718,15 +729,28 @@ final class _LocalDatabase extends AbstractDatabase {
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
                     rm.start(redoPos);
-                    _ReplRedoEngine engine = new _ReplRedoEngine
-                        (rm, config.mMaxReplicaThreads, this, txns);
-                    mRedoWriter = engine.initWriter(redoNum);
 
-                    // Cannot start recovery until constructor is finished and final field
-                    // values are visible to other threads. Pass the state to the caller
-                    // through the config object.
-                    config.mReplRecoveryStartNanos = recoveryStart;
-                    config.mReplInitialTxnId = redoTxnId;
+                    if (mReadOnly) {
+                        mRedoWriter = null;
+
+                        if (debugListener != null &&
+                            Boolean.TRUE.equals(config.mDebugOpen.get("traceRedo")))
+                        {
+                            RedoEventPrinter printer = new RedoEventPrinter
+                                (debugListener, EventType.DEBUG);
+                            new ReplRedoDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
+                        }
+                    } else {
+                        _ReplRedoEngine engine = new _ReplRedoEngine
+                            (rm, config.mMaxReplicaThreads, this, txns);
+                        mRedoWriter = engine.initWriter(redoNum);
+
+                        // Cannot start recovery until constructor is finished and final field
+                        // values are visible to other threads. Pass the state to the caller
+                        // through the config object.
+                        config.mReplRecoveryStartNanos = recoveryStart;
+                        config.mReplInitialTxnId = redoTxnId;
+                    }
                 } else {
                     // Apply cache primer before applying redo logs.
                     applyCachePrimer(config);
@@ -819,7 +843,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 txnContext.resetTransactionId(txnId++);
             }
 
-            if (mBaseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
                 mTempFileManager = null;
             } else {
                 mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
@@ -836,7 +860,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     private void finishInit(DatabaseConfig config) throws IOException {
         if (mRedoWriter == null && mTempFileManager == null) {
-            // Nothing is durable and nothing to ever clean up. 
+            // Nothing is durable and nothing to ever clean up.
             return;
         }
 
@@ -1407,9 +1431,14 @@ final class _LocalDatabase extends AbstractDatabase {
             try {
                 long start = System.nanoTime();
 
-                mTrashed.deleteAll();
-                _Node root = mTrashed.close(true, false);
-                removeFromTrash(mTrashed, root);
+                if (mTrashed.deleteAll()) {
+                    _Node root = mTrashed.close(true, false);
+                    removeFromTrash(mTrashed, root);
+                } else {
+                    // Database is closed.
+                    mTrashed = null;
+                    return;
+                }
 
                 if (mListener != null) {
                     double duration = (System.nanoTime() - start) / 1_000_000_000.0;
@@ -2167,11 +2196,6 @@ final class _LocalDatabase extends AbstractDatabase {
         close(null, mPageDb.isDurable());
     }
 
-    @Override
-    protected void finalize() throws IOException {
-        close();
-    }
-
     private void close(Throwable cause, boolean shutdown) throws IOException {
         if (mClosed) {
             return;
@@ -2281,8 +2305,22 @@ final class _LocalDatabase extends AbstractDatabase {
                 for (_TreeRef ref : trees) {
                     _Tree tree = ref.get();
                     if (tree != null) {
-                        tree.close();
+                        tree.forceClose();
                     }
+                }
+
+                _FragmentedTrash trash = mFragmentedTrash;
+                if (trash != null) {
+                    mFragmentedTrash = null;
+                    trash.mTrash.forceClose();
+                }
+
+                if (mRegistryKeyMap != null) {
+                    mRegistryKeyMap.forceClose();
+                }
+
+                if (mRegistry != null) {
+                    mRegistry.forceClose();
                 }
             }
 
@@ -2607,6 +2645,8 @@ final class _LocalDatabase extends AbstractDatabase {
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
+            checkClosed();
+
             byte[] treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
@@ -3701,6 +3741,23 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Caller must hold commit lock and exclusive latch on node. Latch is always released by
+     * this method, even if an exception is thrown.
+     */
+    void deleteNode(_Node node) throws IOException {
+        deleteNode(node, true);
+    }
+
+    /**
+     * Caller must hold commit lock and exclusive latch on node. Latch is always released by
+     * this method, even if an exception is thrown.
+     */
+    void deleteNode(_Node node, boolean canRecycle) throws IOException {
+        prepareToDelete(node);
+        finishDeleteNode(node, canRecycle);
+    }
+
+    /**
      * Similar to markDirty method except no new page is reserved, and old page
      * is not immediately deleted. Caller must hold commit lock and exclusive
      * latch on node. Latch is never released by this method, unless an
@@ -3725,14 +3782,14 @@ final class _LocalDatabase extends AbstractDatabase {
      * prepareToDelete method must have been called first. Latch is always
      * released by this method, even if an exception is thrown.
      */
-    void deleteNode(_Node node) throws IOException {
-        deleteNode(node, true);
+    void finishDeleteNode(_Node node) throws IOException {
+        finishDeleteNode(node, true);
     }
 
     /**
      * @param canRecycle true if node's page can be immediately re-used
      */
-    void deleteNode(_Node node, boolean canRecycle) throws IOException {
+    void finishDeleteNode(_Node node, boolean canRecycle) throws IOException {
         try {
             long id = node.mId;
 

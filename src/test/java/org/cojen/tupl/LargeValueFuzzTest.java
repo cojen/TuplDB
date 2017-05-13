@@ -1,17 +1,18 @@
 /*
- *  Copyright 2016 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -28,65 +29,65 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class LargeValueChaosTest {
+public class LargeValueFuzzTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(LargeValueChaosTest.class.getName());
+        org.junit.runner.JUnitCore.main(LargeValueFuzzTest.class.getName());
     }
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        mDb = newTempDatabase(getClass());
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
     protected Database mDb;
 
     @Test
-    public void insertChaos1() throws Exception {
+    public void insertFuzz1() throws Exception {
         // Running with these parameters found several bugs. A large number of iterations was
         // required to find one of them.
 
-        doInsertChaos(2,        // threads
-                      500_000,  // iterationsPerThread
-                      2, 7,     // count min/max
-                      10, 4000, // key min/max
-                      10, 4000  // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     500_000,  // iterationsPerThread
+                     2, 7,     // count min/max
+                     10, 4000, // key min/max
+                     10, 4000  // value min/max
+                     );
     }
 
     @Test
-    public void insertChaos2() throws Exception {
+    public void insertFuzz2() throws Exception {
         // Test with small keys and large values. Use a higher count to cover more cases.
 
-        doInsertChaos(2,        // threads
-                      100_000,  // iterationsPerThread
-                      2, 20,    // count min/max
-                      10, 40,   // key min/max
-                      10, 4000  // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     100_000,  // iterationsPerThread
+                     2, 20,    // count min/max
+                     10, 40,   // key min/max
+                     10, 4000  // value min/max
+                     );
     }
 
     @Test
-    public void insertChaos3() throws Exception {
+    public void insertFuzz3() throws Exception {
         // Test with large keys and small values. Use a higher count to cover more cases.
 
-        doInsertChaos(2,        // threads
-                      100_000,  // iterationsPerThread
-                      2, 20,    // count min/max
-                      10, 4000, // key min/max
-                      10, 40    // value min/max
-                      );
+        doInsertFuzz(2,        // threads
+                     100_000,  // iterationsPerThread
+                     2, 20,    // count min/max
+                     10, 4000, // key min/max
+                     10, 40    // value min/max
+                     );
     }
 
-    private void doInsertChaos(int threads, int iterationsPerThread,
-                               int countMin, int countMax,
-                               int keyMin, int keyMax,
-                               int valueMin, int valueMax)
+    private void doInsertFuzz(int threads, int iterationsPerThread,
+                              int countMin, int countMax,
+                              int keyMin, int keyMax,
+                              int valueMin, int valueMax)
         throws Exception
     {
         class Runner extends Thread {
@@ -100,8 +101,8 @@ public class LargeValueChaosTest {
             @Override
             public void run() {
                 try {
-                    doInsertChaos(seed, iterationsPerThread,
-                                  countMin, countMax, keyMin, keyMax, valueMin, valueMax);
+                    doInsertFuzz(seed, iterationsPerThread,
+                                 countMin, countMax, keyMin, keyMax, valueMin, valueMax);
                 } catch (Throwable e) {
                     error = e;
                 }
@@ -128,10 +129,10 @@ public class LargeValueChaosTest {
         }
     }
 
-    private void doInsertChaos(long seed, int iterations,
-                               int countMin, int countMax,
-                               int keyMin, int keyMax,
-                               int valueMin, int valueMax)
+    private void doInsertFuzz(long seed, int iterations,
+                              int countMin, int countMax,
+                              int keyMin, int keyMax,
+                              int valueMin, int valueMax)
         throws Exception
     {
         Random rnd = new Random(seed);

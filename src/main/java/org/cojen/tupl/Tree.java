@@ -1,17 +1,18 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -20,6 +21,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+
+import java.util.Comparator;
 
 import java.nio.charset.StandardCharsets;
 
@@ -89,6 +92,11 @@ class Tree implements View, Index {
     @Override
     public final Ordering getOrdering() {
         return Ordering.ASCENDING;
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return KeyComparator.THE;
     }
 
     @Override
@@ -381,6 +389,114 @@ class Tree implements View, Index {
     }
 
     @Override
+    public final boolean exists(Transaction txn, byte[] key) throws IOException {
+        LocalTransaction local = check(txn);
+
+        // If lock must be acquired and retained, acquire now and skip the quick check later.
+        if (local != null) {
+            int lockType = local.lockMode().repeatable;
+            if (lockType != 0) {
+                int hash = LockManager.hash(mId, key);
+                local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
+            }
+        }
+
+        Node node = mRoot;
+        node.acquireShared();
+
+        // Note: No need to check if root has split, since root splits are always completed
+        // before releasing the root latch. Also, Node.used is not invoked for the root node,
+        // because it cannot be evicted.
+
+        ThreadLocalRandom rnd = ThreadLocalRandom.current();
+
+        while (!node.isLeaf()) {
+            int childPos;
+            try {
+                childPos = Node.internalPos(node.binarySearch(key));
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
+
+            long childId = node.retrieveChildRefId(childPos);
+            Node childNode = mDatabase.nodeMapGetShared(childId);
+
+            if (childNode != null) {
+                node.releaseShared();
+                node = childNode;
+                node.used(rnd);
+            } else {
+                node = node.loadChild(mDatabase, childId, Node.OPTION_PARENT_RELEASE_SHARED);
+            }
+
+            if (node.mSplit != null) {
+                node = node.mSplit.selectNode(node, key);
+            }
+        }
+
+        // Sub search into leaf with shared latch held.
+
+        CursorFrame frame;
+        int keyHash;
+
+        try {
+            int pos = node.binarySearch(key);
+
+            if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
+                mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
+            {
+                return pos >= 0 && node.hasLeafValue(pos) != null;
+            }
+
+            // Need to acquire the lock before loading. To prevent deadlock, a cursor
+            // frame must be bound and then the node latch can be released.
+            frame = new CursorFrame();
+
+            if (pos >= 0) {
+                if (node.mSplit != null) {
+                    pos = node.mSplit.adjustBindPosition(pos);
+                }
+            } else {
+                frame.mNotFoundKey = key;
+                if (node.mSplit != null) {
+                    pos = ~node.mSplit.adjustBindPosition(~pos);
+                }
+            }
+
+            frame.bind(node, pos);
+        } finally {
+            node.releaseShared();
+        }
+
+        try {
+            Locker locker;
+            if (local == null) {
+                locker = lockSharedLocal(key, keyHash);
+            } else if (local.lockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
+                locker = local;
+            } else {
+                // Transaction already had the lock for some reason, so don't release it.
+                locker = null;
+            }
+
+            try {
+                node = frame.acquireShared();
+                int pos = frame.mNodePos;
+                boolean result = pos >= 0 && node.hasLeafValue(pos) != null;
+                node.releaseShared();
+                return result;
+            } finally {
+                if (locker != null) {
+                    locker.unlock();
+                }
+            }
+        } finally {
+            CursorFrame.popAll(frame);
+        }
+    }
+
+    @Override
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
@@ -416,6 +532,32 @@ class Tree implements View, Index {
     {
         keyCheck(key);
         return new TreeCursor(this, txn).findAndModify(key, oldValue, newValue);
+    }
+
+    @Override
+    public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
+        LocalTransaction local = check(txn);
+
+        LockMode mode;
+        if (local == null || (mode = local.lockMode()) == LockMode.READ_COMMITTED) {
+            int hash = LockManager.hash(mId, key);
+            if (!isLockAvailable(local, key, hash)) {
+                // Acquire and release.
+                if (local == null) {
+                    lockSharedLocal(key, hash).unlock();
+                } else {
+                    LockResult result = local.lock(0, mId, key, hash, local.mLockTimeoutNanos);
+                    if (result == LockResult.ACQUIRED) {
+                        local.unlock();
+                    }
+                }
+            }
+        } else if (!mode.noReadLock) {
+            int hash = LockManager.hash(mId, key);
+            return local.lock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
+        }
+
+        return LockResult.UNOWNED;
     }
 
     @Override
@@ -687,7 +829,7 @@ class Tree implements View, Index {
 
     @Override
     public final void close() throws IOException {
-        close(false, false);
+        close(false, false, false);
     }
 
     /**
@@ -695,6 +837,23 @@ class Tree implements View, Index {
      * @return root node if forDelete; null if already closed
      */
     final Node close(boolean forDelete, final boolean rootLatched) throws IOException {
+        return close(forDelete, rootLatched, false);
+    }
+
+    /**
+     * Close any kind of index, even an internal one.
+     */
+    final void forceClose() throws IOException {
+        close(false, false, true);
+    }
+
+    /**
+     * @param rootLatched true if root node is already latched by the current thread
+     * @return root node if forDelete; null if already closed
+     */
+    private Node close(boolean forDelete, final boolean rootLatched, boolean force)
+        throws IOException
+    {
         Node root = mRoot;
 
         if (!rootLatched) {
@@ -707,7 +866,7 @@ class Tree implements View, Index {
                 return null;
             }
 
-            if (isInternal(mId)) {
+            if (!force && isInternal(mId)) {
                 throw new IllegalStateException("Cannot close an internal index");
             }
 
@@ -835,9 +994,11 @@ class Tree implements View, Index {
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
      * active in the tree. The root node is prepared for deletion as a side effect.
+     *
+     * @return false if stopped because database is closed
      */
-    final void deleteAll() throws IOException {
-        new TreeCursor(this, Transaction.BOGUS).deleteAll();
+    final boolean deleteAll() throws IOException {
+        return new TreeCursor(this, Transaction.BOGUS).deleteAll();
     }
 
     @FunctionalInterface

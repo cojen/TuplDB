@@ -1,17 +1,18 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -543,16 +544,14 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * Fully releases last lock acquired, within the current scope. If the last
-     * lock operation was an upgrade, for a lock not immediately acquired,
-     * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     * Fully releases the last lock or group acquired, within the current scope. If the last
+     * lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+     * allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking a
-     * non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * unlocking a non-immediate upgrade
      */
     public final void unlock() {
         Object tailObj = mTailBlock;
@@ -560,25 +559,26 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot cross a scope boundary");
+            }
             mTailBlock = null;
             mManager.unlock(this, (_Lock) tailObj);
         } else {
-            ((Block) tailObj).unlockLast(this);
+            Block.unlockLast((Block) tailObj, this);
         }
     }
 
     /**
-     * Releases last lock acquired, within the current scope, retaining a
-     * shared lock. If the last lock operation was an upgrade, for a lock not
-     * immediately acquired, unlock is not allowed. Instead, an
-     * IllegalStateException is thrown.
+     * Releases the last lock or group acquired, within the current scope, retaining a shared
+     * lock. If the last lock operation was an upgrade, for a lock not immediately acquired,
+     * unlock is not allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if too many shared
-     * locks, or if unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * too many shared locks, or if unlocking a non-immediate upgrade
      */
     public final void unlockToShared() {
         Object tailObj = mTailBlock;
@@ -586,21 +586,24 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot cross a scope boundary");
+            }
             mManager.unlockToShared(this, (_Lock) tailObj);
         } else {
-            ((Block) tailObj).unlockLastToShared(this);
+            Block.unlockLastToShared((Block) tailObj, this);
         }
     }
 
     /**
-     * Releases last lock acquired or upgraded, within the current scope,
+     * Releases the last lock or group acquired or upgraded, within the current scope,
      * retaining an upgradable lock.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if last lock is shared
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * last lock is shared
      */
     public final void unlockToUpgradable() {
         Object tailObj = mTailBlock;
@@ -608,9 +611,37 @@ class _Locker extends _LockOwner {
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot cross a scope boundary");
+            }
             mManager.unlockToUpgradable(this, (_Lock) tailObj);
         } else {
-            ((Block) tailObj).unlockLastToUpgradable(this);
+            Block.unlockLastToUpgradable((Block) tailObj, this);
+        }
+    }
+
+    /**
+     * Combines the last lock acquired or upgraded into a group which can be unlocked together.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * combining an acquire with an upgrade
+     */
+    public final void unlockCombine() {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            throw new IllegalStateException("No locks held");
+        }
+        if (tailObj instanceof _Lock) {
+            ParentScope parent = mParentScope;
+            if (parent != null && parent.mTailBlock == tailObj) {
+                throw new IllegalStateException("Cannot cross a scope boundary");
+            }
+            // Group of one, so nothing to do.
+        } else {
+            Block.unlockCombine((Block) tailObj, this);
         }
     }
 
@@ -748,21 +779,33 @@ class _Locker extends _LockOwner {
         mTailBlock = null;
     }
 
-    /**
-     * @param upgrade only 0 or 1 allowed
-     */
-    final void push(_Lock lock, int upgrade) {
+    final void push(_Lock lock) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            mTailBlock = upgrade == 0 ? lock : new Block(lock);
+            mTailBlock = lock;
+        } else if (tailObj instanceof _Lock) {
+            mTailBlock = new Block((_Lock) tailObj, lock);
+        } else {
+            ((Block) tailObj).pushLock(this, lock, 0);
+        }
+    }
+
+    final void pushUpgrade(_Lock lock) {
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            Block block = new Block(lock);
+            block.firstUpgrade();
+            mTailBlock = block;
         } else if (tailObj instanceof _Lock) {
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             if (tailObj != lock || mParentScope != null) {
-                mTailBlock = new Block((_Lock) tailObj, lock, upgrade);
+                Block block = new Block((_Lock) tailObj, lock);
+                block.secondUpgrade();
+                mTailBlock = block;
             }
         } else {
-            ((Block) tailObj).pushLock(this, lock, upgrade);
+            ((Block) tailObj).pushLock(this, lock, 1L << 63);
         }
     }
 
@@ -782,34 +825,42 @@ class _Locker extends _LockOwner {
 
     static final class Block {
         private static final int FIRST_BLOCK_CAPACITY = 8;
-        // Limited by number of bits available in mUpgrades.
+        // Limited by number of bits available in mUpgrades and mUnlockGroup.
         private static final int HIGHEST_BLOCK_CAPACITY = 64;
 
         private _Lock[] mLocks;
         private long mUpgrades;
-        // Size must always be least 1.
+        // Size must always be at least 1.
         int mSize;
+        private long mUnlockGroup;
 
         private Block mPrev;
 
-        // Always creates first as an upgrade.
         Block(_Lock first) {
             (mLocks = new _Lock[FIRST_BLOCK_CAPACITY])[0] = first;
-            mUpgrades = 1;
             mSize = 1;
         }
 
-        // First is never an upgrade.
-        Block(_Lock first, _Lock second, int upgrade) {
+        Block(_Lock first, _Lock second) {
             _Lock[] locks = new _Lock[FIRST_BLOCK_CAPACITY];
             locks[0] = first;
             locks[1] = second;
             mLocks = locks;
-            mUpgrades = upgrade << 1;
             mSize = 2;
         }
 
-        private Block(Block prev, _Lock first, int upgrade) {
+        void firstUpgrade() {
+            mUpgrades = 1L << 63;
+        }
+
+        void secondUpgrade() {
+            mUpgrades = 1L << 62;
+        }
+
+        /**
+         * @param 0 or 1L << 63
+         */
+        private Block(Block prev, _Lock first, long upgrade) {
             mPrev = prev;
             int capacity = prev.mLocks.length;
             if (capacity < FIRST_BLOCK_CAPACITY) {
@@ -822,7 +873,10 @@ class _Locker extends _LockOwner {
             mSize = 1;
         }
 
-        void pushLock(_Locker locker, _Lock lock, int upgrade) {
+        /**
+         * @param 0 or 1L << 63
+         */
+        void pushLock(_Locker locker, _Lock lock, long upgrade) {
             _Lock[] locks = mLocks;
             int size = mSize;
 
@@ -838,7 +892,7 @@ class _Locker extends _LockOwner {
 
             if (size < locks.length) {
                 locks[size] = lock;
-                mUpgrades |= ((long) upgrade) << size;
+                mUpgrades |= upgrade >>> size;
                 mSize = size + 1;
             } else {
                 locker.mTailBlock = new Block(this, lock, upgrade);
@@ -849,53 +903,168 @@ class _Locker extends _LockOwner {
             return mLocks[mSize - 1];
         }
 
-        void unlockLast(_Locker locker) {
-            int size = mSize - 1;
+        static void unlockLast(Block block, _Locker locker) {
+            int size = block.mSize;
+            while (true) {
+                size--;
 
-            long upgrades = mUpgrades;
-            long mask = 1L << size;
-            if ((upgrades & mask) != 0) {
-                throw new IllegalStateException("Cannot unlock non-immediate upgrade");
-            }
+                long upgrades = block.mUpgrades;
+                long mask = (1L << 63) >>> size;
+                if ((upgrades & mask) != 0) {
+                    throw new IllegalStateException("Cannot unlock non-immediate upgrade");
+                }
 
-            _Lock[] locks = mLocks;
-            locker.mManager.unlock(locker, locks[size]);
+                _Lock[] locks = block.mLocks;
+                _Lock lock = locks[size];
+                block.parentCheck(locker, lock);
 
-            // Only pop lock if unlock succeeded.
-            locks[size] = null;
-            if (size == 0) {
-                locker.mTailBlock = mPrev;
-                mPrev = null;
-            } else {
-                mUpgrades &= upgrades & ~mask;
-                mSize = size;
-            }
-        }
+                locker.mManager.unlock(locker, lock);
 
-        void unlockLastToShared(_Locker locker) {
-            int size = mSize - 1;
-            if ((mUpgrades & (1L << size)) != 0) {
-                throw new IllegalStateException("Cannot unlock non-immediate upgrade");
-            }
-            locker.mManager.unlockToShared(locker, mLocks[size]);
-        }
-
-        void unlockLastToUpgradable(_Locker locker) {
-            _Lock[] locks = mLocks;
-            int size = mSize;
-            locker.mManager.unlockToUpgradable(locker, locks[--size]);
-
-            long upgrades = mUpgrades;
-            long mask = 1L << size;
-            if ((upgrades & mask) != 0) {
-                // Pop upgrade off stack, but only if unlock succeeded.
+                // Only pop lock if unlock succeeded.
                 locks[size] = null;
+
                 if (size == 0) {
-                    locker.mTailBlock = mPrev;
-                    mPrev = null;
+                    Block prev = block.mPrev;
+                    locker.mTailBlock = prev;
+                    block.mPrev = null;
+                    if ((block.mUnlockGroup & mask) == 0) {
+                        return;
+                    }
+                    block = prev;
+                    size = block.mSize;
                 } else {
-                    mUpgrades = upgrades & ~mask;
-                    mSize = size;
+                    block.mUpgrades = upgrades & ~mask;
+                    block.mSize = size;
+                    long unlockGroup = block.mUnlockGroup;
+                    if ((unlockGroup & mask) == 0) {
+                        return;
+                    }
+                    block.mUnlockGroup = unlockGroup & ~mask;
+                }
+            }
+        }
+
+        static void unlockLastToShared(Block block, _Locker locker) {
+            int size = block.mSize;
+            while (true) {
+                size--;
+
+                long mask = (1L << 63) >>> size;
+                if ((block.mUpgrades & mask) != 0) {
+                    throw new IllegalStateException("Cannot unlock non-immediate upgrade");
+                }
+
+                _Lock lock = block.mLocks[size];
+                block.parentCheck(locker, lock);
+
+                locker.mManager.unlockToShared(locker, lock);
+
+                if ((block.mUnlockGroup & mask) == 0) {
+                    return;
+                }
+
+                if (size == 0) {
+                    block = block.mPrev;
+                    size = block.mSize;
+                }
+            }
+        }
+
+        static void unlockLastToUpgradable(Block block, _Locker locker) {
+            int size = block.mSize;
+            while (true) {
+                size--;
+
+                _Lock[] locks = block.mLocks;
+                _Lock lock = locks[size];
+                block.parentCheck(locker, lock);
+
+                locker.mManager.unlockToUpgradable(locker, lock);
+
+                long upgrades = block.mUpgrades;
+                long mask = (1L << 63) >>> size;
+
+                if ((upgrades & mask) == 0) {
+                    if ((block.mUnlockGroup & mask) == 0) {
+                        return;
+                    }
+                    if (size == 0) {
+                        block = block.mPrev;
+                        size = block.mSize;
+                    }
+                } else {
+                    // Pop upgrade off stack, but only if unlock succeeded.
+                    locks[size] = null;
+
+                    if (size == 0) {
+                        Block prev = block.mPrev;
+                        locker.mTailBlock = prev;
+                        block.mPrev = null;
+                        if ((block.mUnlockGroup & mask) == 0) {
+                            return;
+                        }
+                        block = prev;
+                        size = block.mSize;
+                    } else {
+                        block.mUpgrades = upgrades & ~mask;
+                        block.mSize = size;
+                        long unlockGroup = block.mUnlockGroup;
+                        if ((unlockGroup & mask) == 0) {
+                            return;
+                        }
+                        block.mUnlockGroup = unlockGroup & ~mask;
+                    }
+                }
+            }
+        }
+
+        static void unlockCombine(Block block, _Locker locker) {
+            while (true) {
+                // Find the combine position, by searching backwards for a zero bit.
+
+                int size = block.mSize - 1;
+
+                // Set all unused rightmost bits to 1.
+                long mask = block.mUnlockGroup | (~(1L << 63) >>> size);
+
+                // Hacker's Delight section 2-1. Create word with a single 1-bit at the
+                // position of the rightmost 0-bit, producing 0 if none.
+                mask = ~mask & (mask + 1);
+
+                if (mask == 0) {
+                    block = block.mPrev;
+                    continue;
+                }
+
+                long upgrades = block.mUpgrades;
+
+                long prevMask;
+                if (size != 0) {
+                    prevMask = upgrades >> 1;
+                } else {
+                    Block prev = block.mPrev;
+                    if (prev == null) {
+                        // Group of one, so nothing to do.
+                        return;
+                    }
+                    prevMask = prev.mUpgrades << (prev.mSize - 1);
+                }
+
+                if (((upgrades ^ prevMask) & mask) != 0) {
+                    throw new IllegalStateException("Cannot combine an acquire with an upgrade");
+                }
+
+                block.mUnlockGroup |= mask;
+                return;
+            }
+        }
+
+        private void parentCheck(_Locker locker, _Lock lock) throws IllegalStateException {
+            ParentScope parent = locker.mParentScope;
+            if (parent != null) {
+                Object parentTail = parent.mTailBlock;
+                if (parentTail == lock || (parentTail == this && parent.mTailBlockSize == mSize)) {
+                    throw new IllegalStateException("Cannot cross a scope boundary");
                 }
             }
         }
@@ -910,7 +1079,7 @@ class _Locker extends _LockOwner {
                 _Lock[] locks = mLocks;
                 _LockManager manager = locker.mManager;
                 size--;
-                long mask = 1L << size;
+                long mask = (1L << 63) >>> size;
                 long upgrades = mUpgrades;
                 while (true) {
                     _Lock lock = locks[size];
@@ -924,9 +1093,9 @@ class _Locker extends _LockOwner {
                         break;
                     }
                     size--;
-                    mask >>>= 1;
+                    mask <<= 1;
                 }
-                mUpgrades = upgrades & ~(~0L << size);
+                mUpgrades = upgrades & ~(~0L >>> size);
                 mSize = size;
             }
         }

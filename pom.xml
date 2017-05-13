@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>Tupl</name>
- <version>1.3.12-SNAPSHOT</version>
+ <version>1.4-SNAPSHOT</version>
   <description>
     The Unnamed Persistence Library.
   </description>
@@ -80,6 +80,12 @@
       <version>4.11</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.github.stephenc.jcip</groupId>
+      <artifactId>jcip-annotations</artifactId>
+      <version>1.0-1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 
@@ -116,6 +122,20 @@
               <version>3.0.4</version>
             </plugin>
           </reportPlugins>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.20</version>
+        <configuration>
+          <!-- WTF? Why in the world does Surefire trim traces? -->
+          <trimStackTrace>false</trimStackTrace>
+          <useFile>false</useFile>
+          <parallel>classes</parallel>
+          <perCoreThreadCount>false</perCoreThreadCount>
+          <threadCount>6</threadCount>
         </configuration>
       </plugin>
 
