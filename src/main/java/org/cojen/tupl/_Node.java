@@ -4506,7 +4506,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      */
     void splitLeafRight(_Tree tree, byte[] splitKey) throws IOException {
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         if (mPage == p_closedTreePage()) {
@@ -4548,7 +4548,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
 
         if (mSplit != null) {
-            throw new AssertionError("_Node is already split");
+            throw new AssertionError("Node is already split");
         }
 
         long page = mPage;
