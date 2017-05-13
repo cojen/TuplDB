@@ -1,17 +1,18 @@
 /*
- *  Copyright 2011-2016 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.util;
@@ -42,7 +43,7 @@ public class Latch {
     static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
     static final long STATE_OFFSET, FIRST_OFFSET, LAST_OFFSET;
-    static final long WAITER_OFFSET, FAIR_OFFSET;
+    static final long WAITER_OFFSET;
 
     static {
         try {
@@ -53,7 +54,6 @@ public class Latch {
 
             clazz = WaitNode.class;
             WAITER_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mWaiter"));
-            FAIR_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mFair"));
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -90,7 +90,11 @@ public class Latch {
     /**
      * Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.
      */
-    public final boolean tryAcquireExclusive() {
+    public boolean tryAcquireExclusive() {
+        return doTryAcquireExclusive();
+    }
+
+    private boolean doTryAcquireExclusive() {
         return mLatchState == 0 && UNSAFE.compareAndSwapInt(this, STATE_OFFSET, 0, EXCLUSIVE);
     }
 
@@ -99,12 +103,12 @@ public class Latch {
      *
      * @param nanosTimeout pass negative for infinite timeout
      */
-    public final boolean tryAcquireExclusiveNanos(long nanosTimeout) throws InterruptedException {
+    public boolean tryAcquireExclusiveNanos(long nanosTimeout) throws InterruptedException {
         return doTryAcquireExclusiveNanos(nanosTimeout);
     }
 
     private boolean doTryAcquireExclusiveNanos(long nanosTimeout) throws InterruptedException {
-        if (tryAcquireExclusive() || tryAcquireExclusiveSpin()) {
+        if (doTryAcquireExclusive()) {
             return true;
         }
 
@@ -117,6 +121,11 @@ public class Latch {
             result = acquire(new Timed(nanosTimeout));
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError.
+            if (nanosTimeout < 0) {
+                // Caller isn't expecting an exception, so spin.
+                while (!doTryAcquireExclusive());
+                return true;
+            }
             return false;
         }
 
@@ -126,8 +135,8 @@ public class Latch {
     /**
      * Acquire the exclusive latch, barging ahead of any waiting threads if possible.
      */
-    public final void acquireExclusive() {
-        if (!tryAcquireExclusive() && !tryAcquireExclusiveSpin()) {
+    public void acquireExclusive() {
+        if (!doTryAcquireExclusive()) {
             doAcquireExclusive();
         }
     }
@@ -140,27 +149,14 @@ public class Latch {
             acquire(new WaitNode());
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-            while (!tryAcquireExclusive());
+            while (!doTryAcquireExclusive());
         }
-    }
-
-    /**
-     * Caller should have already called tryAcquireExclusive.
-     */
-    private boolean tryAcquireExclusiveSpin() {
-        // Try a few more times, avoiding an expensive enqueue.
-        for (int i=1; i<SPIN_LIMIT; i++) {
-            if (tryAcquireExclusive()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
      * Acquire the exclusive latch, aborting if interrupted.
      */
-    public final void acquireExclusiveInterruptibly() throws InterruptedException {
+    public void acquireExclusiveInterruptibly() throws InterruptedException {
         doTryAcquireExclusiveNanos(-1);
     }
 
@@ -317,7 +313,11 @@ public class Latch {
     /**
      * Try to acquire a shared latch, barging ahead of any waiting threads if possible.
      */
-    public final boolean tryAcquireShared() {
+    public boolean tryAcquireShared() {
+        return doTryAcquireShared();
+    }
+
+    private boolean doTryAcquireShared() {
         WaitNode first = mLatchFirst;
         if (first != null && !(first instanceof Shared)) {
             return false;
@@ -331,7 +331,7 @@ public class Latch {
      *
      * @param nanosTimeout pass negative for infinite timeout
      */
-    public final boolean tryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
+    public boolean tryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
         return doTryAcquireSharedNanos(nanosTimeout);
     }
 
@@ -358,6 +358,11 @@ public class Latch {
             result = acquire(new TimedShared(nanosTimeout));
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError.
+            if (nanosTimeout < 0) {
+                // Caller isn't expecting an exception, so spin.
+                while (!doTryAcquireShared());
+                return true;
+            }
             return false;
         }
 
@@ -373,6 +378,9 @@ public class Latch {
                 e = new InterruptedException();
             } catch (Throwable e2) {
                 // Possibly an OutOfMemoryError.
+                if (nanosTimeout < 0) {
+                    throw e2;
+                }
                 return false;
             }
             throw e;
@@ -386,7 +394,7 @@ public class Latch {
      *
      * @return false if not acquired due to contention with other shared requests
      */
-    public final boolean weakAcquireShared() {
+    public boolean weakAcquireShared() {
         WaitNode first = mLatchFirst;
         if (first == null || first instanceof Shared) {
             int state = mLatchState;
@@ -396,23 +404,57 @@ public class Latch {
         }
 
         try {
-            return acquire(new Shared());
+            acquire(new Shared());
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
+            while (!doTryAcquireShared());
+        }
+
+        return true;
+    }
+
+    /**
+     * Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.
+     *
+     * @param nanosTimeout pass negative for infinite timeout
+     * @return -1 if not acquired due to contention with other shared requests, 0 if timed out,
+     * or 1 if acquired
+     */
+    public int weakAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
+        WaitNode first = mLatchFirst;
+        if (first == null || first instanceof Shared) {
+            int state = mLatchState;
+            if (state >= 0) {
+                return UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1) ? 1 : -1;
+            }
+        }
+
+        boolean result;
+        try {
+            result = acquire(new TimedShared(nanosTimeout));
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError.
-            return false;
+            if (nanosTimeout < 0) {
+                // Caller isn't expecting an exception, so spin.
+                while (!doTryAcquireShared());
+                return 1;
+            }
+            return 0;
         }
+
+        return checkTimedResult(result, nanosTimeout) ? 1 : 0;
     }
 
     /**
      * Acquire a shared latch, barging ahead of any waiting threads if possible.
      */
-    public final void acquireShared() {
+    public void acquireShared() {
         if (!tryAcquireSharedSpin()) {
             try {
                 acquire(new Shared());
             } catch (Throwable e) {
                 // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-                while (!tryAcquireShared());
+                while (!doTryAcquireShared());
             }
         }
     }
@@ -435,7 +477,7 @@ public class Latch {
     /**
      * Acquire a shared latch, aborting if interrupted.
      */
-    public final void acquireSharedInterruptibly() throws InterruptedException {
+    public void acquireSharedInterruptibly() throws InterruptedException {
         doTryAcquireSharedNanos(-1);
     }
 
@@ -444,7 +486,7 @@ public class Latch {
      * latch is held by more than one thread. If successful, caller must later call
      * releaseExclusive instead of releaseShared.
      */
-    public final boolean tryUpgrade() {
+    public boolean tryUpgrade() {
         return doTryUpgrade();
     }
 
@@ -465,7 +507,7 @@ public class Latch {
     /**
      * Release a held shared latch.
      */
-    public final void releaseShared() {
+    public void releaseShared() {
         doReleaseShared(mLatchState);
     }
 
@@ -508,14 +550,14 @@ public class Latch {
     private boolean acquire(final WaitNode node) {
         node.mWaiter = Thread.currentThread();
         WaitNode prev = enqueue(node);
-        int acquireResult = node.acquire(this, true);
+        int acquireResult = node.tryAcquire(this);
 
         if (acquireResult < 0) {
             int denied = 0;
             while (true) {
                 boolean parkAbort = node.park(this);
 
-                acquireResult = node.acquire(this, true);
+                acquireResult = node.tryAcquire(this);
 
                 if (acquireResult >= 0) {
                     // Latch acquired after parking.
@@ -729,54 +771,33 @@ public class Latch {
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
          * if acquired and node should not be removed
          */
-        int acquire(Latch latch, boolean yield) {
-            if (!tryAcquireExclusiveSpin(latch, yield)) {
-                return -1;
-            }
-
+        int tryAcquire(Latch latch) {
+            int trials = 0;
             while (true) {
-                Object waiter = mWaiter;
-
-                if (waiter == null) {
-                    // Fair handoff, and so node is no longer in the queue.
-                    return 1;
-                }
-
-                // Acquired, so no need to reference the waiter anymore.
-
-                if (!mFair) {
-                    UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
-                    return 0;
-                }
-
-                if (UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null)) {
-                    return 0;
-                }
-            }
-        }
-
-        private boolean tryAcquireExclusiveSpin(Latch latch, boolean yield) {
-            if (yield) {
-                // Yield to avoid parking.
-                int i = 0;
-                while (true) {
-                    if (tryAcquireExclusiveSpin(latch, false)) {
-                        return true;
-                    }
-                    if (++i >= SPIN_LIMIT >> 1) {
-                        return false;
-                    }
-                    Thread.yield();
-                }
-            } else {
                 for (int i=0; i<SPIN_LIMIT; i++) {
-                    if (latch.tryAcquireExclusive() || mWaiter == null) {
-                        return true;
+                    boolean acquired = latch.doTryAcquireExclusive();
+                    Object waiter = mWaiter;
+                    if (waiter == null) {
+                        // Fair handoff, and so node is no longer in the queue.
+                        return 1;
                     }
+                    if (!acquired) {
+                        continue;
+                    }
+                    // Acquired, so no need to reference the waiter anymore.
+                    if (!mFair) {
+                        UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
+                    } else if (!UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null)) {
+                        return 1;
+                    }
+                    return 0;
                 }
+                if (++trials >= SPIN_LIMIT >> 1) {
+                    return -1;
+                }
+                // Yield to avoid parking.
+                Thread.yield();
             }
-
-            return false;
         }
 
         @Override
@@ -818,10 +839,26 @@ public class Latch {
     }
 
     static class Shared extends WaitNode {
+        /**
+         * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
+         * if acquired and node should not be removed
+         */
         @Override
-        final int acquire(Latch latch, boolean yield) {
+        final int tryAcquire(Latch latch) {
+            // Note: If mWaiter is null, then handoff was fair. The shared count should already
+            // be correct, and this node won't be in the queue anymore.
+
+            WaitNode first = latch.mLatchFirst;
+            if (first != null && !(first instanceof Shared)) {
+                return mWaiter == null ? 1 : -1;
+            }
+
             int trials = 0;
             while (true) {
+                if (mWaiter == null) {
+                    return 1;
+                }
+
                 int state = latch.mLatchState;
                 if (state < 0) {
                     return state;
@@ -833,15 +870,9 @@ public class Latch {
                     if (waiter == null ||
                         !UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null))
                     {
-                        // Handoff was actually fair, and now an extra shared latch must be
-                        // released.
-                        if (state < 1) {
-                            throw new AssertionError(state);
-                        }
                         if (!UNSAFE.compareAndSwapInt(latch, STATE_OFFSET, state + 1, state)) {
                             UNSAFE.getAndAddInt(latch, STATE_OFFSET, -1);
                         }
-                        // Already removed from the queue.
                         return 1;
                     }
 

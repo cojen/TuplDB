@@ -1,17 +1,18 @@
 /*
- *  Copyright 2013-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -43,12 +44,12 @@ public class CompactTest {
     }
 
     protected Database newTempDb() throws Exception {
-        return newTempDatabase();
+        return newTempDatabase(getClass());
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -124,7 +125,8 @@ public class CompactTest {
 
     @Test
     public void largeValues() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .pageSize(512)
                                        .minCacheSize(10000000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -352,7 +354,8 @@ public class CompactTest {
     }
 
     private void doStress() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .pageSize(512)
                                        .minCacheSize(100000000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -456,6 +459,10 @@ public class CompactTest {
         // Nothing happened because most pages were in the undo log and not moved.
         assertEquals(stats2, mDb.stats());
 
+        // Store it in a volatile field to prevent the garbage collector from closing the index
+        // and messing up the above stats equality assertion.
+        reachabilityFence = ix;
+
         txn.commit();
 
         // Compact will work this time now that undo log is gone.
@@ -465,6 +472,8 @@ public class CompactTest {
         assertTrue(stats3.freePages() < stats2.freePages());
         assertTrue(stats3.totalPages() < stats2.totalPages());
     }
+
+    private static volatile Object reachabilityFence;
 
     @Test
     public void trashHiding() throws Exception {
@@ -505,7 +514,8 @@ public class CompactTest {
         // Random inserts with a small cache size tends to create a lot of extra unused space
         // in the file. Verify compaction can reclaim the space.
 
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .minCacheSize(1000000)
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
@@ -552,7 +562,8 @@ public class CompactTest {
 
     @Test
     public void snapshotAbort() throws Exception {
-        mDb = newTempDatabase(decorate(new DatabaseConfig()
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
@@ -576,7 +587,7 @@ public class CompactTest {
             assertFalse(mDb.compactFile(null, 0.9));
         }
 
-        File dbFile = new File(baseFileForTempDatabase(mDb).getPath() + ".db");
+        File dbFile = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".db");
         assertTrue(dbFile.length() > 1_000_000);
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
@@ -585,11 +596,12 @@ public class CompactTest {
         assertTrue(mDb.compactFile(null, 0.9));
         assertTrue(dbFile.length() < 100_000);
 
-        deleteTempDatabase(mDb);
+        deleteTempDatabase(getClass(), mDb);
 
         ByteArrayInputStream bin = new ByteArrayInputStream(bout.toByteArray());
 
-        DatabaseConfig config = decorate(new DatabaseConfig().baseFile(newTempBaseFile()));
+        DatabaseConfig config = decorate(new DatabaseConfig()
+                                         .baseFile(newTempBaseFile(getClass())));
 
         mDb = Database.restoreFromSnapshot(config, bin);
 

@@ -1,22 +1,25 @@
 /*
- *  Copyright 2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
 
 import java.io.IOException;
+
+import java.util.Comparator;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -39,7 +42,12 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public Ordering getOrdering() {
-        return mSource.getOrdering();
+        return mTransformer.transformedOrdering(mSource.getOrdering());
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mTransformer.transformedComparator(mSource.getComparator());
     }
 
     @Override
@@ -113,7 +121,7 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return ViewUtils.skipWithLocks(this, amount);
+        return amount == 0 ? mSource.skip(0) : ViewUtils.skipWithLocks(this, amount);
     }
 
     @Override
@@ -281,15 +289,19 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult find(final byte[] tkey) throws IOException {
+        mKey = tkey;
         final byte[] key = inverseTransformKey(tkey);
         if (key == null) {
-            reset();
+            mValue = null;
+            mSource.reset();
             return LockResult.UNOWNED;
         }
-        mKey = tkey;
         mValue = NOT_LOADED;
         return transformCurrent(mSource.find(key), key, tkey);
     }
+
+    // FIXME: For the findXx and findNearbyXx method variants, if the inverse key is null then
+    // call ViewUtils.seekXx to position the cursor.
 
     @Override
     public LockResult findGe(final byte[] tkey) throws IOException {
@@ -385,12 +397,13 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult findNearby(final byte[] tkey) throws IOException {
+        mKey = tkey;
         final byte[] key = inverseTransformKey(tkey);
         if (key == null) {
-            reset();
+            mValue = null;
+            mSource.reset();
             return LockResult.UNOWNED;
         }
-        mKey = tkey;
         mValue = NOT_LOADED;
         return transformCurrent(mSource.findNearby(key), key, tkey);
     }
@@ -451,6 +464,9 @@ final class TransformedCursor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
+        if (mKey != null && mSource.key() == null) {
+            throw TransformedView.fail();
+        }
         return mSource.lock();
     }
 
@@ -458,7 +474,9 @@ final class TransformedCursor implements Cursor {
     public LockResult load() throws IOException {
         final byte[] tkey = mKey;
         ViewUtils.positionCheck(tkey);
-        mKey = tkey;
+        if (mSource.key() == null) {
+            throw TransformedView.fail();
+        }
         mValue = NOT_LOADED;
         final Cursor c = mSource;
         return transformCurrent(c.load(), c.key(), tkey);
@@ -470,7 +488,9 @@ final class TransformedCursor implements Cursor {
         ViewUtils.positionCheck(tkey);
         final Cursor c = mSource;
         final byte[] key = c.key();
-        ViewUtils.positionCheck(key);
+        if (key == null) {
+            throw TransformedView.fail();
+        }
         c.store(mTransformer.inverseTransformValue(tvalue, key, tkey));
         mValue = tvalue;
     }
@@ -481,7 +501,9 @@ final class TransformedCursor implements Cursor {
         ViewUtils.positionCheck(tkey);
         final Cursor c = mSource;
         final byte[] key = c.key();
-        ViewUtils.positionCheck(key);
+        if (key == null) {
+            throw TransformedView.fail();
+        }
         c.commit(mTransformer.inverseTransformValue(tvalue, key, tkey));
         mValue = tvalue;
     }
@@ -502,7 +524,7 @@ final class TransformedCursor implements Cursor {
     public Cursor copy() {
         TransformedCursor copy = new TransformedCursor(mSource.copy(), mTransformer);
         copy.mKey = Utils.cloneArray(mKey);
-        copy.mValue = Utils.cloneArray(mValue);
+        copy.mValue = ViewUtils.copyValue(mValue);
         return copy;
     }
 

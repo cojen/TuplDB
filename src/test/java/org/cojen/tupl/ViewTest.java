@@ -1,17 +1,18 @@
 /*
- *  Copyright 2012-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -33,12 +34,12 @@ public class ViewTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        mDb = newTempDatabase(getClass());
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -73,6 +74,10 @@ public class ViewTest {
             fail();
         } catch (ViewConstraintException e) {
         }
+
+        // Allowed.
+        view.store(null, key(start - 1), null);
+        assertNull(view.exchange(null, key(start - 1), null));
 
         view.store(null, key(start), key(start));
         if (start % 10 != 0) {
@@ -123,7 +128,8 @@ public class ViewTest {
         }
 
         c.find(key(10));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(10), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -235,7 +241,8 @@ public class ViewTest {
         }
 
         c.find(key(10));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(10), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -297,6 +304,10 @@ public class ViewTest {
         } catch (ViewConstraintException e) {
         }
 
+        // Allowed.
+        view.store(null, key(end + 1), null);
+        assertNull(view.exchange(null, key(end + 1), null));
+
         view.store(null, key(end), key(end));
         if (end % 10 != 0) {
             assertTrue(view.delete(null, key(end)));
@@ -346,7 +357,8 @@ public class ViewTest {
         }
 
         c.find(key(96));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(96), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -458,7 +470,8 @@ public class ViewTest {
         }
 
         c.find(key(96));
-        assertNull(c.key());
+        fastAssertArrayEquals(key(96), c.key());
+        assertNull(c.value());
         c.find(key(35));
         assertNotNull(c.key());
         assertNull(c.value());
@@ -669,6 +682,10 @@ public class ViewTest {
         } catch (ViewConstraintException e) {
             // Key is outside allowed range.
         }
+
+        // Allowed.
+        view.store(null, "hello".getBytes(), null);
+        assertNull(view.exchange(null, "hello".getBytes(), null));
 
         view.store(null, "key-hello".getBytes(), "world".getBytes());
         fastAssertArrayEquals("world".getBytes(), view.load(null, "key-hello".getBytes()));
@@ -1051,6 +1068,111 @@ public class ViewTest {
             c.next();
             assertNull(c.key());
         }
+    }
+
+    @Test
+    public void keyOnlyView() throws Exception {
+        Index ix = fill();
+
+        long count = ix.count(null, null);
+        View view = ix.viewKeys();
+        assertEquals(count, view.count(null, null));
+
+        Cursor c = view.newCursor(null);
+        long actual = 0;
+        for (c.first(); c.key() != null; c.next()) {
+            assertTrue(c.value() == Cursor.NOT_LOADED);
+            actual++;
+        }
+
+        assertEquals(count, actual);
+
+        c.reset();
+        assertFalse(c.autoload(true));
+        assertFalse(c.autoload(true));
+        assertFalse(c.autoload());
+
+        c.first();
+        byte[] key = c.key();
+
+        assertTrue(view.load(null, "foo".getBytes()) == null);
+        assertTrue(view.load(null, key) == Cursor.NOT_LOADED);
+
+        try {
+            view.exchange(null, "foo".getBytes(), "bar".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        assertNull(view.exchange(null, "foo".getBytes(), null));
+        assertTrue(view.exchange(null, key, null) == Cursor.NOT_LOADED);
+        assertNull(view.exchange(null, key, null));
+
+        c.next();
+        key = c.key();
+        c.load();
+        assertTrue(c.value() == Cursor.NOT_LOADED);
+
+        try {
+            c.store("value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            c.commit("value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            view.store(null, key, "value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        try {
+            view.insert(null, key, "value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        assertFalse(view.insert(null, key, null));
+
+        try {
+            view.replace(null, key, "value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        assertTrue(view.replace(null, key, null));
+
+        c.load();
+        assertNull(c.value());
+
+        c.next();
+        key = c.key();
+
+        try {
+            view.update(null, key, null, "value".getBytes());
+            fail();
+        } catch (ViewConstraintException e) {
+            // Expected.
+        }
+
+        assertFalse(view.update(null, key, null, null));
+        assertFalse(view.update(null, key, "old".getBytes(), null));
+        assertFalse(view.update(null, key, new byte[0], null));
+        assertTrue(view.update(null, key, Cursor.NOT_LOADED, null));
+
+        c.load();
+        assertNull(c.value());
     }
 
     private Index fill() throws Exception {

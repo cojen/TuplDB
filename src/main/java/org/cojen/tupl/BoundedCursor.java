@@ -1,22 +1,25 @@
 /*
- *  Copyright 2012-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
 
 import java.io.IOException;
+
+import java.util.Comparator;
 
 import static org.cojen.tupl.BoundedView.*;
 
@@ -26,8 +29,10 @@ import static org.cojen.tupl.BoundedView.*;
  * @author Brian S O'Neill
  */
 final class BoundedCursor implements Cursor {
-    private final BoundedView mView;
-    private final Cursor mSource;
+    final BoundedView mView;
+    final Cursor mSource;
+
+    private boolean mOutOfBounds;
 
     BoundedCursor(BoundedView view, Cursor source) {
         mView = view;
@@ -37,6 +42,11 @@ final class BoundedCursor implements Cursor {
     @Override
     public Ordering getOrdering() {
         return mSource.getOrdering();
+    }
+
+    @Override
+    public Comparator<byte[]> getComparator() {
+        return mSource.getComparator();
     }
 
     @Override
@@ -56,7 +66,7 @@ final class BoundedCursor implements Cursor {
 
     @Override
     public byte[] value() {
-        return mSource.value();
+        return mOutOfBounds ? null : mSource.value();
     }
 
     @Override
@@ -113,16 +123,21 @@ final class BoundedCursor implements Cursor {
     }
 
     private LockResult toFirst() throws IOException {
+        LockResult result;
+
         BoundedView view = mView;
         byte[] start = view.mStart;
         Cursor source = mSource;
         if (start == null) {
-            return source.first();
+            result = source.first();
         } else if ((view.mMode & START_EXCLUSIVE) == 0) {
-            return source.findGe(start);
+            result = source.findGe(start);
         } else {
-            return source.findGt(start);
+            result = source.findGt(start);
         }
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -159,16 +174,21 @@ final class BoundedCursor implements Cursor {
     }
 
     private LockResult toLast() throws IOException {
+        LockResult result;
+
         BoundedView view = mView;
         byte[] end = view.mEnd;
         Cursor source = mSource;
         if (end == null) {
-            return mSource.last();
+            result = mSource.last();
         } else if ((view.mMode & END_EXCLUSIVE) == 0) {
-            return source.findLe(end);
+            result = source.findLe(end);
         } else {
-            return source.findLt(end);
+            result = source.findLt(end);
         }
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -183,50 +203,66 @@ final class BoundedCursor implements Cursor {
             limitKey = view.mStart;
             inclusive = (view.mMode & START_EXCLUSIVE) == 0;
         }
-        return mSource.skip(amount, limitKey, inclusive);
+
+        LockResult result = mSource.skip(amount, limitKey, inclusive);
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        LockResult result;
+
         if (amount == 0 || limitKey == null) {
-            return mSource.skip(0);
-        }
-
-        BoundedView view = mView;
-
-        if (amount > 0) {
-            if (view.endRangeCompare(limitKey) > 0) {
-                limitKey = view.mEnd;
-                inclusive = (view.mMode & END_EXCLUSIVE) == 0;
-            }
+            result = mSource.skip(0);
         } else {
-            if (view.startRangeCompare(limitKey) < 0) {
-                limitKey = view.mStart;
-                inclusive = (view.mMode & START_EXCLUSIVE) == 0;
+            BoundedView view = mView;
+
+            if (amount > 0) {
+                if (view.endRangeCompare(limitKey) > 0) {
+                    limitKey = view.mEnd;
+                    inclusive = (view.mMode & END_EXCLUSIVE) == 0;
+                }
+            } else {
+                if (view.startRangeCompare(limitKey) < 0) {
+                    limitKey = view.mStart;
+                    inclusive = (view.mMode & START_EXCLUSIVE) == 0;
+                }
             }
+
+            result = mSource.skip(amount, limitKey, inclusive);
         }
 
-        return mSource.skip(amount, limitKey, inclusive);
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
     public LockResult next() throws IOException {
+        LockResult result;
+
         BoundedView view = mView;
         byte[] end = view.mEnd;
         Cursor source = mSource;
         if (end == null) {
-            return source.next();
+            result = source.next();
         } else if ((view.mMode & END_EXCLUSIVE) == 0) {
-            return source.nextLe(end);
+            result = source.nextLe(end);
         } else {
-            return source.nextLt(end);
+            result = source.nextLt(end);
         }
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
     public LockResult nextLe(byte[] limitKey) throws IOException {
         if (mView.endRangeCompare(limitKey) <= 0) {
-            return mSource.nextLe(limitKey);
+            LockResult result = mSource.nextLe(limitKey);
+            mOutOfBounds = false;
+            return result;
         } else {
             return next();
         }
@@ -235,7 +271,9 @@ final class BoundedCursor implements Cursor {
     @Override
     public LockResult nextLt(byte[] limitKey) throws IOException {
         if (mView.endRangeCompare(limitKey) <= 0) {
-            return mSource.nextLt(limitKey);
+            LockResult result = mSource.nextLt(limitKey);
+            mOutOfBounds = false;
+            return result;
         } else {
             return next();
         }
@@ -243,22 +281,29 @@ final class BoundedCursor implements Cursor {
 
     @Override
     public LockResult previous() throws IOException {
+        LockResult result;
+
         BoundedView view = mView;
         byte[] start = view.mStart;
         Cursor source = mSource;
         if (start == null) {
-            return source.previous();
+            result = source.previous();
         } else if ((view.mMode & START_EXCLUSIVE) == 0) {
-            return source.previousGe(start);
+            result = source.previousGe(start);
         } else {
-            return source.previousGt(start);
+            result = source.previousGt(start);
         }
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
     public LockResult previousGe(byte[] limitKey) throws IOException {
         if (mView.startRangeCompare(limitKey) >= 0) {
-            return mSource.previousGe(limitKey);
+            LockResult result = mSource.previousGe(limitKey);
+            mOutOfBounds = false;
+            return result;
         } else {
             return previous();
         }
@@ -267,7 +312,9 @@ final class BoundedCursor implements Cursor {
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
         if (mView.startRangeCompare(limitKey) >= 0) {
-            return mSource.previousGt(limitKey);
+            LockResult result = mSource.previousGt(limitKey);
+            mOutOfBounds = false;
+            return result;
         } else {
             return previous();
         }
@@ -276,10 +323,14 @@ final class BoundedCursor implements Cursor {
     @Override
     public LockResult find(byte[] key) throws IOException {
         if (mView.inRange(key)) {
-            return mSource.find(key);
+            LockResult result = mSource.find(key);
+            mOutOfBounds = false;
+            return result;
+        } else {
+            mOutOfBounds = true;
+            ViewUtils.findNoLock(mSource, key);
+            return LockResult.UNOWNED;
         }
-        reset();
-        return LockResult.UNOWNED;
     }
 
     @Override
@@ -291,13 +342,16 @@ final class BoundedCursor implements Cursor {
 
         final Cursor source = mSource;
         if (view.mEnd == null) {
-            return source.findGe(key);
+            LockResult result = source.findGe(key);
+            mOutOfBounds = false;
+            return result;
         }
 
         final Transaction txn = source.link(Transaction.BOGUS);
         final boolean autoload = source.autoload(false);
         try {
             source.findGe(key);
+            mOutOfBounds = false;
 
             key = source.key();
             if (key == null) {
@@ -325,13 +379,16 @@ final class BoundedCursor implements Cursor {
 
         final Cursor source = mSource;
         if (view.mEnd == null) {
-            return source.findGt(key);
+            LockResult result = source.findGt(key);
+            mOutOfBounds = false;
+            return result;
         }
 
         final Transaction txn = source.link(Transaction.BOGUS);
         final boolean autoload = source.autoload(false);
         try {
             source.findGt(key);
+            mOutOfBounds = false;
 
             key = source.key();
             if (key == null) {
@@ -359,13 +416,16 @@ final class BoundedCursor implements Cursor {
 
         final Cursor source = mSource;
         if (view.mStart == null) {
-            return source.findLe(key);
+            LockResult result = source.findLe(key);
+            mOutOfBounds = false;
+            return result;
         }
 
         final Transaction txn = source.link(Transaction.BOGUS);
         final boolean autoload = source.autoload(false);
         try {
             source.findLe(key);
+            mOutOfBounds = false;
 
             key = source.key();
             if (key == null) {
@@ -393,13 +453,16 @@ final class BoundedCursor implements Cursor {
 
         final Cursor source = mSource;
         if (view.mStart == null) {
-            return source.findLt(key);
+            LockResult result = source.findLt(key);
+            mOutOfBounds = false;
+            return result;
         }
 
         final Transaction txn = source.link(Transaction.BOGUS);
         final boolean autoload = source.autoload(false);
         try {
             source.findLt(key);
+            mOutOfBounds = false;
 
             key = source.key();
             if (key == null) {
@@ -421,35 +484,58 @@ final class BoundedCursor implements Cursor {
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
         if (mView.inRange(key)) {
-            return mSource.findNearby(key);
+            LockResult result = mSource.findNearby(key);
+            mOutOfBounds = false;
+            return result;
+        } else {
+            mOutOfBounds = true;
+            ViewUtils.findNearbyNoLock(mSource, key);
+            return LockResult.UNOWNED;
         }
-        reset();
-        return LockResult.UNOWNED;
     }
 
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.random(mView.adjustLowKey(lowKey), mView.adjustHighKey(highKey));
+        LockResult result = mSource.random
+            (mView.adjustLowKey(lowKey),mView.adjustHighKey(highKey));
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
     public LockResult lock() throws IOException {
-        return mSource.lock();
+        if (mOutOfBounds) {
+            throw fail();
+        } else {
+            return mSource.lock();
+        }
     }
 
     @Override
     public LockResult load() throws IOException {
-        return mSource.load();
+        if (mOutOfBounds) {
+            throw fail();
+        } else {
+            return mSource.load();
+        }
     }
 
     @Override
     public void store(byte[] value) throws IOException {
-        mSource.store(value);
+        if (mOutOfBounds) {
+            throw fail();
+        } else {
+            mSource.store(value);
+        }
     }
 
     @Override
     public void commit(byte[] value) throws IOException {
-        mSource.commit(value);
+        if (mOutOfBounds) {
+            throw fail();
+        } else {
+            mSource.commit(value);
+        }
     }
 
     /*
@@ -461,11 +547,14 @@ final class BoundedCursor implements Cursor {
 
     @Override
     public Cursor copy() {
-        return new BoundedCursor(mView, mSource.copy());
+        BoundedCursor copy = new BoundedCursor(mView, mSource.copy());
+        copy.mOutOfBounds = mOutOfBounds;
+        return copy;
     }
 
     @Override
     public void reset() {
         mSource.reset();
+        mOutOfBounds = false;
     }
 }

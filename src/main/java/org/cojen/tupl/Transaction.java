@@ -1,17 +1,18 @@
 /*
- *  Copyright 2011-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -424,45 +425,49 @@ public interface Transaction {
     byte[] lastLockedKey();
 
     /**
-     * Fully releases last lock acquired, within the current scope. If the last
-     * lock operation was an upgrade, for a lock not immediately acquired,
-     * unlock is not allowed. Instead, an IllegalStateException is thrown.
+     * Fully releases the last lock or group acquired, within the current scope. If the last
+     * lock operation was an upgrade, for a lock not immediately acquired, unlock is not
+     * allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking a
-     * non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * unlocking a non-immediate upgrade
      */
     void unlock();
 
     /**
-     * Releases last lock acquired, within the current scope, retaining a
-     * shared lock. If the last lock operation was an upgrade, for a lock not
-     * immediately acquired, unlock is not allowed. Instead, an
-     * IllegalStateException is thrown.
+     * Releases the last lock or group acquired, within the current scope, retaining a shared
+     * lock. If the last lock operation was an upgrade, for a lock not immediately acquired,
+     * unlock is not allowed. Instead, an IllegalStateException is thrown.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if too many shared
-     * locks, or if unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * too many shared locks, or if unlocking a non-immediate upgrade
      */
     void unlockToShared();
 
     /**
-     * Releases last lock acquired or upgraded, within the current scope,
+     * Releases the last lock or group acquired or upgraded, within the current scope,
      * retaining an upgradable lock.
      *
-     * <p><i>Note: This method is intended for advanced use cases.</i> Also, the current
-     * implementation does not accurately track scopes. It may permit an unlock operation to
-     * cross a scope boundary, which has undefined behavior.
+     * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if last lock is shared
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * last lock is shared
      */
     void unlockToUpgradable();
+
+    /**
+     * Combines the last lock acquired or upgraded into a group which can be unlocked together.
+     *
+     * <p><i>Note: This method is intended for advanced use cases.</i>
+     *
+     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
+     * combining an acquire with an upgrade
+     */
+    void unlockCombine();
 
     /**
      * Attach an arbitrary object to this transaction instance, for tracking it. Attachments

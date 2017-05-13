@@ -1,17 +1,18 @@
 /*
- *  Copyright 2012-2015 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl;
@@ -36,12 +37,12 @@ public class CursorTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mDb = newTempDatabase();
+        mDb = newTempDatabase(getClass());
     }
 
     @After
     public void teardown() throws Exception {
-        deleteTempDatabases();
+        deleteTempDatabases(getClass());
         mDb = null;
     }
 
@@ -55,6 +56,10 @@ public class CursorTest {
 
     protected TreeCursor treeCursor(Cursor c) {
         return (TreeCursor) c;
+    }
+
+    protected boolean equalPositions(Cursor a, Cursor b) throws Exception {
+        return treeCursor(a).equalPositions(treeCursor(b));
     }
 
     protected Database mDb;
@@ -174,6 +179,11 @@ public class CursorTest {
         }
         c.next();
         assertNull(c.key());
+
+        // Necessary for CursorDisjointUnionTest. Unions and other merge cursors read ahead,
+        // and so they can't always observe values being added back in. Calling lock, load,
+        // store, or a find method re-aligns the source cursors.
+        c2.lock();
 
         for (int i=499; i>=0; i--) {
             c2.previous();
@@ -537,6 +547,7 @@ public class CursorTest {
         // Must fully skip past key 1.
         c.nextLe(key(2));
 
+        fastAssertArrayEquals(key(2), c.key());
         fastAssertArrayEquals(value(2), c.value());
     }
 
@@ -885,11 +896,11 @@ public class CursorTest {
 
         Cursor c1 = ix.newCursor(Transaction.BOGUS);
         for (c1.first(); c1.key() != null; c1.next()) {
-            TreeCursor c2 = treeCursor(ix.newCursor(Transaction.BOGUS));
+            Cursor c2 = ix.newCursor(Transaction.BOGUS);
             for (c2.first(); c2.key() != null; c2.next()) {
-                TreeCursor ref = treeCursor(c1.copy());
+                Cursor ref = c1.copy();
                 ref.findNearby(c2.key());
-                assertTrue(ref.equalPositions(c2));
+                assertTrue(equalPositions(ref, c2));
                 ref.reset();
             }
             c2.reset();
@@ -1331,10 +1342,14 @@ public class CursorTest {
 
         assertTrue(verify(ix));
 
-        assertEquals(foundCursors.length + notFoundCursors.length, mDb.stats().cursorCount());
+        assertEquals(foundCursors.length + notFoundCursors.length, cursorCount());
 
         verifyPositions(ix, foundCursors);
         verifyPositions(ix, notFoundCursors);
+    }
+
+    protected long cursorCount() {
+        return mDb.stats().cursorCount();
     }
 
     @Test
@@ -1389,12 +1404,31 @@ public class CursorTest {
         verifyPositions(ix, cursors);
     }
 
+    @Test
+    public void copyNotLoaded() throws Exception {
+        View ix = openIndex("test");
+        byte[] key = key(1);
+        byte[] value = value(1);
+        ix.store(Transaction.BOGUS, key, value);
+        Cursor c = ix.newCursor(null);
+        c.autoload(false);
+        c.find(key);
+        fastAssertArrayEquals(c.key(), key);
+        Cursor copy = c.copy();
+        fastAssertArrayEquals(c.key(), key);
+        if (c.value() == Cursor.NOT_LOADED) {
+            assertTrue(copy.value() == Cursor.NOT_LOADED);
+        } else {
+            fastAssertArrayEquals(c.value(), copy.value());
+        }
+    }
+
     protected void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
             Cursor c = ix.newCursor(Transaction.BOGUS);
             byte[] key = existing.key();
             c.find(key);
-            assertTrue(treeCursor(c).equalPositions(treeCursor(existing)));
+            assertTrue(equalPositions(c, existing));
             c.reset();
             existing.reset();
         }
