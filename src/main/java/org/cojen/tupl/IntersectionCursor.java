@@ -51,10 +51,18 @@ final class IntersectionCursor extends MergeCursor {
             if (cmp == 0) {
                 mCompare = cmp;
                 return selectCombine(txn, k1);
-            } else if ((cmp ^ mDirection) < 0) {
-                mFirst.findNearbyGe(k2);
+            } else if (mDirection == DIRECTION_FORWARD) {
+                if (cmp < 0) {
+                    mFirst.findNearbyGe(k2);
+                } else {
+                    mSecond.findNearbyGe(k1);
+                }
             } else {
-                mSecond.findNearbyGe(k1);
+                if (cmp > 0) {
+                    mFirst.findNearbyLe(k2);
+                } else {
+                    mSecond.findNearbyLe(k1);
+                }
             }
         }
     }
