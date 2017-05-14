@@ -627,6 +627,9 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             long txnId = decodeLongLE(header, I_TRANSACTION_ID);
+            if (txnId < 0) {
+                throw new CorruptDatabaseException("Invalid transaction id: " + txnId);
+            }
 
             long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
             long redoPos = decodeLongLE(header, I_REDO_POSITION);
@@ -817,7 +820,12 @@ final class _LocalDatabase extends AbstractDatabase {
                         // delete the newly created redo log file.
 
                         if (doCheckpoint) {
+                            // Do this early for checkpoint to store correct transaction id.
+                            resetTransactionContexts(txnId);
+                            txnId = -1;
+
                             checkpoint(true, 0, 0);
+
                             // Only cleanup after successful checkpoint.
                             for (File file : redoFiles) {
                                 file.delete();
@@ -833,8 +841,8 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            for (_TransactionContext txnContext : mTxnContexts) {
-                txnContext.resetTransactionId(txnId++);
+            if (txnId >= 0) {
+                resetTransactionContexts(txnId);
             }
 
             if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
@@ -1568,6 +1576,12 @@ final class _LocalDatabase extends AbstractDatabase {
             redo = redo.txnRedoWriter();
         }
         return redo;
+    }
+
+    private void resetTransactionContexts(long txnId) {
+        for (_TransactionContext txnContext : mTxnContexts) {
+            txnContext.resetTransactionId(txnId++);
+        }
     }
 
     /**
