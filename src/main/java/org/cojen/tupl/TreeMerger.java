@@ -214,25 +214,28 @@ class TreeMerger {
         int samplesPerSource = (minCount + sources.length - 1) / sources.length;
         byte[][] samples = new byte[sources.length * samplesPerSource][];
 
+        int sampleCount = 0;
         for (int i=0; i<sources.length; i++) {
             Cursor c = sources[i].newCursor(Transaction.BOGUS);
             try {
                 c.autoload(false);
                 for (int j=0; j<samplesPerSource; j++) {
                     c.random(null, null);
-                    samples[i * samplesPerSource + j] = c.key();
+                    if (c.key() != null) {
+                        samples[sampleCount++] = c.key();
+                    }
                 }
             } finally {
                 c.reset();
             }
         }
 
-        Arrays.sort(samples, KeyComparator.THE);
+        Arrays.sort(samples, 0, sampleCount, KeyComparator.THE);
 
         byte[][] partitions = new byte[threadCount - 1][];
 
         for (int i=0; i<partitions.length; i++) {
-            int pos = (samples.length * (i + 1)) / (partitions.length + 1);
+            int pos = (sampleCount * (i + 1)) / (partitions.length + 1);
             partitions[i] = samples[pos];
         }
 
