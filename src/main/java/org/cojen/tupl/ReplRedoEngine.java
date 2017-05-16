@@ -209,7 +209,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             mWorkerGroup.join(false);
         }
 
-
         // Call with decode latch held, suspending checkpoints.
         mManager.fenced(mDecoder.mIn.mPos);
 

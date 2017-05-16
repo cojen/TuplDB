@@ -62,30 +62,27 @@ class _ReplRedoWriter extends _RedoWriter {
     // Absolute log position.
     private long mWritePos;
 
+    /**
+     * Caller must call start if a writer is supplied.
+     */
     _ReplRedoWriter(_ReplRedoEngine engine, ReplicationManager.Writer writer) {
         mEngine = engine;
         mReplWriter = writer;
+        mBufferLatch = writer == null ? null : new Latch();
+    }
 
-        if (writer == null) {
-            mBufferLatch = null;
-        } else {
-            mBufferLatch = new Latch();
+    void start() {
+        mBufferLatch.acquireExclusive();
+        try {
+            mWritePos = mReplWriter.position();
+            mBuffer = new byte[65536];
 
-            // Acquire the latch here, to avoid any odd race conditions caused by launching a
-            // thread from within a constructor. The consume method first acquires the latch
-            // before doing anything.
-            mBufferLatch.acquireExclusive();
-            try {
-                mWritePos = writer.position();
-                mBuffer = new byte[65536];
-
-                mConsumer = new Thread(this::consume);
-                mConsumer.setName("WriteConsumer-" + mConsumer.getId());
-                mConsumer.setDaemon(true);
-                mConsumer.start();
-            } finally {
-                mBufferLatch.releaseExclusive();
-            }
+            mConsumer = new Thread(this::consume);
+            mConsumer.setName("WriteConsumer-" + mConsumer.getId());
+            mConsumer.setDaemon(true);
+            mConsumer.start();
+        } finally {
+            mBufferLatch.releaseExclusive();
         }
     }
 
