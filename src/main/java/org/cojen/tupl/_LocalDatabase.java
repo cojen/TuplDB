@@ -1933,9 +1933,13 @@ final class _LocalDatabase extends AbstractDatabase {
 
     @Override
     public void checkpoint() throws IOException {
-        if (!isClosed() && mPageDb.isDurable()) {
+        while (!isClosed() && mPageDb.isDurable()) {
             try {
                 checkpoint(false, 0, 0);
+                return;
+            } catch (UnmodifiableReplicaException e) {
+                // Retry.
+                Thread.yield();
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
                 closeQuietly(null, this, e);
