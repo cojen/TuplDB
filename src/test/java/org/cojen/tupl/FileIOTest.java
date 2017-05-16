@@ -52,6 +52,10 @@ public class FileIOTest {
         }
     }
 
+    // Newer versions of Linux allocate as much as possible instead of failing atomically. The
+    // FileIO class reverts the allocation, but until it finishes, other threads and processes
+    // writing to the temp directory fail with "No space left on device".
+    @Ignore
     @Test
     public void preallocateTooLarge() throws Exception {
         assumeTrue(Platform.isLinux()); 

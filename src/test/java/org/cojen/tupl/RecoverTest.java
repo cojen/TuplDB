@@ -913,6 +913,8 @@ public class RecoverTest {
         }
         assertTrue(ix != null);
 
+        db.checkpoint();
+
         // switch to replica
         replMan.asReplica();
         try {
@@ -925,17 +927,19 @@ public class RecoverTest {
         // checkpoint with a live open transaction
         Transaction txn = db.newTransaction(DurabilityMode.NO_REDO);
         ix.store(txn, "key1".getBytes(), "val1".getBytes());
-        // FIXME: This sometimes fails with UnmodifiableReplicaException.
         db.checkpoint();
         db.close();
 
-        // reopen database as replica
-        replMan = new NonReplicationManager();  // Use new ReplicationManager as the existing one is closed.
+        // reopen database as replica; use new ReplicationManager as the existing one is closed
+        replMan = new NonReplicationManager();
         replMan.asReplica();
         Database db2 = Database.open(config.replicate(replMan));
 
+        // FIXME: must wait till caught up
+
         // assert no lingering locks exist on the key after recovery
-        Index ix2 = db2.openIndex("test");
+        Index ix2 = db2.findIndex("test");
+        assertTrue(ix2 != null);
         Transaction txn2 = db2.newTransaction();
         assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
 
