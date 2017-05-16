@@ -227,6 +227,7 @@ final class ReplRedoController extends ReplRedoWriter {
             }
 
             ReplRedoWriter redo = new ReplRedoWriter(mEngine, writer);
+            redo.start();
             TransactionContext context = mEngine.mDatabase.anyTransactionContext();
 
             context.fullAcquireRedoLatch(redo);
@@ -272,7 +273,8 @@ final class ReplRedoController extends ReplRedoWriter {
 
     boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
         if (mEngine.mDatabase.isClosed()) {
-            return true;
+            // Don't bother switching modes, since it won't work properly anyhow.
+            return false;
         }
 
         final ReplRedoWriter redo = mTxnRedoWriter;
