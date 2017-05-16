@@ -1021,14 +1021,32 @@ final class LocalDatabase extends AbstractDatabase {
             idKey[0] = KEY_TYPE_INDEX_ID;
             encodeLongBE(idKey, 1, id);
 
-            byte[] name = mRegistryKeyMap.load(txn, idKey);
+            byte[] name;
+
+            if (txn != null) {
+                name = mRegistryKeyMap.load(txn, idKey);
+            } else {
+                // Lookup name with exclusive lock, to prevent races with concurrent index
+                // creation. If a replicated operation which requires the newly created index
+                // merely acquired a shared lock, then it might not find the index at all.
+                Locker locker = mRegistryKeyMap.lockExclusiveLocal
+                    (idKey, LockManager.hash(mRegistryKeyMap.getId(), idKey));
+                try {
+                    name = mRegistryKeyMap.load(Transaction.BOGUS, idKey);
+                } finally {
+                    locker.unlock();
+                }
+            }
 
             if (name == null) {
                 checkClosed();
                 return null;
             }
 
-            index = openTree(txn, name, false);
+            byte[] treeIdBytes = new byte[8];
+            encodeLongBE(treeIdBytes, 0, id);            
+
+            index = openTree(txn, treeIdBytes, name, false);
         } catch (Throwable e) {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
@@ -2618,18 +2636,22 @@ final class LocalDatabase extends AbstractDatabase {
      * @param name required (cannot be null)
      */
     private Tree openTree(byte[] name, boolean create) throws IOException {
-        return openTree(null, name, create);
+        return openTree(null, null, name, create);
     }
 
     /**
+     * @param findTxn optional
+     * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private Tree openTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
+    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+        throws IOException
+    {
         Tree tree = quickFindIndex(name);
         if (tree == null) {
             CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
-                tree = doOpenTree(findTxn, name, create);
+                tree = doOpenTree(findTxn, treeIdBytes, name, create);
             } finally {
                 shared.release();
             }
@@ -2640,16 +2662,23 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Caller must hold commit lock.
      *
+     * @param findTxn optional
+     * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private Tree doOpenTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
+    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+        throws IOException
+    {
         checkClosed();
 
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
         byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-        byte[] treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
+
+        if (treeIdBytes == null) {
+            treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
+        }
 
         long treeId;
         // Is non-null if tree was created.
@@ -2704,6 +2733,7 @@ final class LocalDatabase extends AbstractDatabase {
                             createTxn = newAlwaysRedoTransaction();
                         }
 
+                        // Insert order is important for the indexById method to work reliably.
                         if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
                             throw new DatabaseException("Unable to insert index id");
                         }
