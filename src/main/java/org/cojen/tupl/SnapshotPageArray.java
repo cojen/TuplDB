@@ -423,16 +423,12 @@ final class SnapshotPageArray extends PageArray {
                         encodeLongBE(key, 0, index);
                         txn.lockExclusive(mPageCopyIndex.getId(), key);
 
-                        // Advance progress after lock acquisition.
-                        if (!mProgressUpdater.compareAndSet(this, index - 1, index)) {
-                            // If closed, the exception handler below throws a better exception.
-                            throw new IllegalStateException();
-                        }
-
                         c.findNearby(key);
                         byte[] value = c.value();
 
                         if (value != null) {
+                            // Advance progress before releasing the lock.
+                            advanceProgress(index);
                             c.commit(null);
                         } else {
                             read: {
@@ -453,7 +449,11 @@ final class SnapshotPageArray extends PageArray {
                                 mRawPageArray.readPage(index, pageBuffer);
                             }
 
+                            // Advance progress after copying the captured value and before
+                            // releasing the lock.
+                            advanceProgress(index);
                             txn.commit();
+
                             value = p_copyIfNotArray(pageBuffer, pageBufferArray);
                         }
 
@@ -471,6 +471,13 @@ final class SnapshotPageArray extends PageArray {
                 }
             } finally {
                 txn.reset();
+            }
+        }
+
+        private void advanceProgress(long index) {
+            if (!mProgressUpdater.compareAndSet(this, index - 1, index)) {
+                // If closed, the caller's exception handler must detect this.
+                throw new IllegalStateException();
             }
         }
 
