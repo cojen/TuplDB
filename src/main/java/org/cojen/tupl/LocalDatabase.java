@@ -54,7 +54,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -223,12 +223,11 @@ final class LocalDatabase extends AbstractDatabase {
     /*P*/ // final boolean mFullyMapped;
     /*P*/ // ]
 
-    private volatile boolean mClosed;
+    private volatile int mClosed;
     private volatile Throwable mClosedCause;
 
-    private static final AtomicReferenceFieldUpdater<LocalDatabase, Throwable>
-        cClosedCauseUpdater = AtomicReferenceFieldUpdater.newUpdater
-        (LocalDatabase.class, Throwable.class, "mClosedCause");
+    private static final AtomicIntegerFieldUpdater<LocalDatabase>
+        cClosedUpdater = AtomicIntegerFieldUpdater.newUpdater(LocalDatabase.class, "mClosed");
 
     /**
      * Open a database, creating it if necessary.
@@ -2164,20 +2163,19 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
-        if (mClosed) {
+        if (!cClosedUpdater.compareAndSet(this, 0, 1)) {
             return;
         }
 
         if (cause != null) {
-            if (cClosedCauseUpdater.compareAndSet(this, null, cause)) {
-                Throwable rootCause = rootCause(cause);
-                if (mEventListener == null) {
-                    uncaught(rootCause);
-                } else {
-                    mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
-                                          "Closing database due to unhandled exception: %1$s",
-                                          rootCause);
-                }
+            mClosedCause = cause;
+            Throwable rootCause = rootCause(cause);
+            if (mEventListener == null) {
+                uncaught(rootCause);
+            } else {
+                mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
+                                      "Closing database due to unhandled exception: %1$s",
+                                      rootCause);
             }
         }
 
@@ -2190,12 +2188,9 @@ final class LocalDatabase extends AbstractDatabase {
             if (shutdown) {
                 mCheckpointLock.lock();
                 lockedCheckpointer = true;
-
-                if (!mClosed) {
-                    checkpoint(true, 0, 0);
-                    if (c != null) {
-                        ct = c.close(cause);
-                    }
+                checkpoint(true, 0, 0);
+                if (c != null) {
+                    ct = c.close(cause);
                 }
             } else {
                 if (c != null) {
@@ -2215,8 +2210,6 @@ final class LocalDatabase extends AbstractDatabase {
                     lockedCheckpointer = true;
                 }
             }
-
-            mClosed = true;
         } finally {
             if (ct != null) {
                 ct.interrupt();
@@ -2357,7 +2350,7 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     boolean isClosed() {
-        return mClosed || mClosedCause != null;
+        return mClosed != 0;
     }
 
     void checkClosed() throws DatabaseException {
