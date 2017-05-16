@@ -103,13 +103,13 @@ public class AnalyzeTest {
 
         Index.Stats average = total.divideAndRound(probeCount);
 
-        assertEquals(count, average.entryCount(), count * 0.05);
-        assertEquals(keyBytes, average.keyBytes(), keyBytes * 0.05);
-        assertEquals(valueBytes, average.valueBytes(), valueBytes * 0.05);
+        assertEquals(count, average.entryCount(), count * 0.1);
+        assertEquals(keyBytes, average.keyBytes(), keyBytes * 0.1);
+        assertEquals(valueBytes, average.valueBytes(), valueBytes * 0.1);
 
         // Compare to emperical data.
-        assertEquals(2200000, average.freeBytes(), 2200000 * 0.05);
-        assertEquals(9080000, average.totalBytes(), 9080000 * 0.05);
+        assertEquals(2200000, average.freeBytes(), 2200000 * 0.1);
+        assertEquals(9080000, average.totalBytes(), 9080000 * 0.1);
     }
 
     @Test

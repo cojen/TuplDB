@@ -115,10 +115,11 @@ class NonReplicationManager implements ReplicationManager {
         private final List<Runnable> mCallbacks = new ArrayList<>();
 
         private boolean mClosed;
+        private long mPosition;
 
         @Override
-        public long position() {
-            return 0;
+        public synchronized long position() {
+            return mPosition;
         }
 
         @Override
@@ -133,12 +134,28 @@ class NonReplicationManager implements ReplicationManager {
 
         @Override
         public synchronized boolean write(byte[] b, int off, int len, long commitPos) {
-            return !mClosed;
+            if (mClosed) {
+                return false;
+            }
+            mPosition += len;
+            notify();
+            return true;
         }
 
         @Override
         public synchronized boolean confirm(long position, long timeoutNanos) {
-            return !mClosed;
+            while (true) {
+                if (mPosition >= position) {
+                    return true;
+                }
+                if (mClosed) {
+                    return false;
+                }
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                }
+            }
         }
 
         synchronized void close() {
