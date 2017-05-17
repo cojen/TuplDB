@@ -75,7 +75,7 @@ public class RecoverTest {
             public void run() {
                 try {
                     Transaction txn2 = mDb.newTransaction();
-                    txn2.lockTimeout(10, TimeUnit.SECONDS);
+                    txn2.lockTimeout(60, TimeUnit.SECONDS);
                     assertEquals(null, ix.load(txn2, key));
                 } catch (Throwable e) {
                     ex = e;
@@ -85,7 +85,7 @@ public class RecoverTest {
 
         Waiter w = new Waiter();
         Thread t = new Thread(w);
-        t.start();
+        startAndWaitUntilBlocked(t);
 
         Thread.sleep(1000);
         mDb.close();
