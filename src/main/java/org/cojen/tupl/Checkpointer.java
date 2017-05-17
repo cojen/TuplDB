@@ -89,6 +89,9 @@ final class Checkpointer implements Runnable {
             }
 
             if (mRefQueue != null) {
+                // When the checkpoint rate is negative (infinite delay), this thread is
+                // suspended until the database isn't referenced anymore, or until the database
+                // is explicitly closed.
                 mRefQueue.remove();
                 close(null);
                 return;
