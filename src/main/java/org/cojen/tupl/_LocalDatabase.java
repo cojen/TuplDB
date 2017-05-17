@@ -54,6 +54,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -161,7 +162,13 @@ final class _LocalDatabase extends AbstractDatabase {
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will resume with this commit header and master undo log.
-    private long mCommitHeader = p_null();
+    /*P*/ // [
+    // private byte[] mCommitHeader;
+    /*P*/ // |
+    private volatile long mCommitHeader = p_null();
+    private static final AtomicLongFieldUpdater<_LocalDatabase> cCommitHeaderUpdater =
+        AtomicLongFieldUpdater.newUpdater(_LocalDatabase.class, "mCommitHeader");
+    /*P*/ // ]
     private _UndoLog mCommitMasterUndoLog;
 
     // Typically opposite of mCommitState, or negative if checkpoint is not in
@@ -2343,9 +2350,17 @@ final class _LocalDatabase extends AbstractDatabase {
             if (mSparePagePool != null) {
                 mSparePagePool.delete();
             }
-            p_delete(mCommitHeader);
+            deleteCommitHeader();
             p_arenaDelete(mArena);
         }
+    }
+
+    private void deleteCommitHeader() {
+        /*P*/ // [
+        // mCommitHeader = null;
+        /*P*/ // |
+        p_delete(cCommitHeaderUpdater.getAndSet(this, p_null()));
+        /*P*/ // ]
     }
 
     boolean isClosed() {
@@ -4742,8 +4757,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             // Reset for next checkpoint.
-            p_delete(mCommitHeader);
-            mCommitHeader = p_null();
+            deleteCommitHeader();
             mCommitMasterUndoLog = null;
 
             if (masterUndoLog != null) {
