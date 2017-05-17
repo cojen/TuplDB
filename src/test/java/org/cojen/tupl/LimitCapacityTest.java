@@ -58,6 +58,8 @@ public class LimitCapacityTest {
 
         Cursor fill = ix.newCursor(Transaction.BOGUS);
 
+        mDb.suspendCheckpoints();
+
         for (int i=0; i<50_000_000; i++) {
             Utils.encodeInt48BE(key, 0, i);
             fill.findNearby(key);
@@ -69,6 +71,9 @@ public class LimitCapacityTest {
                 continue;
             }
         }
+
+        mDb.resumeCheckpoints();
+        mDb.checkpoint();
 
         mDb.compactFile(null, 0.95);
 
