@@ -130,6 +130,7 @@ public class LimitCapacityTest {
         // Allocate the root node.
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
+        mDb.checkpoint();
         Database.Stats stats = mDb.stats();
         long total = stats.totalPages();
 
@@ -142,6 +143,7 @@ public class LimitCapacityTest {
             // Expected.
         }
 
+        mDb.checkpoint();
         stats = mDb.stats();
         long delta = stats.totalPages() - total;
         assertTrue(delta >= minFreed);

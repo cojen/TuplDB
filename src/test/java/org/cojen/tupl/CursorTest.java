@@ -18,6 +18,8 @@
 package org.cojen.tupl;
 
 import java.util.Random;
+
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
@@ -1184,11 +1186,14 @@ public class CursorTest {
 
         ix.store(null, key2, value2);
 
+        CountDownLatch waiter = new CountDownLatch(1);
+
         Thread t = new Thread(() -> {
             try {
                 Transaction txn = mDb.newTransaction();
                 try {
                     ix.store(txn, key, value);
+                    waiter.countDown();
                     Thread.sleep(1000);
                     txn.commit();
                 } finally {
@@ -1200,22 +1205,8 @@ public class CursorTest {
         });
 
         t.start();
-
-        // Wait for thread to lock the key.
-        while (t.isAlive()) {
-            Transaction txn = mDb.newTransaction();
-            try {
-                txn.lockTimeout(1, TimeUnit.MILLISECONDS);
-                try {
-                    ix.load(txn, key);
-                } catch (LockTimeoutException e) {
-                    // Locked.
-                    break;
-                }
-            } finally {
-                txn.reset();
-            }
-        }
+        // Wait for thread to lock the key and store the updated value.
+        waiter.await(60, TimeUnit.SECONDS);
 
         Transaction txn = mDb.newTransaction();
         try {
