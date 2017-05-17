@@ -39,6 +39,12 @@ final class _NodeUsageList extends Clutch.Pack {
     // Don't evict a node when trying to allocate another.
     static final int MODE_NO_EVICT = 2;
 
+    // Amount of contended clutches that this Pack can support. Not sure what the best amount
+    // is, but this seems to be more than enough. When running on a machine with more CPU
+    // cores, more NodeUsageLists are created. In addition, the Pack itself will allocate more
+    // counter slots for more cores.
+    private static final int PACK_SLOTS = 64;
+
     final transient _LocalDatabase mDatabase;
     private final int mPageSize;
     private final long mUsedRate;
@@ -56,7 +62,7 @@ final class _NodeUsageList extends Clutch.Pack {
      * a larger used rate value is recommended.
      */
     _NodeUsageList(_LocalDatabase db, long usedRate, int maxSize) {
-        super(64); // FIXME: configurable
+        super(PACK_SLOTS);
         if (maxSize <= 0) {
             throw new IllegalArgumentException();
         }
