@@ -443,7 +443,7 @@ public class CursorTest {
         Cursor c;
         {
             Transaction txn = mDb.newTransaction();
-            txn.lockTimeout(10, TimeUnit.SECONDS);
+            txn.lockTimeout(60, TimeUnit.SECONDS);
             c = ix.newCursor(txn);
             c.last();
         }
@@ -544,7 +544,7 @@ public class CursorTest {
         Cursor c;
         {
             Transaction txn = mDb.newTransaction();
-            txn.lockTimeout(10, TimeUnit.SECONDS);
+            txn.lockTimeout(60, TimeUnit.SECONDS);
             c = ix.newCursor(txn);
             c.first();
         }
@@ -1233,7 +1233,7 @@ public class CursorTest {
 
         Transaction txn = mDb.newTransaction();
         try {
-            txn.lockTimeout(10, TimeUnit.SECONDS);
+            txn.lockTimeout(60, TimeUnit.SECONDS);
 
             Cursor c = ix.newCursor(txn);
             try {
