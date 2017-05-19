@@ -61,14 +61,35 @@ public interface View {
     }
 
     /**
-     * Returns a new updater over this view.
+     * Returns a new updater over this view. When providing a null transaction or one which is
+     * {@link LockMode#READ_COMMITTED READ_COMMITTED}, autocommit mode is used. Each entry is
+     * locked with {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} and is unlocked when moving
+     * to the next entry.
      *
      * @param txn optional transaction for Updater to use
      * @return a new updater positioned at the first entry in the view
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
     public default Updater newUpdater(Transaction txn) throws IOException {
-        return new ViewUpdater(this, newCursor(txn));
+        if (txn == null) {
+            txn = newTransaction(null);
+        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
+            txn.enter();
+            txn.lockMode(LockMode.UPGRADABLE_READ);
+        } else {
+            return new ViewUpdater(this, newCursor(txn));
+        }
+
+        try {
+            return new ViewAutocommitUpdater(this, newCursor(txn));
+        } catch (Throwable e) {
+            try {
+                txn.exit();
+            } catch (Throwable e2) {
+                Utils.suppress(e, e2);
+            }
+            throw e;
+        }
     }
 
     /**
