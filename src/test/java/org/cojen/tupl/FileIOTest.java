@@ -90,6 +90,17 @@ public class FileIOTest {
 
     @Test
     public void preallocate() throws Exception {
+        try {
+            doPreallocate();
+        } catch (AssertionError e) {
+            // Try again in case any external files messed up the test.
+            teardown();
+            setup();
+            doPreallocate();
+        }
+    }
+
+    private void doPreallocate() throws Exception {
         // Assuming a filesystem with delayed block allocation,
         // e.g. ext3 / ext4 on Linux.
         assumeTrue(Platform.isLinux() || Platform.isMac());
@@ -101,8 +112,7 @@ public class FileIOTest {
         fio.setLength(len);
         long alloc = startFree - file.getFreeSpace();
                         
-        // Free space should be reduced. Pad expectation since external
-        // events may interfere.
+        // Free space should be reduced. Pad expectation since external events may interfere.
         assertTrue(alloc > (len >> 1));
 
         fio.close();
