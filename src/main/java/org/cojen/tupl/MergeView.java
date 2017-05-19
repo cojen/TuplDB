@@ -76,8 +76,6 @@ abstract class MergeView implements View {
     // and create an explicit txn to use. This is cheaper than creating a transaction for each
     // entry.
 
-    // FIXME: Scanner returns null for trySplit, because random positioning isn't supported.
-
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mFirst.newTransaction(durabilityMode);
