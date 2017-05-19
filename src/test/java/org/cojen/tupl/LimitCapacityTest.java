@@ -133,6 +133,7 @@ public class LimitCapacityTest {
         mDb.checkpoint();
         Database.Stats stats = mDb.stats();
         long total = stats.totalPages();
+        mDb.suspendCheckpoints();
 
         // Value is too large.
         try {
