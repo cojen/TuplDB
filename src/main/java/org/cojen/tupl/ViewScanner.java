@@ -77,57 +77,7 @@ class ViewScanner implements Scanner {
     }
 
     @Override
-    public Scanner trySplit() throws IOException {
-        try {
-            View view = mView;
-
-            if (view.getOrdering() == Ordering.UNSPECIFIED) {
-                return null;
-            }
-
-            Cursor cursor = mCursor;
-            Cursor highCursor = view.newCursor(cursor.link());
-            highCursor.autoload(false);
-            highCursor.random(cursor.key(), null);
-
-            byte[] highKey = highCursor.key();
-
-            if (highKey == null || Arrays.equals(highKey, cursor.key())) {
-                highCursor.reset();
-                return null;
-            }
-
-            Scanner highScanner = newScanner(highCursor, new BoundedView(view, highKey, null, 0));
-
-            if (cursor.autoload()) {
-                highCursor.autoload(true);
-                highCursor.load();
-            }
-
-            if (cursor instanceof BoundedCursor) {
-                BoundedCursor boundedCursor = ((BoundedCursor) cursor);
-                view = boundedCursor.mView;
-                cursor = boundedCursor.mSource;
-            } 
-
-            BoundedView lowView = new BoundedView(view, null, highKey, BoundedView.END_EXCLUSIVE);
-            BoundedCursor lowCursor = new BoundedCursor(lowView, cursor);
-
-            mView = lowView;
-            mCursor = lowCursor;
-
-            return highScanner;
-        } catch (Throwable e) {
-            throw ViewUtils.fail(this, e);
-        }
-    }
-
-    @Override
-    public void close() {
+    public void close() throws IOException {
         mCursor.reset();
-    }
-
-    protected Scanner newScanner(Cursor cursor, View view) {
-        return new ViewScanner(cursor, view);
     }
 }

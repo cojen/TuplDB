@@ -53,14 +53,4 @@ class ViewUpdater extends ViewScanner implements Updater {
         }
         return step();
     }
-
-    @Override
-    public Updater trySplit() throws IOException {
-        return (Updater) super.trySplit();
-    }
-
-    @Override
-    protected Updater newScanner(Cursor cursor, View view) {
-        return new ViewUpdater(cursor, view);
-    }
 }
