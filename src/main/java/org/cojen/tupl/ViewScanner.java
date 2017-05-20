@@ -19,7 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -28,8 +27,8 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  */
 class ViewScanner implements Scanner {
-    protected View mView;
-    protected Cursor mCursor;
+    protected final View mView;
+    protected final Cursor mCursor;
 
     /**
      * @param cursor unpositioned cursor
@@ -40,6 +39,9 @@ class ViewScanner implements Scanner {
         cursor.first();
     }
 
+    /**
+     * @param cursor unpositioned cursor; to be positioned by subclass
+     */
     protected ViewScanner(Cursor cursor, View view) {
         mView = view;
         mCursor = cursor;
@@ -62,26 +64,32 @@ class ViewScanner implements Scanner {
 
     @Override
     public boolean step() throws IOException {
+        Cursor c = mCursor;
         try {
-            mCursor.next();
-            return mCursor.key() != null;
+            c.next();
+            return c.key() != null;
         } catch (UnpositionedCursorException e) {
             return false;
+        } catch (Throwable e) {
+            throw ViewUtils.fail(this, e);
         }
     }
 
     @Override
     public boolean step(long amount) throws IOException {
+        Cursor c = mCursor;
         if (amount > 0) {
             try {
-                mCursor.skip(amount);
+                c.skip(amount);
             } catch (UnpositionedCursorException e) {
                 return false;
+            } catch (Throwable e) {
+                throw ViewUtils.fail(this, e);
             }
         } else if (amount < 0) {
-            throw ViewUtils.fail(this, new IllegalArgumentException());
+            throw new IllegalArgumentException();
         }
-        return mCursor.key() != null;
+        return c.key() != null;
     }
 
     @Override

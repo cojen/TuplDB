@@ -20,20 +20,16 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Simple updater which doesn't do anything special with the cursor's transaction.
  *
  * @author Brian S O'Neill
  */
-class ViewUpdater extends ViewScanner implements Updater {
+class ViewSimpleUpdater extends ViewScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewUpdater(View view, Cursor cursor) throws IOException {
+    ViewSimpleUpdater(View view, Cursor cursor) throws IOException {
         super(view, cursor);
-    }
-
-    protected ViewUpdater(Cursor cursor, View view) {
-        super(cursor, view);
     }
 
     @Override
@@ -42,6 +38,8 @@ class ViewUpdater extends ViewScanner implements Updater {
             mCursor.store(value);
         } catch (UnpositionedCursorException e) {
             return false;
+        } catch (Throwable e) {
+            throw ViewUtils.fail(this, e);
         }
         return step();
     }
