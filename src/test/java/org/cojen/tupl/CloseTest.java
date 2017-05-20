@@ -69,7 +69,7 @@ public class CloseTest {
         try {
             c.next();
             fail();
-        } catch (IllegalStateException e) {
+        } catch (UnpositionedCursorException e) {
             // expected -- cursor is unpositioned
         }
 

@@ -62,14 +62,22 @@ class ViewScanner implements Scanner {
 
     @Override
     public boolean step() throws IOException {
-        mCursor.next();
-        return mCursor.key() != null;
+        try {
+            mCursor.next();
+            return mCursor.key() != null;
+        } catch (UnpositionedCursorException e) {
+            return false;
+        }
     }
 
     @Override
     public boolean step(long amount) throws IOException {
         if (amount > 0) {
-            mCursor.skip(amount);
+            try {
+                mCursor.skip(amount);
+            } catch (UnpositionedCursorException e) {
+                return false;
+            }
         } else if (amount < 0) {
             throw ViewUtils.fail(this, new IllegalArgumentException());
         }

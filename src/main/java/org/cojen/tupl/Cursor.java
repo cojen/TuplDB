@@ -172,7 +172,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public LockResult skip(long amount) throws IOException;
 
@@ -195,7 +195,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public default LockResult skip(long amount, byte[] limitKey, boolean inclusive)
         throws IOException
@@ -211,7 +211,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public LockResult next() throws IOException;
 
@@ -225,7 +225,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if limit key is null
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public default LockResult nextLe(byte[] limitKey) throws IOException {
         return ViewUtils.nextCmp(this, limitKey, 1);
@@ -241,7 +241,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if limit key is null
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public default LockResult nextLt(byte[] limitKey) throws IOException {
         return ViewUtils.nextCmp(this, limitKey, 0);
@@ -256,7 +256,7 @@ public interface Cursor {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public LockResult previous() throws IOException;
 
@@ -271,7 +271,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if limit key is null
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public default LockResult previousGe(byte[] limitKey) throws IOException {
         return ViewUtils.previousCmp(this, limitKey, -1);
@@ -287,7 +287,7 @@ public interface Cursor {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if limit key is null
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     public default LockResult previousGt(byte[] limitKey) throws IOException {
         return ViewUtils.previousCmp(this, limitKey, 0);
@@ -520,7 +520,7 @@ public interface Cursor {
      * <p>By default, this method simply calls load. Subclasses are encouraged to provide a
      * more efficient implementation.
      *
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -534,7 +534,7 @@ public interface Cursor {
      * Loads or reloads the value at the cursor's current position. Cursor value is set to null
      * if entry no longer exists, but the position remains unmodified.
      *
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
@@ -550,7 +550,7 @@ public interface Cursor {
      * instance as was provided to this method.
      *
      * @param value value to store; pass null to delete
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      * @throws ViewConstraintException if value is not permitted
      */
     public void store(byte[] value) throws IOException;
@@ -562,7 +562,7 @@ public interface Cursor {
      * optimization used by null transactions (auto-commit).
      *
      * @param value value to store; pass null to delete
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      * @throws ViewConstraintException if value is not permitted
      */
     public default void commit(byte[] value) throws IOException {
@@ -576,7 +576,7 @@ public interface Cursor {
      *
      * @param data non-null data to append
      * @throws NullPointerException if data is null
-     * @throws IllegalStateException if position is undefined at invocation time
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
     //public void append(byte[] data) throws IOException;
 

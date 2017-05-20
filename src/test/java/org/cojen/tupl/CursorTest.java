@@ -794,7 +794,7 @@ public class CursorTest {
         try {
             c.skip(Long.MAX_VALUE);
             fail();
-        } catch (IllegalStateException e) {
+        } catch (UnpositionedCursorException e) {
         }
     }
 
