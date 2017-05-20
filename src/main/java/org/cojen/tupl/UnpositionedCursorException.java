@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,32 +17,26 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
- * 
+ * Exception thrown when acting on a {@link Cursor} which doesn't have a position defined.
  *
  * @author Brian S O'Neill
  */
-class ViewUpdater extends ViewScanner implements Updater {
-    /**
-     * @param cursor unpositioned cursor
-     */
-    ViewUpdater(View view, Cursor cursor) throws IOException {
-        super(view, cursor);
+public class UnpositionedCursorException extends IllegalStateException {
+    private static final long serialVersionUID = 1L;
+
+    public UnpositionedCursorException() {
     }
 
-    protected ViewUpdater(Cursor cursor, View view) {
-        super(cursor, view);
+    public UnpositionedCursorException(String message) {
+        super(message);
     }
 
-    @Override
-    public boolean update(byte[] value) throws IOException {
-        try {
-            mCursor.store(value);
-        } catch (UnpositionedCursorException e) {
-            return false;
-        }
-        return step();
+    public UnpositionedCursorException(Throwable cause) {
+        super(cause);
+    }
+
+    public UnpositionedCursorException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

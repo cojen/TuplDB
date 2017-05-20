@@ -4100,7 +4100,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Latches and returns the leaf frame, not split.
      *
-     * @throws IllegalStateException if unpositioned
+     * @throws UnpositionedCursorException if unpositioned
      */
     final CursorFrame leafSharedNotSplit() throws IOException {
         CursorFrame leaf = leaf();

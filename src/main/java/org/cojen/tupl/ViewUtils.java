@@ -28,11 +28,11 @@ import java.util.concurrent.TimeUnit;
  */
 class ViewUtils {
     /**
-     * @throws IllegalStateException if object is null
+     * @throws UnpositionedCursorException if object is null
      */
     static void positionCheck(Object obj) {
         if (obj == null) {
-            throw new IllegalStateException("Cursor position is undefined");
+            throw new UnpositionedCursorException("Cursor position is undefined");
         }
     }
 
