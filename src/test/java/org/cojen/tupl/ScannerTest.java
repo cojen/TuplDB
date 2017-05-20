@@ -51,13 +51,17 @@ public class ScannerTest {
         mDb = null;
     }
 
+    protected Scanner newScanner(View view, Transaction txn) throws Exception {
+        return view.newScanner(txn);
+    }
+
     protected Database mDb;
 
     @Test
     public void empty() throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Scanner s = ix.newScanner(null);
+        Scanner s = newScanner(ix, null);
         assertNull(s.key());
         assertNull(s.value());
         assertFalse(s.step());
@@ -66,7 +70,7 @@ public class ScannerTest {
         assertNull(s.value());
         assertFalse(s.step());
 
-        s = ix.newScanner(null);
+        s = newScanner(ix, null);
         assertFalse(s.step(0));
         assertFalse(s.step(1));
         try {
@@ -75,7 +79,7 @@ public class ScannerTest {
         } catch (IllegalArgumentException e) {
         }
 
-        s = ix.viewReverse().newScanner(null);
+        s = newScanner(ix.viewReverse(), null);
         assertNull(s.key());
         assertNull(s.value());
         assertFalse(s.step());
@@ -84,7 +88,7 @@ public class ScannerTest {
         assertNull(s.value());
         assertFalse(s.step());
 
-        s = ix.newScanner(null);
+        s = newScanner(ix, null);
         AtomicInteger count = new AtomicInteger();
         s.scanAll((k, v) -> count.getAndIncrement());
         assertEquals(0, count.get());
@@ -99,7 +103,7 @@ public class ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Scanner s = ix.newScanner(null);
+        Scanner s = newScanner(ix, null);
         fastAssertArrayEquals(key, s.key());
         fastAssertArrayEquals(value, s.value());
         assertFalse(s.step());
@@ -108,7 +112,7 @@ public class ScannerTest {
         assertNull(s.value());
         assertFalse(s.step());
 
-        s = ix.newScanner(null);
+        s = newScanner(ix, null);
         assertTrue(s.step(0));
         fastAssertArrayEquals(key, s.key());
         fastAssertArrayEquals(value, s.value());
@@ -124,7 +128,7 @@ public class ScannerTest {
         } catch (IllegalArgumentException e) {
         }
 
-        s = ix.viewReverse().newScanner(null);
+        s = newScanner(ix.viewReverse(), null);
         fastAssertArrayEquals(key, s.key());
         fastAssertArrayEquals(value, s.value());
         assertFalse(s.step());
@@ -133,7 +137,7 @@ public class ScannerTest {
         assertNull(s.value());
         assertFalse(s.step());
 
-        s = ix.newScanner(null);
+        s = newScanner(ix, null);
         class Observed {
             volatile int count;
             volatile byte[] key;
@@ -161,7 +165,7 @@ public class ScannerTest {
         }
 
         ArrayList<SimpleEntry<byte[], byte[]>> list = new ArrayList<>();
-        Scanner s = ix.newScanner(null);
+        Scanner s = newScanner(ix, null);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
         });
@@ -176,7 +180,7 @@ public class ScannerTest {
 
         // Again, with only the keys.
         list.clear();
-        s = ix.viewKeys().newScanner(null);
+        s = newScanner(ix.viewKeys(), null);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
         });
@@ -199,7 +203,7 @@ public class ScannerTest {
         ArrayList<SimpleEntry<byte[], byte[]>> list = new ArrayList<>();
         Transaction txn = mDb.newTransaction();
         assertEquals(LockMode.UPGRADABLE_READ, txn.lockMode());
-        Scanner s = ix.newScanner(txn);
+        Scanner s = newScanner(ix, txn);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
         });

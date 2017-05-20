@@ -114,6 +114,7 @@ public class TestAll {
             WorkerTest.class,
             MergeViewTest.class,
             ScannerTest.class,
+            UpdaterTest.class,
         };
 
         String[] names = new String[classes.length];

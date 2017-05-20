@@ -61,10 +61,12 @@ public interface View {
     }
 
     /**
-     * Returns a new updater over this view. When providing a null transaction or one which is
-     * {@link LockMode#READ_COMMITTED READ_COMMITTED}, autocommit mode is used. Each entry is
-     * locked with {@link LockMode#UPGRADABLE_READ UPGRADABLE_READ} and is unlocked when moving
-     * to the next entry.
+     * Returns a new updater over this view. When providing a transaction which acquires locks
+     * (or the transaction is null), upgradable locks are acquired for each entry visited by
+     * the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
+     * entries which are stepped over are released when moving to the next entry. Updates with
+     * a null transaction are auto-committed and become visible to other transactions as the
+     * updater moves along.
      *
      * @param txn optional transaction for Updater to use
      * @return a new updater positioned at the first entry in the view
@@ -73,22 +75,28 @@ public interface View {
     public default Updater newUpdater(Transaction txn) throws IOException {
         if (txn == null) {
             txn = newTransaction(null);
-        } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
-            txn.enter();
-            txn.lockMode(LockMode.UPGRADABLE_READ);
-        } else {
-            return new ViewUpdater(this, newCursor(txn));
-        }
-
-        try {
-            return new ViewAutocommitUpdater(this, newCursor(txn));
-        } catch (Throwable e) {
             try {
-                txn.exit();
-            } catch (Throwable e2) {
-                Utils.suppress(e, e2);
+                return new ViewAutoCommitUpdater(this, newCursor(txn));
+            } catch (Throwable e) {
+                try {
+                    txn.exit();
+                } catch (Throwable e2) {
+                    Utils.suppress(e, e2);
+                }
+                throw e;
             }
-            throw e;
+        } else {
+            switch (txn.lockMode()) {
+            default:
+                return new ViewSimpleUpdater(this, newCursor(txn));
+            case REPEATABLE_READ:
+                return new ViewUpgradableUpdater(this, newCursor(txn));
+            case READ_COMMITTED:
+            case READ_UNCOMMITTED:
+                txn.enter();
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                return new ViewNonRepeatableUpdater(this, newCursor(txn));
+            }
         }
     }
 
