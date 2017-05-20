@@ -113,6 +113,7 @@ public class TestAll {
             TempIndexTest.class,
             WorkerTest.class,
             MergeViewTest.class,
+            ScannerTest.class,
         };
 
         String[] names = new String[classes.length];
