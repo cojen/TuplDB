@@ -4373,6 +4373,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         int pos;
         while (true) {
             if (parentNode.mSplit != null) {
+                // FIXME: must release and re-acquire node latch; see mergeLeaf method
                 parentNode = mTree.finishSplit(parentFrame, parentNode);
             }
 
@@ -4386,7 +4387,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             }
 
             try {
-                rightNode = latchChildRetainParentEx(parentNode, pos + 2);
+                rightNode = latchChildRetainParentEx(parentNode, pos + 2, true);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 throw e;
@@ -4395,6 +4396,7 @@ class TreeCursor implements CauseCloseable, Cursor {
             if (rightNode.mSplit != null) {
                 // Finish sibling split.
                 node.releaseExclusive();
+                // FIXME: must acquire node latch again
                 parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
                 continue;
             }
