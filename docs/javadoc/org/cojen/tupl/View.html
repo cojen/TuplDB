@@ -476,10 +476,12 @@ var activeTableTab = "activeTableTab";
 <h4>newUpdater</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a>&nbsp;newUpdater(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)
                     throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Returns a new updater over this view. When providing a null transaction or one which is
- <a href="../../../org/cojen/tupl/LockMode.html#READ_COMMITTED"><code>READ_COMMITTED</code></a>, autocommit mode is used. Each entry is
- locked with <a href="../../../org/cojen/tupl/LockMode.html#UPGRADABLE_READ"><code>UPGRADABLE_READ</code></a> and is unlocked when moving
- to the next entry.</div>
+<div class="block">Returns a new updater over this view. When providing a transaction which acquires locks
+ (or the transaction is null), upgradable locks are acquired for each entry visited by
+ the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
+ entries which are stepped over are released when moving to the next entry. Updates with
+ a null transaction are auto-committed and become visible to other transactions as the
+ updater moves along.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txn</code> - optional transaction for Updater to use</dd>

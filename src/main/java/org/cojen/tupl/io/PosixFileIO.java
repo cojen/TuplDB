@@ -327,6 +327,19 @@ final class PosixFileIO extends AbstractFileIO {
             throw lastErrorToException();
         }
 
+        if (options.contains(OpenOption.RANDOM_ACCESS)) {
+            try {
+                fadvise(fd, 0, 0, 1); // 1 = POSIX_FADV_RANDOM
+            } catch (Throwable e) {
+                try {
+                    closeFd(fd);
+                } catch (IOException e2) {
+                    Utils.suppress(e, e2);
+                }
+                throw e;
+            }
+        }
+
         return fd;
     }
 
