@@ -89,7 +89,11 @@ public interface Scanner extends AutoCloseable {
             if (key == null) {
                 return;
             }
-            action.accept(key, value());
+            try {
+                action.accept(key, value());
+            } catch (Throwable e) {
+                throw ViewUtils.fail(this, e);
+            }
             step();
         }
     }
