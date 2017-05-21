@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.3.12.3
+v1.3.12.3 (2017-05-20)
 ---------
 * Fix race condition when capturing pages during a snapshot.
 * Fix transaction id reset to zero when opening db.
