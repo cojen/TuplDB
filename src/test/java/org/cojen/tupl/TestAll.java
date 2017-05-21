@@ -113,6 +113,7 @@ public class TestAll {
             TempIndexTest.class,
             WorkerTest.class,
             MergeViewTest.class,
+            UnionViewTest.class,
             ScannerTest.class,
             UpdaterTest.class,
         };
