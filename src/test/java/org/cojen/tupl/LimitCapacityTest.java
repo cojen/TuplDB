@@ -58,6 +58,8 @@ public class LimitCapacityTest {
 
         Cursor fill = ix.newCursor(Transaction.BOGUS);
 
+        mDb.suspendCheckpoints();
+
         for (int i=0; i<50_000_000; i++) {
             Utils.encodeInt48BE(key, 0, i);
             fill.findNearby(key);
@@ -69,6 +71,9 @@ public class LimitCapacityTest {
                 continue;
             }
         }
+
+        mDb.resumeCheckpoints();
+        mDb.checkpoint();
 
         mDb.compactFile(null, 0.95);
 
@@ -125,8 +130,10 @@ public class LimitCapacityTest {
         // Allocate the root node.
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
+        mDb.checkpoint();
         Database.Stats stats = mDb.stats();
         long total = stats.totalPages();
+        mDb.suspendCheckpoints();
 
         // Value is too large.
         try {
@@ -137,6 +144,7 @@ public class LimitCapacityTest {
             // Expected.
         }
 
+        mDb.checkpoint();
         stats = mDb.stats();
         long delta = stats.totalPages() - total;
         assertTrue(delta >= minFreed);

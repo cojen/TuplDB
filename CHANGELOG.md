@@ -1,6 +1,19 @@
 Changelog
 =========
 
+v1.3.12.3 (2017-05-20)
+---------
+* Fix race condition when capturing pages during a snapshot.
+* Fix transaction id reset to zero when opening db.
+* Fix race condition when creating an index with replication.
+* Fix a rare deadlock when merging a tree node into a sibling node.
+* Fix double delete of header page when closing database concurrently with a checkpoint.
+* Eliminate potentially thread-unsafe code and improve handling of leader failover.
+* Ensure that replication consumer thread exits when switching to replica mode.
+* Prevent double database close.
+* Rollback after failed file preallocation.
+* Fix GC race condition in test.
+
 v1.3.12.2 (2017-04-15)
 ---------
 * Fix illegal latch release during recovery.

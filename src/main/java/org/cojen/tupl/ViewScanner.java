@@ -19,7 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -28,8 +27,8 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  */
 class ViewScanner implements Scanner {
-    protected View mView;
-    protected Cursor mCursor;
+    protected final View mView;
+    protected final Cursor mCursor;
 
     /**
      * @param cursor unpositioned cursor
@@ -40,6 +39,9 @@ class ViewScanner implements Scanner {
         cursor.first();
     }
 
+    /**
+     * @param cursor unpositioned cursor; to be positioned by subclass
+     */
     protected ViewScanner(Cursor cursor, View view) {
         mView = view;
         mCursor = cursor;
@@ -62,72 +64,36 @@ class ViewScanner implements Scanner {
 
     @Override
     public boolean step() throws IOException {
-        mCursor.next();
-        return mCursor.key() != null;
-    }
-
-    @Override
-    public boolean step(long amount) throws IOException {
-        if (amount > 0) {
-            mCursor.skip(amount);
-        } else if (amount < 0) {
-            throw ViewUtils.fail(this, new IllegalArgumentException());
-        }
-        return mCursor.key() != null;
-    }
-
-    @Override
-    public Scanner trySplit() throws IOException {
+        Cursor c = mCursor;
         try {
-            View view = mView;
-
-            if (view.getOrdering() == Ordering.UNSPECIFIED) {
-                return null;
-            }
-
-            Cursor cursor = mCursor;
-            Cursor highCursor = view.newCursor(cursor.link());
-            highCursor.autoload(false);
-            highCursor.random(cursor.key(), null);
-
-            byte[] highKey = highCursor.key();
-
-            if (highKey == null || Arrays.equals(highKey, cursor.key())) {
-                highCursor.reset();
-                return null;
-            }
-
-            Scanner highScanner = newScanner(highCursor, new BoundedView(view, highKey, null, 0));
-
-            if (cursor.autoload()) {
-                highCursor.autoload(true);
-                highCursor.load();
-            }
-
-            if (cursor instanceof BoundedCursor) {
-                BoundedCursor boundedCursor = ((BoundedCursor) cursor);
-                view = boundedCursor.mView;
-                cursor = boundedCursor.mSource;
-            } 
-
-            BoundedView lowView = new BoundedView(view, null, highKey, BoundedView.END_EXCLUSIVE);
-            BoundedCursor lowCursor = new BoundedCursor(lowView, cursor);
-
-            mView = lowView;
-            mCursor = lowCursor;
-
-            return highScanner;
+            c.next();
+            return c.key() != null;
+        } catch (UnpositionedCursorException e) {
+            return false;
         } catch (Throwable e) {
             throw ViewUtils.fail(this, e);
         }
     }
 
     @Override
-    public void close() {
-        mCursor.reset();
+    public boolean step(long amount) throws IOException {
+        Cursor c = mCursor;
+        if (amount > 0) {
+            try {
+                c.skip(amount);
+            } catch (UnpositionedCursorException e) {
+                return false;
+            } catch (Throwable e) {
+                throw ViewUtils.fail(this, e);
+            }
+        } else if (amount < 0) {
+            throw new IllegalArgumentException();
+        }
+        return c.key() != null;
     }
 
-    protected Scanner newScanner(Cursor cursor, View view) {
-        return new ViewScanner(cursor, view);
+    @Override
+    public void close() throws IOException {
+        mCursor.reset();
     }
 }

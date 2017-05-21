@@ -18,7 +18,10 @@
 package org.cojen.tupl;
 
 import java.util.Random;
+
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -437,25 +440,36 @@ public class CursorTest {
         ix.store(Transaction.BOGUS, key(1), value(1));
         ix.store(Transaction.BOGUS, key(2), value(2));
 
-        Cursor c = ix.newCursor(null);
-        c.last();
+        Cursor c;
+        {
+            Transaction txn = mDb.newTransaction();
+            txn.lockTimeout(60, TimeUnit.SECONDS);
+            c = ix.newCursor(txn);
+            c.last();
+        }
 
         // Lock key 1.
         Transaction txn = mDb.newTransaction();
         ix.lockExclusive(txn, key(1));
 
-        // Wait and then delete the key.
-        new Thread(() -> {
-            try {
-                Thread.sleep(500);
-                ix.delete(txn, key(1));
-                txn.commit();
-            } catch (Exception e) {
-            }
-        }).start();
+        AtomicReference<Exception> ex = new AtomicReference<>();
 
-        // Must fully skip past key 1.
-        c.previousGe(key(0));
+        Thread t = new Thread(() -> {
+            try {
+                // Must fully skip past key 1.
+                c.previousGe(key(0));
+            } catch (Exception e) {
+                ex.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(t);
+
+        ix.delete(txn, key(1));
+        txn.commit();
+
+        t.join();
+        assertNull(ex.get());
 
         fastAssertArrayEquals(value(0), c.value());
     }
@@ -527,25 +541,36 @@ public class CursorTest {
         ix.store(Transaction.BOGUS, key(1), value(1));
         ix.store(Transaction.BOGUS, key(2), value(2));
 
-        Cursor c = ix.newCursor(null);
-        c.first();
+        Cursor c;
+        {
+            Transaction txn = mDb.newTransaction();
+            txn.lockTimeout(60, TimeUnit.SECONDS);
+            c = ix.newCursor(txn);
+            c.first();
+        }
 
         // Lock key 1.
         Transaction txn = mDb.newTransaction();
         ix.lockExclusive(txn, key(1));
 
-        // Wait and then delete the key.
-        new Thread(() -> {
-            try {
-                Thread.sleep(500);
-                ix.delete(txn, key(1));
-                txn.commit();
-            } catch (Exception e) {
-            }
-        }).start();
+        AtomicReference<Exception> ex = new AtomicReference<>();
 
-        // Must fully skip past key 1.
-        c.nextLe(key(2));
+        Thread t = new Thread(() -> {
+            try {
+                // Must fully skip past key 1.
+                c.nextLe(key(2));
+            } catch (Exception e) {
+                ex.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(t);
+
+        ix.delete(txn, key(1));
+        txn.commit();
+
+        t.join();
+        assertNull(ex.get());
 
         fastAssertArrayEquals(key(2), c.key());
         fastAssertArrayEquals(value(2), c.value());
@@ -769,7 +794,7 @@ public class CursorTest {
         try {
             c.skip(Long.MAX_VALUE);
             fail();
-        } catch (IllegalStateException e) {
+        } catch (UnpositionedCursorException e) {
         }
     }
 
@@ -1184,11 +1209,14 @@ public class CursorTest {
 
         ix.store(null, key2, value2);
 
+        CountDownLatch waiter = new CountDownLatch(1);
+
         Thread t = new Thread(() -> {
             try {
                 Transaction txn = mDb.newTransaction();
                 try {
                     ix.store(txn, key, value);
+                    waiter.countDown();
                     Thread.sleep(1000);
                     txn.commit();
                 } finally {
@@ -1200,26 +1228,12 @@ public class CursorTest {
         });
 
         t.start();
-
-        // Wait for thread to lock the key.
-        while (t.isAlive()) {
-            Transaction txn = mDb.newTransaction();
-            try {
-                txn.lockTimeout(1, TimeUnit.MILLISECONDS);
-                try {
-                    ix.load(txn, key);
-                } catch (LockTimeoutException e) {
-                    // Locked.
-                    break;
-                }
-            } finally {
-                txn.reset();
-            }
-        }
+        // Wait for thread to lock the key and store the updated value.
+        waiter.await(60, TimeUnit.SECONDS);
 
         Transaction txn = mDb.newTransaction();
         try {
-            txn.lockTimeout(10, TimeUnit.SECONDS);
+            txn.lockTimeout(60, TimeUnit.SECONDS);
 
             Cursor c = ix.newCursor(txn);
             try {
