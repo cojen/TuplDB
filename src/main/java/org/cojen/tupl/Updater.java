@@ -58,17 +58,6 @@ public interface Updater extends Scanner, Flushable {
     }
 
     /**
-     * Attempt to split the remaining set of entries between this updater and a new one. Each
-     * can be acted upon concurrently.
-     *
-     * @return null if not split
-     */
-    @Override
-    default Updater trySplit() throws IOException {
-        return null;
-    }
-
-    /**
      * Ensures that any queued update operations are applied; flushing is automatically
      * performed when the updater is closed.
      */

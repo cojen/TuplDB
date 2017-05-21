@@ -138,7 +138,13 @@ abstract class AbstractFileIO extends FileIO {
                     // writers outside the extension range.
                     mResizeLatch.acquireExclusive();
                     try {
-                        preallocate(prevLength, length - prevLength);
+                        try {
+                            preallocate(prevLength, length - prevLength);
+                        } catch (Throwable e) {
+                            // Rollback any partial allocation.
+                            doSetLength(prevLength);
+                            throw e;
+                        }
                     } finally {
                         mResizeLatch.releaseExclusive();
                     }

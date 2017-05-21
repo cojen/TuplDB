@@ -20,47 +20,27 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Simple updater which doesn't do anything special with the cursor's transaction.
  *
  * @author Brian S O'Neill
  */
-class ViewUpdater extends ViewScanner implements Updater {
-    // FIXME: If transaction is null or read-committed, then create an upgradable-read
-    // transaction which is reset when the updater is closed. Acquired locks for entries which
-    // are stepped over are unlocked just like a filter would do. Describe what a null
-    // transaction means in the javadocs for the newScanner and newUpdater methods.
-
+class ViewSimpleUpdater extends ViewScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewUpdater(View view, Cursor cursor) throws IOException {
+    ViewSimpleUpdater(View view, Cursor cursor) throws IOException {
         super(view, cursor);
-    }
-
-    private ViewUpdater(Cursor cursor, View view) {
-        super(cursor, view);
     }
 
     @Override
     public boolean update(byte[] value) throws IOException {
         try {
             mCursor.store(value);
-        } catch (IllegalStateException e) {
-            if (mCursor.key() == null) {
-                return false;
-            }
-            throw e;
+        } catch (UnpositionedCursorException e) {
+            return false;
+        } catch (Throwable e) {
+            throw ViewUtils.fail(this, e);
         }
         return step();
-    }
-
-    @Override
-    public Updater trySplit() throws IOException {
-        return (Updater) super.trySplit();
-    }
-
-    @Override
-    protected Updater newScanner(Cursor cursor, View view) {
-        return new ViewUpdater(cursor, view);
     }
 }

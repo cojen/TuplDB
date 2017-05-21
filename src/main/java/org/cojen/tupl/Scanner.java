@@ -94,16 +94,6 @@ public interface Scanner extends AutoCloseable {
         }
     }
 
-    /**
-     * Attempt to split the remaining set of entries between this scanner and a new one. Each
-     * can be acted upon concurrently.
-     *
-     * @return null if not split
-     */
-    default Scanner trySplit() throws IOException {
-        return null;
-    }
-
     @Override
     public void close() throws IOException;
 }

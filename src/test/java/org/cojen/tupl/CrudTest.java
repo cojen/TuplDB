@@ -100,10 +100,12 @@ public class CrudTest {
                 try {
                     ix.lockExclusive(txn, k1);
                     ix.store(txn, k2, null);
-                    Thread.sleep(2500);
+                    Thread.sleep(60_000);
                 } finally {
                     txn.exit();
                 }
+            } catch (InterruptedException e) {
+                // Expected.
             } catch (Exception e) {
                 Utils.uncaught(e);
             }
@@ -121,10 +123,11 @@ public class CrudTest {
         } catch (LockTimeoutException e) {
         }
 
+        t.interrupt();
+        t.join();
+
         assertTrue(ix.exists(null, k2));
         assertFalse(ix.exists(null, k1));
-
-        t.join();
     }
 
     @Test

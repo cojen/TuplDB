@@ -57,7 +57,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -165,7 +166,13 @@ final class LocalDatabase extends AbstractDatabase {
 
     // Set during checkpoint after commit state has switched. If checkpoint aborts, next
     // checkpoint will resume with this commit header and master undo log.
-    private /*P*/ byte[] mCommitHeader = p_null();
+    /*P*/ // [
+    private byte[] mCommitHeader;
+    /*P*/ // |
+    /*P*/ // private volatile long mCommitHeader = p_null();
+    /*P*/ // private static final AtomicLongFieldUpdater<LocalDatabase> cCommitHeaderUpdater =
+    /*P*/ //     AtomicLongFieldUpdater.newUpdater(LocalDatabase.class, "mCommitHeader");
+    /*P*/ // ]
     private UndoLog mCommitMasterUndoLog;
 
     // Typically opposite of mCommitState, or negative if checkpoint is not in
@@ -228,12 +235,11 @@ final class LocalDatabase extends AbstractDatabase {
 
     private volatile ExecutorService mSorterExecutor;
 
-    private volatile boolean mClosed;
+    private volatile int mClosed;
     private volatile Throwable mClosedCause;
 
-    private static final AtomicReferenceFieldUpdater<LocalDatabase, Throwable>
-        cClosedCauseUpdater = AtomicReferenceFieldUpdater.newUpdater
-        (LocalDatabase.class, Throwable.class, "mClosedCause");
+    private static final AtomicIntegerFieldUpdater<LocalDatabase>
+        cClosedUpdater = AtomicIntegerFieldUpdater.newUpdater(LocalDatabase.class, "mClosed");
 
     /**
      * Open a database, creating it if necessary.
@@ -633,6 +639,9 @@ final class LocalDatabase extends AbstractDatabase {
             }
 
             long txnId = decodeLongLE(header, I_TRANSACTION_ID);
+            if (txnId < 0) {
+                throw new CorruptDatabaseException("Invalid transaction id: " + txnId);
+            }
 
             long redoNum = decodeLongLE(header, I_CHECKPOINT_NUMBER);
             long redoPos = decodeLongLE(header, I_REDO_POSITION);
@@ -823,7 +832,12 @@ final class LocalDatabase extends AbstractDatabase {
                         // delete the newly created redo log file.
 
                         if (doCheckpoint) {
+                            // Do this early for checkpoint to store correct transaction id.
+                            resetTransactionContexts(txnId);
+                            txnId = -1;
+
                             checkpoint(true, 0, 0);
+
                             // Only cleanup after successful checkpoint.
                             for (File file : redoFiles) {
                                 file.delete();
@@ -839,8 +853,8 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            for (TransactionContext txnContext : mTxnContexts) {
-                txnContext.resetTransactionId(txnId++);
+            if (txnId >= 0) {
+                resetTransactionContexts(txnId);
             }
 
             if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
@@ -1019,14 +1033,32 @@ final class LocalDatabase extends AbstractDatabase {
             idKey[0] = KEY_TYPE_INDEX_ID;
             encodeLongBE(idKey, 1, id);
 
-            byte[] name = mRegistryKeyMap.load(txn, idKey);
+            byte[] name;
+
+            if (txn != null) {
+                name = mRegistryKeyMap.load(txn, idKey);
+            } else {
+                // Lookup name with exclusive lock, to prevent races with concurrent index
+                // creation. If a replicated operation which requires the newly created index
+                // merely acquired a shared lock, then it might not find the index at all.
+                Locker locker = mRegistryKeyMap.lockExclusiveLocal
+                    (idKey, LockManager.hash(mRegistryKeyMap.getId(), idKey));
+                try {
+                    name = mRegistryKeyMap.load(Transaction.BOGUS, idKey);
+                } finally {
+                    locker.unlock();
+                }
+            }
 
             if (name == null) {
                 checkClosed();
                 return null;
             }
 
-            index = openTree(txn, name, false);
+            byte[] treeIdBytes = new byte[8];
+            encodeLongBE(treeIdBytes, 0, id);            
+
+            index = openTree(txn, treeIdBytes, name, false);
         } catch (Throwable e) {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
@@ -1615,6 +1647,12 @@ final class LocalDatabase extends AbstractDatabase {
         return redo;
     }
 
+    private void resetTransactionContexts(long txnId) {
+        for (TransactionContext txnContext : mTxnContexts) {
+            txnContext.resetTransactionId(txnId++);
+        }
+    }
+
     /**
      * Used by auto-commit operations that don't have an explicit transaction.
      */
@@ -1988,9 +2026,13 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public void checkpoint() throws IOException {
-        if (!isClosed() && mPageDb.isDurable()) {
+        while (!isClosed() && mPageDb.isDurable()) {
             try {
                 checkpoint(false, 0, 0);
+                return;
+            } catch (UnmodifiableReplicaException e) {
+                // Retry.
+                Thread.yield();
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
                 closeQuietly(null, this, e);
@@ -2197,20 +2239,19 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
-        if (mClosed) {
+        if (!cClosedUpdater.compareAndSet(this, 0, 1)) {
             return;
         }
 
         if (cause != null) {
-            if (cClosedCauseUpdater.compareAndSet(this, null, cause)) {
-                Throwable rootCause = rootCause(cause);
-                if (mEventListener == null) {
-                    uncaught(rootCause);
-                } else {
-                    mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
-                                          "Closing database due to unhandled exception: %1$s",
-                                          rootCause);
-                }
+            mClosedCause = cause;
+            Throwable rootCause = rootCause(cause);
+            if (mEventListener == null) {
+                uncaught(rootCause);
+            } else {
+                mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
+                                      "Closing database due to unhandled exception: %1$s",
+                                      rootCause);
             }
         }
 
@@ -2223,12 +2264,9 @@ final class LocalDatabase extends AbstractDatabase {
             if (shutdown) {
                 mCheckpointLock.lock();
                 lockedCheckpointer = true;
-
-                if (!mClosed) {
-                    checkpoint(true, 0, 0);
-                    if (c != null) {
-                        ct = c.close(cause);
-                    }
+                checkpoint(true, 0, 0);
+                if (c != null) {
+                    ct = c.close(cause);
                 }
             } else {
                 if (c != null) {
@@ -2248,8 +2286,6 @@ final class LocalDatabase extends AbstractDatabase {
                     lockedCheckpointer = true;
                 }
             }
-
-            mClosed = true;
         } finally {
             if (ct != null) {
                 ct.interrupt();
@@ -2391,13 +2427,21 @@ final class LocalDatabase extends AbstractDatabase {
             if (mSparePagePool != null) {
                 mSparePagePool.delete();
             }
-            p_delete(mCommitHeader);
+            deleteCommitHeader();
             p_arenaDelete(mArena);
         }
     }
 
+    private void deleteCommitHeader() {
+        /*P*/ // [
+        mCommitHeader = null;
+        /*P*/ // |
+        /*P*/ // p_delete(cCommitHeaderUpdater.getAndSet(this, p_null()));
+        /*P*/ // ]
+    }
+
     boolean isClosed() {
-        return mClosed || mClosedCause != null;
+        return mClosed != 0;
     }
 
     void checkClosed() throws DatabaseException {
@@ -2677,18 +2721,22 @@ final class LocalDatabase extends AbstractDatabase {
      * @param name required (cannot be null)
      */
     private Tree openTree(byte[] name, boolean create) throws IOException {
-        return openTree(null, name, create);
+        return openTree(null, null, name, create);
     }
 
     /**
+     * @param findTxn optional
+     * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private Tree openTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
+    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+        throws IOException
+    {
         Tree tree = quickFindIndex(name);
         if (tree == null) {
             CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
-                tree = doOpenTree(findTxn, name, create);
+                tree = doOpenTree(findTxn, treeIdBytes, name, create);
             } finally {
                 shared.release();
             }
@@ -2699,16 +2747,23 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Caller must hold commit lock.
      *
+     * @param findTxn optional
+     * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private Tree doOpenTree(Transaction findTxn, byte[] name, boolean create) throws IOException {
+    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+        throws IOException
+    {
         checkClosed();
 
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
         byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
-        byte[] treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
+
+        if (treeIdBytes == null) {
+            treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
+        }
 
         long treeId;
         // Is non-null if tree was created.
@@ -2763,6 +2818,7 @@ final class LocalDatabase extends AbstractDatabase {
                             createTxn = newAlwaysRedoTransaction();
                         }
 
+                        // Insert order is important for the indexById method to work reliably.
                         if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
                             throw new DatabaseException("Unable to insert index id");
                         }
@@ -4778,8 +4834,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
 
             // Reset for next checkpoint.
-            p_delete(mCommitHeader);
-            mCommitHeader = p_null();
+            deleteCommitHeader();
             mCommitMasterUndoLog = null;
 
             if (masterUndoLog != null) {

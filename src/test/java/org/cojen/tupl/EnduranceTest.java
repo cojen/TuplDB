@@ -189,7 +189,9 @@ public class EnduranceTest {
                     try {
                         mIx.store(null, keyBuffer.array(), rowValue);
                     } catch (IOException e) {
-                        assertNull(e);
+                        if (keepRunning.get()) {
+                            assertNull(e);
+                        }
                     }
 
                     // If the test only did inserts and stores, eventually all row ids would
@@ -202,7 +204,9 @@ public class EnduranceTest {
                     try {
                         mIx.delete(null, keyBuffer.array());
                     } catch (IOException e) {
-                        assertNull(e);
+                        if (keepRunning.get()) {
+                            assertNull(e);
+                        }
                     }
                 }
             };

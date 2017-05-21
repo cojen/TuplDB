@@ -220,7 +220,7 @@ public class TransformerTest {
         try {
             c.next();
             fail();
-        } catch (IllegalStateException e) {
+        } catch (UnpositionedCursorException e) {
             // Expected.
         }
 

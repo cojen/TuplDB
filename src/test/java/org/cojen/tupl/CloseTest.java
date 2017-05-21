@@ -69,7 +69,7 @@ public class CloseTest {
         try {
             c.next();
             fail();
-        } catch (IllegalStateException e) {
+        } catch (UnpositionedCursorException e) {
             // expected -- cursor is unpositioned
         }
 
@@ -346,8 +346,8 @@ public class CloseTest {
 
     @Test
     public void deleteMany() throws Exception {
+        mDb.suspendCheckpoints();
         Index ix = mDb.openIndex("delete");
-        long id = ix.getId();
 
         for (int i=0; i<10000; i++) {
             ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
