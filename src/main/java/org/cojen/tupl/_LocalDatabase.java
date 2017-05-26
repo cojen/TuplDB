@@ -150,7 +150,7 @@ final class _LocalDatabase extends AbstractDatabase {
     private final _PagePool mSparePagePool;
 
     private final Object mArena;
-    private final _NodeUsageList[] mUsageLists;
+    private final _NodeContext[] mNodeContexts;
 
     private final CommitLock mCommitLock;
 
@@ -196,8 +196,6 @@ final class _LocalDatabase extends AbstractDatabase {
     private final Map<byte[], _TreeRef> mOpenTrees;
     private final LHashTable.Obj<_TreeRef> mOpenTreesById;
     private final ReferenceQueue<_Tree> mOpenTreesRefQueue;
-
-    private final _NodeDirtyList mDirtyList;
 
     // Map of all loaded nodes.
     private final _Node[] mNodeMapTable;
@@ -506,16 +504,16 @@ final class _LocalDatabase extends AbstractDatabase {
 
             mCommitLock = mPageDb.commitLock();
 
-            // Pre-allocate nodes. They are automatically added to the usage lists, and so
-            // nothing special needs to be done to allow them to get used. Since the initial
-            // state is clean, evicting these nodes does nothing.
+            // Pre-allocate nodes. They are automatically added to the node context usage
+            // lists, and so nothing special needs to be done to allow them to get used. Since
+            // the initial state is clean, evicting these nodes does nothing.
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CACHE_INIT_BEGIN,
                                       "Initializing %1$d cached nodes", minCache);
             }
 
-            _NodeUsageList[] usageLists;
+            _NodeContext[] contexts;
             try {
                 // Try to allocate the minimum cache size into an arena, which has lower memory
                 // overhead, is page aligned, and takes less time to zero-fill.
@@ -555,7 +553,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 int rem = maxCache % stripes;
 
-                usageLists = new _NodeUsageList[stripes];
+                contexts = new _NodeContext[stripes];
 
                 for (int i=0; i<stripes; i++) {
                     int size = stripeSize;
@@ -563,22 +561,22 @@ final class _LocalDatabase extends AbstractDatabase {
                         size++;
                         rem--;
                     }
-                    usageLists[i] = new _NodeUsageList(this, usedRate, size);
+                    contexts[i] = new _NodeContext(this, usedRate, size);
                 }
 
                 stripeSize = minCache / stripes;
                 rem = minCache % stripes;
 
-                for (_NodeUsageList usageList : usageLists) {
+                for (_NodeContext context : contexts) {
                     int size = stripeSize;
                     if (rem > 0) {
                         size++;
                         rem--;
                     }
-                    usageList.initialize(mArena, size);
+                    context.initialize(mArena, size);
                 }
             } catch (OutOfMemoryError e) {
-                usageLists = null;
+                contexts = null;
                 OutOfMemoryError oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
@@ -586,7 +584,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 throw oom;
             }
 
-            mUsageLists = usageLists;
+            mNodeContexts = contexts;
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
@@ -669,8 +667,6 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                 }
             }
-
-            mDirtyList = new _NodeDirtyList();
 
             if (openMode != OPEN_TEMP) {
                 _Tree tree = openInternalTree(_Tree.FRAGMENTED_TRASH_ID, false, config);
@@ -1849,8 +1845,8 @@ final class _LocalDatabase extends AbstractDatabase {
             shared.release();
         }
 
-        for (_NodeUsageList usageList : mUsageLists) {
-            stats.cachedPages += usageList.size();
+        for (_NodeContext context : mNodeContexts) {
+            stats.cachedPages += context.size();
         }
 
         return stats;
@@ -2295,16 +2291,12 @@ final class _LocalDatabase extends AbstractDatabase {
                 lock.acquireExclusive();
             }
             try {
-                if (mUsageLists != null) {
-                    for (_NodeUsageList usageList : mUsageLists) {
-                        if (usageList != null) {
-                            usageList.delete();
+                if (mNodeContexts != null) {
+                    for (_NodeContext context : mNodeContexts) {
+                        if (context != null) {
+                            context.delete();
                         }
                     }
-                }
-
-                if (mDirtyList != null) {
-                    mDirtyList.delete(this);
                 }
 
                 if (mTxnContexts != null) {
@@ -2499,7 +2491,7 @@ final class _LocalDatabase extends AbstractDatabase {
     private _Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
         if (rootId == 0) {
             // Pass tree identifier to spread allocations around.
-            _Node rootNode = allocLatchedNode(treeId, _NodeUsageList.MODE_UNEVICTABLE);
+            _Node rootNode = allocLatchedNode(treeId, _NodeContext.MODE_UNEVICTABLE);
 
             try {
                 /*P*/ // [
@@ -2530,7 +2522,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            rootNode = allocLatchedNode(rootId, _NodeUsageList.MODE_UNEVICTABLE);
+            rootNode = allocLatchedNode(rootId, _NodeContext.MODE_UNEVICTABLE);
 
             try {
                 try {
@@ -3417,14 +3409,14 @@ final class _LocalDatabase extends AbstractDatabase {
     _Node allocLatchedNode(long anyNodeId, int mode) throws IOException {
         mode |= mPageDb.allocMode();
 
-        _NodeUsageList[] usageLists = mUsageLists;
-        int listIx = ((int) anyNodeId) & (usageLists.length - 1);
+        _NodeContext[] contexts = mNodeContexts;
+        int listIx = ((int) anyNodeId) & (contexts.length - 1);
         IOException fail = null;
 
         for (int trial = 1; trial <= 3; trial++) {
-            for (int i=0; i<usageLists.length; i++) {
+            for (int i=0; i<contexts.length; i++) {
                 try {
-                    _Node node = usageLists[listIx].tryAllocLatchedNode(trial, mode);
+                    _Node node = contexts[listIx].tryAllocLatchedNode(trial, mode);
                     if (node != null) {
                         return node;
                     }
@@ -3434,7 +3426,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                 }
                 if (--listIx < 0) {
-                    listIx = usageLists.length - 1;
+                    listIx = contexts.length - 1;
                 }
             }
 
@@ -3481,7 +3473,7 @@ final class _LocalDatabase extends AbstractDatabase {
         }
         /*P*/ // ]
 
-        mDirtyList.add(node, mCommitState);
+        node.mContext.addDirty(node, mCommitState);
         return node;
     }
 
@@ -3696,15 +3688,16 @@ final class _LocalDatabase extends AbstractDatabase {
         /*P*/ // ]
 
         node.mId = newId;
-        mDirtyList.add(node, mCommitState);
+        node.mContext.addDirty(node, mCommitState);
     }
 
     /**
      * Remove the old node from the dirty list and swap in the new node. Caller must hold
      * commit lock and latched the old node. The cached state of the nodes is not altered.
+     * Both nodes must belong to the same context.
      */
     void swapIfDirty(_Node oldNode, _Node newNode) {
-        mDirtyList.swapIfDirty(oldNode, newNode);
+        oldNode.mContext.swapIfDirty(oldNode, newNode);
     }
 
     /**
@@ -3717,7 +3710,7 @@ final class _LocalDatabase extends AbstractDatabase {
             mPageDb.dirtyPage(node.mId);
         }
         /*P*/ // ]
-        mDirtyList.add(node, mCommitState);
+        node.mContext.addDirty(node, mCommitState);
     }
 
     /**
@@ -4414,7 +4407,7 @@ final class _LocalDatabase extends AbstractDatabase {
     private _Node removeInode(long nodeId) throws IOException {
         _Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
-            node = allocLatchedNode(nodeId, _NodeUsageList.MODE_UNEVICTABLE);
+            node = allocLatchedNode(nodeId, _NodeContext.MODE_UNEVICTABLE);
             /*P*/ // [
             // node.type(TYPE_FRAGMENT);
             /*P*/ // ]
@@ -4832,7 +4825,9 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         try {
-            mDirtyList.flush(mPageDb, stateToFlush);
+            for (_NodeContext context : mNodeContexts) {
+                context.flushDirty(mPageDb, stateToFlush);
+            }
 
             if (mRedoWriter != null) {
                 mRedoWriter.checkpointFlushed();
