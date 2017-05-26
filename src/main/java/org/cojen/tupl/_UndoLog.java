@@ -1058,7 +1058,7 @@ final class _UndoLog implements _DatabaseAccess {
      * Caller must hold db commit lock.
      */
     private _Node allocUnevictableNode(long lowerNodeId) throws IOException {
-        _Node node = mDatabase.allocDirtyNode(_NodeUsageList.MODE_UNEVICTABLE);
+        _Node node = mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
         node.type(_Node.TYPE_UNDO_LOG);
         p_longPutLE(node.mPage, I_LOWER_NODE_ID, lowerNodeId);
         return node;
@@ -1471,7 +1471,7 @@ final class _UndoLog implements _DatabaseAccess {
      * @return latched, unevictable node
      */
     private static _Node readUndoLogNode(_LocalDatabase db, long nodeId) throws IOException {
-        _Node node = db.allocLatchedNode(nodeId, _NodeUsageList.MODE_UNEVICTABLE);
+        _Node node = db.allocLatchedNode(nodeId, _NodeContext.MODE_UNEVICTABLE);
         try {
             node.read(db, nodeId);
             if (node.type() != _Node.TYPE_UNDO_LOG) {
