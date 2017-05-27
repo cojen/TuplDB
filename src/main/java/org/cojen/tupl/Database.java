@@ -376,6 +376,7 @@ public interface Database extends CauseCloseable, Flushable {
         public long freePages;
         public long totalPages;
         public long cachedPages;
+        public long dirtyPages;
         public int openIndexes;
         public long lockCount;
         public long cursorCount;
@@ -408,6 +409,13 @@ public interface Database extends CauseCloseable, Flushable {
          */
         public long cachedPages() {
             return cachedPages;
+        }
+
+        /**
+         * Returns the count of pages which are dirty (need to be written with a checkpoint).
+         */
+        public long dirtyPages() {
+            return dirtyPages;
         }
 
         /**
@@ -481,6 +489,8 @@ public interface Database extends CauseCloseable, Flushable {
                 return pageSize == other.pageSize
                     && freePages == other.freePages
                     && totalPages == other.totalPages
+                    && cachedPages == other.cachedPages
+                    && dirtyPages == other.dirtyPages
                     && openIndexes == other.openIndexes
                     && lockCount == other.lockCount
                     && cursorCount == other.cursorCount
@@ -496,6 +506,7 @@ public interface Database extends CauseCloseable, Flushable {
                 + ", freePages=" + freePages
                 + ", totalPages=" + totalPages
                 + ", cachedPages=" + cachedPages
+                + ", dirtyPages=" + dirtyPages
                 + ", openIndexes=" + openIndexes
                 + ", lockCount=" + lockCount
                 + ", cursorCount=" + cursorCount

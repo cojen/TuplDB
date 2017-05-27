@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -152,29 +152,33 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#freePages">freePages</a></span></code>&nbsp;</td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#dirtyPages">dirtyPages</a></span></code>&nbsp;</td>
 </tr>
 <tr class="rowColor">
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#freePages">freePages</a></span></code>&nbsp;</td>
+</tr>
+<tr class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#lockCount">lockCount</a></span></code>&nbsp;</td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#openIndexes">openIndexes</a></span></code>&nbsp;</td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#pageSize">pageSize</a></span></code>&nbsp;</td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#totalPages">totalPages</a></span></code>&nbsp;</td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#txnCount">txnCount</a></span></code>&nbsp;</td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#txnsCreated">txnsCreated</a></span></code>&nbsp;</td>
 </tr>
@@ -227,55 +231,61 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 </td>
 </tr>
 <tr id="i3" class="rowColor">
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#dirtyPages--">dirtyPages</a></span>()</code>
+<div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
+</td>
+</tr>
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#equals-java.lang.Object-">equals</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>&nbsp;</td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#freePages--">freePages</a></span>()</code>
 <div class="block">Returns the amount of unused pages in the database.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#hashCode--">hashCode</a></span>()</code>&nbsp;</td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#lockCount--">lockCount</a></span>()</code>
 <div class="block">Returns the amount of locks currently allocated.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#openIndexes--">openIndexes</a></span>()</code>
 <div class="block">Returns the amount of indexes currently open.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#pageSize--">pageSize</a></span>()</code>
 <div class="block">Returns the allocation page size.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#toString--">toString</a></span>()</code>&nbsp;</td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#totalPages--">totalPages</a></span>()</code>
 <div class="block">Returns the total amount of pages in the database.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#transactionCount--">transactionCount</a></span>()</code>
 <div class="block">Returns the amount of fully-established transactions which are in a non-reset
  state.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#transactionsCreated--">transactionsCreated</a></span>()</code>
 <div class="block">Returns the total amount of fully-established transactions created over the life of
@@ -338,6 +348,15 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <li class="blockList">
 <h4>cachedPages</h4>
 <pre>public&nbsp;long cachedPages</pre>
+</li>
+</ul>
+<a name="dirtyPages">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>dirtyPages</h4>
+<pre>public&nbsp;long dirtyPages</pre>
 </li>
 </ul>
 <a name="openIndexes">
@@ -448,6 +467,16 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <h4>cachedPages</h4>
 <pre>public&nbsp;long&nbsp;cachedPages()</pre>
 <div class="block">Returns the current size of the cache, in pages.</div>
+</li>
+</ul>
+<a name="dirtyPages--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>dirtyPages</h4>
+<pre>public&nbsp;long&nbsp;dirtyPages()</pre>
+<div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
 </li>
 </ul>
 <a name="openIndexes--">

@@ -1846,7 +1846,12 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         for (_NodeContext context : mNodeContexts) {
-            stats.cachedPages += context.size();
+            stats.cachedPages += context.nodeCount();
+            stats.dirtyPages += context.dirtyCount();
+        }
+
+        if (stats.dirtyPages > stats.totalPages) {
+            stats.dirtyPages = stats.totalPages;
         }
 
         return stats;
