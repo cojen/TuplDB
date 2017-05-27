@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.util.Clutch;
-import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl._Node.*;
 import static org.cojen.tupl.DirectPageOps.*;
@@ -58,13 +57,10 @@ final class _NodeContext extends Clutch.Pack {
     private _Node mMostRecentlyUsed;
     private _Node mLeastRecentlyUsed;
 
-    // The dirty list fields are guarded by this latch.
-    private final Latch mDirtyLatch;
-
-    // Linked list of dirty nodes.
+    // Linked list of dirty nodes, guarded by synchronization.
     private _Node mFirstDirty;
     private _Node mLastDirty;
-
+    private long mDirtyCount;
     // Iterator over dirty nodes.
     private _Node mFlushNext;
 
@@ -87,7 +83,6 @@ final class _NodeContext extends Clutch.Pack {
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
-        mDirtyLatch = new Latch();
     }
 
     int pageSize() {
@@ -110,7 +105,7 @@ final class _NodeContext extends Clutch.Pack {
         }
     }
 
-    int size() {
+    int nodeCount() {
         acquireShared();
         int size = mSize;
         releaseShared();
@@ -442,42 +437,38 @@ final class _NodeContext extends Clutch.Pack {
      * @param node latched exclusively
      * @param cachedState node cached state to set; must be one of the dirty states
      */
-    void addDirty(_Node node, byte cachedState) {
-        mDirtyLatch.acquireExclusive();
-        try {
-            node.mCachedState = cachedState;
+    synchronized void addDirty(_Node node, byte cachedState) {
+        node.mCachedState = cachedState;
 
-            final _Node next = node.mNextDirty;
-            final _Node prev = node.mPrevDirty;
-            if (next != null) {
-                if ((next.mPrevDirty = prev) == null) {
-                    mFirstDirty = next;
-                } else {
-                    prev.mNextDirty = next;
-                }
-                node.mNextDirty = null;
-                (node.mPrevDirty = mLastDirty).mNextDirty = node;
-            } else if (prev == null) {
-                _Node last = mLastDirty;
-                if (last == node) {
-                    return;
-                }
-                if (last == null) {
-                    mFirstDirty = node;
-                } else {
-                    node.mPrevDirty = last;
-                    last.mNextDirty = node;
-                }
+        final _Node next = node.mNextDirty;
+        final _Node prev = node.mPrevDirty;
+        if (next != null) {
+            if ((next.mPrevDirty = prev) == null) {
+                mFirstDirty = next;
+            } else {
+                prev.mNextDirty = next;
             }
-
-            mLastDirty = node;
-
-            // See flush method for explanation of node latch requirement.
-            if (mFlushNext == node) {
-                mFlushNext = next;
+            node.mNextDirty = null;
+            (node.mPrevDirty = mLastDirty).mNextDirty = node;
+        } else if (prev == null) {
+            _Node last = mLastDirty;
+            if (last == node) {
+                return;
             }
-        } finally {
-            mDirtyLatch.releaseExclusive();
+            mDirtyCount++;
+            if (last == null) {
+                mFirstDirty = node;
+            } else {
+                node.mPrevDirty = last;
+                last.mNextDirty = node;
+            }
+        }
+
+        mLastDirty = node;
+
+        // See flush method for explanation of node latch requirement.
+        if (mFlushNext == node) {
+            mFlushNext = next;
         }
     }
 
@@ -485,32 +476,27 @@ final class _NodeContext extends Clutch.Pack {
      * Remove the old node from the dirty list and swap in the new node. The cached state of
      * the nodes is not altered.
      */
-    void swapIfDirty(_Node oldNode, _Node newNode) {
-        mDirtyLatch.acquireExclusive();
-        try {
-            _Node next = oldNode.mNextDirty;
-            if (next != null) {
-                newNode.mNextDirty = next;
-                next.mPrevDirty = newNode;
-                oldNode.mNextDirty = null;
-            }
-            _Node prev = oldNode.mPrevDirty;
-            if (prev != null) {
-                newNode.mPrevDirty = prev;
-                prev.mNextDirty = newNode;
-                oldNode.mPrevDirty = null;
-            }
-            if (oldNode == mFirstDirty) {
-                mFirstDirty = newNode;
-            }
-            if (oldNode == mLastDirty) {
-                mLastDirty = newNode;
-            }
-            if (oldNode == mFlushNext) {
-                mFlushNext = newNode;
-            }
-        } finally {
-            mDirtyLatch.releaseExclusive();
+    synchronized void swapIfDirty(_Node oldNode, _Node newNode) {
+        _Node next = oldNode.mNextDirty;
+        if (next != null) {
+            newNode.mNextDirty = next;
+            next.mPrevDirty = newNode;
+            oldNode.mNextDirty = null;
+        }
+        _Node prev = oldNode.mPrevDirty;
+        if (prev != null) {
+            newNode.mPrevDirty = prev;
+            prev.mNextDirty = newNode;
+            oldNode.mPrevDirty = null;
+        }
+        if (oldNode == mFirstDirty) {
+            mFirstDirty = newNode;
+        }
+        if (oldNode == mLastDirty) {
+            mLastDirty = newNode;
+        }
+        if (oldNode == mFlushNext) {
+            mFlushNext = newNode;
         }
     }
 
@@ -518,60 +504,67 @@ final class _NodeContext extends Clutch.Pack {
      * Flush all nodes matching the given state. Only one flush at a time is allowed.
      */
     void flushDirty(final _PageDb pageDb, final int dirtyState) throws IOException {
-        mDirtyLatch.acquireExclusive();
-        mFlushNext = mFirstDirty;
-        mDirtyLatch.releaseExclusive();
+        synchronized (this) {
+            mFlushNext = mFirstDirty;
+        }
 
         while (true) {
             _Node node;
+            int state;
+
+            synchronized (this) {
+                node = mFlushNext;
+                if (node == null) {
+                    return;
+                }
+                state = node.mCachedState;
+                mFlushNext = node.mNextDirty;
+            }
+
             while (true) {
-                int state;
-                mDirtyLatch.acquireExclusive();
-                try {
+                if (state == dirtyState) {
+                    node.acquireExclusive();
+                    state = node.mCachedState;
+                    if (state != dirtyState) {
+                        node.releaseExclusive();
+                    }
+                } else if (state != _Node.CACHED_CLEAN) {
+                    // Now seeing nodes with new dirty state, so all done flushing.
+                    return;
+                }
+
+                // Remove from list. Because allocPage requires nodes to be latched,
+                // there's no need to update mFlushNext. The removed node will never be
+                // the same as mFlushNext.
+                synchronized (this) {
+                    _Node next = node.mNextDirty;
+                    _Node prev = node.mPrevDirty;
+                    if (next != null) {
+                        next.mPrevDirty = prev;
+                        node.mNextDirty = null;
+                    } else if (mLastDirty == node) {
+                        mLastDirty = prev;
+                    }
+                    if (prev != null) {
+                        prev.mNextDirty = next;
+                        node.mPrevDirty = null;
+                    } else if (mFirstDirty == node) {
+                        mFirstDirty = next;
+                    }
+
+                    mDirtyCount--;
+
+                    if (state == dirtyState) {
+                        break;
+                    }
+
                     node = mFlushNext;
                     if (node == null) {
                         return;
                     }
                     state = node.mCachedState;
                     mFlushNext = node.mNextDirty;
-                } finally {
-                    mDirtyLatch.releaseExclusive();
                 }
-
-                if (state == dirtyState) {
-                    node.acquireExclusive();
-                    state = node.mCachedState;
-                    if (state == dirtyState) {
-                        break;
-                    }
-                    node.releaseExclusive();
-                } else if (state != _Node.CACHED_CLEAN) {
-                    // Now seeing nodes with new dirty state, so all done flushing.
-                    return;
-                }
-            }
-
-            // Remove from list. Because allocPage requires nodes to be latched,
-            // there's no need to update mFlushNext. The removed node will never be
-            // the same as mFlushNext.
-            mDirtyLatch.acquireExclusive();
-            try {
-                _Node next = node.mNextDirty;
-                _Node prev = node.mPrevDirty;
-                if (next != null) {
-                    next.mPrevDirty = prev;
-                    node.mNextDirty = null;
-                } else if (mLastDirty == node) {
-                    mLastDirty = prev;
-                }
-                if (prev != null) {
-                    prev.mNextDirty = next;
-                    node.mPrevDirty = null;
-                } else if (mFirstDirty == node) {
-                    mFirstDirty = next;
-                }
-            } finally {
-                mDirtyLatch.releaseExclusive();
             }
 
             node.downgrade();
@@ -587,6 +580,10 @@ final class _NodeContext extends Clutch.Pack {
                 node.releaseShared();
             }
         }
+    }
+
+    synchronized long dirtyCount() {
+        return mDirtyCount;
     }
 
     /**
@@ -617,8 +614,7 @@ final class _NodeContext extends Clutch.Pack {
             releaseExclusive();
         }
 
-        mDirtyLatch.acquireExclusive();
-        try {
+        synchronized (this) {
             _Node node = mFirstDirty;
             mFlushNext = null;
             mFirstDirty = null;
@@ -630,8 +626,6 @@ final class _NodeContext extends Clutch.Pack {
                 node.mNextDirty = null;
                 node = next;
             }
-        } finally {
-            mDirtyLatch.releaseExclusive();
         }
     }
 }

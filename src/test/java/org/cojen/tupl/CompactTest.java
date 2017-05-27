@@ -226,6 +226,7 @@ public class CompactTest {
             }
         }
 
+        mDb.checkpoint();
         Database.Stats stats1 = mDb.stats();
 
         CompactionObserver obs = new CompactionObserver() {
