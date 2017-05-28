@@ -155,8 +155,7 @@ var activeTableTab = "activeTableTab";
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#exists-org.cojen.tupl.Transaction-byte:A-">exists</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key)</code>
-<div class="block">Checks if an entry for the given key exists, which should be called only if the value
- doesn't need to be loaded or stored.</div>
+<div class="block">Checks if an entry for the given key exists.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
@@ -564,9 +563,9 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;boolean&nbsp;exists(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key)
                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Checks if an entry for the given key exists, which should be called only if the value
- doesn't need to be loaded or stored. Calling exists and then calling a load or store
- method is typically less efficient than skipping the exists check entirely.
+<div class="block">Checks if an entry for the given key exists. This method should be called only if the
+ value doesn't need to be loaded or stored &mdash; calling exists and then calling a load
+ or store method is typically less efficient than skipping the exists check entirely.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -650,7 +649,7 @@ var activeTableTab = "activeTableTab";
                        byte[]&nbsp;value)
                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Associates a value with the given key, unless a corresponding value already
- exists. Equivalent to: <code>update(txn, key, null, value)</code>
+ exists. Equivalent to: <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-"><code>update(txn, key, null, value)</code></a>
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -739,7 +738,7 @@ var activeTableTab = "activeTableTab";
                        byte[]&nbsp;key)
                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Unconditionally removes the entry associated with the given key. Equivalent to:
- <code>replace(txn, key, null)</code>
+ <a href="../../../org/cojen/tupl/View.html#replace-org.cojen.tupl.Transaction-byte:A-byte:A-"><code>replace(txn, key, null)</code></a>
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -768,7 +767,7 @@ var activeTableTab = "activeTableTab";
                        byte[]&nbsp;value)
                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Removes the entry associated with the given key, but only if the given value
- matches. Equivalent to: <code>update(txn, key, value, null)</code>
+ matches. Equivalent to: <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-"><code>update(txn, key, value, null)</code></a>
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -1155,12 +1154,11 @@ var activeTableTab = "activeTableTab";
  them. If the combiner chooses to <a href="../../../org/cojen/tupl/Combiner.html#discard--"><code>discard</code></a> duplicate keys, then
  the returned view represents the <i>symmetric set difference</i> instead.
 
- <p>Storing entries in the union is permitted, if the combiner supports separation. The
- separator must supply at least one non-null value, or else a ViewConstraintException
- will be thrown.</div>
+ <p>Storing entries in the union is permitted, if the combiner supports <a href="../../../org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-"><code>separation</code></a>. The separator must supply at least one non-null value, or
+ else a <a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>combiner</code> - combines common entries together; pass null to always choose the first</dd>
+<dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="../../../org/cojen/tupl/Combiner.html#first--"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the union</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
@@ -1181,12 +1179,11 @@ var activeTableTab = "activeTableTab";
  one. An intersection eliminates duplicate keys, by relying on a combiner to decide how
  to deal with them.
 
- <p>Storing entries in the intersection is permitted, if the combiner supports
- separation. The separator must supply two non-null values, or else a
- ViewConstraintException will be thrown.</div>
+ <p>Storing entries in the intersection is permitted, if the combiner supports <a href="../../../org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-"><code>separation</code></a>. The separator must supply two non-null values, or else a
+ <a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>combiner</code> - combines common entries together; pass null to always choose the first</dd>
+<dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="../../../org/cojen/tupl/Combiner.html#first--"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the intersection</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
@@ -1207,12 +1204,11 @@ var activeTableTab = "activeTableTab";
  one. A difference eliminates duplicate keys, by relying on a combiner to decide how to
  deal with them.
 
- <p>Storing entries in the difference is permitted, if the combiner supports separation.
- The separator must supply a non-null first value, or else a ViewConstraintException will
- be thrown.</div>
+ <p>Storing entries in the difference is permitted, if the combiner supports <a href="../../../org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-"><code>separation</code></a>.  The separator must supply a non-null first value, or
+ else a <a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>combiner</code> - combines common entries together; pass null to always discard them</dd>
+<dd><code>combiner</code> - combines common entries together; pass null to always <a href="../../../org/cojen/tupl/Combiner.html#discard--"><code>discard</code></a> them</dd>
 <dd><code>second</code> - required second view in the difference</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
