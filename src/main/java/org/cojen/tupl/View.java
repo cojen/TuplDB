@@ -146,9 +146,9 @@ public interface View {
     }
 
     /**
-     * Checks if an entry for the given key exists, which should be called only if the value
-     * doesn't need to be loaded or stored. Calling exists and then calling a load or store
-     * method is typically less efficient than skipping the exists check entirely.
+     * Checks if an entry for the given key exists. This method should be called only if the
+     * value doesn't need to be loaded or stored &mdash; calling exists and then calling a load
+     * or store method is typically less efficient than skipping the exists check entirely.
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
@@ -228,7 +228,7 @@ public interface View {
 
     /**
      * Associates a value with the given key, unless a corresponding value already
-     * exists. Equivalent to: <code>update(txn, key, null, value)</code>
+     * exists. Equivalent to: {@link #update update(txn, key, null, value)}
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
@@ -316,7 +316,7 @@ public interface View {
 
     /**
      * Unconditionally removes the entry associated with the given key. Equivalent to:
-     * <code>replace(txn, key, null)</code>
+     * {@link #replace replace(txn, key, null)}
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
@@ -334,7 +334,7 @@ public interface View {
 
     /**
      * Removes the entry associated with the given key, but only if the given value
-     * matches. Equivalent to: <code>update(txn, key, value, null)</code>
+     * matches. Equivalent to: {@link #update update(txn, key, value, null)}
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
@@ -688,11 +688,12 @@ public interface View {
      * them. If the combiner chooses to {@link Combiner#discard discard} duplicate keys, then
      * the returned view represents the <i>symmetric set difference</i> instead.
      *
-     * <p>Storing entries in the union is permitted, if the combiner supports separation. The
-     * separator must supply at least one non-null value, or else a ViewConstraintException
-     * will be thrown.
+     * <p>Storing entries in the union is permitted, if the combiner supports {@link
+     * Combiner#separate separation}. The separator must supply at least one non-null value, or
+     * else a {@link ViewConstraintException} will be thrown.
      *
-     * @param combiner combines common entries together; pass null to always choose the first
+     * @param combiner combines common entries together; pass null to always choose the {@link
+     * Combiner#first first}
      * @param second required second view in the union
      * @throws NullPointerException if second view is null
      * @throws IllegalArgumentException if the views don't define a consistent ordering, as
@@ -710,11 +711,12 @@ public interface View {
      * one. An intersection eliminates duplicate keys, by relying on a combiner to decide how
      * to deal with them.
      *
-     * <p>Storing entries in the intersection is permitted, if the combiner supports
-     * separation. The separator must supply two non-null values, or else a
-     * ViewConstraintException will be thrown.
+     * <p>Storing entries in the intersection is permitted, if the combiner supports {@link
+     * Combiner#separate separation}. The separator must supply two non-null values, or else a
+     * {@link ViewConstraintException} will be thrown.
      *
-     * @param combiner combines common entries together; pass null to always choose the first
+     * @param combiner combines common entries together; pass null to always choose the {@link
+     * Combiner#first first}
      * @param second required second view in the intersection
      * @throws NullPointerException if second view is null
      * @throws IllegalArgumentException if the views don't define a consistent ordering, as
@@ -732,11 +734,12 @@ public interface View {
      * one. A difference eliminates duplicate keys, by relying on a combiner to decide how to
      * deal with them.
      *
-     * <p>Storing entries in the difference is permitted, if the combiner supports separation.
-     * The separator must supply a non-null first value, or else a ViewConstraintException will
-     * be thrown.
+     * <p>Storing entries in the difference is permitted, if the combiner supports {@link
+     * Combiner#separate separation}.  The separator must supply a non-null first value, or
+     * else a {@link ViewConstraintException} will be thrown.
      *
-     * @param combiner combines common entries together; pass null to always discard them
+     * @param combiner combines common entries together; pass null to always {@link
+     * Combiner#discard discard} them
      * @param second required second view in the difference
      * @throws NullPointerException if second view is null
      * @throws IllegalArgumentException if the views don't define a consistent ordering, as
