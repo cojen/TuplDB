@@ -29,6 +29,12 @@ import java.util.concurrent.locks.LockSupport;
  * allows the clutch to be adaptive, by relying on the exclusive clutch as a signal that access
  * patterns have changed.
  *
+ * <p>Note: Shared access should not be held by any thread indefinitely. If another thread
+ * attempts to switch to contended mode, it first needs to acquire exlusive access in order to
+ * make the switch. The thread will block even though shared access could have been granted if
+ * it just kept trying. This behavior holds true for downgrades as well. Another thread cannot
+ * switch to contended mode until after the downgraded latch is fully released.
+ *
  * @author Brian S O'Neill
  */
 public abstract class Clutch extends Latch {
