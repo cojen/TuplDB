@@ -1822,6 +1822,7 @@ final class LocalDatabase extends AbstractDatabase {
         try {
             long cursorCount = 0;
             int openTreesCount = 0;
+
             for (TreeRef treeRef : mOpenTrees.values()) {
                 Tree tree = treeRef.get();
                 if (tree != null) {
@@ -1829,6 +1830,15 @@ final class LocalDatabase extends AbstractDatabase {
                     cursorCount += tree.mRoot.countCursors();
                 }
             }
+
+            cursorCount += mRegistry.mRoot.countCursors();
+            cursorCount += mRegistryKeyMap.mRoot.countCursors();
+
+            FragmentedTrash trash = mFragmentedTrash;
+            if (trash != null) {
+                cursorCount += trash.mTrash.mRoot.countCursors();
+            }
+
             stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
 
