@@ -435,7 +435,7 @@ final class _NodeContext extends Clutch.Pack {
      * Move or add node to the end of the dirty list.
      *
      * @param node latched exclusively
-     * @param cachedState node cached state to set; must be one of the dirty states
+     * @param cachedState node cached state to set; CACHED_DIRTY_0 or CACHED_DIRTY_1
      */
     synchronized void addDirty(_Node node, byte cachedState) {
         node.mCachedState = cachedState;
@@ -466,8 +466,8 @@ final class _NodeContext extends Clutch.Pack {
 
         mLastDirty = node;
 
-        // See flush method for explanation of node latch requirement.
         if (mFlushNext == node) {
+            // Ensure that flush continues scanning over dirty nodes with the old state.
             mFlushNext = next;
         }
     }
@@ -502,6 +502,8 @@ final class _NodeContext extends Clutch.Pack {
 
     /**
      * Flush all nodes matching the given state. Only one flush at a time is allowed.
+     *
+     * @param dirtyState the old dirty state to match on; CACHED_DIRTY_0 or CACHED_DIRTY_1
      */
     void flushDirty(final _PageDb pageDb, final int dirtyState) throws IOException {
         synchronized (this) {
@@ -517,64 +519,63 @@ final class _NodeContext extends Clutch.Pack {
                 if (node == null) {
                     return;
                 }
-                state = node.mCachedState;
-                mFlushNext = node.mNextDirty;
-            }
 
-            while (true) {
-                if (state == dirtyState) {
-                    node.acquireExclusive();
-                    state = node.mCachedState;
-                    if (state != dirtyState) {
-                        node.releaseExclusive();
-                    }
-                } else if (state != _Node.CACHED_CLEAN) {
+                state = node.mCachedState;
+
+                if (state == (dirtyState ^ 1)) {
                     // Now seeing nodes with new dirty state, so all done flushing.
+                    mFlushNext = null;
                     return;
                 }
 
-                // Remove from list. Because allocPage requires nodes to be latched,
-                // there's no need to update mFlushNext. The removed node will never be
-                // the same as mFlushNext.
-                synchronized (this) {
-                    _Node next = node.mNextDirty;
-                    _Node prev = node.mPrevDirty;
-                    if (next != null) {
-                        next.mPrevDirty = prev;
-                        node.mNextDirty = null;
-                    } else if (mLastDirty == node) {
-                        mLastDirty = prev;
-                    }
-                    if (prev != null) {
-                        prev.mNextDirty = next;
-                        node.mPrevDirty = null;
-                    } else if (mFirstDirty == node) {
-                        mFirstDirty = next;
-                    }
+                mFlushNext = node.mNextDirty;
 
-                    mDirtyCount--;
-
-                    if (state == dirtyState) {
-                        break;
-                    }
-
-                    node = mFlushNext;
-                    if (node == null) {
-                        return;
-                    }
-                    state = node.mCachedState;
-                    mFlushNext = node.mNextDirty;
+                // Remove from list. _Node can be clean or dirty at this point. If clean, then
+                // node was written out without having been removed from the dirty list. Now's
+                // a good time to fix the list.
+                _Node next = node.mNextDirty;
+                _Node prev = node.mPrevDirty;
+                if (next != null) {
+                    next.mPrevDirty = prev;
+                    node.mNextDirty = null;
+                } else if (mLastDirty == node) {
+                    mLastDirty = prev;
                 }
+                if (prev != null) {
+                    prev.mNextDirty = next;
+                    node.mPrevDirty = null;
+                } else if (mFirstDirty == node) {
+                    mFirstDirty = next;
+                }
+
+                mDirtyCount--;
+            }
+
+            if (state == _Node.CACHED_CLEAN) {
+                // Don't write clean nodes. There's no need to latch and double check the node
+                // state, since the next valid state can only be the new dirty state.
+                continue;
+            }
+
+            node.acquireExclusive();
+            state = node.mCachedState;
+            if (state != dirtyState) {
+                // _Node state is now clean or the new dirty state, so don't write it.
+                node.releaseExclusive();
+                continue;
             }
 
             node.downgrade();
             try {
                 node.write(pageDb);
-                // Clean state must be set after write completes. Although latch has been
+                // Clean state must be set after write completes. Although the latch has been
                 // downgraded to shared, modifying the state is safe because no other thread
                 // could have changed it. This is because the exclusive latch was acquired
-                // first.  Releasing the shared latch performs a volatile write, and so the
-                // state change gets propagated correctly.
+                // first. Releasing the shared latch performs a volatile assignment, and so the
+                // state change gets propagated correctly. This holds true even when using the
+                // Clutch instead of a plain Latch. Exclusive acquisition always disables
+                // contended mode, and it cannot flip back until after the downgraded latch has
+                // been fully released.
                 node.mCachedState = _Node.CACHED_CLEAN;
             } finally {
                 node.releaseShared();
