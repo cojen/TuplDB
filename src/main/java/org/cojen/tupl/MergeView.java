@@ -72,10 +72,6 @@ abstract class MergeView implements View {
         return newCursor(txn, this, first, second);
     }
 
-    // FIXME: If combineLocks is true, return scanners and updaters that check if txn is null
-    // and create an explicit txn to use. This is cheaper than creating a transaction for each
-    // entry.
-
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mFirst.newTransaction(durabilityMode);
