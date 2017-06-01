@@ -442,6 +442,7 @@ public class CompactTest {
         // entire duration of the compaction.
 
         mDb = newTempDb();
+        mDb.suspendCheckpoints();
         final Index ix = openTestIndex();
 
         for (int i=100000; i<200000; i++) {
