@@ -334,7 +334,6 @@ abstract class MergeCursor implements Cursor {
 
     private LockResult previousCmp(byte[] limitKey, KeyAction action) throws IOException {
         return perform(txn -> {
-            LockResult r1, r2;
             int cmp = mCompare;
             if (cmp == 0) {
                 action.perform(mFirst, limitKey);

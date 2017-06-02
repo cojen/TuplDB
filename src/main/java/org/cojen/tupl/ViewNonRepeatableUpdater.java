@@ -19,8 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Comparator;
-
 /**
  * Updater which releases acquired locks for entries which are stepped over.
  *

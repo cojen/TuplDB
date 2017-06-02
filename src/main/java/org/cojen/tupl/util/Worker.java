@@ -34,6 +34,7 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  * @see WorkerGroup
  */
+@SuppressWarnings("restriction")
 public class Worker {
     /**
      * @param maxSize maximum amount of tasks which can be enqueued

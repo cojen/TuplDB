@@ -27,19 +27,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.Flushable;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintStream;
-import java.io.Serializable;
-import java.io.Writer;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 
 import java.nio.charset.StandardCharsets;
 
@@ -66,7 +60,6 @@ import static java.util.Arrays.fill;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
-import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
@@ -536,7 +529,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                 }
 
-                // Magic constant was determined emperically against the G1 collector. A higher
+                // Magic constant was determined empirically against the G1 collector. A higher
                 // constant increases memory thrashing.
                 long usedRate = Utils.roundUpPower2((long) Math.ceil(maxCache / 32768)) - 1;
 
@@ -1496,8 +1489,6 @@ final class _LocalDatabase extends AbstractDatabase {
                 treeId = nextTreeId(true);
                 encodeLongBE(treeIdBytes, 0, treeId);
             } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, rootIdBytes));
-
-            byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
             // Register temporary index as trash, unreplicated.
             Transaction createTxn = newNoRedoTransaction();

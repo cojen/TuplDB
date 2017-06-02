@@ -80,7 +80,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return mSize;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     public final void clear(int capacity) {
         if (capacity <= 0) {
             capacity = 1;
@@ -205,7 +205,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return e;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     private boolean grow() {
         if (mSize < mGrowThreshold) {
             return false;

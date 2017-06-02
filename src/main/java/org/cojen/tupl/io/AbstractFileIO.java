@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
@@ -36,6 +35,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("restriction")
 abstract class AbstractFileIO extends FileIO {
     private static final int PAGE_SIZE;
 

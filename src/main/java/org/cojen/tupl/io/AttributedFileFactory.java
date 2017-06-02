@@ -97,7 +97,7 @@ public class AttributedFileFactory implements FileFactory {
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings("unchecked")
     private static FileAttribute<Set<PosixFilePermission>>[] toAttrs(String posixPerms) {
         if (posixPerms == null) {
             return null;

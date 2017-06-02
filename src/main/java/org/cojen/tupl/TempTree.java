@@ -19,8 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
-
 /**
  * Unnamed tree which prohibits redo durabilty.
  *

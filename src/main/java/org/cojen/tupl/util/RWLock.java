@@ -214,6 +214,7 @@ public final class RWLock implements ReadWriteLock {
      * Uses a padded striped array of longs to reduce contention among concurrent
      * shared lock attempts.
      */
+    @SuppressWarnings("restriction")
     private static final class ReadIndicator {
         private static final int NCPU = Runtime.getRuntime().availableProcessors();
         private static final int SLOTS = NCPU <= 1 ? 2 : Integer.highestOneBit(NCPU - 1) << 2;
