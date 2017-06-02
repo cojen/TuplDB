@@ -816,9 +816,29 @@ public class LockTest {
     @Test
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void fifo() throws Exception {
-        mExecutor = Executors.newCachedThreadPool();
+        for (int i=1;; i++) {
+            long start = System.nanoTime();
+            try {
+                fifo(10);
+                return;
+            } catch (AssertionError e) {
+                if (i == 10 || e.getMessage().indexOf("TIMED") < 0) {
+                    throw e;
+                }
+                // Tolerate unexpected long stalls which cause timeouts.
+                long end = System.nanoTime();
+                if ((end - start) < MEDIUM_TIMEOUT) {
+                    throw e;
+                }
+                teardown();
+                setup();
+            }
+        }
+    }
 
-        final int count = 10;
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void fifo(final int count) throws Exception {
+        mExecutor = Executors.newCachedThreadPool();
 
         Locker[] lockers = new Locker[count];
         for (int i=0; i<count; i++) {

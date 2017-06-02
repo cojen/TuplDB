@@ -286,26 +286,6 @@ class ViewUtils {
         }
     }
 
-    /**
-     * O(n) implementation of find.
-     */
-    /*
-    static LockResult seekGe(Cursor c, byte[] key) throws IOException {
-        LockResult result = null;
-        if (c.key() == null) {
-            result = c.first();
-            if (c.key() == null) {
-                return result;
-            }
-        }
-
-        int cmp = c.compareKeyTo(key);
-
-        // FIXME
-        throw null;
-    }
-    */
-
     static void commit(Cursor c, byte[] value) throws IOException {
         try {
             c.store(value);

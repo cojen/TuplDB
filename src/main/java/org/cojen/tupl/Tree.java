@@ -1263,10 +1263,10 @@ class Tree implements View, Index {
      */
     final void rootDelete(Node child) throws IOException {
         // Allocate stuff early in case of out of memory, and while root is latched. Note that
-        // stub is assigned a NodeUsageList. Because the stub isn't in the list, attempting to
-        // update its position within it has no effect. Note too that the stub isn't placed
-        // into the database node map.
-        Node stub = new Node(mRoot.mUsageList);
+        // stub is assigned a NodeContext. Because the stub isn't in the context usage list,
+        // attempting to update its position within it has no effect. Note too that the stub
+        // isn't placed into the database node map.
+        Node stub = new Node(mRoot.mContext);
 
         // Stub isn't in the node map, so use this pointer field to link the stubs together.
         stub.mNodeMapNext = mStubTail;

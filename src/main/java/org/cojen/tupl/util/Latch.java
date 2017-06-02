@@ -394,7 +394,7 @@ public class Latch {
      *
      * @return false if not acquired due to contention with other shared requests
      */
-    public boolean weakAcquireShared() {
+    public boolean acquireSharedUncontended() {
         WaitNode first = mLatchFirst;
         if (first == null || first instanceof Shared) {
             int state = mLatchState;
@@ -420,7 +420,7 @@ public class Latch {
      * @return -1 if not acquired due to contention with other shared requests, 0 if timed out,
      * or 1 if acquired
      */
-    public int weakAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
+    public int acquireSharedUncontendedNanos(long nanosTimeout) throws InterruptedException {
         WaitNode first = mLatchFirst;
         if (first == null || first instanceof Shared) {
             int state = mLatchState;

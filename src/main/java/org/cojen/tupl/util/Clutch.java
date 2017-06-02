@@ -29,6 +29,12 @@ import java.util.concurrent.locks.LockSupport;
  * allows the clutch to be adaptive, by relying on the exclusive clutch as a signal that access
  * patterns have changed.
  *
+ * <p>Note: Shared access should not be held by any thread indefinitely. If another thread
+ * attempts to switch to contended mode, it first needs to acquire exlusive access in order to
+ * make the switch. The thread will block even though shared access could have been granted if
+ * it just kept trying. This behavior holds true for downgrades as well. Another thread cannot
+ * switch to contended mode until after the downgraded latch is fully released.
+ *
  * @author Brian S O'Neill
  */
 public abstract class Clutch extends Latch {
@@ -139,7 +145,7 @@ public abstract class Clutch extends Latch {
                 }
             } else {
                 long start = System.nanoTime();
-                int result = weakAcquireSharedNanos(nanosTimeout);
+                int result = acquireSharedUncontendedNanos(nanosTimeout);
                 if (result > 0) {
                     break doAcquire;
                 } else if (result == 0) {
@@ -171,10 +177,10 @@ public abstract class Clutch extends Latch {
     }
 
     @Override
-    public final boolean weakAcquireShared() {
+    public final boolean acquireSharedUncontended() {
         int slot = mContendedSlot;
         if (slot < 0 || !getPack().tryAcquireShared(slot, this)) {
-            if (!super.weakAcquireShared()) {
+            if (!super.acquireSharedUncontended()) {
                 return false;
             }
             uncontendedMode();
@@ -183,10 +189,10 @@ public abstract class Clutch extends Latch {
     }
 
     @Override
-    public final int weakAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
+    public final int acquireSharedUncontendedNanos(long nanosTimeout) throws InterruptedException {
         int slot = mContendedSlot;
         if (slot < 0 || !getPack().tryAcquireShared(slot, this)) {
-            int result = super.weakAcquireSharedNanos(nanosTimeout);
+            int result = super.acquireSharedUncontendedNanos(nanosTimeout);
             if (result <= 0) {
                 return result;
             }
@@ -204,7 +210,7 @@ public abstract class Clutch extends Latch {
                     return;
                 }
             } else {
-                if (super.weakAcquireShared()) {
+                if (super.acquireSharedUncontended()) {
                     break doAcquire;
                 }
                 if (shouldSwitchToContendedMode()) {
@@ -232,7 +238,7 @@ public abstract class Clutch extends Latch {
                     return;
                 }
             } else {
-                if (super.weakAcquireSharedNanos(-1) > 0) {
+                if (super.acquireSharedUncontendedNanos(-1) > 0) {
                     break doAcquire;
                 }
                 if (shouldSwitchToContendedMode()) {
