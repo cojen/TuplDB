@@ -505,7 +505,9 @@ final class _NodeContext extends Clutch.Pack {
      *
      * @param dirtyState the old dirty state to match on; CACHED_DIRTY_0 or CACHED_DIRTY_1
      */
-    void flushDirty(final _PageDb pageDb, final int dirtyState) throws IOException {
+    void flushDirty(final int dirtyState) throws IOException {
+        final _PageDb pageDb = mDatabase.mPageDb;
+
         synchronized (this) {
             mFlushNext = mFirstDirty;
         }
