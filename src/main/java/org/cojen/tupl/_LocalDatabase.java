@@ -4832,7 +4832,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         try {
             for (_NodeContext context : mNodeContexts) {
-                context.flushDirty(mPageDb, stateToFlush);
+                context.flushDirty(stateToFlush);
             }
 
             if (mRedoWriter != null) {
