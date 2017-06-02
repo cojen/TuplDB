@@ -17,8 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * Returned by {@link UnmodifiableView}.
  *

@@ -33,6 +33,7 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  * @see LatchCondition
  */
+@SuppressWarnings("restriction")
 public class Latch {
     public static final int UNLATCHED = 0, EXCLUSIVE = 0x80000000, SHARED = 1;
 
@@ -47,7 +48,7 @@ public class Latch {
 
     static {
         try {
-            Class clazz = Latch.class;
+            Class<?> clazz = Latch.class;
             STATE_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchState"));
             FIRST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchFirst"));
             LAST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchLast"));
@@ -752,6 +753,7 @@ public class Latch {
     /**
      * Atomic reference is to the next node in the chain.
      */
+    @SuppressWarnings("serial")
     static class WaitNode extends AtomicReference<WaitNode> {
         volatile Thread mWaiter;
         volatile boolean mFair;
@@ -812,6 +814,7 @@ public class Latch {
         }
     }
 
+    @SuppressWarnings("serial")
     static class Timed extends WaitNode {
         private long mNanosTimeout;
         private long mEndNanos;
@@ -838,6 +841,7 @@ public class Latch {
         }
     }
 
+    @SuppressWarnings("serial")
     static class Shared extends WaitNode {
         /**
          * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
@@ -888,6 +892,7 @@ public class Latch {
         }
     }
 
+    @SuppressWarnings("serial")
     static class TimedShared extends Shared {
         private long mNanosTimeout;
         private long mEndNanos;

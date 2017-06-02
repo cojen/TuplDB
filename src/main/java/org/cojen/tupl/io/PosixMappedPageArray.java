@@ -18,13 +18,10 @@
 package org.cojen.tupl.io;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import java.util.EnumSet;
 
-import com.sun.jna.Library;
-import com.sun.jna.Native;
 import com.sun.jna.Platform;
 
 /**

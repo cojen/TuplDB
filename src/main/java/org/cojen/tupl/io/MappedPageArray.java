@@ -36,6 +36,7 @@ import org.cojen.tupl.DatabaseFullException;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("restriction")
 public abstract class MappedPageArray extends PageArray {
     private static AtomicLongFieldUpdater<MappedPageArray> cMappingPtrUpdater =
         AtomicLongFieldUpdater.newUpdater(MappedPageArray.class, "mMappingPtr");

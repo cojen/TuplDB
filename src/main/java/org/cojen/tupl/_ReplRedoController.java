@@ -136,7 +136,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         ReplicationManager.Writer writer = redo.mReplWriter;
         _LocalDatabase db = redo.mEngine.mDatabase;
 
-        confirm: if (writer != null) {
+        if (writer != null) {
             if (writer.confirm(mCheckpointPos, -1)) {
                 // Update confirmed state, to prevent false undo if leadership is lost.
                 db.anyTransactionContext().confirmed(mCheckpointPos, mCheckpointTxnId);

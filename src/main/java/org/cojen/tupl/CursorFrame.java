@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("serial")
 /*P*/
 // Note: Atomic reference is to the next frame bound to a Node.
 class CursorFrame extends AtomicReference<CursorFrame> {

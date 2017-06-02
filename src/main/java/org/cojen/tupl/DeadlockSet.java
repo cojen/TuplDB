@@ -17,12 +17,9 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
 import java.io.Serializable;
 
 import java.nio.charset.StandardCharsets;
-
-import java.util.Set;
 
 /**
  * Set of lock requests which were in a deadlock.
