@@ -104,6 +104,10 @@ class WindowsMappedPageArray extends MappedPageArray {
             flags = WinNT.FILE_ATTRIBUTE_NORMAL;
         }
 
+        if (options.contains(OpenOption.RANDOM_ACCESS)) {
+            flags |= WinNT.FILE_FLAG_RANDOM_ACCESS;
+        }
+
         WinNT.HANDLE hFile = cKernel.CreateFile
             (file.getPath(),
              access,

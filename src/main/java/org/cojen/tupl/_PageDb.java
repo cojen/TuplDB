@@ -43,12 +43,12 @@ abstract class _PageDb implements CauseCloseable {
     public abstract boolean isDurable();
 
     /**
-     * @return 0 or _NodeUsageList.MODE_NO_EVICT
+     * @return 0 or _NodeContext.MODE_NO_EVICT
      */
     public abstract int allocMode();
 
     /**
-     * @param mode _NodeUsageList.MODE_UNEVICTABLE | MODE_NO_EVICT
+     * @param mode _NodeContext.MODE_UNEVICTABLE | MODE_NO_EVICT
      * @return node with id assigned
      */
     public abstract _Node allocLatchedNode(_LocalDatabase db, int mode) throws IOException;

@@ -53,7 +53,13 @@ public interface Updater extends Scanner, Flushable {
             if (key == null) {
                 return;
             }
-            update(action.apply(key, value()));
+            byte[] value;
+            try {
+                value = action.apply(key, value());
+            } catch (Throwable e) {
+                throw ViewUtils.fail(this, e);
+            }
+            update(value);
         }
     }
 

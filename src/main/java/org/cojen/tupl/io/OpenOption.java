@@ -44,6 +44,9 @@ public enum OpenOption {
     /** Preallocate file blocks when increasing file length, if possible. */
     PREALLOCATE,
     
+    /** Indicate that file will be accessed in random order. */
+    RANDOM_ACCESS,
+
     /** Optional hint to perform readahead on the file. */
     READAHEAD,
 

@@ -43,12 +43,49 @@ public class SnapshotTest {
     public void suspend() throws Exception {
         final int rateMillis = 500;
 
+        class Listener implements EventListener {
+            private int mCheckpointCount;
+
+            @Override
+            public void notify(EventType type, String message, Object... args) {
+                if (type == EventType.CHECKPOINT_COMPLETE) {
+                    synchronized (this) {
+                        mCheckpointCount++;
+                        notify();
+                    }
+                }
+            }
+
+            public synchronized int checkpointCount() {
+                return mCheckpointCount;
+            }
+
+            public synchronized void waitForNextCheckpoint(int initialCount) throws Exception {
+                if (mCheckpointCount > initialCount) {
+                    return;
+                }
+                long end = System.currentTimeMillis() + 60_000;
+                while (true) {
+                    wait(60_000);
+                    if (mCheckpointCount > initialCount) {
+                        return;
+                    }
+                    if (System.currentTimeMillis() >= end) {
+                        throw new Exception("Timed out");
+                    }
+                }
+            }
+        }
+
+        final Listener listener = new Listener();
+
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(rateMillis, TimeUnit.MILLISECONDS)
             .checkpointSizeThreshold(0)
             .checkpointDelayThreshold(0, null)
-            .durabilityMode(DurabilityMode.NO_FLUSH);
+            .durabilityMode(DurabilityMode.NO_FLUSH)
+            .eventListener(listener);
         decorate(config);
         Database db = newTempDatabase(getClass(), config);
 
@@ -98,9 +135,10 @@ public class SnapshotTest {
         db.suspendCheckpoints();
         ix.store(Transaction.BOGUS, "hello".getBytes(), "universe".getBytes());
         sleep(rateMillis * 2);
+        int initialCount = listener.checkpointCount();
         db.resumeCheckpoints();
         db.resumeCheckpoints();
-        sleep(rateMillis * 2);
+        listener.waitForNextCheckpoint(initialCount);
         db.close();
 
         db = reopenTempDatabase(getClass(), db, config);

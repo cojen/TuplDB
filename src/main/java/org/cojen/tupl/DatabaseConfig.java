@@ -519,6 +519,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
     EnumSet<OpenOption> createOpenOptions() {
         EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
+        options.add(OpenOption.RANDOM_ACCESS);
         if (mReadOnly) {
             options.add(OpenOption.READ_ONLY);
         }

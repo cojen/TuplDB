@@ -107,6 +107,18 @@
 <dd>
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireSharedUncontended--">acquireSharedUncontended()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireSharedUncontended--">acquireSharedUncontended()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireSharedUncontendedNanos-long-">acquireSharedUncontendedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireSharedUncontendedNanos-long-">acquireSharedUncontendedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#add-org.cojen.tupl.Index.Stats-">add(Index.Stats)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>
 <div class="block">Adds stats into a new object.</div>
@@ -755,6 +767,12 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#dirtyPage-long-">dirtyPage(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#dirtyPages">dirtyPages</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#dirtyPages--">dirtyPages()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
+<dd>
+<div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#discard--">discard()</a></span> - Static method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
 <div class="block">Returns a Combiner that discards both values (always returns null).</div>
@@ -954,8 +972,7 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#exists-org.cojen.tupl.Transaction-byte:A-">exists(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
-<div class="block">Checks if an entry for the given key exists, which should be called only if the value
- doesn't need to be loaded or stored.</div>
+<div class="block">Checks if an entry for the given key exists.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#exit--">exit()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
@@ -2919,18 +2936,6 @@ the order they are declared.</div>
 </a>
 <h2 class="title">W</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#weakAcquireShared--">weakAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#weakAcquireShared--">weakAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
-<dd>
-<div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#weakAcquireSharedNanos-long-">weakAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#weakAcquireSharedNanos-long-">weakAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
-<dd>
-<div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
-</dd>
 <dt><a href="org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Worker</span></a> - Class in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
 <div class="block">Simple task worker which has at most one background thread, and is expected to have only one

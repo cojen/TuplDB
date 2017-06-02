@@ -198,9 +198,15 @@ public class WorkerTest {
 
         assertEquals(2, counts.size());
 
+        long sum = 0;
+        int prev = Integer.MAX_VALUE;
         for (int count : counts.values()) {
-            assertEquals(max, count);
+            sum += count;
+            assertTrue(count + " <= " + prev, count <= prev);
+            prev = count;
         }
+
+        assertEquals(max * counts.size(), sum);
     }
 
     @Test

@@ -51,15 +51,24 @@ public class CompactTest {
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
         mDb = null;
+        mIndex = null;
     }
 
     protected Database mDb;
+
+    private Index mIndex;
+
+    private Index openTestIndex() throws Exception {
+        // Stash in a field to prevent GC activity from closing index too soon and messing up
+        // the stats.
+        return mIndex = mDb.openIndex("test");
+    }
 
     @Test
     public void basic() throws Exception {
         mDb = newTempDb();
 
-        final Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
         final int seed = 98232;
         final int count = 100000;
 
@@ -131,7 +140,7 @@ public class CompactTest {
                                        .minCacheSize(10000000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
-        final Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
         final int seed = 1234;
         final int count = 1000;
 
@@ -206,7 +215,7 @@ public class CompactTest {
     public void manualAbort() throws Exception {
         mDb = newTempDb();
 
-        final Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
         final int seed = 98232;
         final int count = 100000;
 
@@ -226,6 +235,7 @@ public class CompactTest {
             }
         }
 
+        mDb.checkpoint();
         Database.Stats stats1 = mDb.stats();
 
         CompactionObserver obs = new CompactionObserver() {
@@ -249,7 +259,7 @@ public class CompactTest {
     public void autoAbort() throws Exception {
         mDb = newTempDb();
 
-        final Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
         final int seed = 98232;
         final int count = 100000;
 
@@ -389,7 +399,7 @@ public class CompactTest {
         Compactor comp = new Compactor();
         comp.start();
 
-        final Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
         final int count = 1000;
         int seed = 1234;
 
@@ -432,7 +442,8 @@ public class CompactTest {
         // entire duration of the compaction.
 
         mDb = newTempDb();
-        Index ix = mDb.openIndex("test");
+        mDb.suspendCheckpoints();
+        final Index ix = openTestIndex();
 
         for (int i=100000; i<200000; i++) {
             byte[] key = ("key-" + i).getBytes();
@@ -459,10 +470,6 @@ public class CompactTest {
         // Nothing happened because most pages were in the undo log and not moved.
         assertEquals(stats2, mDb.stats());
 
-        // Store it in a volatile field to prevent the garbage collector from closing the index
-        // and messing up the above stats equality assertion.
-        reachabilityFence = ix;
-
         txn.commit();
 
         // Compact will work this time now that undo log is gone.
@@ -473,8 +480,6 @@ public class CompactTest {
         assertTrue(stats3.totalPages() < stats2.totalPages());
     }
 
-    private static volatile Object reachabilityFence;
-
     @Test
     public void trashHiding() throws Exception {
         // A transaction can move a large value into the fragmented trash and compaction won't
@@ -483,7 +488,7 @@ public class CompactTest {
         // when values move to and from the trash.
 
         mDb = newTempDb();
-        Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
 
         byte[] key = "hello".getBytes();
         byte[] value = randomStr(new Random(), 1000000);
@@ -520,7 +525,7 @@ public class CompactTest {
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
         
-        Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
 
         final int seed = 793846;
         final int count = 500000;
@@ -567,7 +572,7 @@ public class CompactTest {
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
-        Index ix = mDb.openIndex("test");
+        final Index ix = openTestIndex();
 
         for (int i=0; i<100000; i++) {
             byte[] key = ("key-" + i).getBytes();
