@@ -4437,23 +4437,37 @@ class _TreeCursor implements CauseCloseable, Cursor {
      */
     private void mergeLeaf(final _CursorFrame leaf, _Node node) throws IOException {
         final _CursorFrame parentFrame = leaf.mParentFrame;
-        node.releaseExclusive();
 
         if (parentFrame == null) {
             // Root node cannot merge into anything.
+            node.releaseExclusive();
             return;
         }
 
-        _Node parentNode = parentFrame.acquireExclusive();
+        // Try-latch up the tree to avoid deadlocks.
+        _Node parentNode = parentFrame.tryAcquireExclusive();
+        if (parentNode == null) {
+            node.releaseExclusive();
+            node = null;
+            parentNode = parentFrame.acquireExclusive();
+        }
 
         _Node leftNode, rightNode;
         int nodeAvail;
         while (true) {
-            if (parentNode.mSplit != null) {
-                parentNode = mTree.finishSplit(parentFrame, parentNode);
-            }
+            latchNode: {
+                if (parentNode.mSplit != null) {
+                    if (node != null) {
+                        node.releaseExclusive();
+                    }
+                    parentNode = mTree.finishSplit(parentFrame, parentNode);
+                } else if (node != null) {
+                    // Should already be latched.
+                    break latchNode;
+                }
 
-            node = leaf.acquireExclusive();
+                node = leaf.acquireExclusive();
+            }
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableLeafBytes())) {
@@ -4479,6 +4493,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 if (leftNode != null && leftNode.mSplit != null) {
                     // Finish sibling split.
                     node.releaseExclusive();
+                    node = null;
                     parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
                     continue;
                 }
@@ -4503,6 +4518,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
+                    node = null;
                     parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
                     continue;
                 }
@@ -4598,14 +4614,21 @@ class _TreeCursor implements CauseCloseable, Cursor {
         // a sibling node. _Node is guaranteed to be an internal node.
 
         _CursorFrame parentFrame = frame.mParentFrame;
-        node.releaseExclusive();
 
         if (parentFrame == null) {
             // Root node cannot merge into anything.
+            node.releaseExclusive();
             return;
         }
 
-        _Node parentNode = parentFrame.acquireExclusive();
+        // Try-latch up the tree to avoid deadlocks.
+        _Node parentNode = parentFrame.tryAcquireExclusive();
+        if (parentNode == null) {
+            node.releaseExclusive();
+            node = null;
+            parentNode = parentFrame.acquireExclusive();
+        }
+
         if (parentNode.isLeaf()) {
             throw new AssertionError("Parent node is a leaf");
         }
@@ -4613,11 +4636,19 @@ class _TreeCursor implements CauseCloseable, Cursor {
         _Node leftNode, rightNode;
         int nodeAvail;
         while (true) {
-            if (parentNode.mSplit != null) {
-                parentNode = mTree.finishSplit(parentFrame, parentNode);
-            }
+            latchNode: {
+                if (parentNode.mSplit != null) {
+                    if (node != null) {
+                        node.releaseExclusive();
+                    }
+                    parentNode = mTree.finishSplit(parentFrame, parentNode);
+                } else if (node != null) {
+                    // Should already be latched.
+                    break latchNode;
+                }
 
-            node = frame.acquireExclusive();
+                node = frame.acquireExclusive();
+            }
 
             // Double check that node should still merge.
             if (!node.shouldMerge(nodeAvail = node.availableInternalBytes())) {
@@ -4643,6 +4674,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 if (leftNode != null && leftNode.mSplit != null) {
                     // Finish sibling split.
                     node.releaseExclusive();
+                    node = null;
                     parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
                     continue;
                 }
@@ -4667,6 +4699,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                         leftNode.releaseExclusive();
                     }
                     node.releaseExclusive();
+                    node = null;
                     parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
                     continue;
                 }
