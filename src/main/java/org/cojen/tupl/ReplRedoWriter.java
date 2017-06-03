@@ -18,14 +18,12 @@
 package org.cojen.tupl;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 
 import java.util.concurrent.locks.LockSupport;
 
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 /**
  * 

@@ -114,7 +114,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     */
 
     static int hash64to32(long v) {
-        v = v = (v << 18) - v - 1; // (~v) + (v << 18)
+        v = (v << 18) - v - 1; // (~v) + (v << 18)
         v = v ^ (v >>> 31);
         v = (v + (v << 2)) + (v << 4); // v * 21
         v = v ^ (v >>> 11);

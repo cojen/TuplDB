@@ -24,6 +24,7 @@ import java.lang.reflect.Field;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("restriction")
 public class UnsafeAccess {
     private static final sun.misc.Unsafe UNSAFE;
     private static final Throwable UNSUPPORTED;

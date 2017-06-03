@@ -18,7 +18,6 @@
 package org.cojen.tupl;
 
 import java.io.Flushable;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;

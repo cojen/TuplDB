@@ -20,8 +20,6 @@ package org.cojen.tupl;
 import java.io.Flushable;
 import java.io.IOException;
 
-import java.util.Comparator;
-
 /**
  * Scans through all entries in a view, updating them along the way. Updater implementations
  * which perform pre-fetching can be more efficient than a {@link Cursor cursor}. Any exception

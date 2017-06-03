@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("restriction")
 final class PosixMapping extends Mapping {
     private final DirectAccess mDirectAccess;
     private final long mAddr;

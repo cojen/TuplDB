@@ -35,6 +35,7 @@ import org.cojen.tupl.io.UnsafeAccess;
  * @author Brian S O'Neill
  * @see PageOps
  */
+@SuppressWarnings("restriction")
 final class DirectPageOps {
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
 

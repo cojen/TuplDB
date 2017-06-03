@@ -102,6 +102,7 @@ class Hasher {
      * Same as default implementation except longs are read directly using Unsafe to avoid the
      * shifting transformation.
      */
+    @SuppressWarnings("restriction")
     private static class UnsafeLE extends Hasher {
         private static final sun.misc.Unsafe UNSAFE;
         private static final long BYTE_ARRAY_OFFSET;

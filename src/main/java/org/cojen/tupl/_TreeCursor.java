@@ -2135,7 +2135,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
             _CursorFrame frame = new _CursorFrame();
             _Node node = latchRootNode();
 
-            search: while (true) {
+            while (true) {
                 if (node.mSplit != null) {
                     // Bind to anything to finish the split.
                     frame.bind(node, 0);
@@ -2322,14 +2322,13 @@ class _TreeCursor implements CauseCloseable, Cursor {
                         throw e;
                     }
 
-                    LockResult result;
-                    if ((result = tryLockKey(txn)) == null) {
+                    if (tryLockKey(txn) == null) {
                         // Unable to immediately acquire the lock.
                         mValue = NOT_LOADED;
                         node.releaseShared();
                         // This might fail to acquire the lock too, but the cursor
                         // is at the proper position, and with the proper state.
-                        result = doLoad(txn, mKey, frame, VARIANT_REGULAR);
+                        doLoad(txn, mKey, frame, VARIANT_REGULAR);
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
@@ -2501,8 +2500,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
      */
     Index.Stats analyze() throws IOException {
         double entryCount, keyBytes, valueBytes, freeBytes, totalBytes;
-
-        _CursorFrame parent;
 
         _CursorFrame frame = leafSharedNotSplit();
         _Node node = frame.mNode;

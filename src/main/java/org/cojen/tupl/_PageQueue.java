@@ -19,8 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Arrays;
-
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.io.PageArray;
