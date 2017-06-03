@@ -4512,7 +4512,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new ClosedIndexException();
         }
 
-        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeUsageList.MODE_UNEVICTABLE);
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
         newNode.clearEntries();
@@ -4556,7 +4556,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new ClosedIndexException();
         }
 
-        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeUsageList.MODE_UNEVICTABLE);
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
         long newPage = newNode.mPage;

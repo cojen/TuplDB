@@ -135,7 +135,7 @@ class ParallelSorter implements Sorter {
             mSortTreePoolSize = size;
             root = latchRootDirty(tree);
         } else {
-            root = mDatabase.allocDirtyNode(NodeUsageList.MODE_UNEVICTABLE);
+            root = mDatabase.allocDirtyNode(NodeContext.MODE_UNEVICTABLE);
             tree = mDatabase.newTemporaryTree(root);
         }
 
