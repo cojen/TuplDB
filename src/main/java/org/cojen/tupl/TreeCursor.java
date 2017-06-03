@@ -4237,119 +4237,149 @@ class TreeCursor implements CauseCloseable, Cursor {
             parentNode = parentFrame.acquireExclusive();
         }
 
-        Node leftNode, rightNode;
-        int nodeAvail;
-        while (true) {
-            latchNode: {
-                if (parentNode.mSplit != null) {
-                    if (node != null) {
+        Node leftNode;
+        doMerge: {
+            Node rightNode;
+            int leftPos;
+            select: while (true) {
+                latchNode: {
+                    if (parentNode.mSplit != null) {
+                        if (node != null) {
+                            node.releaseExclusive();
+                        }
+                        parentNode = mTree.finishSplit(parentFrame, parentNode);
+                    } else if (node != null) {
+                        // Should already be latched.
+                        break latchNode;
+                    }
+
+                    node = leaf.acquireExclusive();
+                }
+
+                // Double check that node should still merge.
+                int nodeAvail = node.availableLeafBytes();
+                if (!node.shouldMerge(nodeAvail)) {
+                    node.releaseExclusive();
+                    parentNode.releaseExclusive();
+                    return;
+                }
+
+                // Attempt to latch the left and right siblings, but without waiting in order
+                // to avoid deadlocks.
+
+                int leftAvail;
+
+                int pos = parentFrame.mNodePos;
+                if (pos == 0) {
+                    leftNode = null;
+                    leftAvail = -1;
+                } else {
+                    try {
+                        leftNode = latchChildRetainParentEx(parentNode, pos - 2, false);
+                    } catch (Throwable e) {
                         node.releaseExclusive();
+                        throw e;
                     }
-                    parentNode = mTree.finishSplit(parentFrame, parentNode);
-                } else if (node != null) {
-                    // Should already be latched.
-                    break latchNode;
+
+                    if (leftNode == null) {
+                        leftAvail = -1;
+                    } else {
+                        if (leftNode.mSplit != null) {
+                            // Finish sibling split.
+                            node.releaseExclusive();
+                            node = null;
+                            parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
+                            continue;
+                        }
+
+                        if (!node.hasKeys()) {
+                            // The node to merge is empty, and the left sibling has been
+                            // latched. No need to examine the right sibling, since the merge
+                            // into the left sibling will absolutely work.
+                            leftPos = parentFrame.mNodePos - 2;
+                            rightNode = node;
+                            break select;
+                        }
+
+                        leftAvail = leftNode.availableLeafBytes();
+                    }
                 }
 
-                node = leaf.acquireExclusive();
-            }
+                int rightAvail;
 
-            // Double check that node should still merge.
-            if (!node.shouldMerge(nodeAvail = node.availableLeafBytes())) {
-                node.releaseExclusive();
-                parentNode.releaseExclusive();
-                return;
-            }
+                if (pos >= parentNode.highestInternalPos()) {
+                    rightNode = null;
+                    rightAvail = -1;
+                } else {
+                    try {
+                        rightNode = latchChildRetainParentEx(parentNode, pos + 2, false);
+                    } catch (Throwable e) {
+                        if (leftNode != null) {
+                            leftNode.releaseExclusive();
+                        }
+                        node.releaseExclusive();
+                        throw e;
+                    }
 
-            // Attempt to latch the left and right siblings, but without waiting in order to
-            // avoid deadlocks.
+                    if (rightNode == null) {
+                        rightAvail = -1;
+                    } else {
+                        if (rightNode.mSplit != null) {
+                            // Finish sibling split.
+                            if (leftNode != null) {
+                                leftNode.releaseExclusive();
+                            }
+                            node.releaseExclusive();
+                            node = null;
+                            parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
+                            continue;
+                        }
 
-            int pos = parentFrame.mNodePos;
-            if (pos == 0) {
-                leftNode = null;
-            } else {
-                try {
-                    leftNode = latchChildRetainParentEx(parentNode, pos - 2, false);
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                        rightAvail = rightNode.availableLeafBytes();
+                    }
                 }
 
-                if (leftNode != null && leftNode.mSplit != null) {
-                    // Finish sibling split.
-                    node.releaseExclusive();
-                    node = null;
-                    parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
-                    continue;
-                }
-            }
+                // Select a left and right pair, and then don't operate directly on the
+                // original node and leaf parameters afterwards. The original node ends up
+                // being referenced as a left or right member of the pair.
 
-            if (pos >= parentNode.highestInternalPos()) {
-                rightNode = null;
-            } else {
-                try {
-                    rightNode = latchChildRetainParentEx(parentNode, pos + 2, false);
-                } catch (Throwable e) {
+                // Choose adjacent node pair which has the most available space, and then
+                // determine if both nodes can fit in one node. If so, migrate and delete the
+                // right node. Leave unbalanced otherwise.
+
+                if (leftAvail <= rightAvail) {
                     if (leftNode != null) {
                         leftNode.releaseExclusive();
                     }
-                    node.releaseExclusive();
-                    throw e;
-                }
-
-                if (rightNode != null && rightNode.mSplit != null) {
-                    // Finish sibling split.
-                    if (leftNode != null) {
-                        leftNode.releaseExclusive();
+                    leftPos = parentFrame.mNodePos;
+                    leftNode = node;
+                    leftAvail = nodeAvail;
+                } else {
+                    if (rightNode != null) {
+                        rightNode.releaseExclusive();
                     }
-                    node.releaseExclusive();
-                    node = null;
-                    parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
-                    continue;
+                    leftPos = parentFrame.mNodePos - 2;
+                    rightNode = node;
+                    rightAvail = nodeAvail;
                 }
+
+                int rem = leftAvail + rightAvail - pageSize(node.mPage) + Node.TN_HEADER_SIZE;
+
+                if (rem >= 0) {
+                    // Enough space will remain in the selected node, so proceed with merge.
+                    break select;
+                }
+
+                if (rightNode != null) {
+                    rightNode.releaseExclusive();
+                }
+
+                break doMerge;
             }
 
-            break;
-        }
-
-        // Select a left and right pair, and then don't operate directly on the
-        // original node and leaf parameters afterwards. The original node ends
-        // up being referenced as a left or right member of the pair.
-
-        int leftAvail = leftNode == null ? -1 : leftNode.availableLeafBytes();
-        int rightAvail = rightNode == null ? -1 : rightNode.availableLeafBytes();
-
-        // Choose adjacent node pair which has the most available space, and then determine if
-        // both nodes can fit in one node. If so, migrate and delete the right node. Leave
-        // unbalanced otherwise.
-
-        int leftPos;
-        if (leftAvail <= rightAvail) {
-            if (leftNode != null) {
-                leftNode.releaseExclusive();
-            }
-            leftPos = parentFrame.mNodePos;
-            leftNode = node;
-            leftAvail = nodeAvail;
-        } else {
-            if (rightNode != null) {
-                rightNode.releaseExclusive();
-            }
-            leftPos = parentFrame.mNodePos - 2;
-            rightNode = node;
-            rightAvail = nodeAvail;
-        }
-
-        int remaining = leftAvail + rightAvail - pageSize(node.mPage) + Node.TN_HEADER_SIZE;
-
-        if (remaining < 0) {
-            if (rightNode != null) {
-                rightNode.releaseExclusive();
-            }
-        } else {
             // Migrate the entire contents of the right node into the left node, and then
-            // delete the right node. Left must be marked dirty, and parent is already
-            // expected to be dirty.
+            // delete the right node. Left must be marked dirty, and parent is already expected
+            // to be dirty.
 
             try {
                 if (mTree.markDirty(leftNode)) {
@@ -4369,6 +4399,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 parentNode.releaseExclusive();
                 throw e;
             }
+
             parentNode.deleteRightChildRef(leftPos + 2);
         }
 
