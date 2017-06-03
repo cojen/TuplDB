@@ -3771,7 +3771,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
             if (snode.hasKeys()) {
                 snode.downgrade();
             } else {
-                source.mergeEmptyLeaf(sleaf, snode);
+                source.mergeLeaf(sleaf, snode);
                 sleaf = source.leafSharedNotSplit();
             }
 
@@ -4343,93 +4343,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
             // Since node latch was released, start over and check everything again properly.
             node = frame.acquireExclusive();
         }
-    }
-
-    /**
-     * Caller must hold exclusive latch, which is released by this method.
-     */
-    private void mergeEmptyLeaf(final _CursorFrame leaf, _Node node) throws IOException {
-        final _CursorFrame parentFrame = leaf.mParentFrame;
-
-        if (parentFrame == null) {
-            // Root node cannot merge into anything.
-            node.releaseExclusive();
-            return;
-        }
-
-        // Always merge to the right sibling, unless there isn't one.
-
-        _Node parentNode = parentFrame.tryAcquireExclusive();
-        if (parentNode == null) {
-            node.releaseExclusive();
-            parentNode = parentFrame.acquireExclusive();
-            node = leaf.acquireExclusive();
-        }
-
-        _Node rightNode;
-        int pos;
-        while (true) {
-            if (parentNode.mSplit != null) {
-                // FIXME: must release and re-acquire node latch; see mergeLeaf method
-                parentNode = mTree.finishSplit(parentFrame, parentNode);
-            }
-
-            pos = parentFrame.mNodePos;
-
-            // Double check that node is still empty. Also check that a right sibling exists.
-            if (node.mSplit != null || node.hasKeys() || pos >= parentNode.highestInternalPos()) {
-                node.releaseExclusive();
-                parentNode.releaseExclusive();
-                return;
-            }
-
-            try {
-                rightNode = latchChildRetainParentEx(parentNode, pos + 2, true);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
-
-            if (rightNode.mSplit != null) {
-                // Finish sibling split.
-                node.releaseExclusive();
-                // FIXME: must acquire node latch again
-                parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
-                continue;
-            }
-
-            break;
-        }
-
-        try {
-            if (mTree.markDirty(rightNode)) {
-                parentNode.updateChildRefId(pos + 2, rightNode.mId);
-            }
-
-            mTree.mDatabase.prepareToDelete(node);
-
-            // All cursors in the empty left node must be moved to the right node.
-            for (_CursorFrame frame = node.mLastCursorFrame; frame != null; ) {
-                // Capture previous frame from linked list before changing the links.
-                _CursorFrame prev = frame.mPrevCousin;
-                frame.rebind(rightNode, -1);
-                frame = prev;
-            }
-
-            // If left node was low extremity, right node now is.
-            rightNode.type((byte) (rightNode.type() | (node.type() & _Node.LOW_EXTREMITY)));
-
-            mTree.mDatabase.deleteNode(node);
-        } catch (Throwable e) {
-            node.releaseExclusive();
-            rightNode.releaseExclusive();
-            parentNode.releaseExclusive();
-            throw e;
-        }
-
-        parentNode.deleteLeftChildRef(pos);
-
-        mergeInternal(parentFrame, parentNode, rightNode);
     }
 
     /**
