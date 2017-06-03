@@ -122,6 +122,7 @@ public class Utils {
         }
     }
 
+    @SuppressWarnings("unused")
     private static int doCompareUnsigned(byte[] a, byte[] b) {
         return doCompareUnsigned(a, 0, a.length, b, 0, b.length);
     }
@@ -143,6 +144,7 @@ public class Utils {
     /**
      * Adapts the offset/length form to work with the start/end form.
      */
+    @SuppressWarnings("unused")
     private static int compareUnsignedAdapter(byte[] a, int aoff, int alen,
                                               byte[] b, int boff, int blen)
         throws Throwable
@@ -467,6 +469,7 @@ public class Utils {
     /**
      * Attempt to delete the given direct or mapped byte buffer.
      */
+    @SuppressWarnings("restriction")
     public static boolean delete(ByteBuffer bb) {
         if (!bb.isDirect()) {
             return false;

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Closeable;
-
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
@@ -33,7 +31,6 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("serial")
 final class BasicPageCache extends Latch implements PageCache {
     /*
       Node format:
@@ -81,7 +78,7 @@ final class BasicPageCache extends Latch implements PageCache {
         mNodes = mNodesByteBuffer.asIntBuffer();
         mData = ByteBuffer.allocateDirect(entryCount * pageSize);
 
-        // Initalize the nodes, all linked together.
+        // Initialize the nodes, all linked together.
         int ptr = 0;
         for (; ptr < entryCount * NODE_SIZE_IN_INTS; ptr += NODE_SIZE_IN_INTS) {
             mNodes.put(ptr + LESS_RECENT_PTR_FIELD, ptr - NODE_SIZE_IN_INTS);

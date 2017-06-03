@@ -339,6 +339,7 @@ public abstract class Clutch extends Latch {
      * be at least 16, to minimize cache line contention. As a convenience, this class also
      * extends the Latch class, but the latching features are not used here.
      */
+    @SuppressWarnings("restriction")
     public static class Pack extends Latch {
         private static final int OBJECT_ARRAY_BASE;
         private static final int OBJECT_ARRAY_SHIFT;

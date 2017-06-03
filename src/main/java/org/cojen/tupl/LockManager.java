@@ -239,7 +239,7 @@ final class LockManager {
     /**
      * Simple hashtable of Locks.
      */
-    @SuppressWarnings("serial")
+    @SuppressWarnings({"unused", "restriction"})
     static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
         private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();

@@ -462,7 +462,6 @@ class _Locker extends _LockOwner {
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    @SuppressWarnings("incomplete-switch")
     LockFailureException failed(int lockType, LockResult result, long nanosTimeout)
         throws DeadlockException
     {

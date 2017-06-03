@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("restriction")
 public class DirectAccess {
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.tryObtain();
 
