@@ -418,6 +418,7 @@ abstract class AbstractFileIO extends FileIO {
 
     // Caller must hold mRemapLatch exclusively.
     private void doUnmap(boolean reopen) throws IOException {
+        boolean contended = mMappingLock.isContended();
         mMappingLock.acquireExclusive();
         try {
             Mapping[] mappings = mMappings;
@@ -450,7 +451,7 @@ abstract class AbstractFileIO extends FileIO {
                 throw ex;
             }
         } finally {
-            mMappingLock.releaseExclusive();
+            mMappingLock.releaseExclusive(contended);
         }
     }
 
@@ -522,10 +523,11 @@ abstract class AbstractFileIO extends FileIO {
             mMappingLock.releaseShared();
         }
 
+        boolean contended = mMappingLock.isContended();
         mMappingLock.acquireExclusive();
         mMappings = newMappings;
         mLastMappingSize = newLastSize;
-        mMappingLock.releaseExclusive();
+        mMappingLock.releaseExclusive(contended);
 
         if (oldMappings != null) {
             IOException ex = null;

@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":6,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":6,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -111,6 +111,10 @@ var activeTableTab = "activeTableTab";
 <div class="description">
 <ul class="blockList">
 <li class="blockList">
+<dl>
+<dt>Direct Known Subclasses:</dt>
+<dd><a href="../../../../org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dd>
+</dl>
 <hr>
 <br>
 <pre>public abstract class <span class="typeNameLabel">Clutch</span>
@@ -245,40 +249,52 @@ extends <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org
 </td>
 </tr>
 <tr id="i7" class="rowColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#isContended--">isContended</a></span>()</code>
+<div class="block">Returns true if clutch is operating in contended mode.</div>
+</td>
+</tr>
+<tr id="i8" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#releaseExclusive-boolean-">releaseExclusive</a></span>(boolean&nbsp;contended)</code>
+<div class="block">Release the held exclusive latch with the option to try switching to contended mode.</div>
+</td>
+</tr>
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#releaseShared--">releaseShared</a></span>()</code>
 <div class="block">Release a held shared latch.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#toString--">toString</a></span>()</code>&nbsp;</td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireExclusive--">tryAcquireExclusive</a></span>()</code>
 <div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos</a></span>(long&nbsp;nanosTimeout)</code>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireShared--">tryAcquireShared</a></span>()</code>
 <div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos</a></span>(long&nbsp;nanosTimeout)</code>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Clutch.html#tryUpgrade--">tryUpgrade</a></span>()</code>
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch.</div>
@@ -343,6 +359,16 @@ extends <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org
 <!--   -->
 </a>
 <h3>Method Detail</h3>
+<a name="isContended--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isContended</h4>
+<pre>public final&nbsp;boolean&nbsp;isContended()</pre>
+<div class="block">Returns true if clutch is operating in contended mode.</div>
+</li>
+</ul>
 <a name="tryAcquireExclusive--">
 <!--   -->
 </a>
@@ -408,6 +434,20 @@ extends <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org
 <dd><code><a href="../../../../org/cojen/tupl/util/Latch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="releaseExclusive-boolean-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>releaseExclusive</h4>
+<pre>public final&nbsp;void&nbsp;releaseExclusive(boolean&nbsp;contended)</pre>
+<div class="block">Release the held exclusive latch with the option to try switching to contended mode.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>contended</code> - pass true to try switching to contended mode</dd>
 </dl>
 </li>
 </ul>

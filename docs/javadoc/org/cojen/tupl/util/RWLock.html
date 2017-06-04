@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -73,8 +73,8 @@ var activeTableTab = "activeTableTab";
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#nested.classes.inherited.from.class.org.cojen.tupl.util.Clutch">Nested</a>&nbsp;|&nbsp;</li>
+<li><a href="#fields.inherited.from.class.org.cojen.tupl.util.Latch">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
@@ -99,7 +99,17 @@ var activeTableTab = "activeTableTab";
 <li><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">java.lang.Object</a></li>
 <li>
 <ul class="inheritance">
+<li><a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">org.cojen.tupl.util.Latch</a></li>
+<li>
+<ul class="inheritance">
+<li><a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">org.cojen.tupl.util.Clutch</a></li>
+<li>
+<ul class="inheritance">
 <li>org.cojen.tupl.util.RWLock</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -113,20 +123,45 @@ var activeTableTab = "activeTableTab";
 <hr>
 <br>
 <pre>public final class <span class="typeNameLabel">RWLock</span>
-extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>
+extends <a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a>
 implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></pre>
-<div class="block">Scalable non-reentrant read-write lock, with writer bias.
- 
- An exclusive write lock (after acquiring the latch) is wait-free, bounded by
- the number of read slots. An exclusive writer spins while waiting for
- ongoing readers to release which may be expensive if shared locks are held
- for a long time.</div>
+<div class="block">Scalable non-reentrant read-write lock.</div>
 </li>
 </ul>
 </div>
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<ul class="blockList">
+<li class="blockList"><a name="nested.class.summary">
+<!--   -->
+</a>
+<h3>Nested Class Summary</h3>
+<ul class="blockList">
+<li class="blockList"><a name="nested.classes.inherited.from.class.org.cojen.tupl.util.Clutch">
+<!--   -->
+</a>
+<h3>Nested classes/interfaces inherited from class&nbsp;org.cojen.tupl.util.<a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></h3>
+<code><a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></code></li>
+</ul>
+</li>
+</ul>
+<!-- =========== FIELD SUMMARY =========== -->
+<ul class="blockList">
+<li class="blockList"><a name="field.summary">
+<!--   -->
+</a>
+<h3>Field Summary</h3>
+<ul class="blockList">
+<li class="blockList"><a name="fields.inherited.from.class.org.cojen.tupl.util.Latch">
+<!--   -->
+</a>
+<h3>Fields inherited from class&nbsp;org.cojen.tupl.util.<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></h3>
+<code><a href="../../../../org/cojen/tupl/util/Latch.html#EXCLUSIVE">EXCLUSIVE</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#SHARED">SHARED</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#UNLATCHED">UNLATCHED</a></code></li>
+</ul>
+</li>
+</ul>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
 <ul class="blockList">
 <li class="blockList"><a name="constructor.summary">
@@ -157,90 +192,53 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#acquireExclusive--">acquireExclusive</a></span>()</code>
-<div class="block">Acquires the write lock.</div>
+<td class="colFirst"><code>protected <a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#getPack--">getPack</a></span>()</code>
+<div class="block">Returns the pack associated with this clutch, which should be shared to reduce the
+ overall memory footprint.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#acquireShared--">acquireShared</a></span>()</code>
-<div class="block">Acquires the read lock.</div>
-</td>
-</tr>
-<tr id="i2" class="altColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#downgrade--">downgrade</a></span>()</code>
-<div class="block">Downgrades a write lock to a read lock.</div>
-</td>
-</tr>
-<tr id="i3" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#lock--">lock</a></span>()</code>
 <div class="block">Acquires the read lock.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#readLock--">readLock</a></span>()</code>&nbsp;</td>
 </tr>
-<tr id="i5" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#releaseExclusive--">releaseExclusive</a></span>()</code>
-<div class="block">Attempts to release the write lock.</div>
-</td>
-</tr>
-<tr id="i6" class="altColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#releaseShared--">releaseShared</a></span>()</code>
-<div class="block">Release the read lock.</div>
-</td>
-</tr>
-<tr id="i7" class="rowColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#tryAcquireExclusive--">tryAcquireExclusive</a></span>()</code>
-<div class="block">Acquires the write lock only if it is not held by another thread at the
- time of invocation.</div>
-</td>
-</tr>
-<tr id="i8" class="altColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos</a></span>(long&nbsp;nanosTimeout)</code>
-<div class="block">Acquires the write lock if it is not held by another thread within the
- given waiting time.</div>
-</td>
-</tr>
-<tr id="i9" class="rowColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#tryAcquireShared--">tryAcquireShared</a></span>()</code>
-<div class="block">Acquires the read lock only if the write lock is not held by another
- thread at the time of invocation.</div>
-</td>
-</tr>
-<tr id="i10" class="altColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos</a></span>(long&nbsp;nanosTimeout)</code>
-<div class="block">Acquires the read lock if the write lock is not held by another thread
- within the given waiting time.</div>
-</td>
-</tr>
-<tr id="i11" class="rowColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#unlock--">unlock</a></span>()</code>
 <div class="block">Releases the read lock.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#writeLock--">writeLock</a></span>()</code>&nbsp;</td>
 </tr>
 </table>
 <ul class="blockList">
+<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.util.Clutch">
+<!--   -->
+</a>
+<h3>Methods inherited from class&nbsp;org.cojen.tupl.util.<a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></h3>
+<code><a href="../../../../org/cojen/tupl/util/Clutch.html#acquireExclusive--">acquireExclusive</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#acquireShared--">acquireShared</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#acquireSharedInterruptibly--">acquireSharedInterruptibly</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#acquireSharedUncontended--">acquireSharedUncontended</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#acquireSharedUncontendedNanos-long-">acquireSharedUncontendedNanos</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#isContended--">isContended</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#releaseExclusive-boolean-">releaseExclusive</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#releaseShared--">releaseShared</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#toString--">toString</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireExclusive--">tryAcquireExclusive</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireShared--">tryAcquireShared</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos</a>, <a href="../../../../org/cojen/tupl/util/Clutch.html#tryUpgrade--">tryUpgrade</a></code></li>
+</ul>
+<ul class="blockList">
+<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.util.Latch">
+<!--   -->
+</a>
+<h3>Methods inherited from class&nbsp;org.cojen.tupl.util.<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></h3>
+<code><a href="../../../../org/cojen/tupl/util/Latch.html#downgrade--">downgrade</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#hasQueuedThreads--">hasQueuedThreads</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#release-boolean-">release</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#releaseEither--">releaseEither</a>, <a href="../../../../org/cojen/tupl/util/Latch.html#releaseExclusive--">releaseExclusive</a></code></li>
+</ul>
+<ul class="blockList">
 <li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;java.lang.<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></h3>
-<code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang">clone</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang">equals</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang">finalize</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang">getClass</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang">hashCode</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang">notify</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang">notifyAll</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang">toString</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang">wait</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang">wait</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang">wait</a></code></li>
+<code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang">clone</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang">equals</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang">finalize</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang">getClass</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang">hashCode</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang">notify</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang">notifyAll</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang">wait</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang">wait</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang">wait</a></code></li>
 </ul>
 </li>
 </ul>
@@ -293,118 +291,6 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
 <div class="block">Releases the read lock.</div>
 </li>
 </ul>
-<a name="acquireShared--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>acquireShared</h4>
-<pre>public&nbsp;void&nbsp;acquireShared()</pre>
-<div class="block">Acquires the read lock.</div>
-</li>
-</ul>
-<a name="releaseShared--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>releaseShared</h4>
-<pre>public&nbsp;void&nbsp;releaseShared()</pre>
-<div class="block">Release the read lock.</div>
-</li>
-</ul>
-<a name="acquireExclusive--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>acquireExclusive</h4>
-<pre>public&nbsp;void&nbsp;acquireExclusive()</pre>
-<div class="block">Acquires the write lock.</div>
-</li>
-</ul>
-<a name="releaseExclusive--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>releaseExclusive</h4>
-<pre>public&nbsp;void&nbsp;releaseExclusive()</pre>
-<div class="block">Attempts to release the write lock.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalMonitorStateException.html?is-external=true" title="class or interface in java.lang">IllegalMonitorStateException</a></code> - if the write lock is not held.</dd>
-</dl>
-</li>
-</ul>
-<a name="downgrade--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>downgrade</h4>
-<pre>public&nbsp;void&nbsp;downgrade()</pre>
-<div class="block">Downgrades a write lock to a read lock.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalMonitorStateException.html?is-external=true" title="class or interface in java.lang">IllegalMonitorStateException</a></code> - if the write lock is not held.</dd>
-</dl>
-</li>
-</ul>
-<a name="tryAcquireShared--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryAcquireShared</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireShared()</pre>
-<div class="block">Acquires the read lock only if the write lock is not held by another
- thread at the time of invocation.</div>
-</li>
-</ul>
-<a name="tryAcquireSharedNanos-long-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryAcquireSharedNanos</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireSharedNanos(long&nbsp;nanosTimeout)
-                              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></pre>
-<div class="block">Acquires the read lock if the write lock is not held by another thread
- within the given waiting time.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="tryAcquireExclusive--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryAcquireExclusive</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireExclusive()</pre>
-<div class="block">Acquires the write lock only if it is not held by another thread at the
- time of invocation.</div>
-</li>
-</ul>
-<a name="tryAcquireExclusiveNanos-long-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>tryAcquireExclusiveNanos</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireExclusiveNanos(long&nbsp;nanosTimeout)
-                                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></pre>
-<div class="block">Acquires the write lock if it is not held by another thread within the
- given waiting time.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang">InterruptedException</a></code></dd>
-</dl>
-</li>
-</ul>
 <a name="readLock--">
 <!--   -->
 </a>
@@ -421,13 +307,29 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
 <a name="writeLock--">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>writeLock</h4>
 <pre>public&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;writeLock()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true#writeLock--" title="class or interface in java.util.concurrent.locks">writeLock</a></code>&nbsp;in interface&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="getPack--">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>getPack</h4>
+<pre>protected&nbsp;<a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a>&nbsp;getPack()</pre>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/util/Clutch.html#getPack--">Clutch</a></code></span></div>
+<div class="block">Returns the pack associated with this clutch, which should be shared to reduce the
+ overall memory footprint.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
+<dd><code><a href="../../../../org/cojen/tupl/util/Clutch.html#getPack--">getPack</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -483,8 +385,8 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#nested.classes.inherited.from.class.org.cojen.tupl.util.Clutch">Nested</a>&nbsp;|&nbsp;</li>
+<li><a href="#fields.inherited.from.class.org.cojen.tupl.util.Latch">Field</a>&nbsp;|&nbsp;</li>
 <li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
