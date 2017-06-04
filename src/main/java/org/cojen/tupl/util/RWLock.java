@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,290 +17,58 @@
 
 package org.cojen.tupl.util;
 
+import java.util.Date;
+
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 
-import org.cojen.tupl.io.UnsafeAccess;
-
 /**
- * Scalable non-reentrant read-write lock, with writer bias.
- * 
- * An exclusive write lock (after acquiring the latch) is wait-free, bounded by
- * the number of read slots. An exclusive writer spins while waiting for
- * ongoing readers to release which may be expensive if shared locks are held
- * for a long time.
+ * Scalable non-reentrant read-write lock.
  */
-public final class RWLock implements ReadWriteLock {
-    private final ReadIndicator readers;
-    private final Latch latch;
-
-    private final Lock readLock;
-    private final Lock writeLock;
+public final class RWLock extends Clutch implements ReadWriteLock {
+    private final Pack mPack;
+    private final Lock mReadLock;
+    private final Lock mWriteLock;
 
     public RWLock() {
-        readers = new ReadIndicator();
-        latch = new Latch();
-
+        // Use the minimum recommended number of slots for now. Consider using a larger shared
+        // instance at some point.
+        mPack = new Pack(16);
         // Early initialize the read/write lock views. This lets callers use
         // reference equality to compare the views.
-        readLock = new ReadLock();
-        writeLock = new WriteLock();
+        mReadLock = new ReadLock();
+        mWriteLock = new WriteLock();
     }
 
     /** Acquires the read lock. */
-    public void lock() { acquireShared(); }
+    public void lock() {
+        acquireShared();
+    }
 
     /** Releases the read lock. */
-    public void unlock() { releaseShared(); }
-
-    /**
-     * Acquires the read lock.
-     */
-    public void acquireShared() {
-        int idx = readers.increment();
-        if (!latch.isHeldExclusive()) {
-            // Acquired lock in read-only mode
-            return;
-        } else {
-            // Rollback counter to avoid blocking a Writer
-            readers.decrementAt(idx);
-
-            // Wait for exclusive writer to finish.
-            latch.acquireShared();
-            // Bump the read indicator with the shared latch held.
-            readers.incrementAt(idx);
-            latch.releaseShared();
-        }
-    }
-
-    /**
-     * Release the read lock.
-     */
-    public void releaseShared() {
-        readers.decrement();
-    }
-
-    /**
-     * Acquires the write lock.
-     */
-    public void acquireExclusive() {
-        latch.acquireExclusive();
-        while (true) {
-            if (readers.isZero()) return;
-            // Spin until existing readers are done. New readers will see that
-            // the latch is held exclusive and backoff, waiting for release of
-            // the exclusive latch.
-            Thread.yield();
-        }
-    }
-
-    /**
-     * Attempts to release the write lock.
-     * 
-     * @throws IllegalMonitorStateException if the write lock is not held.
-     */
-    public void releaseExclusive() {
-        if (!latch.isHeldExclusive()) {
-            // Tried to unlock a non write-locked instance
-            throw new IllegalMonitorStateException();
-        }
-        latch.releaseExclusive();
-    }
-
-    /**
-     * Downgrades a write lock to a read lock.
-     * 
-     * @throws IllegalMonitorStateException if the write lock is not held.
-     */
-    public void downgrade() {
-        if (!latch.isHeldExclusive()) {
-            // Tried to downgrade a non write-locked instance
-            throw new IllegalMonitorStateException();
-        }
-        readers.increment();
-        latch.releaseExclusive();
-    }
-
-    /**
-     * Acquires the read lock only if the write lock is not held by another
-     * thread at the time of invocation.
-     */
-    public boolean tryAcquireShared() {
-        int idx = readers.increment();
-        if (!latch.isHeldExclusive()) {
-            // Acquired lock in read-only mode
-            return true;
-        } 
-        readers.decrementAt(idx);
-        return false;
-    }
-
-    /**
-     * Acquires the read lock if the write lock is not held by another thread
-     * within the given waiting time.
-     */
-    public boolean tryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
-        int idx = readers.increment();
-        if (!latch.isHeldExclusive()) {
-            // Acquired lock in read-only mode
-            return true;
-        } 
-
-        // Rollback and wait when there's a writer.
-        readers.decrementAt(idx);
-        if (latch.tryAcquireSharedNanos(nanosTimeout)) {
-            readers.incrementAt(idx);
-            latch.releaseShared();
-            return true;
-        }
-
-        // Time has expired and there is still a writer so give up.
-        return false;
-    }
-
-    /**
-     * Acquires the write lock only if it is not held by another thread at the
-     * time of invocation.
-     */   
-    public boolean tryAcquireExclusive() {
-        if (!latch.tryAcquireExclusive()) {
-            return false;
-        }
-        if (readers.isZero()) return true;
-        latch.releaseExclusive();
-        return false;
-    }
-
-    /**
-     * Acquires the write lock if it is not held by another thread within the
-     * given waiting time.
-     */    
-    public boolean tryAcquireExclusiveNanos(long nanosTimeout) throws InterruptedException {
-        if (!latch.tryAcquireExclusiveNanos(nanosTimeout)) {
-            return false;
-        }
-
-        final long deadline = System.nanoTime() + nanosTimeout;
-        while (true) {
-            if (readers.isZero()) return true;
-            if (deadline - System.nanoTime() > 0) {
-                Thread.yield();
-            } else { 
-                // Time has expired and there is still at least one reader so give up.
-                latch.releaseExclusive();
-                return false;
-            }  
-        }
+    public void unlock() {
+        releaseShared();
     }
 
     @Override
     public Lock readLock() {
-        return readLock;
+        return mReadLock;
     }
 
     @Override
     public Lock writeLock() {
-        return writeLock;
+        return mWriteLock;
     }
 
-    /**
-     * Read indicator representing the count of shared lock owners. May over represent
-     * the number of owners transiently as new readers first optimistically increment
-     * the indicator before checking that there's either an exclusive waiter or owner.
-     * In those cases they immediately decrement to rollback their shared acquisition.
-     *
-     * Uses a padded striped array of longs to reduce contention among concurrent
-     * shared lock attempts.
-     */
-    @SuppressWarnings("restriction")
-    private static final class ReadIndicator {
-        private static final int NCPU = Runtime.getRuntime().availableProcessors();
-        private static final int SLOTS = NCPU <= 1 ? 2 : Integer.highestOneBit(NCPU - 1) << 2;
-
-        private volatile long relaxed = 0;
-        private final long[] array;
-
-        ReadIndicator() { 
-            // Cache-line padded for each slot, and at the beginning and end of the array.
-            array = new long[16 + 8 * SLOTS];
-        }
-
-        private static final int idxFor(long probe) {
-            probe ^= probe << 13;   // xorshift rng
-            probe ^= probe >>> 17;
-            probe ^= probe << 5;
-            return (int) (probe & (SLOTS - 1));
-        }
-
-        public boolean isZero() {
-            // Volatile read prevents reordering the relaxed slot gets combined
-            // with the loadFence() below.
-            long sum = relaxed;
-            for (int i = 0; i < SLOTS && sum == 0; i++) {
-                sum += get(i);
-            }
-            UNSAFE.loadFence();
-            return sum == 0;
-        }
-
-        private long get(int idx) {
-            return UNSAFE.getLong(array, byteOffset(idx));
-        }
-
-        public int increment() {
-            return add(1L);
-        }
-
-        public int decrement() {
-            return add(-1L);
-        }
-
-        public void incrementAt(int idx) {
-            addAt(1L, idx);
-        }
-
-        public void decrementAt(int idx) {
-            addAt(-1L, idx);
-        }
-
-        private int add(long x) {
-            int idx = idxFor(Thread.currentThread().getId());
-            addAt(x, idx);
-            return idx;
-        }
-
-        private void addAt(long x, int idx) {
-            UNSAFE.getAndAddLong(array, byteOffset(idx), x);
-        }
-
-        private static long byteOffset(int idx) {
-            return 64L + (((long) (idx << 3) << SHIFT)) + BASE;
-        }
-
-        // Unsafe mechanics
-        private static final sun.misc.Unsafe UNSAFE;
-        private static final long BASE;
-        private static final long SHIFT;
-
-        static {
-            try {
-                UNSAFE = UnsafeAccess.obtain(); 
-                BASE = UNSAFE.arrayBaseOffset(long[].class);
-                int scale = UNSAFE.arrayIndexScale(long[].class);
-                if ((scale & (scale - 1)) != 0)
-                    throw new Error("data type scale not a power of two");
-                SHIFT = 31 - Integer.numberOfLeadingZeros(scale);
-            } catch (Exception e) {
-                throw new Error(e);
-            }
-        }
+    @Override
+    protected Pack getPack() {
+        return mPack;
     }
 
     /** Read lock view. */
     private final class ReadLock implements Lock {
-
         @Override
         public void lock() {
             acquireShared();
@@ -328,13 +96,12 @@ public final class RWLock implements ReadWriteLock {
 
         @Override
         public Condition newCondition() {
-            return null;
+            throw new UnsupportedOperationException();
         }
     }
 
     /** Write lock view. */
     private final class WriteLock implements Lock {
-
         @Override
         public void lock() {
             acquireExclusive();
@@ -362,7 +129,45 @@ public final class RWLock implements ReadWriteLock {
 
         @Override
         public Condition newCondition() {
-            return null;
+            return new WriteCondition();
+        }
+    }
+
+    private final class WriteCondition extends LatchCondition implements Condition {
+        @Override
+        public void await() throws InterruptedException {
+            if (await(RWLock.this, -1, 0) <= 0) {
+                throw new InterruptedException();
+            }
+        }
+
+        @Override
+        public void awaitUninterruptibly() {
+            while (await(RWLock.this, -1, 0) <= 0);
+        }
+
+        @Override
+        public long awaitNanos(long nanosTimeout) throws InterruptedException {
+            long end = System.nanoTime();
+            if (nanosTimeout > 0) {
+                end += nanosTimeout;
+            } else {
+                nanosTimeout = 0;
+            }
+            if (await(RWLock.this, nanosTimeout, end) < 0) {
+                throw new InterruptedException();
+            }
+            return end - System.nanoTime();
+        }
+
+        @Override
+        public boolean await(long time, TimeUnit unit) throws InterruptedException {
+            return awaitNanos(unit.toNanos(time)) > 0;
+        }
+
+        @Override
+        public boolean awaitUntil(Date deadline) throws InterruptedException {
+            return await(deadline.getTime() - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
         }
     }
 }

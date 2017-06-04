@@ -81,10 +81,6 @@
 <dd>
 <div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the write lock.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -96,10 +92,6 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireShared--">acquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Acquire a shared latch, barging ahead of any waiting threads if possible.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#acquireShared--">acquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the read lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireSharedInterruptibly--">acquireSharedInterruptibly()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
@@ -785,10 +777,6 @@
 <dd>
 <div class="block">Downgrade the held exclusive latch into a shared latch.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#downgrade--">downgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Downgrades a write lock to a read lock.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.html#drop--">drop()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
 <dd>
 <div class="block">Fully closes and removes an empty index.</div>
@@ -1236,6 +1224,8 @@
 <div class="block">Returns the pack associated with this clutch, which should be shared to reduce the
  overall memory footprint.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#getPack--">getPack()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#getPageCount--">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#getPageCount--">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
@@ -1419,6 +1409,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.html#isClosed--">isClosed()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#isContended--">isContended()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dd>
+<div class="block">Returns true if clutch is operating in contended mode.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#isEmpty--">isEmpty()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#isEmpty--">isEmpty()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
@@ -1550,7 +1544,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Latch</span></a> - Class in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
-<div class="block">Non-reentrant read/write latch, designed for throughout over fairness.</div>
+<div class="block">Non-reentrant read-write latch, designed for throughout over fairness.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#Latch--">Latch()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
@@ -2117,23 +2111,19 @@
 <dd>
 <div class="block">Releases an exclusive or shared latch.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#releaseExclusive-boolean-">releaseExclusive(boolean)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dd>
+<div class="block">Release the held exclusive latch with the option to try switching to contended mode.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#releaseExclusive--">releaseExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Release the held exclusive latch.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#releaseExclusive--">releaseExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Attempts to release the write lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#releaseShared--">releaseShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#releaseShared--">releaseShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Release a held shared latch.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#releaseShared--">releaseShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Release the read lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#remap--">remap()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
@@ -2227,7 +2217,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">RWLock</span></a> - Class in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
-<div class="block">Scalable non-reentrant read-write lock, with writer bias.</div>
+<div class="block">Scalable non-reentrant read-write lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#RWLock--">RWLock()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
 <dd>&nbsp;</dd>
@@ -2533,21 +2523,11 @@
 <dd>
 <div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#tryAcquireExclusive--">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the write lock only if it is not held by another thread at the
- time of invocation.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the write lock if it is not held by another thread within the
- given waiting time.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryAcquireShared--">tryAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
@@ -2555,21 +2535,11 @@
 <dd>
 <div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#tryAcquireShared--">tryAcquireShared()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the read lock only if the write lock is not held by another
- thread at the time of invocation.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/RWLock.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos(long)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/RWLock.html" title="class in org.cojen.tupl.util">RWLock</a></dt>
-<dd>
-<div class="block">Acquires the read lock if the write lock is not held by another thread
- within the given waiting time.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Worker.html#tryEnqueue-org.cojen.tupl.util.Worker.Task-">tryEnqueue(Worker.Task)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util">Worker</a></dt>
 <dd>
