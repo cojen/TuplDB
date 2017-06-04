@@ -126,6 +126,29 @@ public abstract class Clutch extends Latch {
     }
 
     /**
+     * Downgrade the held exclusive latch with the option to try switching to contended mode.
+     * Caller must later call releaseShared instead of releaseExclusive.
+     *
+     * @param contended pass true to try switching to contended mode
+     */
+    public final void downgrade(boolean contended) {
+        if (contended) {
+            Pack pack = getPack();
+            int slot = pack.tryRegister(this);
+            if (slot >= 0) {
+                mContendedSlot = slot;
+                if (!pack.tryAcquireShared(slot, this)) {
+                    throw new AssertionError();
+                }
+                super.releaseExclusive();
+                return;
+            }
+        }
+
+        super.downgrade();
+    }
+
+    /**
      * Release the held exclusive latch with the option to try switching to contended mode.
      *
      * @param contended pass true to try switching to contended mode
