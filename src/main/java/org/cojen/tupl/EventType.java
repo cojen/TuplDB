@@ -69,6 +69,8 @@ public enum EventType {
     CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
     /** Signals the checkpoint phase which flushes all dirty nodes to the main database file. */
     CHECKPOINT_FLUSH(Category.CHECKPOINT, Level.INFO),
+    /** Signals the checkpoint phase which forcibly persists changes to the main database file. */
+    CHECKPOINT_SYNC(Category.CHECKPOINT, Level.INFO),
     /** Signals that checkpoint task failed with an exception. */
     CHECKPOINT_FAILED(Category.CHECKPOINT, Level.WARNING),
     /** Signals the end of a checkpoint, reporting the duration. */

@@ -4921,6 +4921,10 @@ final class LocalDatabase extends AbstractDatabase {
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
         }
+
+        if (mEventListener != null) {
+            mEventListener.notify(EventType.CHECKPOINT_SYNC, "Forcibly persisting all changes");
+        }
     }
 
     // Called by DurablePageDb with header latch held.

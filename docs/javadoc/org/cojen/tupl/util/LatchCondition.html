@@ -108,7 +108,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <hr>
 <br>
-<pre>public final class <span class="typeNameLabel">LatchCondition</span>
+<pre>public class <span class="typeNameLabel">LatchCondition</span>
 extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></pre>
 <div class="block">Manages a queue of waiting threads, associated with a <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><code>Latch</code></a> instance. Unlike the
  built-in Java Condition class, spurious wakeup does not occur when waiting.</div>
@@ -264,7 +264,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>isEmpty</h4>
-<pre>public&nbsp;boolean&nbsp;isEmpty()</pre>
+<pre>public final&nbsp;boolean&nbsp;isEmpty()</pre>
 <div class="block">Returns true if no waiters are enqueued. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -274,9 +274,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>await</h4>
-<pre>public&nbsp;int&nbsp;await(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-                 long&nbsp;nanosTimeout,
-                 long&nbsp;nanosEnd)</pre>
+<pre>public final&nbsp;int&nbsp;await(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                       long&nbsp;nanosTimeout,
+                       long&nbsp;nanosEnd)</pre>
 <div class="block">Blocks the current thread until a signal is received. Exclusive latch must be acquired
  by the caller, which is released and then re-acquired by this method.</div>
 <dl>
@@ -295,9 +295,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>awaitShared</h4>
-<pre>public&nbsp;int&nbsp;awaitShared(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-                       long&nbsp;nanosTimeout,
-                       long&nbsp;nanosEnd)</pre>
+<pre>public final&nbsp;int&nbsp;awaitShared(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                             long&nbsp;nanosTimeout,
+                             long&nbsp;nanosEnd)</pre>
 <div class="block">Blocks the current thread until a signal is received. Exclusive latch must be acquired
  by the caller, which is released and then re-acquired by this method.
 
@@ -320,7 +320,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signal</h4>
-<pre>public&nbsp;void&nbsp;signal()</pre>
+<pre>public final&nbsp;void&nbsp;signal()</pre>
 <div class="block">Signals the first waiter, of any type. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -330,7 +330,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalRelease</h4>
-<pre>public&nbsp;boolean&nbsp;signalRelease(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
+<pre>public final&nbsp;boolean&nbsp;signalRelease(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
 <div class="block">If a first waiter exists, it's removed, the held exclusive latch is released, and then
  the waiter is signaled.</div>
 <dl>
@@ -345,7 +345,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalNext</h4>
-<pre>public&nbsp;boolean&nbsp;signalNext()</pre>
+<pre>public final&nbsp;boolean&nbsp;signalNext()</pre>
 <div class="block">Signals the first waiter, of any type. Caller must hold shared or exclusive latch.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -359,7 +359,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalAll</h4>
-<pre>public&nbsp;void&nbsp;signalAll()</pre>
+<pre>public final&nbsp;void&nbsp;signalAll()</pre>
 <div class="block">Signals all waiters, of any type. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -369,7 +369,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalShared</h4>
-<pre>public&nbsp;void&nbsp;signalShared()</pre>
+<pre>public final&nbsp;void&nbsp;signalShared()</pre>
 <div class="block">Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
  exclusive latch.</div>
 </li>
@@ -380,7 +380,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalSharedRelease</h4>
-<pre>public&nbsp;boolean&nbsp;signalSharedRelease(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
+<pre>public final&nbsp;boolean&nbsp;signalSharedRelease(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
 <div class="block">If a first shared waiter exists, it's removed, the held exclusive latch is released, and
  then the waiter is signaled.</div>
 <dl>
@@ -395,7 +395,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockList">
 <li class="blockList">
 <h4>signalNextShared</h4>
-<pre>public&nbsp;boolean&nbsp;signalNextShared()</pre>
+<pre>public final&nbsp;boolean&nbsp;signalNextShared()</pre>
 <div class="block">Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
  exclusive latch.</div>
 <dl>
@@ -410,7 +410,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?
 <ul class="blockListLast">
 <li class="blockList">
 <h4>clear</h4>
-<pre>public&nbsp;void&nbsp;clear()</pre>
+<pre>public final&nbsp;void&nbsp;clear()</pre>
 <div class="block">Clears out all waiting threads and interrupts them. Caller must hold exclusive latch.</div>
 </li>
 </ul>
