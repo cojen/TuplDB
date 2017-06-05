@@ -40,7 +40,7 @@ import java.util.concurrent.locks.LockSupport;
 public abstract class Clutch extends Latch {
     // Inherited latch methods are used for non-contended mode, and for switching to it.
 
-    // Is non-zero when in contended mode.
+    // Is >=0 when in contended mode.
     private volatile int mContendedSlot = -1;
 
     public Clutch() {
@@ -51,6 +51,13 @@ public abstract class Clutch extends Latch {
      */
     public Clutch(int initialState) {
         super(initialState);
+    }
+
+    /**
+     * Returns true if clutch is operating in contended mode.
+     */
+    public final boolean isContended() {
+        return mContendedSlot >= 0;
     }
 
     @Override
@@ -116,6 +123,41 @@ public abstract class Clutch extends Latch {
             getPack().tryUnregisterExclusiveNanos(slot, this, -1);
             mContendedSlot = -1;
         }
+    }
+
+    /**
+     * Downgrade the held exclusive latch with the option to try switching to contended mode.
+     * Caller must later call releaseShared instead of releaseExclusive.
+     *
+     * @param contended pass true to try switching to contended mode
+     */
+    public final void downgrade(boolean contended) {
+        if (contended) {
+            Pack pack = getPack();
+            int slot = pack.tryRegister(this);
+            if (slot >= 0) {
+                mContendedSlot = slot;
+                if (!pack.tryAcquireShared(slot, this)) {
+                    throw new AssertionError();
+                }
+                super.releaseExclusive();
+                return;
+            }
+        }
+
+        super.downgrade();
+    }
+
+    /**
+     * Release the held exclusive latch with the option to try switching to contended mode.
+     *
+     * @param contended pass true to try switching to contended mode
+     */
+    public final void releaseExclusive(boolean contended) {
+        if (contended) {
+            mContendedSlot = getPack().tryRegister(this);
+        }
+        super.releaseExclusive();
     }
 
     @Override

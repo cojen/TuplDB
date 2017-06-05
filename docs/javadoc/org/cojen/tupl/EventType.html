@@ -189,81 +189,86 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Enum.html?is
 </td>
 </tr>
 <tr class="altColor">
+<td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#CHECKPOINT_SYNC">CHECKPOINT_SYNC</a></span></code>
+<div class="block">Signals the checkpoint phase which forcibly persists changes to the main database file.</div>
+</td>
+</tr>
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#DEBUG">DEBUG</a></span></code>
 <div class="block">General debug event type.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#DELETION_BEGIN">DELETION_BEGIN</a></span></code>
 <div class="block">Signals that deletion of an index has begun.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#DELETION_COMPLETE">DELETION_COMPLETE</a></span></code>
 <div class="block">Signals that deletion of an index has completed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#DELETION_FAILED">DELETION_FAILED</a></span></code>
 <div class="block">Signals that deletion of an index has failed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#PANIC_UNHANDLED_EXCEPTION">PANIC_UNHANDLED_EXCEPTION</a></span></code>
 <div class="block">Signals that an unhandled exception has occurred, and the database must be shutdown.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_APPLY_REDO_LOG">RECOVERY_APPLY_REDO_LOG</a></span></code>
 <div class="block">Signals that non-checkpointed transactions are being committed or rolled back.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_BEGIN">RECOVERY_BEGIN</a></span></code>
 <div class="block">Signals the beginning of database recovery.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_CACHE_PRIMING">RECOVERY_CACHE_PRIMING</a></span></code>
 <div class="block">Signals that automatic cache priming is being performed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_COMPLETE">RECOVERY_COMPLETE</a></span></code>
 <div class="block">Signals the end of database recovery, reporting the duration.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_DELETE_FRAGMENTS">RECOVERY_DELETE_FRAGMENTS</a></span></code>
 <div class="block">Signals that large value fragments in the trash are being deleted.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_LOAD_UNDO_LOGS">RECOVERY_LOAD_UNDO_LOGS</a></span></code>
 <div class="block">Signals that undo logs of in-flight transactions are being loaded.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_PROCESS_REMAINING">RECOVERY_PROCESS_REMAINING</a></span></code>
 <div class="block">Signals that transactions not expliticly committed or rolled back are being processed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_PROGRESS">RECOVERY_PROGRESS</a></span></code>
 <div class="block">Generic recovery progress message.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_REDO_LOG_CORRUPTION">RECOVERY_REDO_LOG_CORRUPTION</a></span></code>
 <div class="block">Signals that some redo operations were not recovered due to log file corruption.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_PANIC">REPLICATION_PANIC</a></span></code>
 <div class="block">Unhandled in the replication system, and the database must be shutdown.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_WARNING">REPLICATION_WARNING</a></span></code>
 <div class="block">Generic warning message from the replication system.</div>
 </td>
@@ -536,6 +541,16 @@ the order they are declared.</div>
 <h4>CHECKPOINT_FLUSH</h4>
 <pre>public static final&nbsp;<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a> CHECKPOINT_FLUSH</pre>
 <div class="block">Signals the checkpoint phase which flushes all dirty nodes to the main database file.</div>
+</li>
+</ul>
+<a name="CHECKPOINT_SYNC">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>CHECKPOINT_SYNC</h4>
+<pre>public static final&nbsp;<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a> CHECKPOINT_SYNC</pre>
+<div class="block">Signals the checkpoint phase which forcibly persists changes to the main database file.</div>
 </li>
 </ul>
 <a name="CHECKPOINT_FAILED">
