@@ -62,6 +62,10 @@ public class Worker {
 
     static {
         try {
+            // Reduce the risk of "lost unpark" due to classloading.
+            // https://bugs.openjdk.java.net/browse/JDK-8074773
+            Class<?> clazz = LockSupport.class;
+
             SIZE_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mSize"));
             FIRST_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mFirst"));
             LAST_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mLast"));
