@@ -41,9 +41,6 @@ public enum OpenOption {
     /** File contents don't persist after an OS crash or power failure. */
     NON_DURABLE,
 
-    /** Preallocate file blocks when increasing file length, if possible. */
-    PREALLOCATE,
-    
     /** Indicate that file will be accessed in random order. */
     RANDOM_ACCESS,
 

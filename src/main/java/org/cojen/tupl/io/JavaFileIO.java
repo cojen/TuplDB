@@ -233,11 +233,6 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    public void close() throws IOException {
-        close(null);
-    }
-
-    @Override
     public void close(Throwable cause) throws IOException {
         if (cause != null && mCause == null) {
             mCause = cause;
