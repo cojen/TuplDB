@@ -33,8 +33,6 @@ import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 
-import org.cojen.tupl.util.Latch;
-
 /**
  * 
  *
@@ -57,7 +55,6 @@ final class PosixFileIO extends AbstractFileIO {
     private final File mFile;
     private final int mReopenOptions;
 
-    private final Latch mAccessLatch;
     private final ThreadLocal<BufRef> mBufRef;
     private final boolean mReadahead;
     private final boolean mCloseDontNeed;
@@ -80,13 +77,11 @@ final class PosixFileIO extends AbstractFileIO {
         mReadahead = options.contains(OpenOption.READAHEAD);
         mCloseDontNeed = options.contains(OpenOption.CLOSE_DONTNEED);
 
-        mAccessLatch = new Latch();
-
-        mAccessLatch.acquireExclusive();
+        mAccessLock.acquireExclusive();
         try {
             mFileDescriptor = openFd(file, options);
         } finally {
-            mAccessLatch.releaseExclusive();
+            mAccessLock.releaseExclusive();
         }
 
         mBufRef = new ThreadLocal<>();
@@ -102,22 +97,12 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected long doLength() throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            return lseekEndFd(fd(), 0);
-        } finally {
-            mAccessLatch.releaseShared();
-        }
+        return lseekEndFd(fd(), 0);
     }
 
     @Override
     protected void doSetLength(long length) throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            ftruncateFd(fd(), length);
-        } finally {
-            mAccessLatch.releaseShared();
-        }
+        ftruncateFd(fd(), length);
     }
 
     @Override
@@ -143,12 +128,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, long ptr, int length) throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            preadFd(fd(), ptr, length, pos);
-        } finally {
-            mAccessLatch.releaseShared();
-        }
+        preadFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -174,12 +154,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, long ptr, int length) throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            pwriteFd(fd(), ptr, length, pos);
-        } finally {
-            mAccessLatch.releaseShared();
-        }
+        pwriteFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -193,52 +168,37 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void reopen() throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            closeFd(fd());
+        closeFd(fd());
 
-            EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
-            if (isReadOnly()) {
-                options.add(OpenOption.READ_ONLY);
-            }
-            if ((mReopenOptions & REOPEN_SYNC_IO) != 0) {
-                options.add(OpenOption.SYNC_IO);
-            }
-            if ((mReopenOptions & REOPEN_NON_DURABLE) != 0) {
-                options.add(OpenOption.NON_DURABLE);
-            }
-
-            mFileDescriptor = openFd(mFile, options);
-        } finally {
-            mAccessLatch.releaseShared();
+        EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
+        if (isReadOnly()) {
+            options.add(OpenOption.READ_ONLY);
         }
+        if ((mReopenOptions & REOPEN_SYNC_IO) != 0) {
+            options.add(OpenOption.SYNC_IO);
+        }
+        if ((mReopenOptions & REOPEN_NON_DURABLE) != 0) {
+            options.add(OpenOption.NON_DURABLE);
+        }
+
+        mFileDescriptor = openFd(mFile, options);
     }
 
     @Override
     protected void doSync(boolean metadata) throws IOException {
-        mAccessLatch.acquireShared();
-        try {
-            int fd = fd();
-            if (metadata) {
-                fsyncFd(fd);
-            } else {
-                fdatasyncFd(fd);
-            }
-        } finally {
-            mAccessLatch.releaseShared();
+        int fd = fd();
+        if (metadata) {
+            fsyncFd(fd);
+        } else {
+            fdatasyncFd(fd);
         }
-    }
-
-    @Override
-    public void close() throws IOException {
-        close(null);
     }
 
     @Override
     public void close(Throwable cause) throws IOException {
         int fd;
 
-        mAccessLatch.acquireExclusive();
+        mAccessLock.acquireExclusive();
         try {
             fd = mFileDescriptor;
             if (fd == 0) {
@@ -247,7 +207,7 @@ final class PosixFileIO extends AbstractFileIO {
             mCause = cause;
             mFileDescriptor = 0;
         } finally {
-            mAccessLatch.releaseExclusive();
+            mAccessLock.releaseExclusive();
         }
 
         IOException ex = null;
@@ -284,7 +244,7 @@ final class PosixFileIO extends AbstractFileIO {
         return ref;
     }
 
-    // Caller must hold mAccessLatch.
+    // Caller must hold mAccessLock.
     private int fd() throws IOException {
         int fd = mFileDescriptor;
         if (fd == 0) {
@@ -495,11 +455,17 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void preallocate(long pos, long length) throws IOException {
+    protected boolean shouldPreallocate(LengthOption option) {
+        return option == LengthOption.PREALLOCATE_ALWAYS
+            || (option == LengthOption.PREALLOCATE_OPTIONAL && platform() != NullIO.INSTANCE);
+    }
+
+    @Override
+    protected void doPreallocate(long pos, long length) throws IOException {
         PlatformIO platform = platform();
         if (platform == NullIO.INSTANCE) {
             // Don't have fallocate (or equivalent). Use default non-destructive zero-fill behavior.
-            super.preallocate(pos, length);
+            super.doPreallocate(pos, length);
             return;
         } 
 
