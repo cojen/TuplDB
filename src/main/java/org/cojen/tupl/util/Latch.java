@@ -48,7 +48,11 @@ public class Latch {
 
     static {
         try {
-            Class<?> clazz = Latch.class;
+            // Reduce the risk of "lost unpark" due to classloading.
+            // https://bugs.openjdk.java.net/browse/JDK-8074773
+            Class<?> clazz = LockSupport.class;
+
+            clazz = Latch.class;
             STATE_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchState"));
             FIRST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchFirst"));
             LAST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchLast"));

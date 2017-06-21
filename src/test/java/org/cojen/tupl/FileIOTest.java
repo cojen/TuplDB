@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.util.EnumSet;
 
 import org.cojen.tupl.io.FileIO;
+import org.cojen.tupl.io.LengthOption;
 import org.cojen.tupl.io.OpenOption;
 import org.junit.*;
 
@@ -59,7 +60,7 @@ public class FileIOTest {
     @Test
     public void preallocateTooLarge() throws Exception {
         assumeTrue(Platform.isLinux()); 
-        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED, OpenOption.PREALLOCATE));
+        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
 
         FileStore fs = Files.getFileStore(file.toPath());
         assumeTrue("ext4".equals(fs.type()) && !fs.name().contains("docker"));
@@ -67,7 +68,7 @@ public class FileIOTest {
         long len = file.getTotalSpace() * 100L; 
         // setLength traps the IOException and prevents resizing / remapping. Not remapping avoids
         // the SIGBUS issue.
-        fio.setLength(len);
+        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
         assertEquals(0, fio.length());
 
         fio.close();
@@ -75,13 +76,13 @@ public class FileIOTest {
 
     @Test
     public void preallocateGrowShrink() throws Exception {
-        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.PREALLOCATE));
+        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE));
         for (long len = 0; len <= 50_000L; len += 5000L) {
-            fio.setLength(len);
+            fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
             assertEquals(len, fio.length());
         }
         for (long len = 50_000L; len >= 0; len -= 5000L) {
-            fio.setLength(len);
+            fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
             assertEquals(len, fio.length());
         }
 
@@ -106,10 +107,10 @@ public class FileIOTest {
         assumeTrue(Platform.isLinux() || Platform.isMac());
 
         long len = 100L * (1<<20); // 100 MB
-        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.PREALLOCATE));
+        FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE));
         long startFree = file.getFreeSpace();
 
-        fio.setLength(len);
+        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
         long alloc = startFree - file.getFreeSpace();
                         
         // Free space should be reduced. Pad expectation since external events may interfere.
@@ -134,9 +135,9 @@ public class FileIOTest {
         File f = new File("root/test.file");
         if (f.exists()) f.delete();
 
-        FileIO fio = FileIO.open(f, EnumSet.of(OpenOption.CREATE, OpenOption.PREALLOCATE));
+        FileIO fio = FileIO.open(f, EnumSet.of(OpenOption.CREATE));
         final long len = f.getTotalSpace() * 5L;
-        fio.setLength(len);
+        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
         fio.map();
 
         ByteBuffer bb = ByteBuffer.allocateDirect(4097);

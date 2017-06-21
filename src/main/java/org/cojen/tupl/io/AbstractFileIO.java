@@ -62,30 +62,20 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     private final boolean mReadOnly;
-    private final boolean mPreallocate;
-    private final ResizeLatch mResizeLatch;
-
     private final Latch mRemapLatch;
-    private final RWLock mMappingLock;
+    protected final RWLock mAccessLock;
     private final Latch mSyncLatch;
     private Mapping[] mMappings;
     private int mLastMappingSize;
     protected volatile Throwable mCause;
 
-    // FIXME: The Contended annotation is not supported in Java 9 at present.
-    // When migrating either find an equivalent, manually pad, or live with the
-    // contention.
-    @sun.misc.Contended
     private volatile long mSyncStartNanos;
 
     AbstractFileIO(EnumSet<OpenOption> options) {
         mReadOnly = options.contains(OpenOption.READ_ONLY);
-        mPreallocate = options.contains(OpenOption.PREALLOCATE);
         mRemapLatch = new Latch();
-        mMappingLock = new RWLock();
+        mAccessLock = new RWLock();
         mSyncLatch = new Latch();
-
-        mResizeLatch = mPreallocate ? new ResizeLatch() : ResizeLatch.NONE;
     }
 
     @Override
@@ -95,18 +85,18 @@ abstract class AbstractFileIO extends FileIO {
 
     @Override
     public final long length() throws IOException {
-        mMappingLock.acquireShared();
+        mAccessLock.acquireShared();
         try {
             return doLength();
         } catch (IOException e) {
             throw rethrow(e, mCause);
         } finally {
-            mMappingLock.releaseShared();
+            mAccessLock.releaseShared();
         }
     }
 
     @Override
-    public final void setLength(long length) throws IOException {
+    public final void setLength(long length, LengthOption option) throws IOException {
         mRemapLatch.acquireExclusive();
         try {
             final long prevLength = length();
@@ -122,34 +112,31 @@ abstract class AbstractFileIO extends FileIO {
             }
 
             try {
-                if (mPreallocate && prevLength < length) {
+                Throwable ex = null;
+
+                if (length > prevLength && shouldPreallocate(option)) {
                     // Increasing the file length. Assume that blocks up to the
                     // previous length have already been allocated, and try and 
                     // preallocate for the extended range from prevLength to new length.
-                    // 
-                    // Any existing mapping has an upper bound of prevLength. Concurrent
-                    // writes above that will go through the unmapped doWrite path. The
-                    // exclusive resize latch blocks only unmapped writes. Concurrent
-                    // writes to the mapped range should be safe since that range does not
-                    // intersect the range we're touching. 
-                    //
-                    // TODO: If the file is not mapped then this blocks all writes. Consider
-                    // locking just the range between prevLength and length to allow concurrent
-                    // writers outside the extension range.
-                    mResizeLatch.acquireExclusive();
                     try {
-                        try {
-                            preallocate(prevLength, length - prevLength);
-                        } catch (Throwable e) {
-                            // Rollback any partial allocation.
-                            doSetLength(prevLength);
-                            throw e;
-                        }
-                    } finally {
-                        mResizeLatch.releaseExclusive();
+                        doPreallocate(prevLength, length - prevLength);
+                    } catch (Throwable e) {
+                        ex = e;
+                        // Rollback any partial allocation.
+                        length = prevLength;
                     }
                 }
-                doSetLength(length);
+
+                mAccessLock.acquireShared();
+                try {
+                    doSetLength(length);
+                } finally {
+                    mAccessLock.releaseShared();
+                }
+
+                if (ex != null) {
+                    throw Utils.rethrow(ex);
+                }
             } catch (IOException e) {
                 // Ignore.
             } finally {
@@ -198,7 +185,7 @@ abstract class AbstractFileIO extends FileIO {
         syncWait();
 
         try {
-            mMappingLock.acquireShared();
+            mAccessLock.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -241,19 +228,14 @@ abstract class AbstractFileIO extends FileIO {
                         offset += mavail;
                     }
                 }
-            } finally {
-                mMappingLock.releaseShared();
-            }
 
-            if (read) {
-                doRead(pos, buf, offset, length);
-            } else {
-                mResizeLatch.acquireShared();
-                try {
+                if (read) {
+                    doRead(pos, buf, offset, length);
+                } else {
                     doWrite(pos, buf, offset, length);
-                } finally {
-                    mResizeLatch.releaseShared();
                 }
+            } finally {
+                mAccessLock.releaseShared();
             }
         } catch (IOException e) {
             throw rethrow(e, mCause);
@@ -268,7 +250,7 @@ abstract class AbstractFileIO extends FileIO {
         syncWait();
 
         try {
-            mMappingLock.acquireShared();
+            mAccessLock.acquireShared();
             try {
                 Mapping[] mappings = mMappings;
                 if (mappings != null) {
@@ -316,20 +298,16 @@ abstract class AbstractFileIO extends FileIO {
                         pos += mavail;
                     }
                 }
+
+                if (read) {
+                    doRead(pos, bb);
+                } else {
+                    doWrite(pos, bb);
+                }
             } finally {
-                mMappingLock.releaseShared();
+                mAccessLock.releaseShared();
             }
 
-            if (read) {
-                doRead(pos, bb);
-            } else {
-                mResizeLatch.acquireShared();
-                try {
-                    doWrite(pos, bb);
-                } finally {
-                    mResizeLatch.releaseShared();
-                }
-            }
         } catch (IOException e) {
             throw rethrow(e, mCause);
         }
@@ -355,7 +333,7 @@ abstract class AbstractFileIO extends FileIO {
         try {
             mSyncLatch.acquireShared();
             try {
-                mMappingLock.acquireShared();
+                mAccessLock.acquireShared();
                 try {
                     Mapping[] mappings = mMappings;
                     if (mappings != null) {
@@ -364,11 +342,11 @@ abstract class AbstractFileIO extends FileIO {
                             m.sync(false);
                         }
                     }
-                } finally {
-                    mMappingLock.releaseShared();
-                }
 
-                doSync(metadata);
+                    doSync(metadata);
+                } finally {
+                    mAccessLock.releaseShared();
+                }
             } catch (IOException e) {
                 throw rethrow(e, mCause);
             } finally {
@@ -418,8 +396,8 @@ abstract class AbstractFileIO extends FileIO {
 
     // Caller must hold mRemapLatch exclusively.
     private void doUnmap(boolean reopen) throws IOException {
-        boolean contended = mMappingLock.isContended();
-        mMappingLock.acquireExclusive();
+        boolean contended = mAccessLock.isContended();
+        mAccessLock.acquireExclusive();
         try {
             Mapping[] mappings = mMappings;
             if (mappings == null) {
@@ -451,7 +429,7 @@ abstract class AbstractFileIO extends FileIO {
                 throw ex;
             }
         } finally {
-            mMappingLock.releaseExclusive(contended);
+            mAccessLock.releaseExclusive(contended);
         }
     }
 
@@ -462,7 +440,7 @@ abstract class AbstractFileIO extends FileIO {
         Mapping[] newMappings;
         int newLastSize;
 
-        mMappingLock.acquireShared();
+        mAccessLock.acquireShared();
         try {
             oldMappings = mMappings;
             if (oldMappings == null && remap) {
@@ -520,14 +498,14 @@ abstract class AbstractFileIO extends FileIO {
                 newMappings[i] = openMapping(mReadOnly, pos, newLastSize);
             }
         } finally {
-            mMappingLock.releaseShared();
+            mAccessLock.releaseShared();
         }
 
-        boolean contended = mMappingLock.isContended();
-        mMappingLock.acquireExclusive();
+        boolean contended = mAccessLock.isContended();
+        mAccessLock.acquireExclusive();
         mMappings = newMappings;
         mLastMappingSize = newLastSize;
-        mMappingLock.releaseExclusive(contended);
+        mAccessLock.releaseExclusive(contended);
 
         if (oldMappings != null) {
             IOException ex = null;
@@ -559,61 +537,45 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    @Override
-    void preallocate(long pos, long length) throws IOException {
-        // Expecting block size to be >= page size. If block size is smaller than page 
-        // size then this will not touch all the necessary blocks.
-        final long currLength = length();
-        byte[] buf = new byte[1];
-        for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
-            // In order not to be destructive to existing data we read the byte
-            // at the given offset. If it is non-zero then assume the block 
-            // must have been allocated already.
-            if (pos < currLength) {
-                doRead(pos, buf, 0, 1);
-
-                if (buf[0] != 0) {
-                    continue;
-                }
-            }
-
-            // Found zero byte. Either data at pos is really zero, or the block has not been 
-            // allocated yet. Overwrite with zero again to force any block allocation. 
-            doWrite(pos, buf, 0, buf.length);
-        }
+    protected boolean shouldPreallocate(LengthOption option) {
+        return option == LengthOption.PREALLOCATE_ALWAYS;
     }
 
-    private static class ResizeLatch {
-        /** 
-         * No-op latch used when preallocation is disabled. Calls to this
-         * instance should get optimized away.
-         */
-        private static final ResizeLatch NONE = new ResizeLatch() {
-            @Override public void acquireExclusive() { }
+    /**
+     * Preallocates blocks to the file. This call ensures that disk space is allocated 
+     * for this file for the bytes in the range starting at offset and continuing for 
+     * length bytes.  Subsequent writes to the specified range are guaranteed not to 
+     * fail because of lack of disk space.
+     *
+     * @param pos zero-based position in file.
+     * @param length amount of bytes to preallocate starting at pos.
+     * @throws IllegalArgumentException
+     */
+    protected void doPreallocate(long pos, long length) throws IOException {
+        mAccessLock.acquireExclusive();
+        try {
+            // Expecting block size to be >= page size. If block size is smaller than page 
+            // size then this will not touch all the necessary blocks.
+            final long currLength = doLength();
+            byte[] buf = new byte[1];
+            for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
+                // In order not to be destructive to existing data we read the byte
+                // at the given offset. If it is non-zero then assume the block 
+                // must have been allocated already.
+                if (pos < currLength) {
+                    doRead(pos, buf, 0, 1);
 
-            @Override public void releaseExclusive() { }
+                    if (buf[0] != 0) {
+                        continue;
+                    }
+                }
 
-            @Override public void acquireShared() { }
-
-            @Override public void releaseShared() { }
-        };
-
-        private final Latch mLatch = new Latch();
-
-        public void acquireExclusive() {
-            mLatch.acquireExclusive();
-        }
-
-        public void releaseExclusive() {
-            mLatch.releaseExclusive();
-        }
-
-        public void acquireShared() {
-            mLatch.acquireShared();
-        }
-
-        public void releaseShared() {
-            mLatch.releaseShared();
+                // Found zero byte. Either data at pos is really zero, or the block has not been 
+                // allocated yet. Overwrite with zero again to force any block allocation. 
+                doWrite(pos, buf, 0, buf.length);
+            }
+        } finally {
+            mAccessLock.releaseExclusive();
         }
     }
 
