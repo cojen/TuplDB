@@ -163,28 +163,6 @@ final class TransformedView implements View {
     }
 
     @Override
-    public boolean insert(final Transaction txn, final byte[] tkey, final byte[] tvalue)
-        throws IOException
-    {
-        final byte[] key = inverseTransformKey(tkey);
-
-        if (key == null) {
-            if (tvalue == null) {
-                return true;
-            }
-            throw fail();
-        }
-
-        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
-
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.insert(txn, key, value);
-        }
-
-        return condStore(txn, key, value, Cursor.NOT_LOADED);
-    }
-
-    @Override
     public boolean replace(final Transaction txn, final byte[] tkey, final byte[] tvalue)
         throws IOException
     {
@@ -200,19 +178,12 @@ final class TransformedView implements View {
             return mSource.replace(txn, key, value);
         }
 
-        return condStore(txn, key, value, null);
-    }
-
-    private boolean condStore(final Transaction txn, final byte[] key, final byte[] value,
-                              final byte[] failConditionValue)
-        throws IOException
-    {
         Cursor c = mSource.newCursor(txn);
         c.autoload(false);
 
         LockResult result = c.find(key);
 
-        if (c.value() == failConditionValue) {
+        if (c.value() == null) {
             c.reset();
             if (result == LockResult.ACQUIRED) {
                 txn.unlock();
@@ -250,13 +221,6 @@ final class TransformedView implements View {
             return mSource.update(txn, key, oldValue, newValue);
         }
 
-        return condUpdate(txn, key, oldValue, newValue);
-    }
-
-    private boolean condUpdate(final Transaction txn, final byte[] key,
-                               final byte[] oldValue, final byte[] newValue)
-        throws IOException
-    {
         Cursor c = mSource.newCursor(txn);
 
         LockResult result = c.find(key);
@@ -273,31 +237,6 @@ final class TransformedView implements View {
         c.reset();
 
         return true;
-    }
-
-    @Override
-    public boolean delete(final Transaction txn, final byte[] tkey) throws IOException {
-        final byte[] key = inverseTransformKey(tkey);
-        return key == null ? false : mSource.delete(txn, key);
-    }
-
-    @Override
-    public boolean remove(final Transaction txn, final byte[] tkey, final byte[] tvalue)
-        throws IOException
-    {
-        final byte[] key = inverseTransformKey(tkey);
-
-        if (key == null) {
-            return tvalue == null;
-        }
-
-        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
-
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.remove(txn, key, value);
-        }
-
-        return condUpdate(txn, key, value, null);
     }
 
     @Override
