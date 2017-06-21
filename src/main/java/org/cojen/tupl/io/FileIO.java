@@ -80,25 +80,21 @@ public abstract class FileIO implements CauseCloseable {
 
     public abstract boolean isReadOnly();
 
-    /**
-     * Preallocates blocks to the file. This call ensures that disk space is allocated 
-     * for this file for the bytes in the range starting at offset and continuing for 
-     * length bytes.  Subsequent writes to the specified range are guaranteed not to 
-     * fail because of lack of disk space.
-     *
-     * @param pos zero-based position in file.
-     * @param length amount of bytes to preallocate starting at pos.
-     * @throws IllegalArgumentException
-     */
-    abstract void preallocate(long pos, long length) throws IOException;
-
     public abstract long length() throws IOException;
 
     /**
      * Attempt to set the length of the file. It isn't critical that the
      * operation succeed, and so any exceptions can be suppressed.
      */
-    public abstract void setLength(long length) throws IOException;
+    public void setLength(long length) throws IOException {
+        setLength(length, LengthOption.PREALLOCATE_NEVER);
+    }
+
+    /**
+     * Attempt to set the length of the file. It isn't critical that the
+     * operation succeed, and so any exceptions can be suppressed.
+     */
+    public abstract void setLength(long length, LengthOption option) throws IOException;
 
     /**
      * @param pos zero-based position in file
@@ -163,6 +159,11 @@ public abstract class FileIO implements CauseCloseable {
      * @param metadata pass true to flush all file metadata
      */
     public abstract void sync(boolean metadata) throws IOException;
+
+    @Override
+    public void close() throws IOException {
+        close(null);
+    }
 
     /**
      * Durably flushes the given directory, if required. If the given file is not a directory,
