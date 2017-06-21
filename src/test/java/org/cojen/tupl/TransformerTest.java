@@ -302,7 +302,7 @@ public class TransformerTest {
         fastAssertArrayEquals(value3, ix.load(null, key3));
 
         // Delete is equivalent to storing null, and so the transformer should get called.
-        view.delete(null, key3);
+        assertTrue(view.delete(null, key3));
         assertNull(view.load(null, key3));
         fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key3));
 
