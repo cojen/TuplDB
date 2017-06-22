@@ -2846,14 +2846,15 @@ class _TreeCursor implements CauseCloseable, Cursor {
         return oldValue;
     }
 
-    static final byte[] MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0];
+    static final byte[]
+        MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
 
     /**
      * Atomic find and modify operation. Cursor must be in a reset state when called, and
      * cursor is also reset as a side-effect.
      *
      * @param key must not be null
-     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, else update mode
+     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else update mode
      */
     final boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
         final _LocalTransaction txn = mTxn;
@@ -2939,6 +2940,11 @@ class _TreeCursor implements CauseCloseable, Cursor {
             } else if (oldValue == MODIFY_REPLACE) {
                 if (mValue != null) {
                     // Replace allowed.
+                    break check;
+                }
+            } else if (oldValue == MODIFY_UPDATE) {
+                if (!Arrays.equals(mValue, newValue)) {
+                    // Update allowed.
                     break check;
                 }
             } else {

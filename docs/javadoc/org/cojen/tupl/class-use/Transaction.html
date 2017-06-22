@@ -343,11 +343,21 @@
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-">update</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+      byte[]&nbsp;key,
+      byte[]&nbsp;value)</code>
+<div class="block">Associates a value with the given key, but only if the given value differs from the
+ existing value.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-">update</a></span>(<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
       byte[]&nbsp;oldValue,
       byte[]&nbsp;newValue)</code>
-<div class="block">Associates a value with the given key, but only if the given old value matches.</div>
+<div class="block">Associates a value with the given key, but only if the given old value matches the
+ existing value.</div>
 </td>
 </tr>
 </tbody>

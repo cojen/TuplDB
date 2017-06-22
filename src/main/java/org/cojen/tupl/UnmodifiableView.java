@@ -125,6 +125,11 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {

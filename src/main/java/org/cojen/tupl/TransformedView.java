@@ -163,28 +163,6 @@ final class TransformedView implements View {
     }
 
     @Override
-    public boolean insert(final Transaction txn, final byte[] tkey, final byte[] tvalue)
-        throws IOException
-    {
-        final byte[] key = inverseTransformKey(tkey);
-
-        if (key == null) {
-            if (tvalue == null) {
-                return true;
-            }
-            throw fail();
-        }
-
-        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
-
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.insert(txn, key, value);
-        }
-
-        return condStore(txn, key, value, Cursor.NOT_LOADED);
-    }
-
-    @Override
     public boolean replace(final Transaction txn, final byte[] tkey, final byte[] tvalue)
         throws IOException
     {
@@ -196,34 +174,31 @@ final class TransformedView implements View {
 
         final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
 
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
+        if (value == null) {
+            return mSource.delete(txn, key);
+        } else if (tvalue != null) {
             return mSource.replace(txn, key, value);
+        } else {
+            return mSource.update(txn, key, value);
         }
-
-        return condStore(txn, key, value, null);
     }
 
-    private boolean condStore(final Transaction txn, final byte[] key, final byte[] value,
-                              final byte[] failConditionValue)
+    @Override
+    public boolean update(final Transaction txn, final byte[] tkey, final byte[] tvalue)
         throws IOException
     {
-        Cursor c = mSource.newCursor(txn);
-        c.autoload(false);
+        final byte[] key = inverseTransformKey(tkey);
 
-        LockResult result = c.find(key);
-
-        if (c.value() == failConditionValue) {
-            c.reset();
-            if (result == LockResult.ACQUIRED) {
-                txn.unlock();
+        if (key == null) {
+            if (tvalue != null) {
+                return false;
             }
-            return false;
+            throw fail();
         }
 
-        c.store(value);
-        c.reset();
+        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
 
-        return true;
+        return mSource.update(txn, key, value);
     }
 
     @Override
@@ -246,58 +221,7 @@ final class TransformedView implements View {
         final byte[] oldValue = mTransformer.inverseTransformValue(oldTValue, key, tkey);
         final byte[] newValue = mTransformer.inverseTransformValue(newTValue, key, tkey);
 
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.update(txn, key, oldValue, newValue);
-        }
-
-        return condUpdate(txn, key, oldValue, newValue);
-    }
-
-    private boolean condUpdate(final Transaction txn, final byte[] key,
-                               final byte[] oldValue, final byte[] newValue)
-        throws IOException
-    {
-        Cursor c = mSource.newCursor(txn);
-
-        LockResult result = c.find(key);
-
-        if (!Arrays.equals(c.value(), oldValue)) {
-            c.reset();
-            if (result == LockResult.ACQUIRED) {
-                txn.unlock();
-            }
-            return false;
-        }
-
-        c.store(newValue);
-        c.reset();
-
-        return true;
-    }
-
-    @Override
-    public boolean delete(final Transaction txn, final byte[] tkey) throws IOException {
-        final byte[] key = inverseTransformKey(tkey);
-        return key == null ? false : mSource.delete(txn, key);
-    }
-
-    @Override
-    public boolean remove(final Transaction txn, final byte[] tkey, final byte[] tvalue)
-        throws IOException
-    {
-        final byte[] key = inverseTransformKey(tkey);
-
-        if (key == null) {
-            return tvalue == null;
-        }
-
-        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
-
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.remove(txn, key, value);
-        }
-
-        return condUpdate(txn, key, value, null);
+        return mSource.update(txn, key, oldValue, newValue);
     }
 
     @Override

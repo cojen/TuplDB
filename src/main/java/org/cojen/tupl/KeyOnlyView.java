@@ -120,6 +120,12 @@ final class KeyOnlyView implements View {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        valueCheck(value);
+        return mSource.update(txn, key, null);
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
