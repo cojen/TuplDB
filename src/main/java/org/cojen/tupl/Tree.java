@@ -498,6 +498,12 @@ class Tree implements View, Index {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        keyCheck(key);
+        return new TreeCursor(this, txn).findAndModify(key, TreeCursor.MODIFY_UPDATE, value);
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {

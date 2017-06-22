@@ -89,6 +89,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        return mSource.update(txn, key, value);
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {

@@ -365,21 +365,82 @@ public class CrudTest {
     }
 
     @Test
-    public void testUpdateBasic1() throws Exception {
-        testUpdateBasic(null);
+    public void testUpdate1Basic1() throws Exception {
+        testUpdate1Basic(null);
     }
 
     @Test
-    public void testUpdateBasic2() throws Exception {
-        testUpdateBasic(Transaction.BOGUS);
+    public void testUpdate1Basic2() throws Exception {
+        testUpdate1Basic(Transaction.BOGUS);
     }
 
     @Test
-    public void testUpdateBasic3() throws Exception {
-        testUpdateBasic(mDb.newTransaction());
+    public void testUpdate1Basic3() throws Exception {
+        testUpdate1Basic(mDb.newTransaction());
     }
 
-    private void testUpdateBasic(Transaction txn) throws Exception {
+    private void testUpdate1Basic(Transaction txn) throws Exception {
+        View ix = openIndex("test");
+
+        try {
+            ix.update(txn, null, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected.
+        }
+
+        byte[] key = "hello".getBytes();
+        byte[] key2 = "howdy".getBytes();
+        byte[] value = "everyone".getBytes();
+        byte[] value2 = "world".getBytes();
+
+        assertTrue(ix.update(txn, key, value));
+        assertArrayEquals(value, ix.load(txn, key));
+
+        assertTrue(ix.update(txn, key, value2));
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertFalse(ix.update(txn, key, value2));
+        assertArrayEquals(value2, ix.load(txn, key));
+
+        assertNull(ix.load(txn, key2));
+
+        assertTrue(ix.update(txn, key, null));
+        assertNull(ix.load(txn, key));
+
+        assertFalse(ix.update(txn, key, null));
+        assertNull(ix.load(txn, key));
+
+        if (txn != null && txn != Transaction.BOGUS) {
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.update(txn, key, value2));
+            txn.exit();
+            // Bogus transaction artifact. Undo log entry was created earler.
+            assertNull(ix.load(txn, key));
+
+            ix.store(Transaction.BOGUS, key, value);
+            assertTrue(ix.update(txn, key, value2));
+            txn.exit();
+            assertArrayEquals(value, ix.load(txn, key));
+        }
+    }
+
+    @Test
+    public void testUpdate2Basic1() throws Exception {
+        testUpdate2Basic(null);
+    }
+
+    @Test
+    public void testUpdate2Basic2() throws Exception {
+        testUpdate2Basic(Transaction.BOGUS);
+    }
+
+    @Test
+    public void testUpdate2Basic3() throws Exception {
+        testUpdate2Basic(mDb.newTransaction());
+    }
+
+    private void testUpdate2Basic(Transaction txn) throws Exception {
         View ix = openIndex("test");
 
         try {

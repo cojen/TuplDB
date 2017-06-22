@@ -95,6 +95,17 @@ abstract class SubView implements View {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        if (inRange(key)) {
+            return mSource.update(txn, key, value);
+        }
+        if (value != null) {
+            throw fail();
+        }
+        return false;
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
