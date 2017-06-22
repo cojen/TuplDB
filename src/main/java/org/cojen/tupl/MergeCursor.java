@@ -674,9 +674,6 @@ abstract class MergeCursor implements Cursor {
      */
     protected abstract LockResult select(Transaction txn) throws IOException;
 
-    /**
-     * @param txn transaction with UPGRADABLE_READ or UNSAFE mode
-     */
     protected abstract void doStore(byte[] key, byte[] value) throws IOException;
 
     protected ViewConstraintException storeFail() {

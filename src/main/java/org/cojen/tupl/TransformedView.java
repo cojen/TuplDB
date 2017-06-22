@@ -174,27 +174,31 @@ final class TransformedView implements View {
 
         final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
 
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
+        if (value == null) {
+            return mSource.delete(txn, key);
+        } else if (tvalue != null) {
             return mSource.replace(txn, key, value);
+        } else {
+            return mSource.update(txn, key, value);
         }
+    }
 
-        Cursor c = mSource.newCursor(txn);
-        c.autoload(false);
+    @Override
+    public boolean update(final Transaction txn, final byte[] tkey, final byte[] tvalue)
+        throws IOException
+    {
+        final byte[] key = inverseTransformKey(tkey);
 
-        LockResult result = c.find(key);
-
-        if (c.value() == null) {
-            c.reset();
-            if (result == LockResult.ACQUIRED) {
-                txn.unlock();
+        if (key == null) {
+            if (tvalue != null) {
+                return false;
             }
-            return false;
+            throw fail();
         }
 
-        c.store(value);
-        c.reset();
+        final byte[] value = mTransformer.inverseTransformValue(tvalue, key, tkey);
 
-        return true;
+        return mSource.update(txn, key, value);
     }
 
     @Override
@@ -217,26 +221,7 @@ final class TransformedView implements View {
         final byte[] oldValue = mTransformer.inverseTransformValue(oldTValue, key, tkey);
         final byte[] newValue = mTransformer.inverseTransformValue(newTValue, key, tkey);
 
-        if (txn == null || txn.lockMode() == LockMode.UNSAFE) {
-            return mSource.update(txn, key, oldValue, newValue);
-        }
-
-        Cursor c = mSource.newCursor(txn);
-
-        LockResult result = c.find(key);
-
-        if (!Arrays.equals(c.value(), oldValue)) {
-            c.reset();
-            if (result == LockResult.ACQUIRED) {
-                txn.unlock();
-            }
-            return false;
-        }
-
-        c.store(newValue);
-        c.reset();
-
-        return true;
+        return mSource.update(txn, key, oldValue, newValue);
     }
 
     @Override

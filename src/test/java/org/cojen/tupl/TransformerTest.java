@@ -305,6 +305,7 @@ public class TransformerTest {
         assertTrue(view.delete(null, key3));
         assertNull(view.load(null, key3));
         fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key3));
+        assertFalse(view.delete(null, key3));
 
         // Insert is equivalent to updating an old value of null.
         assertTrue(view.insert(null, key3, value3));
@@ -314,6 +315,7 @@ public class TransformerTest {
         assertTrue(view.remove(null, key3, value3));
         assertNull(view.load(null, key3));
         fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key3));
+        assertFalse(view.delete(null, key3));
     }
 
     private Index fill() throws Exception {
