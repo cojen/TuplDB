@@ -278,7 +278,40 @@ public interface View {
     }
 
     /**
-     * Associates a value with the given key, but only if the given old value matches.
+     * Associates a value with the given key, but only if the given value differs from the
+     * existing value.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
+     * must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for auto-commit mode
+     * @param key non-null key
+     * @param value value to update to; pass null to delete
+     * @return false if given value matches existing value
+     * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if entry is not permitted
+     */
+    public default boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        Cursor c = newCursor(txn);
+        try {
+            c.find(key);
+            if (c.key() == null) {
+                throw new ViewConstraintException();
+            }
+            if (Arrays.equals(c.value(), value)) {
+                return false;
+            }
+            c.store(value);
+            return true;
+        } finally {
+            c.reset();
+        }
+    }
+
+    /**
+     * Associates a value with the given key, but only if the given old value matches the
+     * existing value.
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.nio.charset.StandardCharsets;
 
+import java.util.Arrays;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -281,6 +283,41 @@ public class TransformerTest {
         txn.commit();
     }
 
+    @Test
+    public void nullValueSwap() throws Exception {
+        Index ix = mDb.openIndex("test");
+        View view = ix.viewTransformed(new NullValueSwap());
+
+        byte[] key1 = "key1".getBytes();
+        byte[] key2 = "key2".getBytes();
+        byte[] key3 = "key3".getBytes();
+        byte[] value3 = "value3".getBytes();
+
+        view.store(null, key1, null);
+        view.store(null, key2, NullValueSwap.NULL);
+        view.store(null, key3, value3);
+
+        fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key1));
+        assertNull(ix.load(null, key2));
+        fastAssertArrayEquals(value3, ix.load(null, key3));
+
+        // Delete is equivalent to storing null, and so the transformer should get called.
+        assertTrue(view.delete(null, key3));
+        assertNull(view.load(null, key3));
+        fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key3));
+        assertFalse(view.delete(null, key3));
+
+        // Insert is equivalent to updating an old value of null.
+        assertTrue(view.insert(null, key3, value3));
+        fastAssertArrayEquals(value3, ix.load(null, key3));
+
+        // Remove is equivalent to updating to a new value of null.
+        assertTrue(view.remove(null, key3, value3));
+        assertNull(view.load(null, key3));
+        fastAssertArrayEquals(NullValueSwap.NULL, ix.load(null, key3));
+        assertFalse(view.delete(null, key3));
+    }
+
     private Index fill() throws Exception {
         Index ix = mDb.openIndex("transformed");
         for (int i=20; i<=90; i+=3) {
@@ -341,6 +378,24 @@ public class TransformerTest {
         @Override
         public byte[] inverseTransformKey(byte[] tkey) {
             return isAllowed(tkey, null) ? tkey : null;
+        }
+    }
+
+    static class NullValueSwap implements Transformer {
+        static final byte[] NULL = "NULL".getBytes();
+
+        @Override
+        public byte[] transformValue(byte[] value, byte[] key, byte[] tkey) {
+            return swap(value);
+        }
+
+        @Override
+        public byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey) {
+            return swap(tvalue);
+        }
+
+        private byte[] swap(byte[] value) {
+            return value == null ? NULL : (Arrays.equals(NULL, value) ? null : value);
         }
     }
 }

@@ -527,6 +527,12 @@ class _Tree implements View, Index {
     }
 
     @Override
+    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        keyCheck(key);
+        return new _TreeCursor(this, txn).findAndModify(key, _TreeCursor.MODIFY_UPDATE, value);
+    }
+
+    @Override
     public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
