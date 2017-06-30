@@ -673,7 +673,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                         txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
-                        return;
                     }
                 }
             });
@@ -698,7 +697,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                         txn.push(lock);
                     } catch (Throwable e) {
                         fail(e);
-                        return;
                     }
                 }
             });
@@ -727,7 +725,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
                 } catch (Throwable e) {
                     fail(e);
-                    return;
                 }
             }
         });
@@ -747,7 +744,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     handler.redo(mDatabase, txn, message);
                 } catch (Throwable e) {
                     fail(e);
-                    return;
                 }
             }
         });
@@ -778,7 +774,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     handler.redo(mDatabase, txn, message, indexId, key);
                 } catch (Throwable e) {
                     fail(e);
-                    return;
                 }
             }
         });
