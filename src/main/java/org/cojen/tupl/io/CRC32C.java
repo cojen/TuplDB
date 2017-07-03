@@ -90,6 +90,9 @@ public class CRC32C {
         }
     }
 
+    private CRC32C() {
+    }
+
     static class Impl implements Checksum {
 
         /*
