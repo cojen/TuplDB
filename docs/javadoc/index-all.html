@@ -522,6 +522,10 @@
 <dd>
 <div class="block">Non-transactionally counts the number of entries within the given range.</div>
 </dd>
+<dt><a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">CRC32C</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
+<dd>
+<div class="block">Utility for computing the CRC-32C of a data stream.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-">createCachePrimer(OutputStream)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to <a href="org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-"><code>prime</code></a> the cache.</div>
@@ -1260,6 +1264,10 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/LockTimeoutException.html#getUnit--">getUnit()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#getValue--">getValue()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
+<dd>
+<div class="block">Returns CRC-32C value.</div>
+</dd>
 </dl>
 <a name="I:H">
 <!--   -->
@@ -1813,6 +1821,8 @@
 <dd>
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#newInstance--">newInstance()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newPageCipher--">newPageCipher()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
@@ -2183,6 +2193,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Resets Cursor and moves it to an undefined position.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#reset--">reset()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
+<dd>
+<div class="block">Resets CRC-32C to initial value.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
@@ -2686,6 +2700,15 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#UnsafeAccess--">UnsafeAccess()</a></span> - Constructor for class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#update-int-">update(int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
+<dd>
+<div class="block">Updates the CRC-32C checksum with the specified byte (the low eight bits
+ of the argument b).</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#update-byte:A-int-int-">update(byte[], int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
+<dd>
+<div class="block">Updates the CRC-32C checksum with the specified array of bytes.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#update-byte:A-">update(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
 <dd>
 <div class="block">Update the current value and then step to the next entry.</div>
