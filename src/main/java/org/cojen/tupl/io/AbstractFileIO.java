@@ -448,7 +448,7 @@ abstract class AbstractFileIO extends FileIO {
                 return;
             }
 
-            long length = length();
+            long length = doLength();
 
             if (oldMappings != null) {
                 long oldMappedLength = oldMappings.length == 0 ? 0 :
