@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.util;
 
+import java.util.concurrent.TimeUnit;
+
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -36,6 +38,51 @@ public class LatchCondition {
      */
     public final boolean isEmpty() {
         return mHead == null;
+    }
+
+    /**
+     * Blocks the current thread indefinitely until a signal is received. Exclusive latch must
+     * be acquired by the caller, which is released and then re-acquired by this method.
+     *
+     * @param latch latch being used by this condition
+     * @return -1 if interrupted, or 1 if signaled
+     */
+    public final int await(Latch latch) {
+        return await(latch, -1, 0);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by the caller, which is released and then re-acquired by this method.
+     *
+     * @param latch latch being used by this condition
+     * @param timeout relative time to wait; infinite if &lt;0
+     * @param unit timeout unit
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
+     */
+    public final int await(Latch latch, long timeout, TimeUnit unit) {
+        long nanosTimeout, nanosEnd;
+        if (timeout <= 0) {
+            nanosTimeout = timeout;
+            nanosEnd = 0;
+        } else {
+            nanosTimeout = unit.toNanos(timeout);
+            nanosEnd = System.nanoTime() + nanosTimeout;
+        }
+        return await(latch, nanosTimeout, nanosEnd);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by the caller, which is released and then re-acquired by this method.
+     *
+     * @param latch latch being used by this condition
+     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
+     */
+    public final int await(Latch latch, long nanosTimeout) {
+        long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
+        return await(latch, nanosTimeout, nanosEnd);
     }
 
     /**
