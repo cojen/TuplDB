@@ -44,6 +44,7 @@ import org.cojen.tupl.util.Worker;
  * @author Brian S O'Neill
  */
 final class FileTermLog extends Latch implements TermLog {
+    private static final int MAX_CACHED_SEGMENTS = 10;
     private static final int MAX_CACHED_WRITERS = 10;
     private static final int MAX_CACHED_READERS = 10;
 
@@ -74,6 +75,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final PriorityQueue<SegmentWriter> mNonContigWriters;
 
+    private final LCache<Segment> mSegmentCache;
     private final LCache<SegmentWriter> mWriterCache;
     private final LCache<SegmentReader> mReaderCache;
 
@@ -105,6 +107,7 @@ final class FileTermLog extends Latch implements TermLog {
         mLogContigIndex = highestIndex;
         mLogEndIndex = Long.MAX_VALUE;
 
+        mSegmentCache = new LCache<>(MAX_CACHED_SEGMENTS);
         mWriterCache = new LCache<>(MAX_CACHED_WRITERS);
         mReaderCache = new LCache<>(MAX_CACHED_READERS);
 
@@ -422,6 +425,8 @@ final class FileTermLog extends Latch implements TermLog {
                     segment.releaseExclusive();
                 }
             }
+
+            mWorker.join(false);
         } finally {
             releaseExclusive();
         }
@@ -453,6 +458,7 @@ final class FileTermLog extends Latch implements TermLog {
             Segment startSegment = (Segment) mSegments.floor(key); // findLe
 
             if (startSegment != null && index < startSegment.endIndex()) {
+                mSegmentCache.remove(startSegment.cacheKey());
                 Segment.cRefCountUpdater.getAndIncrement(startSegment);
                 return startSegment;
             }
@@ -649,11 +655,15 @@ final class FileTermLog extends Latch implements TermLog {
             return;
         }
 
+        // Unmap the segement and close the least recently used.
+
+        Segment toClose = mSegmentCache.add(segment);
+
         Worker.Task task = new Worker.Task() {
             @Override
             public void run() {
                 try {
-                    doUnreferenced(segment);
+                    doUnreferenced(segment, toClose);
                 } catch (IOException e) {
                     Utils.uncaught(e);
                 }
@@ -665,14 +675,28 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    void doUnreferenced(Segment segment) throws IOException {
+    void doUnreferenced(Segment segment, Segment toClose) throws IOException {
         segment.acquireExclusive();
         try {
             if (segment.mRefCount < 0) {
-                segment.close(false);
+                segment.unmap();
             }
         } finally {
             segment.releaseExclusive();
+        }
+
+        if (toClose != null) {
+            toClose.acquireExclusive();
+            try {
+                if (segment.mRefCount < 0) {
+                    segment.close(false);
+                } else {
+                    // In use still, but at least unmap it.
+                    segment.unmap();
+                }
+            } finally {
+                toClose.releaseExclusive();
+            }
         }
     }
 
@@ -967,7 +991,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static final class Segment extends Latch implements LKey<Segment> {
+    static final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
         private static final int OPEN_HANDLE_COUNT = 8;
 
         static final AtomicIntegerFieldUpdater<Segment> cRefCountUpdater =
@@ -980,6 +1004,10 @@ final class FileTermLog extends Latch implements TermLog {
         volatile int mRefCount;
         private FileIO mFileIO;
         private boolean mClosed;
+
+        private Segment mCacheNext;
+        private Segment mCacheMoreUsed;
+        private Segment mCacheLessUsed;
 
         Segment(File file, long startIndex, long maxLength) {
             mFile = file;
@@ -1017,16 +1045,7 @@ final class FileTermLog extends Latch implements TermLog {
             FileIO io = mFileIO;
 
             while (true) {
-                tryWrite: {
-                    if (io == null) {
-                        acquireExclusive();
-                        io = mFileIO;
-                        if (io == null) {
-                            break tryWrite;
-                        }
-                        releaseExclusive();
-                    }
-
+                if (io != null || (io = fileIO()) != null) tryWrite: {
                     try {
                         io.write(index, data, offset, length);
                     } catch (IOException e) {
@@ -1082,18 +1101,9 @@ final class FileTermLog extends Latch implements TermLog {
             FileIO io = mFileIO;
 
             while (true) {
-                tryRead: {
-                    if (io == null) {
-                        acquireExclusive();
-                        io = mFileIO;
-                        if (io == null) {
-                            break tryRead;
-                        }
-                        releaseExclusive();
-                    }
-
+                if (io != null || (io = fileIO()) != null) tryRead: {
                     try {
-                        mFileIO.read(index, buf, offset, length);
+                        io.read(index, buf, offset, length);
                         return length;
                     } catch (IOException e) {
                         acquireExclusive();
@@ -1117,6 +1127,25 @@ final class FileTermLog extends Latch implements TermLog {
 
                 length = (int) amt;
             }
+        }
+
+        /**
+         * @return null if mFileIO is null, and exclusive latch is now held
+         */
+        private FileIO fileIO() {
+            acquireShared();
+            FileIO io = mFileIO;
+            if (io != null) {
+                releaseShared();
+            } else if (!tryUpgrade()) {
+                releaseShared();
+                acquireExclusive();
+                io = mFileIO;
+                if (io != null) {
+                    releaseExclusive();
+                }
+            }
+            return io;
         }
 
         /**
@@ -1221,6 +1250,41 @@ final class FileTermLog extends Latch implements TermLog {
                     mClosed = true;
                 }
             }
+        }
+
+        @Override
+        public long cacheKey() {
+            return key();
+        }
+
+        @Override
+        public Segment cacheNext() {
+            return mCacheNext;
+        }
+
+        @Override
+        public void cacheNext(Segment next) {
+            mCacheNext = next;
+        }
+
+        @Override
+        public Segment cacheMoreUsed() {
+            return mCacheMoreUsed;
+        }
+
+        @Override
+        public void cacheMoreUsed(Segment more) {
+            mCacheMoreUsed = more;
+        }
+
+        @Override
+        public Segment cacheLessUsed() {
+            return mCacheLessUsed;
+        }
+
+        @Override
+        public void cacheLessUsed(Segment less) {
+            mCacheLessUsed = less;
         }
 
         @Override
