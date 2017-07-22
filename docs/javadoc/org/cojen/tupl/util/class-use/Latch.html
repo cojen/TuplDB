@@ -131,6 +131,19 @@
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code>int</code></td>
+<td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#await-org.cojen.tupl.util.Latch-">await</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code>
+<div class="block">Blocks the current thread indefinitely until a signal is received.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>int</code></td>
+<td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#await-org.cojen.tupl.util.Latch-long-">await</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+     long&nbsp;nanosTimeout)</code>
+<div class="block">Blocks the current thread until a signal is received.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>int</code></td>
 <td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#await-org.cojen.tupl.util.Latch-long-long-">await</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
      long&nbsp;nanosTimeout,
      long&nbsp;nanosEnd)</code>
@@ -139,20 +152,28 @@
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>int</code></td>
+<td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#await-org.cojen.tupl.util.Latch-long-java.util.concurrent.TimeUnit-">await</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+     long&nbsp;timeout,
+     <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
+<div class="block">Blocks the current thread until a signal is received.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>int</code></td>
 <td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#awaitShared-org.cojen.tupl.util.Latch-long-long-">awaitShared</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
            long&nbsp;nanosTimeout,
            long&nbsp;nanosEnd)</code>
 <div class="block">Blocks the current thread until a signal is received.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#signalRelease-org.cojen.tupl.util.Latch-">signalRelease</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code>
 <div class="block">If a first waiter exists, it's removed, the held exclusive latch is released, and then
  the waiter is signaled.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/util/LatchCondition.html#signalSharedRelease-org.cojen.tupl.util.Latch-">signalSharedRelease</a></span>(<a href="../../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code>
 <div class="block">If a first shared waiter exists, it's removed, the held exclusive latch is released, and
