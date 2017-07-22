@@ -245,12 +245,21 @@ final class JavaFileIO extends AbstractFileIO {
             ex = e;
         }
 
-        RandomAccessFile[] pool = mFilePool;
-        synchronized (pool) {
-            for (RandomAccessFile file : pool) {
-                ex = closeQuietly(ex, file, cause);
+        for (int i=0; i<mFilePool.length; i++) {
+            try {
+                accessFile().close();
+            } catch (IOException e) {
+                if (ex == null) {
+                    ex = e;
+                }
             }
         }
+
+        synchronized (mFilePool) {
+            mFilePoolTop = 0;
+            mFilePool.notifyAll();
+        }
+
 
         if (ex != null) {
             throw ex;
