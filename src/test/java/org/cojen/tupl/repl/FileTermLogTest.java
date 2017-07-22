@@ -18,8 +18,10 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
+import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -32,6 +34,8 @@ import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 
 import org.cojen.tupl.TestUtils;
+
+import org.cojen.tupl.io.Utils;
 
 /**
  * 
@@ -358,7 +362,118 @@ public class FileTermLogTest {
         TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, amt));
     }
 
-    private static void write(LogWriter writer, byte[] data) throws Exception {
+    @Test
+    public void ranges() throws Exception {
+        // Define a bunch of random ranges, with random data, and write to them in random order
+        // via several threads. The reader shouldn't read beyond the contiguous range, and the
+        // data it observes should match what was written.
+
+        final long seed = 289023475245L;
+        Random rnd = new Random(seed);
+
+        class Range {
+            long start, end;
+
+            public String toString() {
+                return "[" + start + "," + end + "]";
+            }
+        }
+
+        final int threadCount = 10;
+        final int sliceLength = 100_000;
+        Range[] ranges = new Range[sliceLength * threadCount];
+
+        long index = 0;
+        for (int i=0; i<ranges.length; i++) {
+            Range range = new Range();
+            range.start = index;
+            int len = rnd.nextInt(1000);
+            index += len;
+            range.end = index;
+            ranges[i] = range;
+        }
+
+        // Commit and finish in advance.
+        mLog.commit(index);
+        mLog.finishTerm(index);
+
+        Collections.shuffle(Arrays.asList(ranges), rnd);
+
+        Range[][] slices = new Range[threadCount][];
+        for (int i=0; i<slices.length; i++) {
+            int from = i * sliceLength;
+            slices[i] = Arrays.copyOfRange(ranges, from, from + sliceLength);
+        }
+
+        class Writer extends Thread {
+            private final Range[] mRanges;
+            private final Random mRnd;
+            volatile long mSum;
+
+            Writer(Range[] ranges, Random rnd) {
+                mRanges = ranges;
+                mRnd = rnd;
+            }
+
+            @Override
+            public void run() {
+                try {
+                    long sum = 0;
+
+                    for (Range range : mRanges) {
+                        byte[] data = new byte[(int) (range.end - range.start)];
+                        mRnd.nextBytes(data);
+                        LogWriter writer = mLog.openWriter(range.start);
+                        write(writer, data);
+                        writer.release();
+                        for (int i=0; i<data.length; i++) {
+                            sum += data[i] & 0xff;
+                        }
+                    }
+
+                    mSum = sum;
+                } catch (IOException e) {
+                    Utils.uncaught(e);
+                }
+            }
+        }
+
+        Writer[] writers = new Writer[threadCount];
+        for (int i=0; i<writers.length; i++) {
+            writers[i] = new Writer(slices[i], new Random(seed + i));
+        }
+
+        for (Writer w : writers) {
+            w.start();
+        }
+
+        LogReader reader = mLog.openReader(0);
+        byte[] buf = new byte[1024];
+        long sum = 0;
+
+        while (true) {
+            int amt = reader.read(buf, 0, buf.length);
+            if (amt < 0) {
+                break;
+            }
+            for (int i=0; i<amt; i++) {
+                sum += buf[i] & 0xff;
+            }
+        }
+
+        reader.release();
+
+        long expectedSum = 0;
+
+        for (Writer w : writers) {
+            w.join();
+            expectedSum += w.mSum;
+        }
+
+        assertEquals(expectedSum, sum);
+    }
+
+    private static void write(LogWriter writer, byte[] data) throws IOException {
         int amt = writer.write(data, 0, data.length, writer.index() + data.length);
         assertEquals(data.length, amt);
     }
