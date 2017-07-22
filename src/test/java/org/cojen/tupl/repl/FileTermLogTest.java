@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.File;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -26,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 
 import org.cojen.tupl.TestUtils;
@@ -44,6 +47,7 @@ public class FileTermLogTest {
     public void setup() throws Exception {
         mBase = TestUtils.newTempBaseFile(getClass());
         mWorker = Worker.make(1, 15, TimeUnit.SECONDS, null);
+        mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, 0);
     }
 
     @After
@@ -65,7 +69,6 @@ public class FileTermLogTest {
 
     @Test
     public void basic() throws Exception {
-        mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, 0);
         assertEquals(Long.MAX_VALUE, mLog.endIndex());
 
         // Write a bunch of data and read it back.
@@ -122,8 +125,6 @@ public class FileTermLogTest {
 
     @Test
     public void tail() throws Throwable {
-        mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, 0);
-
         // Write and commit a bunch of data, while concurrently reading it.
 
         final int seed = 762390;
@@ -203,5 +204,179 @@ public class FileTermLogTest {
         if (ex != null) {
             throw ex;
         }
+    }
+
+    @Test
+    public void waitForCommit() throws Exception {
+        commitWait(false);
+    }
+
+    @Test
+    public void uponCommit() throws Exception {
+        commitWait(true);
+    }
+
+    private void commitWait(boolean upon) throws Exception {
+        // Test waiting for a commit.
+
+        class Waiter extends Thread {
+            final long mWaitFor;
+            final boolean mUpon;
+            final Latch mLatch;
+            final LatchCondition mLatchCondition;
+            Exception mEx;
+            long mCommit;
+
+            Waiter(long waitFor, boolean upon) {
+                mLatch = new Latch();
+                mUpon = upon;
+                mLatchCondition = new LatchCondition();
+                mWaitFor = waitFor;
+            }
+
+            void begin() {
+                if (mUpon) {
+                    mLog.uponCommit(new Delayed(mWaitFor) {
+                        @Override
+                        protected void doRun(long commit) {
+                            mLatch.acquireExclusive();
+                            mCommit = commit;
+                            mLatchCondition.signal();
+                            mLatch.releaseExclusive();
+                        }
+                    });
+                } else {
+                    TestUtils.startAndWaitUntilBlocked(this);
+                }
+            }
+
+            @Override
+            public void run() {
+                try {
+                    long commit = mLog.waitForCommit(mWaitFor);
+                    mLatch.acquireExclusive();
+                    mCommit = commit;
+                    mLatchCondition.signal();
+                    mLatch.releaseExclusive();
+                } catch (Exception e) {
+                    mLatch.acquireExclusive();
+                    mEx = e;
+                    mLatchCondition.signal();
+                    mLatch.releaseExclusive();
+                }
+            }
+
+            long waitForResult(long timeoutMillis) throws Exception { 
+                mLatch.acquireExclusive();
+                try {
+                    int r = Integer.MAX_VALUE;
+                    while (true) {
+                        if (mCommit != 0) {
+                            return mCommit;
+                        }
+                        if (mEx != null) {
+                            throw mEx;
+                        }
+                        if (r != Integer.MAX_VALUE) {
+                            return -1;
+                        }
+                        r = mLatchCondition.await(mLatch, timeoutMillis, TimeUnit.MILLISECONDS);
+                    }
+                } finally {
+                    mLatch.releaseExclusive();
+                }
+            }
+        }
+
+        // ------
+        long index = 0;
+        byte[] msg1 = "hello".getBytes();
+
+        // Wait for the full message.
+        Waiter waiter = new Waiter(index + msg1.length, upon);
+        waiter.begin();
+
+        LogWriter writer = mLog.openWriter(0);
+        write(writer, msg1);
+
+        // Timed out waiting, because noting has been committed yet.
+        assertEquals(-1, waiter.waitForResult(500));
+
+        // Commit too little.
+        mLog.commit(index += 2);
+        assertEquals(-1, waiter.waitForResult(500));
+
+        // Commit the rest.
+        mLog.commit(index += 3);
+        assertEquals(index, waiter.waitForResult(-1));
+
+        // ------
+        byte[] msg2 = "world!!!".getBytes();
+
+        // Wait for a partial message.
+        waiter = new Waiter(index + 5, upon);
+        waiter.begin();
+
+        write(writer, msg2);
+
+        // Timed out waiting.
+        assertEquals(-1, waiter.waitForResult(500));
+
+        // Commit too little.
+        mLog.commit(index += 2);
+        assertEquals(-1, waiter.waitForResult(500));
+
+        // Commit the rest, observing more than what was requested.
+        mLog.commit(index += 6);
+        assertEquals(index, waiter.waitForResult(-1));
+
+        // ------
+        byte[] msg3 = "stuff".getBytes();
+
+        // Wait for the full message.
+        waiter = new Waiter(index + msg3.length, upon);
+        waiter.begin();
+
+        // Commit ahead.
+        mLog.commit(index + 100);
+
+        // Timed out waiting, because nothing has been written yet.
+        assertEquals(-1, waiter.waitForResult(500));
+
+        write(writer, msg3);
+        index += msg3.length;
+        assertEquals(index, waiter.waitForResult(-1));
+
+        writer.release();
+
+        // Verify that everything is read back properly, with no blocking.
+        byte[] complete = concat(msg1, msg2, msg3);
+        byte[] buf = new byte[100];
+        LogReader reader = mLog.openReader(0);
+        int amt = reader.read(buf, 0, buf.length);
+        reader.release();
+        TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, amt));
+    }
+
+    private static void write(LogWriter writer, byte[] data) throws Exception {
+        int amt = writer.write(data, 0, data.length, writer.index() + data.length);
+        assertEquals(data.length, amt);
+    }
+
+    private static byte[] concat(byte[]... chunks) {
+        int length = 0;
+        for (byte[] chunk : chunks) {
+            length += chunk.length;
+        }
+
+        byte[] complete = new byte[length];
+
+        int pos = 0;
+        for (byte[] chunk : chunks) {
+            System.arraycopy(chunk, 0, complete, pos, chunk.length);
+            pos += chunk.length;
+        }        
+
+        return complete;
     }
 }
