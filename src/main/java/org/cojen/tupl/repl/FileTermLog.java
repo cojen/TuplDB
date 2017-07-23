@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.Iterator;
 import java.util.PriorityQueue;
 import java.util.TreeSet;
 
@@ -305,19 +306,20 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (endIndex < mLogContigIndex) {
                 mLogContigIndex = endIndex;
-
-                while (true) {
-                    SegmentWriter next = mNonContigWriters.peek();
-                    if (next == null || next.mWriterStartIndex < endIndex) {
-                        break;
-                    }
-                    SegmentWriter removed = mNonContigWriters.remove();
-                    assert removed == next;
-                }
             }
 
             if (endIndex < mLogHighestIndex) {
                 mLogHighestIndex = endIndex;
+            }
+
+            if (!mNonContigWriters.isEmpty()) {
+                Iterator<SegmentWriter> it = mNonContigWriters.iterator();
+                while (it.hasNext()) {
+                    SegmentWriter writer = it.next();
+                    if (writer.mWriterStartIndex >= endIndex) {
+                        it.remove();
+                    }
+                }
             }
 
             mCommitTasks.removeIf(task -> {
@@ -704,10 +706,20 @@ final class FileTermLog extends Latch implements TermLog {
         Worker.Task task = new Worker.Task() {
             @Override
             public void run() {
+                Segment.cRefCountUpdater.getAndIncrement(segment);
+
                 try {
                     segment.truncate();
                 } catch (IOException e) {
                     Utils.uncaught(e);
+                }
+
+                if (Segment.cRefCountUpdater.getAndDecrement(segment) <= 0) {
+                    try {
+                        doUnreferenced(segment, mSegmentCache.add(segment));
+                    } catch (IOException e) {
+                        Utils.uncaught(e);
+                    }
                 }
             }
         };
@@ -1214,13 +1226,11 @@ final class FileTermLog extends Latch implements TermLog {
             try {
                 maxLength = mMaxLength;
                 if (maxLength == 0) {
-                    close(false);
+                    close(true);
                     io = null;
                 } else {
-                    // FIXME: Use ref count instead of open/close, to prevent race condition.
                     openForWriting();
                     io = mFileIO;
-                    mFileIO = null;
                 }
             } finally {
                 releaseExclusive();
@@ -1230,7 +1240,6 @@ final class FileTermLog extends Latch implements TermLog {
                 mFile.delete();
             } else {
                 io.setLength(maxLength);
-                io.close();
             }
         }
 
