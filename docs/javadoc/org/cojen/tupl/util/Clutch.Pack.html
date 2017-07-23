@@ -114,9 +114,9 @@
 <pre>public static class <span class="typeNameLabel">Clutch.Pack</span>
 extends <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre>
 <div class="block">Sharable object for supporting contended clutches. Memory overhead (in bytes) is
- proportional <code>(number of slots) * (number of cores)</code>. The number of slots should
- be at least 16, to minimize cache line contention. As a convenience, this class also
- extends the Latch class, but the latching features are not used here.</div>
+ proportional to <code>(number of slots) * (number of cores)</code>. The number of slots
+ should be at least 16, to minimize cache line contention. As a convenience, this class
+ also extends the Latch class, but the latching features are not used here.</div>
 </li>
 </ul>
 </div>
