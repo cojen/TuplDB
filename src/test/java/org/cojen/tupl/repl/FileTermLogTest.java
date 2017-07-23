@@ -20,8 +20,10 @@ package org.cojen.tupl.repl;
 import java.io.File;
 import java.io.IOException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -125,6 +127,40 @@ public class FileTermLogTest {
 
         reader.release();
         assertEquals(total, index);
+
+        mLog.finishTerm(index);
+        assertEquals(index, mLog.endIndex());
+
+        mLog.finishTerm(index);
+        assertEquals(index, mLog.endIndex());
+
+        try {
+            mLog.finishTerm(index + 1);
+            fail();
+        } catch (IllegalStateException e) {
+            // Expected.
+        }
+
+        // Cannot write past end.
+        assertEquals(0, writer.write(buf, 0, 1, 9_999_999_999L));
+        writer.release();
+
+        assertEquals(index, mLog.endIndex());
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(index, info.mHighestIndex);
+
+        // Permit partial write up to the end.
+        writer = mLog.openWriter(index - 1);
+        assertEquals(1, writer.write(buf, 0, 2, 9_999_999_999L));
+        writer.release();
+        
+        assertEquals(index, mLog.endIndex());
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(index, info.mHighestIndex);
     }
 
     @Test
@@ -353,6 +389,28 @@ public class FileTermLogTest {
 
         writer.release();
 
+        // ------
+        // No wait.
+        waiter = new Waiter(index, upon);
+        waiter.begin();
+        assertEquals(index, waiter.waitForResult(-1));
+
+        // ------
+        // Unblock after term is finished.
+        long findex = index;
+        TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
+            TestUtils.sleep(1000);
+            try {
+                mLog.finishTerm(findex);
+            } catch (IOException e) {
+                Utils.uncaught(e);
+            }
+        }));
+
+        waiter = new Waiter(index + 1, upon);
+        waiter.begin();
+        assertEquals(-1, waiter.waitForResult(-1));
+
         // Verify that everything is read back properly, with no blocking.
         byte[] complete = concat(msg1, msg2, msg3);
         byte[] buf = new byte[100];
@@ -371,14 +429,6 @@ public class FileTermLogTest {
         final long seed = 289023475245L;
         Random rnd = new Random(seed);
 
-        class Range {
-            long start, end;
-
-            public String toString() {
-                return "[" + start + "," + end + "]";
-            }
-        }
-
         final int threadCount = 10;
         final int sliceLength = 100_000;
         Range[] ranges = new Range[sliceLength * threadCount];
@@ -386,10 +436,10 @@ public class FileTermLogTest {
         long index = 0;
         for (int i=0; i<ranges.length; i++) {
             Range range = new Range();
-            range.start = index;
+            range.mStart = index;
             int len = rnd.nextInt(1000);
             index += len;
-            range.end = index;
+            range.mEnd = index;
             ranges[i] = range;
         }
 
@@ -421,9 +471,9 @@ public class FileTermLogTest {
                     long sum = 0;
 
                     for (Range range : mRanges) {
-                        byte[] data = new byte[(int) (range.end - range.start)];
+                        byte[] data = new byte[(int) (range.mEnd - range.mStart)];
                         mRnd.nextBytes(data);
-                        LogWriter writer = mLog.openWriter(range.start);
+                        LogWriter writer = mLog.openWriter(range.mStart);
                         write(writer, data);
                         writer.release();
                         for (int i=0; i<data.length; i++) {
@@ -473,6 +523,209 @@ public class FileTermLogTest {
         assertEquals(expectedSum, sum);
     }
 
+    @Test
+    public void missingRanges() throws Exception {
+        // Verify that missing ranges can be queried.
+
+        RangeResult result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+
+        LogWriter writer = mLog.openWriter(50);
+        write(writer, new byte[100]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(0, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(0, 50), result.mRanges.get(0));
+
+        // Fill in the missing range. Overlap is fine.
+        writer = mLog.openWriter(0);
+        write(writer, new byte[55]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(150, mLog.checkForMissingData(0, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(150, mLog.checkForMissingData(10, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(150, mLog.checkForMissingData(1000, result));
+        assertEquals(0, result.mRanges.size());
+
+        // Create a few missing ranges.
+        writer = mLog.openWriter(200);
+        write(writer, new byte[50]);
+        writer.release();
+        writer = mLog.openWriter(350);
+        write(writer, new byte[50]);
+        writer.release();
+        writer = mLog.openWriter(300);
+        write(writer, new byte[50]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(150, mLog.checkForMissingData(100, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(150, mLog.checkForMissingData(150, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(150, 200), result.mRanges.get(0));
+        assertEquals(new Range(250, 300), result.mRanges.get(1));
+
+        // Finish the term, creating a new missing range.
+        mLog.finishTerm(1000);
+        result = new RangeResult();
+        assertEquals(150, mLog.checkForMissingData(150, result));
+        assertEquals(3, result.mRanges.size());
+        assertEquals(new Range(150, 200), result.mRanges.get(0));
+        assertEquals(new Range(250, 300), result.mRanges.get(1));
+        assertEquals(new Range(400, 1000), result.mRanges.get(2));
+
+        // Fill in the missing ranges...
+        writer = mLog.openWriter(150);
+        write(writer, new byte[50]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(250, mLog.checkForMissingData(150, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(250, mLog.checkForMissingData(250, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(250, 300), result.mRanges.get(0));
+        assertEquals(new Range(400, 1000), result.mRanges.get(1));
+
+        writer = mLog.openWriter(400);
+        write(writer, new byte[600]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(250, mLog.checkForMissingData(250, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(250, 300), result.mRanges.get(0));
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(250, info.mHighestIndex);
+
+        writer = mLog.openWriter(250);
+        write(writer, new byte[50]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(1000, mLog.checkForMissingData(250, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(1000, mLog.checkForMissingData(1000, result));
+        assertEquals(0, result.mRanges.size());
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1000, info.mHighestIndex);
+    }
+
+    @Test
+    public void discardNonContigRanges() throws Exception {
+        // Any non-contiguous ranges past the end of a finished term must be discarded.
+
+        LogWriter writer = mLog.openWriter(100);
+        write(writer, new byte[50]);
+        writer.release();
+
+        writer = mLog.openWriter(250);
+        write(writer, new byte[50]);
+        writer.release();
+
+        writer = mLog.openWriter(400);
+        write(writer, new byte[100]);
+        writer.release();
+
+        RangeResult result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+
+        result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(-1, result));
+        assertEquals(3, result.mRanges.size());
+        assertEquals(new Range(0, 100), result.mRanges.get(0));
+        assertEquals(new Range(150, 250), result.mRanges.get(1));
+        assertEquals(new Range(300, 400), result.mRanges.get(2));
+
+        mLog.finishTerm(200);
+
+        result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(0, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(0, 100), result.mRanges.get(0));
+        assertEquals(new Range(150, 200), result.mRanges.get(1));
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(0, info.mHighestIndex);
+
+        writer = mLog.openWriter(0);
+        write(writer, new byte[100]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(150, info.mHighestIndex);
+
+        result = new RangeResult();
+        assertEquals(150, mLog.checkForMissingData(0, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(150, mLog.checkForMissingData(150, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(150, 200), result.mRanges.get(0));
+    }
+
+    @Test
+    public void discardAllRanges() throws Exception {
+        // All ranges past the end of a finished term must be discarded.
+
+        LogWriter writer = mLog.openWriter(0);
+        write(writer, new byte[200]);
+        writer.release();
+
+        writer = mLog.openWriter(300);
+        write(writer, new byte[100]);
+        writer.release();
+
+        RangeResult result = new RangeResult();
+        assertEquals(200, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(200, mLog.checkForMissingData(200, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(200, 300), result.mRanges.get(0));
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(200, info.mHighestIndex);
+
+        mLog.finishTerm(170);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(170, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        result = new RangeResult();
+        assertEquals(170, mLog.checkForMissingData(200, result));
+        assertEquals(0, result.mRanges.size());
+
+        mLog.commit(170);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(170, info.mHighestIndex);
+        assertEquals(170, info.mCommitIndex);
+
+        try {
+            mLog.finishTerm(100);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+    }
+
     private static void write(LogWriter writer, byte[] data) throws IOException {
         int amt = writer.write(data, 0, data.length, writer.index() + data.length);
         assertEquals(data.length, amt);
@@ -493,5 +746,39 @@ public class FileTermLogTest {
         }        
 
         return complete;
+    }
+
+    static class Range {
+        long mStart, mEnd;
+
+        Range() {
+        }
+
+        Range(long start, long end) {
+            mStart = start;
+            mEnd = end;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Range) {
+                return ((Range) obj).mStart == mStart && ((Range) obj).mEnd == mEnd;
+            }
+            return false;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + mStart + "," + mEnd + "]";
+        }
+    }
+
+    static class RangeResult implements IndexRange {
+        List<Range> mRanges = new ArrayList<>();
+
+        @Override
+        public void range(long start, long end) {
+            mRanges.add(new Range(start, end));
+        }
     }
 }

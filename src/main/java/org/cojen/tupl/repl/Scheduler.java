@@ -66,7 +66,7 @@ final class Scheduler {
         try {
             mExecutor.execute(task);
         } catch (RejectedExecutionException e) {
-            if (mExecutor.isShutdown()) {
+            if (isShutdown()) {
                 return false;
             }
             schedule(task, 1);
@@ -108,7 +108,7 @@ final class Scheduler {
                 mExecutor.execute(task);
                 return true;
             } catch (RejectedExecutionException e) {
-                if (mExecutor.isShutdown()) {
+                if (isShutdown()) {
                     return false;
                 }
             }
@@ -137,7 +137,7 @@ final class Scheduler {
                     try {
                         wait(delay);
                     } catch (InterruptedException e) {
-                        if (mExecutor.isShutdown()) {
+                        if (isShutdown()) {
                             mRunning = false;
                             return;
                         }

@@ -91,9 +91,9 @@ interface TermLog extends LKey<TermLog>, Closeable {
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest
      * contiguous index (exclusive), as returned by the previous invocation of this method, or
-     * pass 0 if unknown. The given callback receives all the missing ranges, and an updated
-     * contiguous index is returned. As long as the contiguous range is changing, no missing
-     * ranges are reported.
+     * pass Long.MAX_VALUE if unknown. The given callback receives all the missing ranges, and
+     * an updated contiguous index is returned. As long as the contiguous range is changing, no
+     * missing ranges are reported.
      */
     long checkForMissingData(long contigIndex, IndexRange results);
 
