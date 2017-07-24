@@ -308,7 +308,7 @@ final class FileTermLog extends Latch implements TermLog {
                 segment.acquireExclusive();
                 boolean shouldTruncate = segment.setEndIndex(endIndex);
                 segment.releaseExclusive();
-                if (shouldTruncate) {
+                if (shouldTruncate && !mClosed) {
                     truncate(segment);
                 }
             }
@@ -427,6 +427,9 @@ final class FileTermLog extends Latch implements TermLog {
     public void close() throws IOException {
         acquireExclusive();
         try {
+            // Wait for any pending truncate tasks to complete first. New tasks cannot be
+            // enqueued with exclusive latch held.
+            mWorker.join(false);
             mClosed = true;
 
             for (LKey<Segment> key : mSegments) {
@@ -438,8 +441,6 @@ final class FileTermLog extends Latch implements TermLog {
                     segment.releaseExclusive();
                 }
             }
-
-            mWorker.join(false);
         } finally {
             releaseExclusive();
         }
