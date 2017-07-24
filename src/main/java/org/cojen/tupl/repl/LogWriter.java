@@ -54,6 +54,23 @@ abstract class LogWriter extends LogInfo {
         throws IOException;
 
     /**
+     * Blocks until the commit index reaches the given index.
+     *
+     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+     * @return current commit index, or -1 if timed out or if term finished before the index
+     * could be reached
+     */
+    abstract long waitForCommit(long index, long nanosTimeout) throws IOException;
+
+    /**
+     * Invokes the given task when the commit index reaches the requested index. The current
+     * commit index is passed to the task, or -1 if the term ended before the index could be
+     * reached. If the commit index is high enough when this method is called, then the current
+     * thread invokes the task.
+     */
+    abstract void uponCommit(Delayed task);
+
+    /**
      * Indicate that the writer isn't intended to be used again, allowing file handles to be
      * closed. Writing again will reopen them.
      */
