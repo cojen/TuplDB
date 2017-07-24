@@ -173,7 +173,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public long waitForCommit(long index) throws IOException {
+    public long waitForCommit(long index, long nanosTimeout) throws IOException {
         boolean exclusive = false;
         acquireShared();
         while (true) {
@@ -209,8 +209,14 @@ final class FileTermLog extends Latch implements TermLog {
             releaseExclusive();
         }
 
+        long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime();
+
         while (true) {
-            LockSupport.park(waiter);
+            if (nanosTimeout < 0) {
+                LockSupport.park(waiter);
+            } else {
+                LockSupport.parkNanos(waiter, nanosTimeout);
+            }
             if (Thread.interrupted()) {
                 throw new InterruptedIOException();
             }
@@ -220,6 +226,11 @@ final class FileTermLog extends Latch implements TermLog {
             }
             if (commitIndex >= index) {
                 return commitIndex;
+            }
+            if (nanosTimeout == 0
+                || (nanosTimeout > 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+            {
+                return -1;
             }
         }
     }
@@ -887,7 +898,7 @@ final class FileTermLog extends Latch implements TermLog {
             long avail = commitIndex - index;
 
             if (avail <= 0) {
-                commitIndex = waitForCommit(index + 1);
+                commitIndex = waitForCommit(index + 1, -1);
                 if (commitIndex == -1) {
                     return -1;
                 }

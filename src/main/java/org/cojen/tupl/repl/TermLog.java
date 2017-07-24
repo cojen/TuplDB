@@ -66,10 +66,11 @@ interface TermLog extends LKey<TermLog>, Closeable {
     /**
      * Blocks until the commit index reaches the given index.
      *
-     * @return current commit index, or -1 if end of term reached before the index could be
-     * reached
+     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+     * @return current commit index, or -1 if timed out or if term finished before the index
+     * could be reached
      */
-    long waitForCommit(long index) throws IOException;
+    long waitForCommit(long index, long nanosTimeout) throws IOException;
 
     /**
      * Invokes the given task when the commit index reaches the requested index. The current

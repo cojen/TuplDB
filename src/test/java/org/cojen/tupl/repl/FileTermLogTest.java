@@ -293,7 +293,7 @@ public class FileTermLogTest {
             @Override
             public void run() {
                 try {
-                    long commit = mLog.waitForCommit(mWaitFor);
+                    long commit = mLog.waitForCommit(mWaitFor, -1);
                     mLatch.acquireExclusive();
                     mCommit = commit;
                     mLatchCondition.signal();
