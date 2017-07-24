@@ -813,6 +813,16 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
+        long waitForCommit(long index, long nanosTimeout) throws IOException {
+            return FileTermLog.this.waitForCommit(index, nanosTimeout);
+        }
+
+        @Override
+        void uponCommit(Delayed task) {
+            FileTermLog.this.uponCommit(task);
+        }
+
+        @Override
         void release() {
             FileTermLog.this.release(this);
         }

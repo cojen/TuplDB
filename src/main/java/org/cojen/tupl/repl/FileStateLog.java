@@ -98,8 +98,6 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void captureHighest(LogInfo info) {
-        // FIXME: Consider using Clutch.
-
         acquireShared();
 
         TermLog highestLog = mHighestTermLog;
@@ -146,8 +144,6 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void commit(long commitIndex) {
-        // FIXME: Consider using Clutch.
-
         acquireShared();
 
         TermLog commitLog = mCommitTermLog;
@@ -216,8 +212,6 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public long checkForMissingData(long contigIndex, IndexRange results) {
-        // FIXME: Consider using Clutch.
-
         acquireShared();
 
         TermLog termLog = mContigTermLog;
