@@ -77,6 +77,8 @@ final class FileStateLog extends Latch implements StateLog {
 
     private final LatchCondition mTermCondition;
 
+    private boolean mClosed;
+
     FileStateLog(File base) throws IOException {
         base = base.getAbsoluteFile();
         if (base.isDirectory()) {
@@ -337,9 +339,15 @@ final class FileStateLog extends Latch implements StateLog {
                     }
                 }
 
-                File file = new File(mBase.getPath() + '.' + term);
-                termLog = new FileTermLog(mWorker, file, prevTerm, term, index, index, index);
+                if (mClosed) {
+                    throw new IOException("closed");
+                }
 
+                File file = new File(mBase.getPath() + '.' + term);
+                // FIXME: provide correct commitIndex
+                termLog = new FileTermLog(mWorker, file, prevTerm, term, index, 0, index);
+
+                mTermLogs.add(termLog);
                 mTermCondition.signalAll();
             }
 
@@ -412,5 +420,21 @@ final class FileStateLog extends Latch implements StateLog {
     public void sync() throws IOException {
         // FIXME: sync
         throw null;
+    }
+
+    @Override
+    public void close() throws IOException {
+        acquireExclusive();
+        try {
+            if (mClosed) {
+                return;
+            }
+            mClosed = true;
+            for (Object key : mTermLogs) {
+                ((TermLog) key).close();
+            }
+        } finally {
+            releaseExclusive();
+        }
     }
 }

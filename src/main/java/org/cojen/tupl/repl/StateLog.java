@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -24,7 +25,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface StateLog {
+interface StateLog extends Closeable {
     /**
      * Copies into all relevant fields of the given info object, for the highest term over a
      * contiguous range (by highest index).
