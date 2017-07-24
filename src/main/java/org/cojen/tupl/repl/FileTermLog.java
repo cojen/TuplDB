@@ -1107,12 +1107,12 @@ final class FileTermLog extends Latch implements TermLog {
                     if (amt <= 0) {
                         return 0;
                     }
-                    openForWriting();
-                    io = mFileIO;
+                    io = openForWriting();
                 } finally {
                     releaseExclusive();
                 }
 
+                io.map();
                 length = (int) amt;
             }
         }
@@ -1153,8 +1153,7 @@ final class FileTermLog extends Latch implements TermLog {
                     if (amt <= 0) {
                         return 0;
                     }
-                    openForReading();
-                    io = mFileIO;
+                    io = openForReading();
                 } finally {
                     releaseExclusive();
                 }
@@ -1185,15 +1184,14 @@ final class FileTermLog extends Latch implements TermLog {
         /**
          * Opens or re-opens the segment file if it was closed. Caller must hold exclusive latch.
          */
-        void openForWriting() throws IOException {
-            if (mFileIO == null) {
-                if (mMaxLength <= 0) {
-                    return;
-                }
+        FileIO openForWriting() throws IOException {
+            FileIO io = mFileIO;
+
+            if (io == null && mMaxLength > 0) {
                 checkClosed();
                 EnumSet<OpenOption> options = EnumSet.of
                     (OpenOption.CREATE, OpenOption.CLOSE_DONTNEED);
-                FileIO io = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
+                io = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
                 try {
                     io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
@@ -1203,18 +1201,22 @@ final class FileTermLog extends Latch implements TermLog {
                 mFileIO = io;
             }
 
-            mFileIO.map();
+            return io;
         }
 
         /**
          * Opens or re-opens the segment file if it was closed. Caller must hold exclusive latch.
          */
-        void openForReading() throws IOException {
-            if (mFileIO == null) {
+        FileIO openForReading() throws IOException {
+            FileIO io = mFileIO;
+
+            if (io == null) {
                 checkClosed();
                 EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                mFileIO = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
+                mFileIO = io = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
             }
+
+            return io;
         }
 
         private void checkClosed() throws IOException {
@@ -1251,8 +1253,7 @@ final class FileTermLog extends Latch implements TermLog {
                     close(true);
                     io = null;
                 } else {
-                    openForWriting();
-                    io = mFileIO;
+                    io = openForWriting();
                 }
             } finally {
                 releaseExclusive();
