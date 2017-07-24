@@ -702,11 +702,11 @@ final class FileTermLog extends Latch implements TermLog {
         if (toClose != null) {
             toClose.acquireExclusive();
             try {
-                if (segment.mRefCount < 0) {
-                    segment.close(false);
+                if (toClose.mRefCount < 0) {
+                    toClose.close(false);
                 } else {
                     // In use still, but at least unmap it.
-                    segment.unmap();
+                    toClose.unmap();
                 }
             } finally {
                 toClose.releaseExclusive();
@@ -1031,12 +1031,16 @@ final class FileTermLog extends Latch implements TermLog {
         static final AtomicIntegerFieldUpdater<Segment> cRefCountUpdater =
             AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mRefCount");
 
+        static final AtomicIntegerFieldUpdater<Segment> cDirtyUpdater =
+            AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mDirty");
+
         private final File mFile;
         final long mStartIndex;
         volatile long mMaxLength;
         // Zero-based reference count.
         volatile int mRefCount;
         private FileIO mFileIO;
+        private volatile int mDirty;
         private boolean mClosed;
 
         private Segment mCacheNext;
@@ -1075,6 +1079,10 @@ final class FileTermLog extends Latch implements TermLog {
                 return 0;
             }
             length = (int) amt;
+
+            if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
+                // FIXME: add to dirty list
+            }
 
             FileIO io = mFileIO;
 
@@ -1187,11 +1195,15 @@ final class FileTermLog extends Latch implements TermLog {
         FileIO openForWriting() throws IOException {
             FileIO io = mFileIO;
 
-            if (io == null && mMaxLength > 0) {
+            if (io == null) {
                 checkClosed();
-                EnumSet<OpenOption> options = EnumSet.of
-                    (OpenOption.CREATE, OpenOption.CLOSE_DONTNEED);
-                io = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
+                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                int handles = 1;
+                if (mMaxLength > 0) {
+                    options.add(OpenOption.CREATE);
+                    handles = OPEN_HANDLE_COUNT;
+                }
+                io = FileIO.open(mFile, options, handles);
                 try {
                     io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
@@ -1213,7 +1225,11 @@ final class FileTermLog extends Latch implements TermLog {
             if (io == null) {
                 checkClosed();
                 EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                mFileIO = io = FileIO.open(mFile, options, OPEN_HANDLE_COUNT);
+                int handles = 1;
+                if (mMaxLength > 0) {
+                    handles = OPEN_HANDLE_COUNT;
+                }
+                mFileIO = io = FileIO.open(mFile, options, handles);
             }
 
             return io;
@@ -1275,8 +1291,20 @@ final class FileTermLog extends Latch implements TermLog {
 
         // Caller must hold exclusive latch.
         void close(boolean permanent) throws IOException {
-            if (mFileIO != null) {
-                mFileIO.close();
+            FileIO io = mFileIO;
+
+            if (permanent && mDirty != 0) {
+                if (io == null) {
+                    io = openForWriting();
+                }
+                io.sync(false);
+                if (cDirtyUpdater.getAndSet(this, 0) != 0) {
+                    // FIXME: remove from dirty list
+                }
+            }
+
+            if (io != null) {
+                io.close();
                 mFileIO = null;
                 if (permanent) {
                     mClosed = true;
