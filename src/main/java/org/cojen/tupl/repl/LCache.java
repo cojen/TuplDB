@@ -126,10 +126,10 @@ final class LCache<E extends LCache.Entry<E>> {
             entries[slot] = entry;
 
             final E most = mMostRecentlyUsed;
-            entry.cacheLessUsed(most);
             if (most == null) {
                 mLeastRecentlyUsed = entry;
             } else {
+                entry.cacheLessUsed(most);
                 most.cacheMoreUsed(entry);
             }
             mMostRecentlyUsed = entry;
