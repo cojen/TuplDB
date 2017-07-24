@@ -82,6 +82,11 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final PriorityQueue<Delayed> mCommitTasks;
 
+    private final Latch mSyncLatch;
+    private final Latch mDirtyLatch;
+    private Segment mFirstDirty;
+    private Segment mLastDirty;
+
     private boolean mClosed;
 
     /**
@@ -111,6 +116,9 @@ final class FileTermLog extends Latch implements TermLog {
         mSegmentCache = new LCache<>(MAX_CACHED_SEGMENTS);
         mWriterCache = new LCache<>(MAX_CACHED_WRITERS);
         mReaderCache = new LCache<>(MAX_CACHED_READERS);
+
+        mSyncLatch = new Latch();
+        mDirtyLatch = new Latch();
 
         // FIXME: open segments
     }
@@ -419,30 +427,78 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public void sync() throws IOException {
-        // FIXME: sync
-        throw null;
+        mSyncLatch.acquireExclusive();
+        doSync: {
+            mDirtyLatch.acquireExclusive();
+
+            Segment segment = mFirstDirty;
+            if (segment == null) {
+                mDirtyLatch.releaseExclusive();
+                break doSync;
+            }
+
+            Segment last = mLastDirty;
+            Segment next = segment.mNextDirty;
+
+            mFirstDirty = next;
+            if (next == null) {
+                mLastDirty = null;
+            } else {
+                segment.mNextDirty = null;
+            }
+
+            mDirtyLatch.releaseExclusive();
+
+            while (true) {
+                segment.sync();
+                if (segment == last) {
+                    break doSync;
+                }
+
+                segment = next;
+
+                mDirtyLatch.acquireExclusive();
+
+                next = segment.mNextDirty;
+                mFirstDirty = next;
+                if (next == null) {
+                    mLastDirty = null;
+                } else {
+                    segment.mNextDirty = null;
+                }
+
+                mDirtyLatch.releaseExclusive();
+            }
+        }
+
+        mSyncLatch.releaseExclusive();
     }
 
     @Override
     public void close() throws IOException {
-        acquireExclusive();
+        mSyncLatch.acquireShared();
         try {
-            // Wait for any pending truncate tasks to complete first. New tasks cannot be
-            // enqueued with exclusive latch held.
-            mWorker.join(false);
-            mClosed = true;
+            acquireExclusive();
+            try {
+                // Wait for any pending truncate tasks to complete first. New tasks cannot be
+                // enqueued with exclusive latch held.
+                mWorker.join(false);
+                mClosed = true;
 
-            for (LKey<Segment> key : mSegments) {
-                Segment segment = (Segment) key;
-                segment.acquireExclusive();
-                try {
-                    segment.close(true);
-                } finally {
-                    segment.releaseExclusive();
+                for (LKey<Segment> key : mSegments) {
+                    Segment segment = (Segment) key;
+                    segment.acquireExclusive();
+                    try {
+                        segment.close(true);
+                    } finally {
+                        segment.releaseExclusive();
+                    }
                 }
+            } finally {
+                releaseExclusive();
             }
         } finally {
-            releaseExclusive();
+            mSyncLatch.releaseShared();
         }
     }
 
@@ -452,6 +508,22 @@ final class FileTermLog extends Latch implements TermLog {
             ", startIndex=" + mLogStartIndex + ", commitIndex=" + mLogCommitIndex +
             ", highestIndex=" + mLogHighestIndex + ", contigIndex=" + mLogContigIndex +
             ", endIndex=" + mLogEndIndex + '}';
+    }
+
+    /**
+     * Add to the dirty list of segments, but caller must ensure that segment isn't already in
+     * the dirty list.
+     */
+    void addToDirtyList(Segment segment) {
+        mDirtyLatch.acquireExclusive();
+        Segment last = mLastDirty;
+        if (last == null) {
+            mFirstDirty = segment;
+        } else {
+            last.mNextDirty = segment;
+        }
+        mLastDirty = segment;
+        mDirtyLatch.releaseExclusive();
     }
 
     /**
@@ -473,7 +545,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (startSegment != null && index < startSegment.endIndex()) {
                 mSegmentCache.remove(startSegment.cacheKey());
-                Segment.cRefCountUpdater.getAndIncrement(startSegment);
+                cRefCountUpdater.getAndIncrement(startSegment);
                 return startSegment;
             }
 
@@ -515,7 +587,7 @@ final class FileTermLog extends Latch implements TermLog {
         try {
             Segment segment = (Segment) mSegments.floor(key); // findLe
             if (segment != null && index < segment.endIndex()) {
-                Segment.cRefCountUpdater.getAndIncrement(segment);
+                cRefCountUpdater.getAndIncrement(segment);
                 return segment;
             }
         } finally {
@@ -665,7 +737,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     void unreferenced(Segment segment) {
-        if (Segment.cRefCountUpdater.getAndDecrement(segment) > 0) {
+        if (cRefCountUpdater.getAndDecrement(segment) > 0) {
             return;
         }
 
@@ -718,7 +790,7 @@ final class FileTermLog extends Latch implements TermLog {
         Worker.Task task = new Worker.Task() {
             @Override
             public void run() {
-                Segment.cRefCountUpdater.getAndIncrement(segment);
+                cRefCountUpdater.getAndIncrement(segment);
 
                 try {
                     segment.truncate();
@@ -726,7 +798,7 @@ final class FileTermLog extends Latch implements TermLog {
                     Utils.uncaught(e);
                 }
 
-                if (Segment.cRefCountUpdater.getAndDecrement(segment) <= 0) {
+                if (cRefCountUpdater.getAndDecrement(segment) <= 0) {
                     try {
                         doUnreferenced(segment, mSegmentCache.add(segment));
                     } catch (IOException e) {
@@ -1025,14 +1097,14 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
+    static final AtomicIntegerFieldUpdater<Segment> cRefCountUpdater =
+        AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mRefCount");
+
+    static final AtomicIntegerFieldUpdater<Segment> cDirtyUpdater =
+        AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mDirty");
+
+    final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
         private static final int OPEN_HANDLE_COUNT = 8;
-
-        static final AtomicIntegerFieldUpdater<Segment> cRefCountUpdater =
-            AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mRefCount");
-
-        static final AtomicIntegerFieldUpdater<Segment> cDirtyUpdater =
-            AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mDirty");
 
         private final File mFile;
         final long mStartIndex;
@@ -1040,8 +1112,10 @@ final class FileTermLog extends Latch implements TermLog {
         // Zero-based reference count.
         volatile int mRefCount;
         private FileIO mFileIO;
-        private volatile int mDirty;
         private boolean mClosed;
+
+        volatile int mDirty;
+        Segment mNextDirty;
 
         private Segment mCacheNext;
         private Segment mCacheMoreUsed;
@@ -1080,10 +1154,6 @@ final class FileTermLog extends Latch implements TermLog {
             }
             length = (int) amt;
 
-            if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
-                // FIXME: add to dirty list
-            }
-
             FileIO io = mFileIO;
 
             while (true) {
@@ -1097,6 +1167,10 @@ final class FileTermLog extends Latch implements TermLog {
                         }
                         releaseExclusive();
                         throw e;
+                    }
+
+                    if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
+                        addToDirtyList(this);
                     }
 
                     amt = Math.min(mMaxLength - index, length);
@@ -1255,6 +1329,47 @@ final class FileTermLog extends Latch implements TermLog {
             return true;
         }
 
+        void sync() throws IOException {
+            if (mDirty != 0 && cDirtyUpdater.getAndSet(this, 0) != 0) {
+                cRefCountUpdater.getAndIncrement(this);
+                try {
+                    doSync();
+                } catch (IOException e) {
+                    if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
+                        addToDirtyList(this);
+                    }
+                    throw e;
+                } finally {
+                    unreferenced(this);
+                }
+            }
+        }
+
+        private void doSync() throws IOException {
+            FileIO io = mFileIO;
+
+            while (true) {
+                if (io != null || (io = fileIO()) != null) trySync: {
+                    try {
+                        io.sync(false);
+                        return;
+                    } catch (IOException e) {
+                        acquireExclusive();
+                        if (mFileIO == io) {
+                            releaseExclusive();
+                            throw e;
+                        }
+                    }
+                }
+
+                try {
+                    io = openForWriting();
+                } finally {
+                    releaseExclusive();
+                }
+            }
+        }
+
         /**
          * Truncates or deletes the file, according to the max length.
          */
@@ -1291,20 +1406,8 @@ final class FileTermLog extends Latch implements TermLog {
 
         // Caller must hold exclusive latch.
         void close(boolean permanent) throws IOException {
-            FileIO io = mFileIO;
-
-            if (permanent && mDirty != 0) {
-                if (io == null) {
-                    io = openForWriting();
-                }
-                io.sync(false);
-                if (cDirtyUpdater.getAndSet(this, 0) != 0) {
-                    // FIXME: remove from dirty list
-                }
-            }
-
-            if (io != null) {
-                io.close();
+            if (mFileIO != null) {
+                mFileIO.close();
                 mFileIO = null;
                 if (permanent) {
                     mClosed = true;

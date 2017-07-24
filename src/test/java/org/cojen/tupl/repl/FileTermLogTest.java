@@ -421,7 +421,16 @@ public class FileTermLogTest {
     }
 
     @Test
-    public void ranges() throws Exception {
+    public void rangesNoSync() throws Exception {
+        ranges(false);
+    }
+
+    @Test
+    public void rangesWithSync() throws Exception {
+        ranges(true);
+    }
+
+    private void ranges(boolean sync) throws Exception {
         // Define a bunch of random ranges, with random data, and write to them in random order
         // via several threads. The reader shouldn't read beyond the contiguous range, and the
         // data it observes should match what was written.
@@ -488,6 +497,28 @@ public class FileTermLogTest {
             }
         }
 
+        Thread syncThread = null;
+
+        if (sync) {
+            // First one should do nothing.
+            mLog.sync();
+
+            syncThread = new Thread(() -> {
+                try {
+                    while (true) {
+                        Thread.sleep(500);
+                        mLog.sync();
+                    }
+                } catch (InterruptedException e) {
+                    // Done.
+                } catch (IOException e) {
+                    Utils.uncaught(e);
+                }
+            });
+
+            syncThread.start();
+        }
+
         Writer[] writers = new Writer[threadCount];
         for (int i=0; i<writers.length; i++) {
             writers[i] = new Writer(slices[i], new Random(seed + i));
@@ -521,6 +552,11 @@ public class FileTermLogTest {
         }
 
         assertEquals(expectedSum, sum);
+
+        if (syncThread != null) {
+            syncThread.interrupt();
+            syncThread.join();
+        }
     }
 
     @Test
