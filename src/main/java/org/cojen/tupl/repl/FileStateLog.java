@@ -226,7 +226,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (size == 0) {
             releaseShared();
-            return contigIndex;
+            return 0;
         }
 
         if (termLog != null) {
@@ -237,6 +237,8 @@ final class FileStateLog extends Latch implements StateLog {
         if (termLog == null) {
             termLog = (TermLog) mTermLogs.first();
         }
+
+        final long originalContigIndex = contigIndex;
 
         TermLog nextLog;
         while (true) {
@@ -257,11 +259,12 @@ final class FileStateLog extends Latch implements StateLog {
             downgrade();
         }
 
-        // Scan ahead into all remaining terms.
-
-        while (nextLog != null) {
-            nextLog.checkForMissingData(0, results);
-            nextLog = (TermLog) mTermLogs.higher(nextLog); // findGt
+        if (contigIndex == originalContigIndex) {
+            // Scan ahead into all remaining terms.
+            while (nextLog != null) {
+                nextLog.checkForMissingData(0, results);
+                nextLog = (TermLog) mTermLogs.higher(nextLog); // findGt
+            }
         }
 
         releaseShared();

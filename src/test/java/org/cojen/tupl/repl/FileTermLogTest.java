@@ -816,5 +816,10 @@ public class FileTermLogTest {
         public void range(long start, long end) {
             mRanges.add(new Range(start, end));
         }
+
+        @Override
+        public String toString() {
+            return mRanges.toString();
+        }
     }
 }
