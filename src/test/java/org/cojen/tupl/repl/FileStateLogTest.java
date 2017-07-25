@@ -279,6 +279,123 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void highestIndex() throws Exception {
+        // Verify highest index and commit index behavior.
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(0, info.mTerm);
+        assertEquals(0, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        mLog.commit(0);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(0, info.mTerm);
+        assertEquals(0, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        LogWriter writer = mLog.openWriter(0, 1, 0);
+        write(writer, new byte[100]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        mLog.commit(50);
+        
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+        assertEquals(50, info.mCommitIndex);
+
+        writer = mLog.openWriter(1, 2, 500);
+        write(writer, new byte[100]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+        assertEquals(50, info.mCommitIndex);
+
+        mLog.commit(800);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mCommitIndex);
+
+        writer = mLog.openWriter(1, 1, 100);
+        write(writer, new byte[300]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(1, info.mTerm);
+        assertEquals(400, info.mHighestIndex);
+        assertEquals(400, info.mCommitIndex);
+
+        writer = mLog.openWriter(1, 1, 400);
+        write(writer, new byte[100]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(2, info.mTerm);
+        assertEquals(600, info.mHighestIndex);
+        assertEquals(600, info.mCommitIndex);
+
+        writer = mLog.openWriter(2, 2, 600);
+        write(writer, new byte[100]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(2, info.mTerm);
+        assertEquals(700, info.mHighestIndex);
+        assertEquals(700, info.mCommitIndex);
+
+        writer = mLog.openWriter(2, 2, 700);
+        write(writer, new byte[200]);
+        writer.release();
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(2, info.mTerm);
+        assertEquals(900, info.mHighestIndex);
+        assertEquals(800, info.mCommitIndex);
+
+        writer = mLog.openWriter(2, 2, 900);
+        write(writer, new byte[50]);
+        writer.release();
+        mLog.commit(950);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(2, info.mTerm);
+        assertEquals(950, info.mHighestIndex);
+        assertEquals(950, info.mCommitIndex);
+
+        writer = mLog.openWriter(2, 2, 950);
+        write(writer, new byte[50]);
+        writer.release();
+        mLog.commit(1000);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(2, info.mTerm);
+        assertEquals(1000, info.mHighestIndex);
+        assertEquals(1000, info.mCommitIndex);
+    }
+
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
