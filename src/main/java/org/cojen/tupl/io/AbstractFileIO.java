@@ -604,6 +604,7 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract Mapping openMapping(boolean readOnly, long pos, int size)
         throws IOException;
 
+    // Called with mAccessLock held exclusively.
     protected abstract void reopen() throws IOException;
 
     protected abstract void doSync(boolean metadata) throws IOException;
