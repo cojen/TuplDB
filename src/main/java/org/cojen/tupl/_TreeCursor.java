@@ -2794,8 +2794,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
     }
 
     /**
-     * Atomic find and store operation. Cursor must be in a reset state when called, and cursor
-     * is also reset as a side-effect.
+     * Atomic find and store operation. Cursor must be in a reset state when this method is
+     * called, and the caller must reset the cursor afterwards.
      *
      * @param key must not be null
      */
@@ -2841,7 +2841,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
         }
 
         store(txn, leaf, value);
-        reset();
 
         return oldValue;
     }
@@ -2850,8 +2849,8 @@ class _TreeCursor implements CauseCloseable, Cursor {
         MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
 
     /**
-     * Atomic find and modify operation. Cursor must be in a reset state when called, and
-     * cursor is also reset as a side-effect.
+     * Atomic find and modify operation. Cursor must be in a reset state when this method is
+     * called, and the caller must reset the cursor afterwards.
      *
      * @param key must not be null
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else update mode
@@ -2956,7 +2955,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 } else if (oldValue == null) {
                     if (newValue == null) {
                         // Update allowed, but nothing changed.
-                        resetLatched(mLeaf.mNode);
+                        mLeaf.mNode.releaseShared();
                         return true;
                     } else {
                         // Update allowed.
@@ -2965,7 +2964,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                 }
             }
 
-            resetLatched(mLeaf.mNode);
+            mLeaf.mNode.releaseShared();
             return false;
         }
 
@@ -2976,7 +2975,6 @@ class _TreeCursor implements CauseCloseable, Cursor {
         }
 
         store(txn, leaf, newValue);
-        reset();
 
         return true;
     }

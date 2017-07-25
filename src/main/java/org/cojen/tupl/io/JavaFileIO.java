@@ -195,24 +195,24 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void reopen() throws IOException {
+        // Caller should hold mAccessLock exclusively.
+
         IOException ex = null;
 
-        for (int i=0; i<mFilePool.length; i++) {
+        synchronized (mFilePool) {
             try {
-                accessFile().close();
+                closePool();
             } catch (IOException e) {
-                if (ex == null) {
-                    ex = e;
-                }
+                ex = e;
             }
-        }
 
-        for (int i=0; i<mFilePool.length; i++) {
-            try {
-                yieldFile(openRaf(mFile, mMode));
-            } catch (IOException e) {
-                if (ex == null) {
-                    ex = e;
+            for (int i=0; i<mFilePool.length; i++) {
+                try {
+                    mFilePool[i] = openRaf(mFile, mMode);
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
                 }
             }
         }
@@ -234,32 +234,55 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        if (cause != null && mCause == null) {
-            mCause = cause;
+        IOException ex = null;
+
+        mAccessLock.acquireExclusive();
+        try {
+            if (cause != null && mCause == null) {
+                mCause = cause;
+            }
+
+            synchronized (mFilePool) {
+                try {
+                    closePool();
+                } catch (IOException e) {
+                    ex = e;
+                }
+            }
+        } finally {
+            mAccessLock.releaseExclusive();
         }
 
-        IOException ex = null;
         try {
             unmap(false);
         } catch (IOException e) {
-            ex = e;
+            if (ex == null) {
+                ex = e;
+            }
         }
 
-        for (int i=0; i<mFilePool.length; i++) {
+        if (ex != null) {
+            throw ex;
+        }
+    }
+
+    // Caller must hold mAccessLock exclusively and also synchronize on mFilePool.
+    private void closePool() throws IOException {
+        if (mFilePoolTop != 0) {
+            throw new AssertionError();
+        }
+
+        IOException ex = null;
+
+        for (FileAccess file : mFilePool) {
             try {
-                accessFile().close();
+                file.close();
             } catch (IOException e) {
                 if (ex == null) {
                     ex = e;
                 }
             }
         }
-
-        synchronized (mFilePool) {
-            mFilePoolTop = 0;
-            mFilePool.notifyAll();
-        }
-
 
         if (ex != null) {
             throw ex;
