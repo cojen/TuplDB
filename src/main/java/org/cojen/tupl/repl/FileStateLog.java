@@ -177,11 +177,7 @@ final class FileStateLog extends Latch implements StateLog {
             if (info.mCommitIndex < commitLog.endIndex()) {
                 break;
             }
-            TermLog nextLog = (TermLog) mTermLogs.higher(commitLog); // findGt
-            if (nextLog == null) {
-                break;
-            }
-            commitLog = nextLog;
+            commitLog = (TermLog) mTermLogs.higher(commitLog); // findGt
         }
 
         if (commitLog != mCommitTermLog && tryUpgrade()) {
