@@ -278,7 +278,7 @@ public class FileStateLogTest {
         assertEquals(1100, reader.index());
     }
 
-    //@Test
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
