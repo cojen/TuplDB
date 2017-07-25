@@ -84,6 +84,7 @@ interface StateLog extends Closeable {
      * @param nanosTimeout maximum time to wait for a term to be created at the given index;
      * pass -1 for infinite timeout
      * @return reader or null if timed out
+     * @throws IllegalStateException if index is lower than the start index
      */
     LogReader openReader(long index, long nanosTimeout) throws IOException;
 

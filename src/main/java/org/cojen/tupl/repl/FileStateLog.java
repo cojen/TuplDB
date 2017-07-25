@@ -365,7 +365,7 @@ final class FileStateLog extends Latch implements StateLog {
             LogReader reader;
             openReader: {
                 while (true) {
-                    reader = tryOpenReader(index, key);
+                    reader = tryOpenReader(key);
                     if (reader != null || nanosTimeout == 0) {
                         break openReader;
                     }
@@ -388,11 +388,13 @@ final class FileStateLog extends Latch implements StateLog {
                     if (result < 0) {
                         throw new InterruptedIOException();
                     }
-                    reader = tryOpenReader(index, key);
+                    reader = tryOpenReader(key);
                     if (reader != null) {
                         break openReader;
                     }
-                    if (result == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
+                    if (result == 0 ||
+                        (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+                    {
                         reader = null;
                         break openReader;
                     }
@@ -406,9 +408,17 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     // Caller must hold any latch.
-    private LogReader tryOpenReader(long index, LKey<TermLog> key) throws IOException {
+    private LogReader tryOpenReader(LKey<TermLog> key) throws IOException {
         TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
-        return termLog == null ? null : termLog.openReader(index);
+        if (termLog != null) {
+            return termLog.openReader(key.key());
+        }
+        if (mTermLogs.isEmpty()) {
+            return null;
+        }
+        throw new IllegalStateException
+            ("Index is lower than start index: " + key.key() + " < " +
+             ((TermLog) mTermLogs.first()).startIndex());
     }
 
     @Override
