@@ -342,8 +342,7 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 File file = new File(mBase.getPath() + '.' + term);
-                // FIXME: provide correct commitIndex
-                termLog = new FileTermLog(mWorker, file, prevTerm, term, index, 0, index);
+                termLog = new FileTermLog(mWorker, file, prevTerm, term, index, index, index);
 
                 mTermLogs.add(termLog);
                 mTermCondition.signalAll();

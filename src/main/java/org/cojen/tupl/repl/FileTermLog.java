@@ -297,7 +297,7 @@ final class FileTermLog extends Latch implements TermLog {
         acquireExclusive();
         try {
             long commitIndex = actualCommitIndex();
-            if (endIndex < commitIndex) {
+            if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
                 throw new IllegalArgumentException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
             }
