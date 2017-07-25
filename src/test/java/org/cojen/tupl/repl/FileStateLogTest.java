@@ -104,6 +104,30 @@ public class FileStateLogTest {
         term = mLog.defineTermLog(15, 15, 10000);
         assertTrue(term != null);
         assertTrue(term == mLog.defineTermLog(15, 15, Long.MAX_VALUE));
+
+        int[] countRef = {0};
+
+        mLog.queryTerms(0, 20000, (prevTerm, trm, startIndex) -> {
+            countRef[0]++;
+            switch ((int) trm) {
+            default:
+                fail("unknown term: " + trm);
+            case 10:
+                assertEquals(0, prevTerm);
+                assertEquals(1000, startIndex);
+                break;
+            case 11:
+                assertEquals(10, prevTerm);
+                assertEquals(2000, startIndex);
+                break;
+            case 15:
+                assertEquals(11, prevTerm);
+                assertEquals(3000, startIndex);
+                break;
+            }
+        });
+
+        assertEquals(3, countRef[0]);
     }
 
     @Test
