@@ -31,6 +31,8 @@ import org.cojen.tupl.TestUtils;
 
 import org.cojen.tupl.io.Utils;
 
+import static org.cojen.tupl.repl.FileTermLogTest.*;
+
 /**
  * 
  *
@@ -128,6 +130,108 @@ public class FileStateLogTest {
         });
 
         assertEquals(3, countRef[0]);
+    }
+
+    @Test
+    public void missingRanges() throws Exception {
+        // Verify that missing ranges can be queried.
+
+        RangeResult result = new RangeResult();
+        assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+
+        LogWriter writer = mLog.openWriter(0, 1, 0);
+        write(writer, new byte[100]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(100, mLog.checkForMissingData(0, result));
+        assertEquals(0, result.mRanges.size());
+        assertEquals(100, mLog.checkForMissingData(100, result));
+
+        // Define a new term before the previous one is filled in.
+        mLog.defineTerm(1, 2, 500);
+        result = new RangeResult();
+        assertEquals(100, mLog.checkForMissingData(100, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(100, 500), result.mRanges.get(0));
+
+        // Write some data into the new term.
+        writer = mLog.openWriter(1, 2, 500);
+        write(writer, new byte[10]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(100, mLog.checkForMissingData(100, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(100, 500), result.mRanges.get(0));
+
+        // Create a missing range in the new term.
+        writer = mLog.openWriter(2, 2, 600);
+        write(writer, new byte[10]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(100, mLog.checkForMissingData(100, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(100, 500), result.mRanges.get(0));
+        assertEquals(new Range(510, 600), result.mRanges.get(1));
+
+        // Go back to the previous term and fill in some of the missing range, creating another
+        // missing range.
+        writer = mLog.openWriter(1, 1, 200);
+        write(writer, new byte[50]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(100, mLog.checkForMissingData(100, result));
+        assertEquals(3, result.mRanges.size());
+        assertEquals(new Range(100, 200), result.mRanges.get(0));
+        assertEquals(new Range(250, 500), result.mRanges.get(1));
+        assertEquals(new Range(510, 600), result.mRanges.get(2));
+
+        // Fill in the lowest missing range.
+        writer = mLog.openWriter(1, 1, 100);
+        write(writer, new byte[100]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(250, mLog.checkForMissingData(100, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(250, mLog.checkForMissingData(250, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(250, 500), result.mRanges.get(0));
+        assertEquals(new Range(510, 600), result.mRanges.get(1));
+
+        // Partially fill in the highest missing range.
+        writer = mLog.openWriter(2, 2, 510);
+        write(writer, new byte[20]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(250, mLog.checkForMissingData(250, result));
+        assertEquals(2, result.mRanges.size());
+        assertEquals(new Range(250, 500), result.mRanges.get(0));
+        assertEquals(new Range(530, 600), result.mRanges.get(1));
+
+        // Fill in the next lowest missing range.
+        writer = mLog.openWriter(1, 1, 250);
+        write(writer, new byte[250]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(530, mLog.checkForMissingData(250, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(530, mLog.checkForMissingData(530, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(530, 600), result.mRanges.get(0));
+
+        // Fill in the last missing range.
+        writer = mLog.openWriter(2, 2, 530);
+        write(writer, new byte[70]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(610, mLog.checkForMissingData(530, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(610, mLog.checkForMissingData(610, result));
+        assertEquals(0, result.mRanges.size());
     }
 
     @Test
