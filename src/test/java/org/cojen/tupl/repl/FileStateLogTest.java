@@ -235,6 +235,50 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void waitForTerm() throws Exception {
+        // Opening a reader might require a wait.
+
+        LogReader reader = mLog.openReader(0, 0);
+        assertNull(reader);
+        reader = mLog.openReader(0, 10);
+        assertNull(reader);
+
+        new Thread(() -> {
+            try {
+                TestUtils.sleep(500);
+                mLog.defineTerm(0, 2, 50);
+            } catch (Exception e) {
+                Utils.uncaught(e);
+            }
+        }).start();
+
+        reader = mLog.openReader(100, -1);
+        assertEquals(2, reader.term());
+        assertEquals(100, reader.index());
+
+        // Missing term at index 0 makes reading impossible.
+        try {
+            mLog.openReader(0, -1);
+            fail();
+        } catch (IllegalStateException e) {
+            // Expected.
+        }
+
+        // No wait because a term exists.
+        reader = mLog.openReader(60, -1);
+        assertTrue(reader != null);
+        assertEquals(2, reader.term());
+        assertEquals(60, reader.index());
+
+        mLog.defineTerm(1, 2, 1000);
+
+        reader = mLog.openReader(1100, -1);
+        assertTrue(reader != null);
+        assertEquals(2, reader.term());
+        assertEquals(1100, reader.index());
+    }
+
+    //@Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
