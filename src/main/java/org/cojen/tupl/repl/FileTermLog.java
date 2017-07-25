@@ -550,7 +550,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (mClosed) {
-                throw new IOException("closed");
+                throw new IOException("Closed");
             }
 
             // 1, 2, 4, 8, 16, 32 or 64 MiB
@@ -1311,7 +1311,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         private void checkClosed() throws IOException {
             if (mClosed) {
-                throw new IOException("closed");
+                throw new IOException("Closed");
             }
         }
 

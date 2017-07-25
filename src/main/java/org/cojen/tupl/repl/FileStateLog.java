@@ -340,7 +340,7 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 if (mClosed) {
-                    throw new IOException("closed");
+                    throw new IOException("Closed");
                 }
 
                 File file = new File(mBase.getPath() + '.' + term);
