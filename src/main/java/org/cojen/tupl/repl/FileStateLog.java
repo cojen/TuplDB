@@ -277,7 +277,8 @@ final class FileStateLog extends Latch implements StateLog {
     /**
      * @return null if not defined due to term mismatch
      */
-    private TermLog defineTermLog(long prevTerm, long term, long index) throws IOException {
+    // package-private for testing
+    TermLog defineTermLog(long prevTerm, long term, long index) throws IOException {
         final LKey<TermLog> key = new LKey.Finder<>(index);
 
         acquireExclusive();
@@ -299,9 +300,7 @@ final class FileStateLog extends Latch implements StateLog {
                         termLog = null;
                         break defineTermLog;
                     }
-                    if (term == actualPrevTerm
-                        && index >= prevTermLog.startIndex() && index < prevTermLog.endIndex())
-                    {
+                    if (term == actualPrevTerm && index < prevTermLog.endIndex()) {
                         termLog = prevTermLog;
                         break defineTermLog;
                     }
@@ -309,9 +308,7 @@ final class FileStateLog extends Latch implements StateLog {
 
                 TermLog startTermLog = (TermLog) mTermLogs.floor(key); // findLe
 
-                if (startTermLog != null
-                    && index >= startTermLog.startIndex() && index < startTermLog.endIndex())
-                {
+                if (startTermLog != null) {
                     long actualTerm = startTermLog.term();
                     if (term == actualTerm) {
                         termLog = startTermLog;
@@ -333,9 +330,7 @@ final class FileStateLog extends Latch implements StateLog {
                     while (it.hasNext()) {
                         TermLog logGe = (TermLog) it.next();
                         logGe.finishTerm(index);
-                        if (logGe.startIndex() >= index) {
-                            it.remove();
-                        }
+                        it.remove();
                     }
                 }
 

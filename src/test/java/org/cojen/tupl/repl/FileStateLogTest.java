@@ -61,13 +61,49 @@ public class FileStateLogTest {
     }
 
     private File mBase;
-    private StateLog mLog;
+    private FileStateLog mLog;
     private List<StateLog> mMoreLogs = new ArrayList<>();
 
     private StateLog newTempLog() throws Exception {
         StateLog log = new FileStateLog(TestUtils.newTempBaseFile(getClass()));
         mMoreLogs.add(log);
         return log;
+    }
+
+    @Test
+    public void defineTerms() throws Exception {
+        // Tests various ways in which terms can be defined (or not).
+
+        // No such previous term exists.
+        assertFalse(mLog.defineTerm(10, 11, 1000));
+
+        // Allow leader to define a term with no previous term check.
+        assertTrue(mLog.defineTerm(0, 10, 1000));
+
+        // Allow leader to define a higher term with no previous term check.
+        assertTrue(mLog.defineTerm(0, 11, 2000));
+
+        // Allow follower to define a higher term.
+        TermLog term = mLog.defineTermLog(11, 15, 3000);
+        assertTrue(term != null);
+        assertTrue(term == mLog.defineTermLog(11, 15, 3000));
+
+        // Previous term conflict.
+        assertFalse(mLog.defineTerm(10, 16, 4000));
+
+        // Index in the middle of an existing term.
+        assertTrue(mLog.defineTerm(15, 15, 4000));
+
+        // Index in the middle of an existing term, but index is out of bounds.
+        assertFalse(mLog.defineTerm(11, 11, 1000));
+        assertFalse(mLog.defineTerm(11, 11, 2000));
+        assertFalse(mLog.defineTerm(11, 11, 3000));
+        assertFalse(mLog.defineTerm(11, 11, 5000));
+
+        // Mustn't define a term if index as the highest, although it's not usable.
+        term = mLog.defineTermLog(15, 15, 10000);
+        assertTrue(term != null);
+        assertTrue(term == mLog.defineTermLog(15, 15, Long.MAX_VALUE));
     }
 
     @Test
