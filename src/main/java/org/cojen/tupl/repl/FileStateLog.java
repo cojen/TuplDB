@@ -405,10 +405,7 @@ final class FileStateLog extends Latch implements StateLog {
     // Caller must hold any latch.
     private LogReader tryOpenReader(long index, LKey<TermLog> key) throws IOException {
         TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
-        if (termLog != null && index >= termLog.startIndex() && index < termLog.endIndex()) {
-            return termLog.openReader(index);
-        }
-        return null;
+        return termLog == null ? null : termLog.openReader(index);
     }
 
     @Override
