@@ -30,7 +30,7 @@ public class DirectAccess {
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.tryObtain();
 
     private static final Class<?> cDirectByteBufferClass;
-    private static final long cDirectAddressOffset;
+    static final long cDirectAddressOffset;
     private static final long cDirectCapacityOffset;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer2;
