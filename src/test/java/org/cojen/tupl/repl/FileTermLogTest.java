@@ -75,11 +75,18 @@ public class FileTermLogTest {
 
     @Test
     public void basic() throws Exception {
+        basic(283742, false);
+    }
+
+    @Test
+    public void basicReopen() throws Exception {
+        basic(3209441, true);
+    }
+
+    private void basic(final long seed, boolean reopen) throws Exception {
         assertEquals(Long.MAX_VALUE, mLog.endIndex());
 
         // Write a bunch of data and read it back.
-
-        final int seed = 283742;
 
         final byte[] buf = new byte[10000];
         Random rnd = new Random(seed);
@@ -103,6 +110,14 @@ public class FileTermLogTest {
         }
 
         writer.release();
+
+        if (reopen) {
+            LogInfo info = new LogInfo();
+            mLog.captureHighest(info);
+            mLog.sync();
+            mLog.close();
+            mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex);
+        }
 
         rnd = new Random(seed);
         rnd2 = new Random(seed + 1);
@@ -142,6 +157,15 @@ public class FileTermLogTest {
         }
 
         // Cannot write past end.
+        if (reopen) {
+            try {
+                writer.write(buf, 0, 1, 9_999_999_999L);
+                fail();
+            } catch (IOException e) {
+                // Closed.
+            }
+            writer = mLog.openWriter(writer.index());
+        }
         assertEquals(0, writer.write(buf, 0, 1, 9_999_999_999L));
         writer.release();
 
