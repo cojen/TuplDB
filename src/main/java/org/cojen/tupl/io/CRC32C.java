@@ -59,32 +59,57 @@ import java.util.zip.Checksum;
  */
 public class CRC32C {
     private static final MethodHandle INSTANCE_CTOR;
+    private static final MethodHandle UPDATE_BYTE_BUFFER;
 
     static {
         MethodHandle ctor = null;
-        MethodType type = MethodType.methodType(void.class);
+        MethodType voidType = MethodType.methodType(void.class);
 
+        Class clazz;
         try {
-            Class clazz = Class.forName("java.util.zip.CRC32C");
-            ctor = MethodHandles.publicLookup().findConstructor(clazz, type);
+            clazz = Class.forName("java.util.zip.CRC32C");
+            ctor = MethodHandles.publicLookup().findConstructor(clazz, voidType);
         } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException e) {
             // Use default implementation.
+            clazz = Impl.class;
         }
 
         if (ctor == null) {
             try {
-                ctor = MethodHandles.lookup().findConstructor(Impl.class, type);
+                ctor = MethodHandles.lookup().findConstructor(clazz, voidType);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
         }
 
         INSTANCE_CTOR = ctor;
+
+        try {
+            UPDATE_BYTE_BUFFER = MethodHandles.lookup().findVirtual
+                (clazz, "update", MethodType.methodType(void.class, ByteBuffer.class));
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     public static Checksum newInstance() {
         try {
             return (Checksum) INSTANCE_CTOR.invoke();
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * Updates the CRC-32C checksum with the bytes from the specified buffer.
+     *
+     * The checksum is updated with the remaining bytes in the buffer, starting
+     * at the buffer's position. Upon return, the buffer's position will be
+     * updated to its limit; its limit will not have been changed.
+     */
+    public static void update(Checksum crc, ByteBuffer buffer) {
+        try {
+            UPDATE_BYTE_BUFFER.invoke(crc, buffer);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -209,6 +234,44 @@ public class CRC32C {
         }
 
         /**
+         * Updates the CRC-32C checksum with the bytes from the specified buffer.
+         *
+         * The checksum is updated with the remaining bytes in the buffer, starting
+         * at the buffer's position. Upon return, the buffer's position will be
+         * updated to its limit; its limit will not have been changed.
+         */
+        public void update(ByteBuffer buffer) {
+            int pos = buffer.position();
+            int limit = buffer.limit();
+            assert (pos <= limit);
+            int rem = limit - pos;
+            if (rem <= 0) {
+                return;
+            }
+
+            if (buffer.isDirect()) {
+                long address;
+                try {
+                    address = UNSAFE.getLong(buffer, DirectAccess.cDirectAddressOffset);
+                    crc = updateDirectByteBuffer(crc, address, pos, limit);
+                } catch (Exception e) {
+                    throw new UnsupportedOperationException(e);
+                }
+            } else if (buffer.hasArray()) {
+                crc = updateBytes(crc, buffer.array(), pos + buffer.arrayOffset(),
+                                  limit + buffer.arrayOffset());
+            } else {
+                byte[] b = new byte[Math.min(buffer.remaining(), 4096)];
+                while (buffer.hasRemaining()) {
+                    int length = Math.min(buffer.remaining(), b.length);
+                    buffer.get(b, 0, length);
+                    update(b, 0, length);
+                }
+            }
+            buffer.position(limit);
+        }
+
+        /**
          * Resets CRC-32C to initial value.
          */
         @Override
@@ -293,6 +356,68 @@ public class CRC32C {
             // Tail
             for (; off < end; off++) {
                 crc = (crc >>> 8) ^ byteTable[(crc ^ b[off]) & 0xFF];
+            }
+
+            return crc;
+        }
+
+        /**
+         * Updates the CRC-32C checksum reading from the specified address.
+         */
+        private static int updateDirectByteBuffer(int crc, long address,
+                                                  int off, int end) {
+
+            // Do only byte reads for arrays so short they can't be aligned
+            if (end - off >= 8) {
+
+                // align on 8 bytes
+                int alignLength = (8 - (int) ((address + off) & 0x7)) & 0x7;
+                for (int alignEnd = off + alignLength; off < alignEnd; off++) {
+                    crc = (crc >>> 8)
+                        ^ byteTable[(crc ^ UNSAFE.getByte(address + off)) & 0xFF];
+                }
+
+                if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                    crc = Integer.reverseBytes(crc);
+                }
+
+                // slicing-by-8
+                for (; off <= (end - Long.BYTES); off += Long.BYTES) {
+                    // Always reading two ints as reading a long followed by
+                    // shifting and casting was slower.
+                    int firstHalf = UNSAFE.getInt(address + off);
+                    int secondHalf = UNSAFE.getInt(address + off + Integer.BYTES);
+                    crc ^= firstHalf;
+                    if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+                        crc = byteTable7[crc & 0xFF]
+                            ^ byteTable6[(crc >>> 8) & 0xFF]
+                            ^ byteTable5[(crc >>> 16) & 0xFF]
+                            ^ byteTable4[crc >>> 24]
+                            ^ byteTable3[secondHalf & 0xFF]
+                            ^ byteTable2[(secondHalf >>> 8) & 0xFF]
+                            ^ byteTable1[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable0[secondHalf >>> 24];
+                    } else { // ByteOrder.BIG_ENDIAN
+                        crc = byteTable0[secondHalf & 0xFF]
+                            ^ byteTable1[(secondHalf >>> 8) & 0xFF]
+                            ^ byteTable2[(secondHalf >>> 16) & 0xFF]
+                            ^ byteTable3[secondHalf >>> 24]
+                            ^ byteTable4[crc & 0xFF]
+                            ^ byteTable5[(crc >>> 8) & 0xFF]
+                            ^ byteTable6[(crc >>> 16) & 0xFF]
+                            ^ byteTable7[crc >>> 24];
+                    }
+                }
+
+                if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
+                    crc = Integer.reverseBytes(crc);
+                }
+            }
+
+            // Tail
+            for (; off < end; off++) {
+                crc = (crc >>> 8)
+                    ^ byteTable[(crc ^ UNSAFE.getByte(address + off)) & 0xFF];
             }
 
             return crc;
