@@ -18,6 +18,7 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 import java.util.ArrayList;
@@ -185,6 +186,143 @@ public class FileTermLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(index, info.mHighestIndex);
+    }
+
+    @Test
+    public void reopenCleanup() throws Exception {
+        reopenCleanup(false);
+    }
+
+    @Test
+    public void reopenCleanupDiscover() throws Exception {
+        reopenCleanup(true);
+    }
+
+    private void reopenCleanup(boolean discoverStart) throws Exception {
+        mLog.close();
+        final long startIndex = 1000;
+        mLog = new FileTermLog(mWorker, mBase, 0, 1, startIndex, startIndex, startIndex);
+
+        final byte[] buf = new byte[1000];
+        Random rnd = new Random(62723);
+        Random rnd2 = new Random(8675309);
+        LogWriter writer = mLog.openWriter(startIndex);
+        long index = startIndex;
+
+        for (int i=0; i<10_000; i++) {
+            int len = rnd.nextInt(buf.length);
+            for (int j=0; j<len; j++) {
+                buf[j] = (byte) rnd2.nextInt();
+            }
+            assertEquals(len, writer.write(buf, 0, len, index + len));
+            index += len;
+        }
+
+        writer.release();
+
+        // Create some files that should be ignored.
+        mBase.createNewFile();
+        TestUtils.newTempBaseFile(getClass()).createNewFile();
+        new File(mBase.getPath() + "foo").createNewFile();
+        new File(mBase.getPath() + ".foo").createNewFile();
+        new File(mBase.getPath() + ".123foo").createNewFile();
+        new File(mBase.getPath() + ".123.foo").createNewFile();
+
+        // Create some out-of-bounds segments that should be deleted.
+        File low = new File(mBase.getPath() + ".123");
+        low.createNewFile();
+        assertTrue(low.exists());
+        File high = new File(mBase.getPath() + ".999999999999");
+        high.createNewFile();
+        assertTrue(high.exists());
+       
+        // Expand a segment that should be truncated.
+        File first = new File(mBase.getPath() + ".1000");
+        assertTrue(first.exists());
+        long firstLen = first.length();
+        assertTrue(firstLen > 1_000_000);
+        try (FileOutputStream out = new FileOutputStream(first, true)) {
+            out.write("hello".getBytes());
+        }
+        assertEquals(firstLen + 5, first.length());
+
+        // Close and reopen.
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        mLog.close();
+
+        final long startWith;
+        if (!discoverStart) {
+            startWith = startIndex;
+        } else {
+            try {
+                new FileTermLog(mWorker, mBase, 0, 1, -1, startIndex, info.mHighestIndex);
+                fail();
+            } catch (IOException e) {
+                assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
+            }
+
+            low.delete();
+            low = null;
+
+            startWith = -1;
+        }
+
+        mLog = new FileTermLog(mWorker, mBase, 0, 1, startWith, startIndex, info.mHighestIndex);
+
+        if (low != null) {
+            assertTrue(!low.exists());
+        }
+        assertTrue(!high.exists());
+        assertEquals(firstLen, first.length());
+
+        // Verify the data.
+
+        rnd2 = new Random(8675309);
+        LogReader reader = mLog.openReader(startIndex);
+        assertEquals(0, reader.prevTerm());
+        assertEquals(1, reader.term());
+        long total = index;
+        index = startIndex;
+
+        while (true) {
+            assertEquals(index, reader.index());
+            int amt = reader.readAny(buf, 0, buf.length);
+            if (amt <= 0) {
+                assertTrue(amt == 0);
+                break;
+            }
+            for (int j=0; j<amt; j++) {
+                assertEquals((byte) rnd2.nextInt(), buf[j]);
+            }
+            index += amt;
+        }
+
+        reader.release();
+        assertEquals(total, index);
+
+        // Reopen with missing segments.
+        mLog.close();
+
+        if (!discoverStart) {
+            first.delete();
+        } else {
+            teardown();
+        }
+
+        try {
+            new FileTermLog(mWorker, mBase, 0, 1, startWith, startIndex, info.mHighestIndex);
+            fail();
+        } catch (IOException e) {
+            String msg = e.getMessage();
+            String expect;
+            if (!discoverStart) {
+                expect = "Missing start";
+            } else {
+                expect = "No segment files";
+            }
+            assertTrue(expect, msg.indexOf(expect) >= 0);
+        }
     }
 
     @Test
