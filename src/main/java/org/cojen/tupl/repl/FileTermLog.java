@@ -24,12 +24,17 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Iterator;
+import java.util.NavigableSet;
 import java.util.PriorityQueue;
-import java.util.TreeSet;
+import java.util.SortedSet;
+
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import java.util.concurrent.locks.LockSupport;
+
+import java.util.function.BiFunction;
 
 import org.cojen.tupl.io.FileIO;
 import org.cojen.tupl.io.LengthOption;
@@ -72,7 +77,7 @@ final class FileTermLog extends Latch implements TermLog {
     private long mLogEndIndex;
 
     // Segments are keyed only by their start index.
-    private final TreeSet<LKey<Segment>> mSegments;
+    private final NavigableSet<LKey<Segment>> mSegments;
 
     private final PriorityQueue<SegmentWriter> mNonContigWriters;
 
@@ -91,27 +96,118 @@ final class FileTermLog extends Latch implements TermLog {
 
     /**
      * @param base include the term in the name, for example: "mydata.repl.4"
+     * @param startIndex pass -1 to discover the start index
      */
     FileTermLog(Worker worker, File base, long prevTerm, long term,
                 long startIndex, long commitIndex, long highestIndex)
         throws IOException
     {
+        base = base.getAbsoluteFile();
+        if (base.isDirectory()) {
+            throw new IllegalArgumentException("Base file is a directory: " + base);
+        }
+        if (!base.getParentFile().exists()) {
+            throw new IllegalArgumentException("Parent file doesn't exist: " + base);
+        }
+
         mWorker = worker;
         mBase = base;
         mLogPrevTerm = prevTerm;
         mLogTerm = term;
 
-        mSegments = new TreeSet<>();
-        // TODO: alloc on demand; null out when finished and empty
-        mNonContigWriters = new PriorityQueue<>();
-        // TODO: alloc on demand; null out when finished and empty
-        mCommitTasks = new PriorityQueue<>();
+        mSegments = new ConcurrentSkipListSet<>();
+
+        // Open the existing segments.
+
+        String baseName = base.getName();
+        int baseLen = baseName.length();
+
+        File parent = base.getParentFile();
+        String[] fileNames = parent.list();
+
+        if (fileNames != null) for (String name : fileNames) {
+            int ix = name.indexOf(baseName);
+            if (ix != 0) {
+                continue;
+            }
+            if (name.length() <= baseLen || name.charAt(baseName.length()) != '.') {
+                continue;
+            }
+            long start;
+            try {
+                start = Long.parseLong(name.substring(baseName.length() + 1));
+            } catch (NumberFormatException e) {
+                continue;
+            }
+
+            // Start with the desired max length, and then truncate on the second pass.
+            long maxLength = Math.max(maxSegmentLength(), new File(parent, name).length());
+
+            mSegments.add(new Segment(start, maxLength));
+        }
+
+        if (startIndex == -1) {
+            if (mSegments.isEmpty()) {
+                throw new IOException("No segment files exist for term: " + term);
+            }
+            startIndex = ((Segment) mSegments.first()).mStartIndex;
+        } else if (startIndex < highestIndex) {
+            Segment first;
+            if (mSegments.isEmpty()
+                || (first = (Segment) mSegments.first()).mStartIndex > startIndex)
+            {
+                throw new IOException("Missing start segment: " + startIndex + ", term=" + term);
+            }
+        }
+
+        // Contiguous segments must exist from start to highest.
+
+        forEachSegment(mSegments.tailSet(new LKey.Finder<>(startIndex)), (seg, next) -> {
+            if (seg.mStartIndex >= highestIndex) {
+                return false;
+            }
+            if (next != null) {
+                File file = seg.file();
+                long segHighest = seg.mStartIndex + file.length();
+                if (segHighest < highestIndex && segHighest < next.mStartIndex) {
+                    throw Utils.rethrow(new IOException("Incomplete segment: " + file));
+                }
+            }
+            return true;
+        });
+
+        // Truncate the segments if necessary, based on the start index of the successor.
+
+        forEachSegment(mSegments, (seg, next) -> {
+            if (next != null
+                && seg.endIndex() > next.mStartIndex
+                && seg.setEndIndex(next.mStartIndex)
+                && seg.file().length() > seg.mMaxLength)
+            {
+                try {
+                    seg.truncate();
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
+            }
+            return true;
+        });
 
         mLogStartIndex = startIndex;
         mLogCommitIndex = commitIndex;
         mLogHighestIndex = highestIndex;
         mLogContigIndex = highestIndex;
         mLogEndIndex = Long.MAX_VALUE;
+
+        // Delete segments which are out of bounds.
+        
+        forEachSegment(mSegments, (seg, next) -> {
+            if (seg.endIndex() <= mLogStartIndex || seg.mStartIndex >= mLogHighestIndex) {
+                seg.file().delete();
+                mSegments.remove(seg);
+            }
+            return true;
+        });
 
         mSegmentCache = new LCache<>(MAX_CACHED_SEGMENTS);
         mWriterCache = new LCache<>(MAX_CACHED_WRITERS);
@@ -120,7 +216,40 @@ final class FileTermLog extends Latch implements TermLog {
         mSyncLatch = new Latch();
         mDirtyLatch = new Latch();
 
-        // FIXME: open segments
+        // TODO: alloc on demand; null out when finished and empty
+        mNonContigWriters = new PriorityQueue<>();
+        // TODO: alloc on demand; null out when finished and empty
+        mCommitTasks = new PriorityQueue<>();
+    }
+
+    /**
+     * Iterates over each segment, also providing the successor, if it exists.
+     *
+     * @param pairConsumer return false to stop iterating
+     */
+    private static void forEachSegment(SortedSet<LKey<Segment>> segments,
+                                       BiFunction<Segment, Segment, Boolean> pairConsumer)
+    {
+        Iterator<LKey<Segment>> it = segments.iterator();
+
+        if (it.hasNext()) {
+            Segment seg = (Segment) it.next();
+            while (true) {
+                Segment next;
+                if (it.hasNext()) {
+                    next = (Segment) it.next();
+                } else {
+                    next = null;
+                }
+                if (!pairConsumer.apply(seg, next)) {
+                    return;
+                }
+                if (next == null) {
+                    break;
+                }
+                seg = next;
+            }
+        }
     }
 
     @Override
@@ -553,8 +682,7 @@ final class FileTermLog extends Latch implements TermLog {
                 throw new IOException("Closed");
             }
 
-            // 1, 2, 4, 8, 16, 32 or 64 MiB
-            long maxLength = (1024 * 1024L) << Math.min(6, mSegments.size());
+            long maxLength = maxSegmentLength();
             long startIndex = index;
             if (startSegment != null) {
                 startIndex = startSegment.endIndex()
@@ -566,13 +694,17 @@ final class FileTermLog extends Latch implements TermLog {
             long endIndex = nextSegment == null ? mLogEndIndex : nextSegment.mStartIndex;
             maxLength = Math.min(maxLength, endIndex - startIndex);
 
-            File file = new File(mBase.getPath() + '.' + startIndex);
-            Segment segment = new Segment(file, startIndex, maxLength);
+            Segment segment = new Segment(startIndex, maxLength);
             mSegments.add(segment);
             return segment;
         } finally {
             releaseExclusive();
         }
+    }
+
+    private long maxSegmentLength() {
+        // 1, 2, 4, 8, 16, 32 or 64 MiB
+        return (1024 * 1024L) << Math.min(6, mSegments.size());
     }
 
     /**
@@ -1106,7 +1238,6 @@ final class FileTermLog extends Latch implements TermLog {
     final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
         private static final int OPEN_HANDLE_COUNT = 8;
 
-        private final File mFile;
         final long mStartIndex;
         volatile long mMaxLength;
         // Zero-based reference count.
@@ -1121,10 +1252,13 @@ final class FileTermLog extends Latch implements TermLog {
         private Segment mCacheMoreUsed;
         private Segment mCacheLessUsed;
 
-        Segment(File file, long startIndex, long maxLength) {
-            mFile = file;
+        Segment(long startIndex, long maxLength) {
             mStartIndex = startIndex;
             mMaxLength = maxLength;
+        }
+
+        File file() {
+            return new File(mBase.getPath() + '.' + mStartIndex);
         }
 
         @Override
@@ -1277,7 +1411,7 @@ final class FileTermLog extends Latch implements TermLog {
                     options.add(OpenOption.CREATE);
                     handles = OPEN_HANDLE_COUNT;
                 }
-                io = FileIO.open(mFile, options, handles);
+                io = FileIO.open(file(), options, handles);
                 try {
                     io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
@@ -1303,7 +1437,7 @@ final class FileTermLog extends Latch implements TermLog {
                 if (mMaxLength > 0) {
                     handles = OPEN_HANDLE_COUNT;
                 }
-                mFileIO = io = FileIO.open(mFile, options, handles);
+                mFileIO = io = FileIO.open(file(), options, handles);
             }
 
             return io;
@@ -1391,7 +1525,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (io == null) {
-                mFile.delete();
+                file().delete();
             } else {
                 io.setLength(maxLength);
             }
@@ -1452,7 +1586,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public String toString() {
-            return "Segment: {file=" + mFile + ", startIndex=" + mStartIndex +
+            return "Segment: {file=" + file() + ", startIndex=" + mStartIndex +
                 ", maxLength=" + mMaxLength + '}';
         }
     }
