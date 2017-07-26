@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10};
+var methods = {"i0":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -116,15 +116,10 @@ var activeTableTab = "activeTableTab";
 <div class="description">
 <ul class="blockList">
 <li class="blockList">
-<dl>
-<dt>All Implemented Interfaces:</dt>
-<dd><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></dd>
-</dl>
 <hr>
 <br>
 <pre>public final class <span class="typeNameLabel">RWLock</span>
-extends <a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a>
-implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></pre>
+extends <a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></pre>
 <div class="block">Scalable non-reentrant read-write lock.</div>
 </li>
 </ul>
@@ -198,26 +193,6 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
  overall memory footprint.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#lock--">lock</a></span>()</code>
-<div class="block">Acquires the read lock.</div>
-</td>
-</tr>
-<tr id="i2" class="altColor">
-<td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#readLock--">readLock</a></span>()</code>&nbsp;</td>
-</tr>
-<tr id="i3" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#unlock--">unlock</a></span>()</code>
-<div class="block">Releases the read lock.</div>
-</td>
-</tr>
-<tr id="i4" class="altColor">
-<td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/RWLock.html#writeLock--">writeLock</a></span>()</code>&nbsp;</td>
-</tr>
 </table>
 <ul class="blockList">
 <li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.util.Clutch">
@@ -271,52 +246,6 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurren
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="lock--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>lock</h4>
-<pre>public&nbsp;void&nbsp;lock()</pre>
-<div class="block">Acquires the read lock.</div>
-</li>
-</ul>
-<a name="unlock--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>unlock</h4>
-<pre>public&nbsp;void&nbsp;unlock()</pre>
-<div class="block">Releases the read lock.</div>
-</li>
-</ul>
-<a name="readLock--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>readLock</h4>
-<pre>public&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;readLock()</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true#readLock--" title="class or interface in java.util.concurrent.locks">readLock</a></code>&nbsp;in interface&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="writeLock--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>writeLock</h4>
-<pre>public&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;writeLock()</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true#writeLock--" title="class or interface in java.util.concurrent.locks">writeLock</a></code>&nbsp;in interface&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/ReadWriteLock.html?is-external=true" title="class or interface in java.util.concurrent.locks">ReadWriteLock</a></code></dd>
-</dl>
-</li>
-</ul>
 <a name="getPack--">
 <!--   -->
 </a>
