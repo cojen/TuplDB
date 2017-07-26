@@ -280,10 +280,11 @@ final class FileStateLog extends Latch implements StateLog {
     TermLog defineTermLog(long prevTerm, long term, long index) throws IOException {
         final LKey<TermLog> key = new LKey.Finder<>(index);
 
-        acquireExclusive();
+        boolean exclusive = false;
+        acquireShared();
         try {
-            final TermLog termLog;
-            defineTermLog: {
+            TermLog termLog;
+            defineTermLog: while (true) {
                 TermLog prevTermLog = (TermLog) mTermLogs.lower(key); // findLt
 
                 if (prevTerm == 0) {
@@ -319,6 +320,17 @@ final class FileStateLog extends Latch implements StateLog {
                         break defineTermLog;
                     }
 
+                    if (!exclusive) {
+                        if (tryUpgrade()) {
+                            exclusive = true;
+                        } else {
+                            releaseShared();
+                            acquireExclusive();
+                            exclusive = true;
+                            continue;
+                        }
+                    }
+
                     prevTermLog = startTermLog;
                     prevTermLog.finishTerm(index);
                     
@@ -337,6 +349,17 @@ final class FileStateLog extends Latch implements StateLog {
                     throw new IOException("Closed");
                 }
 
+                if (!exclusive) {
+                    if (tryUpgrade()) {
+                        exclusive = true;
+                    } else {
+                        releaseShared();
+                        acquireExclusive();
+                        exclusive = true;
+                        continue;
+                    }
+                }
+
                 File file = new File(mBase.getPath() + '.' + term);
                 termLog = new FileTermLog(mWorker, file, prevTerm, term, index, index, index);
 
@@ -346,7 +369,7 @@ final class FileStateLog extends Latch implements StateLog {
 
             return termLog;
         } finally {
-            releaseExclusive();
+            release(exclusive);
         }
     }
 
