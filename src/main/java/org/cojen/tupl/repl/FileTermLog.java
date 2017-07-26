@@ -547,7 +547,7 @@ final class FileTermLog extends Latch implements TermLog {
         SegmentReader reader = mReaderCache.remove(startIndex);
 
         if (reader == null) {
-            long prevTerm = startIndex == mLogStartIndex ? mLogPrevTerm : mLogTerm;
+            long prevTerm = startIndex <= mLogStartIndex ? mLogPrevTerm : mLogTerm;
             reader = new SegmentReader(prevTerm, startIndex);
         }
 
