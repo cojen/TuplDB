@@ -54,7 +54,7 @@ public class FileTermLogTest {
     public void setup() throws Exception {
         mBase = TestUtils.newTempBaseFile(getClass());
         mWorker = Worker.make(1, 15, TimeUnit.SECONDS, null);
-        mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, 0);
+        mLog = FileTermLog.openTerm(mWorker, mBase, 0, 1, 0, 0, 0, null);
     }
 
     @After
@@ -117,7 +117,7 @@ public class FileTermLogTest {
             mLog.captureHighest(info);
             mLog.sync();
             mLog.close();
-            mLog = new FileTermLog(mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex);
+            mLog = FileTermLog.openTerm(mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex, null);
         }
 
         rnd = new Random(seed);
@@ -200,8 +200,10 @@ public class FileTermLogTest {
 
     private void reopenCleanup(boolean discoverStart) throws Exception {
         mLog.close();
+        final long term = 1;
         final long startIndex = 1000;
-        mLog = new FileTermLog(mWorker, mBase, 0, 1, startIndex, startIndex, startIndex);
+        mLog = FileTermLog.openTerm
+            (mWorker, mBase, 0, term, startIndex, startIndex, startIndex, null);
 
         final byte[] buf = new byte[1000];
         Random rnd = new Random(62723);
@@ -220,24 +222,26 @@ public class FileTermLogTest {
 
         writer.release();
 
+        final String basePath = mBase.getPath() + '.' + term;
+
         // Create some files that should be ignored.
-        mBase.createNewFile();
+        new File(basePath).createNewFile();
         TestUtils.newTempBaseFile(getClass()).createNewFile();
-        new File(mBase.getPath() + "foo").createNewFile();
-        new File(mBase.getPath() + ".foo").createNewFile();
-        new File(mBase.getPath() + ".123foo").createNewFile();
-        new File(mBase.getPath() + ".123.foo").createNewFile();
+        new File(basePath + "foo").createNewFile();
+        new File(basePath + ".foo").createNewFile();
+        new File(basePath + ".123foo").createNewFile();
+        new File(basePath + ".123.foo").createNewFile();
 
         // Create some out-of-bounds segments that should be deleted.
-        File low = new File(mBase.getPath() + ".123");
+        File low = new File(basePath + ".123");
         low.createNewFile();
         assertTrue(low.exists());
-        File high = new File(mBase.getPath() + ".999999999999");
+        File high = new File(basePath + ".999999999999");
         high.createNewFile();
         assertTrue(high.exists());
        
         // Expand a segment that should be truncated.
-        File first = new File(mBase.getPath() + ".1000");
+        File first = new File(basePath + ".1000");
         assertTrue(first.exists());
         long firstLen = first.length();
         assertTrue(firstLen > 1_000_000);
@@ -256,7 +260,8 @@ public class FileTermLogTest {
             startWith = startIndex;
         } else {
             try {
-                new FileTermLog(mWorker, mBase, 0, 1, -1, startIndex, info.mHighestIndex);
+                FileTermLog.openTerm
+                    (mWorker, mBase, 0, term, -1, startIndex, info.mHighestIndex, null);
                 fail();
             } catch (IOException e) {
                 assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
@@ -268,7 +273,8 @@ public class FileTermLogTest {
             startWith = -1;
         }
 
-        mLog = new FileTermLog(mWorker, mBase, 0, 1, startWith, startIndex, info.mHighestIndex);
+        mLog = FileTermLog.openTerm
+            (mWorker, mBase, 0, term, startWith, startIndex, info.mHighestIndex, null);
 
         if (low != null) {
             assertTrue(!low.exists());
@@ -311,7 +317,8 @@ public class FileTermLogTest {
         }
 
         try {
-            new FileTermLog(mWorker, mBase, 0, 1, startWith, startIndex, info.mHighestIndex);
+            FileTermLog.openTerm
+                (mWorker, mBase, 0, term, startWith, startIndex, info.mHighestIndex, null);
             fail();
         } catch (IOException e) {
             String msg = e.getMessage();

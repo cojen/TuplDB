@@ -360,8 +360,7 @@ final class FileStateLog extends Latch implements StateLog {
                     }
                 }
 
-                File file = new File(mBase.getPath() + '.' + term);
-                termLog = new FileTermLog(mWorker, file, prevTerm, term, index, index, index);
+                termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index);
 
                 mTermLogs.add(termLog);
                 mTermCondition.signalAll();
