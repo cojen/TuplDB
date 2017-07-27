@@ -88,7 +88,10 @@ final class FileStateLog extends Latch implements StateLog {
     private static final int SECTION_SIZE = 1 << SECTION_POW;
     private static final int METADATA_SIZE = 52;
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
+    private static final int COUNTER_OFFSET = 12;
     private static final int CURRENT_TERM_OFFSET = 16;
+    private static final int HIGHEST_TERM_OFFSET = 24;
+    private static final int CRC_OFFSET = METADATA_SIZE - 4;
 
     private final File mBase;
     private final Worker mWorker;
@@ -102,6 +105,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
     private int mMetadataCounter;
+    private long mCurrentTerm;
 
     private TermLog mHighestTermLog;
     private TermLog mCommitTermLog;
@@ -183,6 +187,8 @@ final class FileStateLog extends Latch implements StateLog {
         if (highestIndex < commitIndex) {
             throw new IOException("Highest index is lower than commit index");
         }
+
+        mCurrentTerm = currentTerm;
 
         // Open all the existing terms.
         TreeMap<Long, List<String>> mTermFileNames = new TreeMap<>();
@@ -287,7 +293,7 @@ final class FileStateLog extends Latch implements StateLog {
             bb.putLong(0);
         }
 
-        if (bb.position() != (offset + (METADATA_SIZE - 4))) {
+        if (bb.position() != (offset + CRC_OFFSET)) {
             throw new AssertionError();
         }
 
@@ -310,7 +316,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         bb.clear();
         bb.position(offset);
-        bb.limit(offset + (METADATA_SIZE - 4));
+        bb.limit(offset + CRC_OFFSET);
 
         if (bb.getLong() != MAGIC_NUMBER) {
             return -1;
@@ -330,7 +336,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         bb.clear();
         bb.position(offset + 8);
-        bb.limit(offset + (METADATA_SIZE - 4));
+        bb.limit(offset + CRC_OFFSET);
 
         int encoding = bb.getInt();
         if (encoding != ENCODING_VERSION) {
@@ -353,7 +359,7 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     // Must be called with shared latch held.
-    private void doCaptureHighest(LogInfo info, TermLog highestLog, boolean releaseLatch) {
+    private TermLog doCaptureHighest(LogInfo info, TermLog highestLog, boolean releaseLatch) {
         int size = mTermLogs.size();
 
         if (size == 0) {
@@ -363,7 +369,7 @@ final class FileStateLog extends Latch implements StateLog {
             if (releaseLatch) {
                 releaseShared();
             }
-            return;
+            return null;
         }
 
         if (highestLog != null) {
@@ -391,7 +397,7 @@ final class FileStateLog extends Latch implements StateLog {
                         releaseShared();
                     }
                 }
-                return;
+                return highestLog;
             }
             highestLog = nextLog;
         }
@@ -443,6 +449,18 @@ final class FileStateLog extends Latch implements StateLog {
         } while ((commitLog = (TermLog) mTermLogs.higher(commitLog)) != null);
 
         releaseShared();
+    }
+
+    @Override
+    public long incrementCurrentTerm(int termIncrement) throws IOException {
+        if (termIncrement <= 0) {
+            throw new IllegalArgumentException();
+        }
+        synchronized (mMetadataInfo) {
+            mCurrentTerm += termIncrement;
+            doSync();
+            return mCurrentTerm;
+        }
     }
 
     @Override
@@ -698,21 +716,53 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public void sync() throws IOException {
         synchronized (mMetadataInfo) {
-            acquireShared();
-            try {
-                TermLog highestLog = mHighestTermLog;
-                if (highestLog != null && highestLog == mTermLogs.last()) {
-                    highestLog.captureHighest(mMetadataInfo);
-                } else {
-                    doCaptureHighest(mMetadataInfo, highestLog, false);
-                    highestLog = mHighestTermLog;
-                }
-
-                // FIXME: sync highestLog, write metadata file, sync it
-            } finally {
-                releaseShared();
-            }
+            doSync();
         }
+    }
+
+    // Caller must be synchronized on mMetadataInfo.
+    private void doSync() throws IOException {
+        acquireShared();
+        try {
+            TermLog highestLog = mHighestTermLog;
+            if (highestLog != null && highestLog == mTermLogs.last()) {
+                highestLog.captureHighest(mMetadataInfo);
+            } else {
+                highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
+                if (highestLog == null) {
+                    return;
+                }
+            }
+            highestLog.sync();
+        } finally {
+            releaseShared();
+        }
+
+        int counter = mMetadataCounter + 1;
+        int offset = (counter & 1) << SECTION_POW; 
+
+        MappedByteBuffer bb = mMetadataBuffer;
+
+        bb.clear();
+        bb.position(offset + COUNTER_OFFSET);
+        bb.limit(offset + CRC_OFFSET);
+
+        bb.putInt(counter);
+        bb.putLong(mCurrentTerm);
+        bb.putLong(mMetadataInfo.mTerm);
+        bb.putLong(mMetadataInfo.mHighestIndex);
+        bb.putLong(mMetadataInfo.mCommitIndex);
+
+        bb.position(offset);
+        mMetadataCrc.reset();
+        CRC32C.update(mMetadataCrc, bb);
+
+        bb.limit(offset + METADATA_SIZE);
+        bb.putInt((int) mMetadataCrc.getValue());
+
+        bb.force();
+
+        mMetadataCounter = counter;
     }
 
     @Override
