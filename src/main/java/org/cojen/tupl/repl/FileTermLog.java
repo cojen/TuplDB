@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.NavigableSet;
+import java.util.List;
 import java.util.PriorityQueue;
 import java.util.SortedSet;
 
@@ -37,7 +38,6 @@ import java.util.concurrent.locks.LockSupport;
 
 import java.util.function.BiFunction;
 
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.cojen.tupl.io.FileIO;
@@ -116,11 +116,12 @@ final class FileTermLog extends Latch implements TermLog {
      * Create or open an existing term.
      *
      * @param startIndex pass -1 to discover the start index
+     * @param commitIndex pass -1 to use start index
      * @param segmentFileNames pass null to discover segment files
      */
     static TermLog openTerm(Worker worker, File base, long prevTerm, long term,
                             long startIndex, long commitIndex, long highestIndex,
-                            String[] segmentFileNames)
+                            List<String> segmentFileNames)
         throws IOException
     {
         base = checkBase(base);
@@ -128,14 +129,13 @@ final class FileTermLog extends Latch implements TermLog {
         if (segmentFileNames == null) {
             String[] namesArray = base.getParentFile().list();
             if (namesArray != null && namesArray.length != 0) {
-                Pattern p = Pattern.compile(base.getName() + '.' + term + "\\.\\d*");
-                ArrayList<String> namesList = new ArrayList<>();
+                Pattern p = Pattern.compile(base.getName() + "\\." + term + "\\.\\d*");
+                segmentFileNames = new ArrayList<>();
                 for (String name : namesArray) {
                     if (p.matcher(name).matches()) {
-                        namesList.add(name);
+                        segmentFileNames.add(name);
                     }
                 }
-                segmentFileNames = namesList.toArray(new String[namesList.size()]);
             }
         }
 
@@ -146,7 +146,7 @@ final class FileTermLog extends Latch implements TermLog {
         return termLog;
     }
 
-    private static File checkBase(File base) {
+    static File checkBase(File base) {
         base = base.getAbsoluteFile();
 
         if (base.isDirectory()) {
@@ -165,10 +165,19 @@ final class FileTermLog extends Latch implements TermLog {
      * @param segmentFileNames pass null when creating a term
      */
     private FileTermLog(Worker worker, File base, long prevTerm, long term,
-                        long startIndex, long commitIndex, long highestIndex,
-                        String[] segmentFileNames)
+                        long startIndex, final long commitIndex, final long highestIndex,
+                        List<String> segmentFileNames)
         throws IOException
     {
+        if (term < 0) {
+            throw new IllegalArgumentException("Illegal term: " + term);
+        }
+
+        if (commitIndex > highestIndex) {
+            throw new IllegalArgumentException("Commit index is higher than highest index: " +
+                                               commitIndex + " > " + highestIndex);
+        }
+
         mWorker = worker;
         mBase = base;
         mLogPrevTerm = prevTerm;
@@ -176,7 +185,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         mSegments = new ConcurrentSkipListSet<>();
 
-        if (segmentFileNames != null && segmentFileNames.length != 0) {
+        if (segmentFileNames != null && segmentFileNames.size() != 0) {
             // Open the existing segments.
 
             File parent = base.getParentFile();
@@ -239,7 +248,7 @@ final class FileTermLog extends Latch implements TermLog {
         });
 
         mLogStartIndex = startIndex;
-        mLogCommitIndex = commitIndex;
+        mLogCommitIndex = Math.max(startIndex, commitIndex);
         mLogHighestIndex = highestIndex;
         mLogContigIndex = highestIndex;
         mLogEndIndex = Long.MAX_VALUE;
