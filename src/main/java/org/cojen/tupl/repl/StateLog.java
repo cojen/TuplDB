@@ -47,6 +47,14 @@ interface StateLog extends Closeable {
     long incrementCurrentTerm(int amount) throws IOException;
 
     /**
+     * Compares the given term against the one given. If given a higher term, then the current
+     * term is updated to match it.
+     *
+     * @return effective current term
+     */
+    long checkCurrentTerm(long term) throws IOException;
+
+    /**
      * Ensures that a term is defined at the given index.
      *
      * @param prevTerm expected term at previous index; pass 0 to not check

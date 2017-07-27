@@ -464,6 +464,17 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
+    public long checkCurrentTerm(long term) throws IOException {
+        synchronized (mMetadataInfo) {
+            if (term > mCurrentTerm) {
+                mCurrentTerm = term;
+                doSync();
+            }
+            return mCurrentTerm;
+        }
+    }
+
+    @Override
     public boolean defineTerm(long prevTerm, long term, long index) throws IOException {
         return defineTermLog(prevTerm, term, index) != null;
     }
