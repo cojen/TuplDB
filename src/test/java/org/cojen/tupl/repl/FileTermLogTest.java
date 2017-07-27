@@ -655,7 +655,7 @@ public class FileTermLogTest {
                         write(writer, data);
                         writer.release();
                         for (int i=0; i<data.length; i++) {
-                            sum += data[i] & 0xff;
+                            sum += 1 + (data[i] & 0xff);
                         }
                     }
 
@@ -707,9 +707,11 @@ public class FileTermLogTest {
                 break;
             }
             for (int i=0; i<amt; i++) {
-                sum += buf[i] & 0xff;
+                sum += 1 + (buf[i] & 0xff);
             }
         }
+
+        assertEquals(index, reader.index());
 
         reader.release();
 
