@@ -586,7 +586,7 @@ final class FileStateLog extends Latch implements StateLog {
 
                     prevTermLog = startTermLog;
                     prevTermLog.finishTerm(index);
-                    
+
                     // Truncate and remove all higher conflicting term logs. Iterator might
                     // start with the prevTermLog just finished, facilitating its
                     // removal. Finishing again at the same index is harmless.
@@ -611,6 +611,10 @@ final class FileStateLog extends Latch implements StateLog {
                         exclusive = true;
                         continue;
                     }
+                }
+
+                if (prevTermLog != null) {
+                    prevTermLog.sync();
                 }
 
                 termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index);
@@ -700,7 +704,6 @@ final class FileStateLog extends Latch implements StateLog {
                 if (highestLog != null && highestLog == mTermLogs.last()) {
                     highestLog.captureHighest(mMetadataInfo);
                 } else {
-                    // FIXME: sync all lower terms
                     doCaptureHighest(mMetadataInfo, highestLog, false);
                     highestLog = mHighestTermLog;
                 }

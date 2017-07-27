@@ -96,7 +96,7 @@ final class FileTermLog extends Latch implements TermLog {
     private Segment mFirstDirty;
     private Segment mLastDirty;
 
-    private boolean mClosed;
+    private boolean mLogClosed;
 
     /**
      * Create a new term.
@@ -499,7 +499,7 @@ final class FileTermLog extends Latch implements TermLog {
                 segment.acquireExclusive();
                 boolean shouldTruncate = segment.setEndIndex(endIndex);
                 segment.releaseExclusive();
-                if (shouldTruncate && !mClosed) {
+                if (shouldTruncate && !mLogClosed) {
                     truncate(segment);
                 }
             }
@@ -610,6 +610,8 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public void sync() throws IOException {
+        IOException ex = null;
+
         mSyncLatch.acquireExclusive();
         doSync: {
             mDirtyLatch.acquireExclusive();
@@ -633,7 +635,14 @@ final class FileTermLog extends Latch implements TermLog {
             mDirtyLatch.releaseExclusive();
 
             while (true) {
-                segment.sync();
+                try {
+                    segment.sync();
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
+                }
+
                 if (segment == last) {
                     break doSync;
                 }
@@ -655,6 +664,10 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         mSyncLatch.releaseExclusive();
+
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @Override
@@ -666,7 +679,7 @@ final class FileTermLog extends Latch implements TermLog {
                 // Wait for any pending truncate tasks to complete first. New tasks cannot be
                 // enqueued with exclusive latch held.
                 mWorker.join(false);
-                mClosed = true;
+                mLogClosed = true;
 
                 for (LKey<Segment> key : mSegments) {
                     Segment segment = (Segment) key;
@@ -732,7 +745,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return startSegment;
             }
 
-            if (mClosed) {
+            if (mLogClosed) {
                 throw new IOException("Closed");
             }
 
@@ -1551,6 +1564,9 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 try {
+                    if (mMaxLength == 0) {
+                        return;
+                    }
                     io = openForWriting();
                 } finally {
                     releaseExclusive();
