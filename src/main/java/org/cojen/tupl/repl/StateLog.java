@@ -40,6 +40,13 @@ interface StateLog extends Closeable {
     void commit(long commitIndex);
 
     /**
+     * Increment the current term by the amount given.
+     *
+     * @throws IllegalArgumentException if amount isn't greater than zero
+     */
+    long incrementCurrentTerm(int amount) throws IOException;
+
+    /**
      * Ensures that a term is defined at the given index.
      *
      * @param prevTerm expected term at previous index; pass 0 to not check
