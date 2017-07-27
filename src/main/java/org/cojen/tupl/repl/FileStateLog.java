@@ -21,12 +21,30 @@ import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+
+import java.nio.channels.FileChannel;
+
+import java.nio.file.StandardOpenOption;
+
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import java.util.zip.Checksum;
 
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.io.CRC32C;
+import org.cojen.tupl.io.Utils;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
@@ -40,18 +58,19 @@ final class FileStateLog extends Latch implements StateLog {
     /*
       File naming:
 
-      <base>  (metadata file)
+      <base>                       (metadata file)
       <base>.<term>.<start index>  (log files)
 
-      Metadata file is 4608 bytes, with fields stored at offset 0 and 4096, alternating. Fields
-      are little endian encoded.
+      Metadata file stores little-endian fields at offset 0 and 4096, alternating.
 
-      0:   Magic number (long)
-      8:   Highest term (long)
-      16:  Highest index (exclusive) (long)
-      24:  Commit index (exclusive) (long)
-      32.. Reserved
-      508: CRC32C (int)
+      0:  Magic number (long)
+      8:  Encoding version (int)
+      12: Metadata counter (int)
+      16: Current term (long)
+      24: Highest log term (long)
+      32: Highest contiguous log index (exclusive) (long)
+      40: Commit log index (exclusive) (long)
+      48: CRC32C (int)
 
       Example files with base of "mydata.repl":
 
@@ -64,58 +83,286 @@ final class FileStateLog extends Latch implements StateLog {
     */
 
     private static final long MAGIC_NUMBER = 5267718596810043313L;
+    private static final int ENCODING_VERSION = 20170725;
+    private static final int SECTION_POW = 12;
+    private static final int SECTION_SIZE = 1 << SECTION_POW;
+    private static final int METADATA_SIZE = 52;
+    private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
+    private static final int CURRENT_TERM_OFFSET = 16;
 
-    private final Worker mWorker;
     private final File mBase;
+    private final Worker mWorker;
 
     // Terms are keyed only by their start index.
     private final ConcurrentSkipListSet<LKey<TermLog>> mTermLogs;
+    private final LatchCondition mTermCondition;
+
+    private final FileChannel mMetadataFile;
+    private final MappedByteBuffer mMetadataBuffer;
+    private final Checksum mMetadataCrc;
+    private final LogInfo mMetadataInfo;
+    private int mMetadataCounter;
 
     private TermLog mHighestTermLog;
     private TermLog mCommitTermLog;
     private TermLog mContigTermLog;
 
-    private final LatchCondition mTermCondition;
-
     private boolean mClosed;
 
     FileStateLog(File base) throws IOException {
-        base = base.getAbsoluteFile();
-        if (base.isDirectory()) {
-            throw new IllegalArgumentException("Base file is a directory: " + base);
-        }
-        if (!base.getParentFile().exists()) {
-            throw new IllegalArgumentException("Parent file doesn't exist: " + base);
-        }
+        base = FileTermLog.checkBase(base);
 
-        mWorker = Worker.make(10, 15, TimeUnit.SECONDS, null);
         mBase = base;
+        mWorker = Worker.make(10, 15, TimeUnit.SECONDS, null);
 
         mTermLogs = new ConcurrentSkipListSet<>();
         mTermCondition = new LatchCondition();
 
-        // FIXME: Open terms. If no metadata file, chuck everything. If metadata file exists,
-        // chuck all files which are higher than what metadata file reports.
+        mMetadataFile = FileChannel.open
+            (base.toPath(),
+             StandardOpenOption.READ,
+             StandardOpenOption.WRITE,
+             StandardOpenOption.CREATE,
+             StandardOpenOption.DSYNC);
+
+        boolean mdFileExists = mMetadataFile.size() != 0;
+
+        mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
+        mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        mMetadataCrc = CRC32C.newInstance();
+        mMetadataInfo = new LogInfo();
+
+        if (!mdFileExists) {
+            // Prepare a new metadata file.
+            cleanMetadata(0, 0);
+            cleanMetadata(SECTION_SIZE, 1);
+        }
+
+        // Ensure existing contents are durable following a process restart.
+        mMetadataBuffer.force();
+
+        long counter0 = verifyMetadata(0);
+        long counter1 = verifyMetadata(SECTION_SIZE);
+
+        // Select the higher counter from the valid sections.
+        int counter, offset;
+        select: {
+            if (counter0 < 0) {
+                if (counter1 < 0) {
+                    if (counter0 == -1 || counter1 == -1) {
+                        throw new IOException("Metadata magic number is wrong");
+                    }
+                    throw new IOException("Metadata CRC mismatch");
+                }
+            } else if (counter1 < 0 || (((int) counter0) - (int) counter1) > 0) {
+                counter = (int) counter0;
+                offset = 0;
+                break select;
+            }
+            counter = (int) counter1;
+            offset = SECTION_SIZE;
+        }
+
+        if (((counter & 1) << SECTION_POW) != offset) {
+            throw new IOException("Metadata sections are swapped");
+        }
+
+        mMetadataCounter = counter;
+
+        mMetadataBuffer.clear();
+        mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
+        long currentTerm = mMetadataBuffer.getLong();
+        long highestTerm = mMetadataBuffer.getLong();
+        long highestIndex = mMetadataBuffer.getLong();
+        long commitIndex = mMetadataBuffer.getLong();
+
+        if (currentTerm < highestTerm) {
+            throw new IOException("Current term is lower than highest term");
+        }
+        if (highestIndex < commitIndex) {
+            throw new IOException("Highest index is lower than commit index");
+        }
+
+        // Open all the existing terms.
+        TreeMap<Long, List<String>> mTermFileNames = new TreeMap<>();
+        String[] fileNames = mBase.getParentFile().list();
+
+        if (fileNames != null && fileNames.length != 0) {
+            Pattern p = Pattern.compile(base.getName() + "\\.(\\d*)\\.\\d*");
+            for (String name : fileNames) {
+                Matcher m = p.matcher(name);
+                if (m.matches()) {
+                    Long term = Long.valueOf(m.group(1));
+                    if (term <= 0) {
+                        throw new IOException("Illegal term: " + term);
+                    }
+                    List<String> termNames = mTermFileNames.get(term);
+                    if (termNames == null) {
+                        termNames = new ArrayList<>();
+                        mTermFileNames.put(term, termNames);
+                    }
+                    termNames.add(name);
+                }
+            }
+        }
+
+        if (highestTerm != 0 && mTermFileNames.floorKey(highestTerm) == null) {
+            throw new IOException("No previous term for highest: " + highestTerm);
+        }
+
+        long prevTerm = 0;
+        for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
+            long term = e.getKey();
+            TermLog termLog = FileTermLog.openTerm
+                (mWorker, mBase, prevTerm, term, -1, -1, highestIndex, e.getValue());
+            mTermLogs.add(termLog);
+            prevTerm = term;
+        }
+
+        TermLog highest = null;
+
+        if (!mTermLogs.isEmpty()) {
+            Iterator<LKey<TermLog>> it = mTermLogs.iterator();
+            TermLog termLog = (TermLog) it.next();
+
+            while (true) {
+                if (termLog.term() > highestTerm) {
+                    // Delete all terms higher than the highest.
+                    while (true) {
+                        termLog.finishTerm(termLog.startIndex());
+                        it.remove();
+                        if (it.hasNext()) {
+                            break;
+                        }
+                        termLog = (TermLog) it.next();
+                    }
+                    break;
+                }
+
+                highest = termLog;
+
+                TermLog next;
+                if (it.hasNext()) {
+                    next = (TermLog) it.next();
+                } else {
+                    next = null;
+                }
+
+                if (next == null) {
+                    break;
+                }
+
+                termLog.finishTerm(next.startIndex());
+                termLog = next;
+            }
+        }
+
+        if (highest != null && highest.term() < highestTerm) {
+            // Define the highest term even if no files exist for it.
+            defineTerm(highest.term(), highestTerm, highestIndex);
+        }
+
+        if (commitIndex > 0) {
+            commit(commitIndex);
+        }
+    }
+
+    private void cleanMetadata(int offset, int counter) {
+        MappedByteBuffer bb = mMetadataBuffer;
+
+        bb.clear();
+        bb.position(offset);
+        bb.limit(offset + METADATA_SIZE);
+
+        bb.putLong(MAGIC_NUMBER);
+        bb.putInt(ENCODING_VERSION);
+        bb.putInt(counter);
+
+        // Current term, highest log term, highest log index, commit log index.
+        if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
+            throw new AssertionError();
+        }
+        for (int i=0; i<4; i++) {
+            bb.putLong(0);
+        }
+
+        if (bb.position() != (offset + (METADATA_SIZE - 4))) {
+            throw new AssertionError();
+        }
+
+        bb.limit(bb.position());
+        bb.position(offset);
+
+        mMetadataCrc.reset();
+        CRC32C.update(mMetadataCrc, bb);
+
+        bb.limit(offset + METADATA_SIZE);
+        bb.putInt((int) mMetadataCrc.getValue());
+    }
+
+    /**
+     * @return uint32 counter value, or -1 if wrong magic number, or -2 if CRC doesn't match
+     * @throws IOException if wrong magic number or encoding version
+     */
+    private long verifyMetadata(int offset) throws IOException {
+        MappedByteBuffer bb = mMetadataBuffer;
+
+        bb.clear();
+        bb.position(offset);
+        bb.limit(offset + (METADATA_SIZE - 4));
+
+        if (bb.getLong() != MAGIC_NUMBER) {
+            return -1;
+        }
+
+        bb.position(offset);
+
+        mMetadataCrc.reset();
+        CRC32C.update(mMetadataCrc, bb);
+
+        bb.limit(offset + METADATA_SIZE);
+        int actual = bb.getInt();
+
+        if (actual != (int) mMetadataCrc.getValue()) {
+            return -2;
+        }
+
+        bb.clear();
+        bb.position(offset + 8);
+        bb.limit(offset + (METADATA_SIZE - 4));
+
+        int encoding = bb.getInt();
+        if (encoding != ENCODING_VERSION) {
+            throw new IOException("Metadata encoding version is unknown: " + encoding);
+        }
+
+        return bb.getInt() & 0xffffffffL;
     }
 
     @Override
     public void captureHighest(LogInfo info) {
         acquireShared();
-
         TermLog highestLog = mHighestTermLog;
         if (highestLog != null && highestLog == mTermLogs.last()) {
             highestLog.captureHighest(info);
             releaseShared();
-            return;
+        } else {
+            doCaptureHighest(info, highestLog, true);
         }
+    }
 
+    // Must be called with shared latch held.
+    private void doCaptureHighest(LogInfo info, TermLog highestLog, boolean releaseLatch) {
         int size = mTermLogs.size();
 
         if (size == 0) {
             info.mTerm = 0;
             info.mHighestIndex = 0;
             info.mCommitIndex = 0;
-            releaseShared();
+            if (releaseLatch) {
+                releaseShared();
+            }
             return;
         }
 
@@ -134,9 +381,15 @@ final class FileStateLog extends Latch implements StateLog {
             if (nextLog == null || info.mHighestIndex < nextLog.startIndex()) {
                 if (tryUpgrade()) {
                     mHighestTermLog = highestLog;
-                    releaseExclusive();
+                    if (releaseLatch) {
+                        releaseExclusive();
+                    } else {
+                        downgrade();
+                    }
                 } else {
-                    releaseShared();
+                    if (releaseLatch) {
+                        releaseShared();
+                    }
                 }
                 return;
             }
@@ -440,8 +693,23 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void sync() throws IOException {
-        // FIXME: sync
-        throw null;
+        synchronized (mMetadataInfo) {
+            acquireShared();
+            try {
+                TermLog highestLog = mHighestTermLog;
+                if (highestLog != null && highestLog == mTermLogs.last()) {
+                    highestLog.captureHighest(mMetadataInfo);
+                } else {
+                    // FIXME: sync all lower terms
+                    doCaptureHighest(mMetadataInfo, highestLog, false);
+                    highestLog = mHighestTermLog;
+                }
+
+                // FIXME: sync highestLog, write metadata file, sync it
+            } finally {
+                releaseShared();
+            }
+        }
     }
 
     @Override
@@ -451,7 +719,12 @@ final class FileStateLog extends Latch implements StateLog {
             if (mClosed) {
                 return;
             }
+
             mClosed = true;
+
+            mMetadataFile.close();
+            Utils.delete(mMetadataBuffer);
+
             for (Object key : mTermLogs) {
                 ((TermLog) key).close();
             }
