@@ -1,0 +1,101 @@
+/*
+ *  Copyright (C) 2017 Cojen.org
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.cojen.tupl.repl;
+
+/**
+ * Defines a collection of remote asynchronous methods. Method invocations are permitted to
+ * block if the send buffer is full.
+ *
+ * @author Brian S O'Neill
+ */
+interface Channel {
+    default Peer peer() {
+        return null;
+    }
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean nop(Channel from);
+
+    /**
+     * @param term must be greater than the highest term
+     * @param candidateId must not be zero
+     * @return false if not sent or processed
+     */
+    boolean requestVote(Channel from, long term, long candidateId,
+                        long highestTerm, long highestIndex);
+
+    /**
+     * @param term highest bit is set if vote was granted
+     * @return false if not sent or processed
+     */
+    boolean requestVoteReply(Channel from, long term);
+
+    /**
+     * Query for all the terms which are defined over the given range.
+     *
+     * @param startIndex inclusive log start index
+     * @param endIndex exclusive log end index
+     * @return false if not sent or processed
+     */
+    boolean queryTerms(Channel from, long startIndex, long endIndex);
+
+    /**
+     * One reply is sent for each defined term over the queried range.
+     *
+     * @param prevTerm previous term
+     * @param term term number
+     * @param index index at start of term
+     * @return false if not sent or processed
+     */
+    boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex);
+
+    /**
+     * Query for missing data over the given range.
+     *
+     * @param startIndex inclusive log start index
+     * @param endIndex exclusive log end index
+     * @return false if not sent or processed
+     */
+    boolean queryData(Channel from, long startIndex, long endIndex);
+
+    /**
+     * @param prevTerm expected term at previous index
+     * @param term term at given index
+     * @param index any index in the term to write to
+     * @return false if not sent or processed
+     */
+    boolean queryDataReply(Channel from, long prevTerm, long term, long index, byte[] data);
+
+    /**
+     * @param prevTerm expected term at previous index
+     * @param term term at given index
+     * @param index any index in the term to write to
+     * @param highestIndex highest index (exclusive) which can become the commit index
+     * @param commitIndex current commit index (exclusive)
+     * @return false if not sent or processed
+     */
+    boolean writeData(Channel from, long prevTerm, long term, long index,
+                      long highestIndex, long commitIndex, byte[] data);
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean writeDataReply(Channel from, long term, long highestIndex);
+}
