@@ -377,9 +377,9 @@ public abstract class Clutch extends Latch {
 
     /**
      * Sharable object for supporting contended clutches. Memory overhead (in bytes) is
-     * proportional {@code (number of slots) * (number of cores)}. The number of slots should
-     * be at least 16, to minimize cache line contention. As a convenience, this class also
-     * extends the Latch class, but the latching features are not used here.
+     * proportional to {@code (number of slots) * (number of cores)}. The number of slots
+     * should be at least 16, to minimize cache line contention. As a convenience, this class
+     * also extends the Latch class, but the latching features are not used here.
      */
     @SuppressWarnings("restriction")
     public static class Pack extends Latch {
