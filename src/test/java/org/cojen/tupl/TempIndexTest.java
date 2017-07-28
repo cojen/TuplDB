@@ -211,4 +211,50 @@ public class TempIndexTest {
         mConfig.replicate(new NonReplicationManager());
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
     }
+
+    @Test
+    public void txnLock() throws Exception {
+        Index temp = mDb.newTemporaryIndex();
+
+        Transaction txn = mDb.newTransaction();
+        final byte[] key = "k1".getBytes();
+        final byte[] v1 = "v1".getBytes();
+        final byte[] v2 = "v2".getBytes();
+
+        Cursor c = temp.newCursor(txn);
+        c.find(key);
+        c.store(v1);
+
+        Cursor c2 = temp.newCursor(null);
+        try {
+            c2.find(key);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        try {
+            temp.store(null, key, v2);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals(v1, temp.load(Transaction.BOGUS, key));
+        txn.exit();
+        assertNull(temp.load(Transaction.BOGUS, key));
+
+        temp.store(txn, key, v1);
+
+        try {
+            temp.store(null, key, v2);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        fastAssertArrayEquals(v1, temp.load(Transaction.BOGUS, key));
+        txn.exit();
+        assertNull(temp.load(Transaction.BOGUS, key));
+    }
 }

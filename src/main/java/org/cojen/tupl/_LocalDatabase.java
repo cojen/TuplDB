@@ -1144,6 +1144,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             txn = newNoRedoTransaction(redoTxnId);
             try {
+                txn.lockTimeout(-1, null);
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // _Lock in a consistent order, avoiding deadlocks.
@@ -1493,6 +1494,7 @@ final class _LocalDatabase extends AbstractDatabase {
             // Register temporary index as trash, unreplicated.
             Transaction createTxn = newNoRedoTransaction();
             try {
+                createTxn.lockTimeout(-1, null);
                 byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
                 if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
                     throw new DatabaseException("Unable to register temporary index");
@@ -1563,9 +1565,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * make modifications, but they won't go to the redo log.
      */
     _LocalTransaction newNoRedoTransaction() {
-        _RedoWriter redo = txnRedoWriter();
-        return new _LocalTransaction
-            (this, redo, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, -1);
+        return doNewTransaction(DurabilityMode.NO_REDO);
     }
 
     /**
@@ -1576,7 +1576,8 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     _LocalTransaction newNoRedoTransaction(long redoTxnId) {
         return redoTxnId == 0 ? newNoRedoTransaction() :
-            new _LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ, -1);
+            new _LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ,
+                                 mDefaultLockTimeoutNanos);
     }
 
     /**
@@ -2407,6 +2408,8 @@ final class _LocalDatabase extends AbstractDatabase {
         final _LocalTransaction txn = newAlwaysRedoTransaction();
 
         try {
+            txn.lockTimeout(-1, null);
+
             if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
                 // Already in the trash.
                 return false;
@@ -2740,6 +2743,8 @@ final class _LocalDatabase extends AbstractDatabase {
                             createTxn = newAlwaysRedoTransaction();
                         }
 
+                        createTxn.lockTimeout(-1, null);
+
                         // Insert order is important for the indexById method to work reliably.
                         if (!mRegistryKeyMap.insert(createTxn, idKey, name)) {
                             throw new DatabaseException("Unable to insert index id");
@@ -2792,6 +2797,8 @@ final class _LocalDatabase extends AbstractDatabase {
         // is written into it.
         Transaction txn = newNoRedoTransaction();
         try {
+            txn.lockTimeout(-1, null);
+
             // Pass the transaction to acquire the lock.
             byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
@@ -2860,6 +2867,8 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         try {
+            txn.lockTimeout(-1, null);
+
             // _Tree id mask, to make the identifiers less predictable and
             // non-compatible with other database instances.
             long treeIdMask;
