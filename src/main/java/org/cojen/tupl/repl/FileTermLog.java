@@ -393,6 +393,7 @@ final class FileTermLog extends Latch implements TermLog {
                 cLocalDelayed.set(waiter);
             } else {
                 waiter.mCounter = index;
+                waiter.mActualIndex = 0;
             }
 
             mCommitTasks.add(waiter);
