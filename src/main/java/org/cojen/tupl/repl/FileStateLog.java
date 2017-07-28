@@ -264,11 +264,6 @@ final class FileStateLog extends Latch implements StateLog {
             }
         }
 
-        if (highest != null && highest.term() < highestTerm) {
-            // Define the highest term even if no files exist for it.
-            defineTerm(highest.term(), highestTerm, highestIndex);
-        }
-
         if (commitIndex > 0) {
             commit(commitIndex);
         }

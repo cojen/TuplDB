@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
@@ -489,37 +490,123 @@ public class FileStateLogTest {
         verifyLog(mLog, 1000, msg3, 0);
 
         // Cannot read past commit.
-        class Reader extends Thread {
-            final long mStartIndex;
-            volatile long mTotal;
-
-            Reader(long start) {
-                mStartIndex = start;
-            }
-
-            @Override
-            public void run() {
-                try {
-                    LogReader reader = mLog.openReader(mStartIndex, -1);
-                    byte[] buf = new byte[1000];
-                    while (true) {
-                        int amt = reader.read(buf, 0, buf.length);
-                        if (amt < 0) {
-                            reader = mLog.openReader(reader.index(), -1);
-                        } else {
-                            mTotal += amt;
-                        }
-                    }
-                } catch (InterruptedIOException e) {
-                    // Stop.
-                } catch (Throwable e) {
-                    Utils.uncaught(e);
-                }
-            }
-        }
 
         Reader reader = TestUtils.startAndWaitUntilBlocked(new Reader(0));
         assertEquals(4000, reader.mTotal);
+
+        reader.interrupt();
+        reader.join();
+    }
+
+    class Reader extends Thread {
+        final long mStartIndex;
+        volatile long mTotal;
+
+        Reader(long start) {
+            mStartIndex = start;
+        }
+
+        @Override
+        public void run() {
+            try {
+                LogReader reader = mLog.openReader(mStartIndex, -1);
+                byte[] buf = new byte[1000];
+                while (true) {
+                    int amt = reader.read(buf, 0, buf.length);
+                    if (amt < 0) {
+                        reader = mLog.openReader(reader.index(), -1);
+                    } else {
+                        mTotal += amt;
+                    }
+                }
+            } catch (InterruptedIOException e) {
+                // Stop.
+            } catch (Throwable e) {
+                Utils.uncaught(e);
+            }
+        }
+    }
+
+    @Test
+    public void recoverState2() throws Exception {
+        // Write data over multiple segments.
+
+        long seed = 1334535;
+        Random rnd = new Random(seed);
+        byte[] buf = new byte[1000];
+
+        long prevTerm = mLog.checkCurrentTerm(0);
+        long term = mLog.incrementCurrentTerm(1);
+        LogWriter writer = mLog.openWriter(prevTerm, term, 0);
+
+        for (int i=0; i<10_000; i++) {
+            rnd.nextBytes(buf);
+            write(writer, buf);
+        }
+        writer.release();
+
+        prevTerm = mLog.checkCurrentTerm(0);
+        term = mLog.incrementCurrentTerm(1);
+        writer = mLog.openWriter(prevTerm, term, writer.index());
+
+        for (int i=0; i<5_000; i++) {
+            rnd.nextBytes(buf);
+            write(writer, buf);
+        }
+        writer.release();
+
+        final long highestIndex = writer.index();
+
+        mLog.commit(highestIndex);
+        mLog.sync();
+
+        // Generate data over more terms, none of which will be committed.
+
+        for (int x=0; x<2; x++) {
+            prevTerm = mLog.checkCurrentTerm(0);
+            term = mLog.incrementCurrentTerm(1);
+            writer = mLog.openWriter(prevTerm, term, writer.index());
+            for (int i=0; i<5_000; i++) {
+                rnd.nextBytes(buf);
+                writer.write(buf, 0, buf.length, 0); // don't advance highest index
+            }
+            writer.release();
+        }
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(prevTerm, info.mTerm);
+        assertEquals(highestIndex, info.mHighestIndex);
+        assertEquals(highestIndex, info.mCommitIndex);
+
+        // Verify data.
+
+        rnd = new Random(seed);
+        byte[] buf2 = new byte[buf.length];
+
+        LogReader r = mLog.openReader(0, -1);
+        for (int i=0; i<10_000; i++) {
+            rnd.nextBytes(buf);
+            readFully(r, buf2);
+            TestUtils.fastAssertArrayEquals(buf, buf2);
+        }
+
+        assertEquals(-1, r.read(buf2, 0, 1)); // end of term
+
+        r = mLog.openReader(r.index(), -1);
+        for (int i=0; i<5_000; i++) {
+            rnd.nextBytes(buf);
+            readFully(r, buf2);
+            TestUtils.fastAssertArrayEquals(buf, buf2);
+        }
+
+        assertEquals(-1, r.read(buf2, 0, 1)); // end of term
+
+        Reader reader = TestUtils.startAndWaitUntilBlocked(new Reader(r.index()));
+        assertEquals(0, reader.mTotal);
 
         reader.interrupt();
         reader.join();
@@ -680,5 +767,18 @@ public class FileStateLogTest {
     private static void write(LogWriter writer, byte[] data, int off, int len) throws IOException {
         int amt = writer.write(data, off, len, writer.index() + len);
         assertEquals(len, amt);
+    }
+
+    private static void readFully(LogReader reader, byte[] buf) throws IOException {
+        int off = 0;
+        int len = buf.length;
+        while (len > 0) {
+            int amt = reader.read(buf, off, len);
+            if (amt < 0) {
+                throw new EOFException();
+            }
+            off += amt;
+            len -= amt;
+        }
     }
 }
