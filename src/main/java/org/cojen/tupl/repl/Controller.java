@@ -60,8 +60,7 @@ final class Controller extends Latch implements Channel {
     private LogWriter mLeaderWriter;
 
     // Index used to check for missing data.
-    // FIXME: init to Long.MAX_VALUE
-    private long mMissingContigIndex;
+    private long mMissingContigIndex = Long.MAX_VALUE; // unknown initially
     private boolean mSkipMissingDataTask;
 
     // Limit the rate at which missing terms are queried.
@@ -230,6 +229,7 @@ final class Controller extends Latch implements Channel {
         if (tryAcquireShared()) {
             if (mLocalRole == ROLE_LEADER) {
                 // Leader doesn't need to check for missing data.
+                mMissingContigIndex = Long.MAX_VALUE; // reset to unknown
                 mSkipMissingDataTask = true;
                 releaseShared();
                 return;
