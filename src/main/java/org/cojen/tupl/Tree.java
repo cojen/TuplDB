@@ -500,37 +500,59 @@ class Tree implements View, Index {
     public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
-        cursor.autoload(false);
-        cursor.findAndStore(key, value);
+        try {
+            cursor.autoload(false);
+            cursor.findAndStore(key, value);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
     public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        return new TreeCursor(this, txn).findAndStore(key, value);
+        TreeCursor cursor = new TreeCursor(this, txn);
+        try {
+            return cursor.findAndStore(key, value);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
     public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
-        cursor.autoload(false);
-        return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
+        try {
+            cursor.autoload(false);
+            return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
         TreeCursor cursor = new TreeCursor(this, txn);
-        cursor.autoload(false);
-        return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
+        try {
+            cursor.autoload(false);
+            return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
     public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        // TODO: Optimize by disabling autoload and do an in-place comparison.
-        return new TreeCursor(this, txn).findAndModify(key, TreeCursor.MODIFY_UPDATE, value);
+        TreeCursor cursor = new TreeCursor(this, txn);
+        try {
+            // TODO: Optimize by disabling autoload and do an in-place comparison.
+            return cursor.findAndModify(key, TreeCursor.MODIFY_UPDATE, value);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
@@ -538,7 +560,12 @@ class Tree implements View, Index {
         throws IOException
     {
         keyCheck(key);
-        return new TreeCursor(this, txn).findAndModify(key, oldValue, newValue);
+        TreeCursor cursor = new TreeCursor(this, txn);
+        try {
+            return cursor.findAndModify(key, oldValue, newValue);
+        } finally {
+            cursor.reset();
+        }
     }
 
     @Override
