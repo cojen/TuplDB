@@ -213,10 +213,6 @@ final class FileStateLog extends Latch implements StateLog {
             }
         }
 
-        if (highestTerm != 0 && mTermFileNames.floorKey(highestTerm) == null) {
-            throw new IOException("No previous term for highest: " + highestTerm);
-        }
-
         long prevTerm = 0;
         for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
             long term = e.getKey();
