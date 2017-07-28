@@ -35,65 +35,8 @@ final class TempTreeCursor extends TreeCursor {
     }
 
     @Override
-    public final void store(byte[] value) throws IOException {
-        byte[] key = mKey;
-        ViewUtils.positionCheck(key);
-
-        try {
-            final LocalTransaction txn = mTxn;
-            if (txn == null) {
-                store(LocalTransaction.BOGUS, leafExclusive(), value);
-            } else {
-                if (txn.lockMode() != LockMode.UNSAFE) {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                }
-                CursorFrame leaf = leafExclusive();
-                final DurabilityMode dmode = txn.durabilityMode();
-                if (dmode == DurabilityMode.NO_REDO) {
-                    store(txn, leaf, value);
-                } else {
-                    txn.durabilityMode(DurabilityMode.NO_REDO);
-                    try {
-                        store(txn, leaf, value);
-                    } finally {
-                        txn.durabilityMode(dmode);
-                    }
-                }
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        }
-    }
-
-    @Override
-    public final void commit(byte[] value) throws IOException {
-        byte[] key = mKey;
-        ViewUtils.positionCheck(key);
-
-        try {
-            final LocalTransaction txn = mTxn;
-            if (txn == null) {
-                store(LocalTransaction.BOGUS, leafExclusive(), value);
-            } else {
-                if (txn.lockMode() != LockMode.UNSAFE) {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                }
-                CursorFrame leaf = leafExclusive();
-                final DurabilityMode dmode = txn.durabilityMode();
-                if (dmode == DurabilityMode.NO_REDO) {
-                    store(txn, leaf, value);
-                } else {
-                    txn.durabilityMode(DurabilityMode.NO_REDO);
-                    try {
-                        store(txn, leaf, value);
-                    } finally {
-                        txn.durabilityMode(dmode);
-                    }
-                }
-                txn.commit();
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        }
+    protected int storeMode() {
+        // Never redo.
+        return 2;
     }
 }

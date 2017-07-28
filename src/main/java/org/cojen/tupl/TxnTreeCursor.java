@@ -38,51 +38,8 @@ final class TxnTreeCursor extends TreeCursor {
     // operations, because rollback is required when commits are rejected.
 
     @Override
-    public final void store(byte[] value) throws IOException {
-        byte[] key = mKey;
-        ViewUtils.positionCheck(key);
-
-        try {
-            LocalTransaction txn = mTxn;
-            if (txn == null) {
-                txn = mTree.mDatabase.newAlwaysRedoTransaction();
-                try {
-                    doCommit(true, txn, key, value);
-                } catch (Throwable e) {
-                    txn.reset();
-                    throw e;
-                }
-            } else {
-                if (txn.lockMode() != LockMode.UNSAFE) {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                }
-                store(txn, leafExclusive(), value);
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        }
-    }
-
-    @Override
-    public final void commit(byte[] value) throws IOException {
-        byte[] key = mKey;
-        ViewUtils.positionCheck(key);
-
-        try {
-            LocalTransaction txn = mTxn;
-            if (txn == null) {
-                txn = mTree.mDatabase.newAlwaysRedoTransaction();
-                try {
-                    doCommit(true, txn, key, value);
-                } catch (Throwable e) {
-                    txn.reset();
-                    throw e;
-                }
-            } else {
-                doCommit(txn.durabilityMode() != DurabilityMode.NO_REDO, txn, key, value);
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        }
+    protected int storeMode() {
+        // Always undo.
+        return 1;
     }
 }
