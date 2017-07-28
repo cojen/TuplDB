@@ -130,11 +130,11 @@ class _Tree implements View, Index {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        _TreeCursor cursor = newCursor(Transaction.BOGUS);
         _TreeCursor high = null;
         try {
             if (highKey != null) {
-                high = new _TreeCursor(this, Transaction.BOGUS);
+                high = newCursor(Transaction.BOGUS);
                 high.autoload(false);
                 high.find(highKey);
                 if (high.mKey == null) {
@@ -468,9 +468,9 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public void store(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final void store(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             cursor.autoload(false);
             cursor.findAndStore(key, value);
@@ -480,9 +480,9 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             return cursor.findAndStore(key, value);
         } finally {
@@ -491,9 +491,9 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             cursor.autoload(false);
             return cursor.findAndModify(key, _TreeCursor.MODIFY_INSERT, value);
@@ -503,9 +503,9 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             cursor.autoload(false);
             return cursor.findAndModify(key, _TreeCursor.MODIFY_REPLACE, value);
@@ -515,9 +515,9 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+    public final boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             // TODO: Optimize by disabling autoload and do an in-place comparison.
             return cursor.findAndModify(key, _TreeCursor.MODIFY_UPDATE, value);
@@ -527,11 +527,11 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
+    public final boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
         keyCheck(key);
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         try {
             return cursor.findAndModify(key, oldValue, newValue);
         } finally {
@@ -613,7 +613,7 @@ class _Tree implements View, Index {
     /*
     @Override
     public Stream newStream() {
-        _TreeCursor cursor = new _TreeCursor(this);
+        _TreeCursor cursor = newCursor();
         cursor.autoload(false);
         return new _TreeValueStream(cursor);
     }
@@ -676,7 +676,7 @@ class _Tree implements View, Index {
         throws IOException
     {
         long length = 0;
-        _TreeCursor cursor = new _TreeCursor(this, txn);
+        _TreeCursor cursor = newCursor(txn);
         cursor.autoload(autoload);
 
         try {
@@ -730,7 +730,7 @@ class _Tree implements View, Index {
 
     @Override
     public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
-        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.random(lowKey, highKey);
@@ -765,7 +765,7 @@ class _Tree implements View, Index {
             return false;
         }
 
-        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
             cursor.autoload(false);
 
@@ -811,7 +811,7 @@ class _Tree implements View, Index {
      * @return false if should stop
      */
     final boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
-        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.first(); // must start with loaded key
@@ -1003,7 +1003,7 @@ class _Tree implements View, Index {
      * @return false if stopped because database is closed
      */
     final boolean deleteAll() throws IOException {
-        return new _TreeCursor(this, Transaction.BOGUS).deleteAll();
+        return newCursor(Transaction.BOGUS).deleteAll();
     }
 
     @FunctionalInterface
