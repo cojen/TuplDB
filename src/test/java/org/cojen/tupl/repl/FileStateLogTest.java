@@ -18,11 +18,13 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -396,6 +398,134 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void currentTerm() throws Exception {
+        assertEquals(0, mLog.checkCurrentTerm(-1));
+        assertEquals(0, mLog.checkCurrentTerm(0));
+        assertEquals(1, mLog.checkCurrentTerm(1));
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        assertEquals(1, mLog.checkCurrentTerm(0));
+        assertEquals(5, mLog.incrementCurrentTerm(4));
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        assertEquals(5, mLog.checkCurrentTerm(0));
+
+        try {
+            mLog.incrementCurrentTerm(0);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
+    @Test
+    public void recoverState() throws Exception {
+        Random rnd = new Random(7435847);
+
+        long prevTerm = mLog.checkCurrentTerm(0);
+        long term = mLog.incrementCurrentTerm(1);
+        LogWriter writer = mLog.openWriter(prevTerm, term, 0);
+        byte[] msg1 = new byte[1000];
+        rnd.nextBytes(msg1);
+        write(writer, msg1);
+        writer.release();
+
+        prevTerm = mLog.checkCurrentTerm(0);
+        term = mLog.incrementCurrentTerm(1);
+        writer = mLog.openWriter(prevTerm, term, 1000);
+        byte[] msg2 = new byte[2000];
+        rnd.nextBytes(msg2);
+        write(writer, msg2);
+        writer.release();
+
+        // Reopen without sync. All data for second term is gone, but the first term remains.
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(prevTerm, info.mTerm);
+        assertEquals(1000, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        verifyLog(mLog, 0, msg1, -1); // end of term
+
+        term = mLog.incrementCurrentTerm(1);
+        writer = mLog.openWriter(prevTerm, term, 1000);
+        byte[] msg3 = new byte[3500];
+        rnd.nextBytes(msg3);
+        write(writer, msg3);
+        writer.release();
+
+        // Reopen with sync. All data is preserved, but not committed.
+        mLog.sync();
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(term, info.mTerm);
+        assertEquals(4500, info.mHighestIndex);
+        assertEquals(0, info.mCommitIndex);
+
+        // Partially commit and reopen.
+        mLog.commit(4000);
+        mLog.sync();
+        mLog.sync();
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(term, info.mTerm);
+        assertEquals(4500, info.mHighestIndex);
+        assertEquals(4000, info.mCommitIndex);
+
+        // Verify data.
+        verifyLog(mLog, 0, msg1, -1); // end of term
+        verifyLog(mLog, 1000, msg3, 0);
+
+        // Cannot read past commit.
+        class Reader extends Thread {
+            final long mStartIndex;
+            volatile long mTotal;
+
+            Reader(long start) {
+                mStartIndex = start;
+            }
+
+            @Override
+            public void run() {
+                try {
+                    LogReader reader = mLog.openReader(mStartIndex, -1);
+                    byte[] buf = new byte[1000];
+                    while (true) {
+                        int amt = reader.read(buf, 0, buf.length);
+                        if (amt < 0) {
+                            reader = mLog.openReader(reader.index(), -1);
+                        } else {
+                            mTotal += amt;
+                        }
+                    }
+                } catch (InterruptedIOException e) {
+                    // Stop.
+                } catch (Throwable e) {
+                    Utils.uncaught(e);
+                }
+            }
+        }
+
+        Reader reader = TestUtils.startAndWaitUntilBlocked(new Reader(0));
+        assertEquals(4000, reader.mTotal);
+
+        reader.interrupt();
+        reader.join();
+    }
+
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
@@ -404,37 +534,37 @@ public class FileStateLogTest {
         writeTerm(mLog, '1', '4', 4 - 1, 2);
         writeTerm(mLog, '4', '5', 6 - 1, 2);
         writeTerm(mLog, '5', '6', 8 - 1, 3);
-        verifyLog(mLog, 0, "1114455666".getBytes());
+        verifyLog(mLog, 0, "1114455666".getBytes(), 0);
         writeTerm(mLog, '6', '8', 11 - 1, 1);
-        verifyLog(mLog, 0, "11144556668".getBytes());
+        verifyLog(mLog, 0, "11144556668".getBytes(), 0);
 
         StateLog logA = newTempLog();
         writeTerm(logA,  0,  '1', 1 - 1, 3);
         writeTerm(logA, '1', '4', 4 - 1, 2);
         writeTerm(logA, '4', '5', 6 - 1, 2);
         writeTerm(logA, '5', '6', 8 - 1, 2);
-        verifyLog(logA, 0, "111445566".getBytes());
+        verifyLog(logA, 0, "111445566".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logA);
-        verifyLog(logA, 0, "11144556668".getBytes());
+        verifyLog(logA, 0, "11144556668".getBytes(), 0);
 
         StateLog logB = newTempLog();
         writeTerm(logB,  0,  '1', 1 - 1, 3);
         writeTerm(logB, '1', '4', 4 - 1, 1);
-        verifyLog(logB, 0, "1114".getBytes());
+        verifyLog(logB, 0, "1114".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logB);
-        verifyLog(logB, 0, "11144556668".getBytes());
+        verifyLog(logB, 0, "11144556668".getBytes(), 0);
 
         StateLog logC = newTempLog();
         writeTerm(logC,  0,  '1', 1 - 1, 3);
         writeTerm(logC, '1', '4', 4 - 1, 2);
         writeTerm(logC, '4', '5', 6 - 1, 2);
         writeTerm(logC, '5', '6', 8 - 1, 4);
-        verifyLog(logC, 0, "11144556666".getBytes());
+        verifyLog(logC, 0, "11144556666".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logC);
-        verifyLog(logC, 0, "11144556668".getBytes());
+        verifyLog(logC, 0, "11144556668".getBytes(), 0);
 
         StateLog logD = newTempLog();
         writeTerm(logD,  0,  '1', 1 - 1, 3);
@@ -442,27 +572,27 @@ public class FileStateLogTest {
         writeTerm(logD, '4', '5', 6 - 1, 2);
         writeTerm(logD, '5', '6', 8 - 1, 3);
         writeTerm(logD, '6', '7', 11 - 1, 2);
-        verifyLog(logD, 0, "111445566677".getBytes());
+        verifyLog(logD, 0, "111445566677".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logD);
-        verifyLog(logD, 0, "11144556668".getBytes());
+        verifyLog(logD, 0, "11144556668".getBytes(), 0);
 
         StateLog logE = newTempLog();
         writeTerm(logE,  0,  '1', 1 - 1, 3);
         writeTerm(logE, '1', '4', 4 - 1, 4);
-        verifyLog(logE, 0, "1114444".getBytes());
+        verifyLog(logE, 0, "1114444".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logE);
-        verifyLog(logE, 0, "11144556668".getBytes());
+        verifyLog(logE, 0, "11144556668".getBytes(), 0);
 
         StateLog logF = newTempLog();
         writeTerm(logF,  0,  '1', 1 - 1, 3);
         writeTerm(logF, '1', '2', 4 - 1, 3);
         writeTerm(logF, '2', '3', 7 - 1, 5);
-        verifyLog(logF, 0, "11122233333".getBytes());
+        verifyLog(logF, 0, "11122233333".getBytes(), 0);
 
         replicate(mLog, 11 - 1, logF);
-        verifyLog(logF, 0, "11144556668".getBytes());
+        verifyLog(logF, 0, "11144556668".getBytes(), 0);
     }
 
     private static void replicate(StateLog from, long index, StateLog to) throws IOException {
@@ -505,7 +635,9 @@ public class FileStateLogTest {
         }
     }
 
-    private static void verifyLog(StateLog log, int index, byte[] expect) throws IOException {
+    private static void verifyLog(StateLog log, int index, byte[] expect, int finalAmt)
+        throws IOException
+    {
         LogReader reader = log.openReader(index, -1);
 
         byte[] buf = new byte[expect.length];
@@ -527,7 +659,7 @@ public class FileStateLogTest {
 
         TestUtils.fastAssertArrayEquals(expect, buf);
 
-        assertEquals(0, reader.readAny(buf, 0, 1));
+        assertEquals(finalAmt, reader.readAny(buf, 0, 1));
         reader.release();
     }
 

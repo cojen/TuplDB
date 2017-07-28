@@ -221,7 +221,7 @@ final class FileStateLog extends Latch implements StateLog {
         for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
             long term = e.getKey();
             TermLog termLog = FileTermLog.openTerm
-                (mWorker, mBase, prevTerm, term, -1, -1, highestIndex, e.getValue());
+                (mWorker, mBase, prevTerm, term, -1, 0, highestIndex, e.getValue());
             mTermLogs.add(termLog);
             prevTerm = term;
         }
@@ -238,7 +238,7 @@ final class FileStateLog extends Latch implements StateLog {
                     while (true) {
                         termLog.finishTerm(termLog.startIndex());
                         it.remove();
-                        if (it.hasNext()) {
+                        if (!it.hasNext()) {
                             break;
                         }
                         termLog = (TermLog) it.next();
@@ -642,11 +642,18 @@ final class FileStateLog extends Latch implements StateLog {
                     }
                 }
 
-                if (prevTermLog != null) {
+                long commitIndex;
+                if (prevTermLog == null) {
+                    commitIndex = index;
+                } else {
                     prevTermLog.sync();
+
+                    LogInfo info = new LogInfo();
+                    prevTermLog.captureHighest(info);
+                    commitIndex = info.mCommitIndex;
                 }
 
-                termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index);
+                termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, commitIndex);
 
                 mTermLogs.add(termLog);
                 mTermCondition.signalAll();
@@ -738,13 +745,13 @@ final class FileStateLog extends Latch implements StateLog {
             TermLog highestLog = mHighestTermLog;
             if (highestLog != null && highestLog == mTermLogs.last()) {
                 highestLog.captureHighest(mMetadataInfo);
+                highestLog.sync();
             } else {
                 highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
-                if (highestLog == null) {
-                    return;
+                if (highestLog != null) {
+                    highestLog.sync();
                 }
             }
-            highestLog.sync();
         } finally {
             releaseShared();
         }
