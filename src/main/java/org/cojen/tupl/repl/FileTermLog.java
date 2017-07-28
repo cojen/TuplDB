@@ -101,13 +101,14 @@ final class FileTermLog extends Latch implements TermLog {
     /**
      * Create a new term.
      */
-    static TermLog newTerm(Worker worker, File base, long prevTerm, long term, long startIndex)
+    static TermLog newTerm(Worker worker, File base, long prevTerm, long term,
+                           long startIndex, long commitIndex)
         throws IOException
     {
         base = checkBase(base);
 
         FileTermLog termLog = new FileTermLog
-            (worker, base, prevTerm, term, startIndex, startIndex, startIndex, null);
+            (worker, base, prevTerm, term, startIndex, commitIndex, startIndex, null);
 
         return termLog;
     }
@@ -116,7 +117,6 @@ final class FileTermLog extends Latch implements TermLog {
      * Create or open an existing term.
      *
      * @param startIndex pass -1 to discover the start index
-     * @param commitIndex pass -1 to use start index
      * @param segmentFileNames pass null to discover segment files
      */
     static TermLog openTerm(Worker worker, File base, long prevTerm, long term,
@@ -248,7 +248,7 @@ final class FileTermLog extends Latch implements TermLog {
         });
 
         mLogStartIndex = startIndex;
-        mLogCommitIndex = Math.max(startIndex, commitIndex);
+        mLogCommitIndex = commitIndex;
         mLogHighestIndex = highestIndex;
         mLogContigIndex = highestIndex;
         mLogEndIndex = Long.MAX_VALUE;
