@@ -2773,38 +2773,34 @@ class TreeCursor implements CauseCloseable, Cursor {
         ViewUtils.positionCheck(key);
 
         try {
+            final LocalTransaction txn;
             int mode = storeMode();
             if (mode == 0) {
-                final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
-                try {
-                    store(null, leafExclusive(), value);
-                } finally {
-                    locker.unlock();
-                }
+                txn = null;
             } else {
                 LocalDatabase db = mTree.mDatabase;
                 if (mode == 1) {
                     // Always undo.
-                    LocalTransaction txn = db.newAlwaysRedoTransaction();
+                    txn = db.newAlwaysRedoTransaction();
                     try {
                         txn.lockExclusive(mTree.mId, key, keyHash());
                         txn.storeCommit(true, this, value);
+                        return;
                     } catch (Throwable e) {
                         txn.reset();
                         throw e;
                     }
                 } else {
-                    // Never redo.
-                    LocalTransaction txn = db.newNoRedoTransaction();
-                    try {
-                        txn.lockExclusive(mTree.mId, key, keyHash());
-                        store(txn, leafExclusive(), value);
-                        txn.commit();
-                    } catch (Throwable e) {
-                        txn.reset();
-                        throw e;
-                    }
+                    // Never redo, but still acquire the lock.
+                    txn = LocalTransaction.BOGUS;
                 }
+            }
+
+            final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
+            try {
+                store(txn, leafExclusive(), value);
+            } finally {
+                locker.unlock();
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -2872,31 +2868,31 @@ class TreeCursor implements CauseCloseable, Cursor {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
                 int mode = storeMode();
-                if (mode == 0) {
-                    final Locker locker = mTree.lockExclusiveLocal(key, hash);
-                    try {
-                        return doFindAndStore(null, key, value);
-                    } finally {
-                        locker.unlock();
-                    }
-                } else {
+                if (mode != 0) {
                     LocalDatabase db = mTree.mDatabase;
                     if (mode == 1) {
                         // Always undo.
                         txn = db.newAlwaysRedoTransaction();
+                        try {
+                            txn.lockExclusive(mTree.mId, key, hash);
+                            byte[] result = doFindAndStore(txn, key, value);
+                            txn.commit();
+                            return result;
+                        } catch (Throwable e) {
+                            txn.reset();
+                            throw e;
+                        }
                     } else {
-                        // Never redo.
-                        txn = db.newNoRedoTransaction();
+                        // Never redo, but still acquire the lock.
+                        txn = LocalTransaction.BOGUS;
                     }
-                    try {
-                        txn.lockExclusive(mTree.mId, key, hash);
-                        byte[] result = doFindAndStore(txn, key, value);
-                        txn.commit();
-                        return result;
-                    } catch (Throwable e) {
-                        txn.reset();
-                        throw e;
-                    }
+                }
+
+                final Locker locker = mTree.lockExclusiveLocal(key, hash);
+                try {
+                    return doFindAndStore(txn, key, value);
+                } finally {
+                    locker.unlock();
                 }
             } else {
                 if (txn.lockMode() == LockMode.UNSAFE) {
@@ -2964,31 +2960,31 @@ class TreeCursor implements CauseCloseable, Cursor {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
                 int mode = storeMode();
-                if (mode == 0) {
-                    final Locker locker = mTree.lockExclusiveLocal(key, hash);
-                    try {
-                        return doFindAndModify(null, key, oldValue, newValue);
-                    } finally {
-                        locker.unlock();
-                    }
-                } else {
+                if (mode != 0) {
                     LocalDatabase db = mTree.mDatabase;
                     if (mode == 1) {
                         // Always undo.
                         txn = db.newAlwaysRedoTransaction();
+                        try {
+                            txn.lockExclusive(mTree.mId, key, hash);
+                            boolean result = doFindAndModify(txn, key, oldValue, newValue);
+                            txn.commit();
+                            return result;
+                        } catch (Throwable e) {
+                            txn.reset();
+                            throw e;
+                        }
                     } else {
-                        // Never redo.
-                        txn = db.newNoRedoTransaction();
+                        // Never redo, but still acquire the lock.
+                        txn = LocalTransaction.BOGUS;
                     }
-                    try {
-                        txn.lockExclusive(mTree.mId, key, hash);
-                        boolean result = doFindAndModify(txn, key, oldValue, newValue);
-                        txn.commit();
-                        return result;
-                    } catch (Throwable e) {
-                        txn.reset();
-                        throw e;
-                    }
+                }
+
+                final Locker locker = mTree.lockExclusiveLocal(key, hash);
+                try {
+                    return doFindAndModify(txn, key, oldValue, newValue);
+                } finally {
+                    locker.unlock();
                 }
             }
 
@@ -4212,6 +4208,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Checks that leaf is defined and returns it.
+     *
+     * @throws UnpositionedCursorException if unpositioned
      */
     private CursorFrame leaf() {
         CursorFrame leaf = mLeaf;
@@ -4221,6 +4219,8 @@ class TreeCursor implements CauseCloseable, Cursor {
 
     /**
      * Latches and returns leaf frame, which might be split.
+     *
+     * @throws UnpositionedCursorException if unpositioned
      */
     protected final CursorFrame leafExclusive() {
         CursorFrame leaf = leaf();
