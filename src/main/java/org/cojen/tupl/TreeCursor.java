@@ -141,7 +141,7 @@ class TreeCursor implements CauseCloseable, Cursor {
         return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
     }
 
-    protected final int keyHash() {
+    private int keyHash() {
         int hash = mKeyHash;
         if (hash == 0) {
             mKeyHash = hash = LockManager.hash(mTree.mId, mKey);
@@ -2916,7 +2916,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                 }
             }
         } catch (Throwable e) {
-            throw handleException(e, true);
+            throw handleException(e, false); // no reset on safe exception
         }
     }
 
@@ -2942,14 +2942,13 @@ class TreeCursor implements CauseCloseable, Cursor {
         MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
 
     /**
-     * Atomic find and modify operation. Cursor must be in a reset state when this method is
-     * called, and the caller must reset the cursor afterwards.
+     * Atomic modify operation. If a key is passed in to be found, cursor must already be in a
+     * reset state when this method is called, and the caller must reset the cursor afterwards.
      *
-     * @param key must not be null
-     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else update mode
+     * @param key null to use existing key
+     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else actual old value
      */
     final boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
-        mKey = key;
         LocalTransaction txn = mTxn;
 
         try {
@@ -2957,8 +2956,16 @@ class TreeCursor implements CauseCloseable, Cursor {
             // would need to be performed with the node latch held, which is deadlock prone.
 
             if (txn == null) {
-                final int hash = LockManager.hash(mTree.mId, key);
-                mKeyHash = hash;
+                final int hash;
+                if (key == null) {
+                    key = mKey;
+                    ViewUtils.positionCheck(key);
+                    hash = keyHash();
+                } else {
+                    mKey = key;
+                    mKeyHash = hash = LockManager.hash(mTree.mId, key);
+                }
+
                 int mode = storeMode();
                 if (mode != 0) {
                     LocalDatabase db = mTree.mDatabase;
@@ -2992,12 +2999,25 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             LockMode mode = txn.lockMode();
             if (mode == LockMode.UNSAFE) {
-                mKeyHash = 0;
+                if (key == null) {
+                    key = mKey;
+                    ViewUtils.positionCheck(key);
+                } else {
+                    mKey = key;
+                    mKeyHash = 0;
+                }
                 // Indicate that no unlock should be performed.
                 result = LockResult.OWNED_EXCLUSIVE;
             } else {
-                final int hash = LockManager.hash(mTree.mId, key);
-                mKeyHash = hash;
+                final int hash;
+                if (key == null) {
+                    key = mKey;
+                    ViewUtils.positionCheck(key);
+                    hash = keyHash();
+                } else {
+                    mKey = key;
+                    mKeyHash = hash = LockManager.hash(mTree.mId, key);
+                }
                 result = txn.lockExclusive(mTree.mId, key, hash);
                 if (result == LockResult.ACQUIRED && mode.repeatable != 0) {
                     // Downgrade to upgradable when no modification is made, to
@@ -3045,16 +3065,26 @@ class TreeCursor implements CauseCloseable, Cursor {
 
             return false;
         } catch (Throwable e) {
-            throw handleException(e, true);
+            throw handleException(e, false); // no reset on safe exception
         }
     }
 
+    /**
+     * Caller must have acquired the leaf node shared latch, which is always released by this
+     * method.
+     *
+     * @param key non-null to find the key, which should already be locked exclusively
+     */
     private boolean doFindAndModify(LocalTransaction txn,
                                     byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        // Find with no lock because caller must already acquire exclusive lock.
-        find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
+        if (key == null) {
+            leaf().acquireShared();
+        } else {
+            // Find with no lock because caller must already acquire exclusive lock.
+            find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
+        }
 
         check: {
             if (oldValue == MODIFY_INSERT) {
