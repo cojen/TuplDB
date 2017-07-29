@@ -1,5 +1,6 @@
 org.cojen.tupl
 org.cojen.tupl.ext
 org.cojen.tupl.io
+org.cojen.tupl.repl
 org.cojen.tupl.tools
 org.cojen.tupl.util
