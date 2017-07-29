@@ -218,6 +218,7 @@ public interface View {
                 }
                 throw new ViewConstraintException();
             }
+            // NOTE: Not atomic with BOGUS transaction.
             byte[] old = c.value();
             c.store(value);
             return old;
@@ -267,6 +268,7 @@ public interface View {
             if (c.key() == null) {
                 throw new ViewConstraintException();
             }
+            // NOTE: Not atomic with BOGUS transaction.
             if (c.value() == null) {
                 return false;
             }
@@ -299,6 +301,7 @@ public interface View {
             if (c.key() == null) {
                 throw new ViewConstraintException();
             }
+            // NOTE: Not atomic with BOGUS transaction.
             if (Arrays.equals(c.value(), value)) {
                 return false;
             }
@@ -335,6 +338,7 @@ public interface View {
             if (c.key() == null) {
                 throw new ViewConstraintException();
             }
+            // NOTE: Not atomic with BOGUS transaction.
             if (!Arrays.equals(c.value(), oldValue)) {
                 return false;
             }
