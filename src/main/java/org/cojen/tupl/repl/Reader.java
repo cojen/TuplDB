@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 /**
@@ -24,24 +25,35 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface LogReader extends Reader {
+public interface Reader extends Closeable {
     /**
-     * Returns the term at the previous reader index.
+     * Returns the fixed term this reader is accessing.
      */
-    long prevTerm();
+    long term();
 
     /**
-     * Reads whatever log data is available, possibly higher than a commit index, never higher
-     * than a term, and never blocking.
+     * Returns the next log index which can be read from.
+     */
+    long index();
+
+    /**
+     * Blocks until log messages are available, never reading past a commit index or term.
      *
      * @return amount of bytes read, or EOF (-1) if the term end has been reached
-     * @throws IllegalStateException if log data was deleted (index is too low)
+     * @throws IllegalStateException if log was deleted (index is too low)
      */
-    int readAny(byte[] buf, int offset, int length) throws IOException;
+    default int read(byte[] buf) throws IOException {
+        return read(buf, 0, buf.length);
+    }
 
     /**
-     * Indicate that the reader isn't intended to be used again, allowing file handles to be
-     * closed. Reading again will reopen them.
+     * Blocks until log messages are available, never reading past a commit index or term.
+     *
+     * @return amount of bytes read, or EOF (-1) if the term end has been reached
+     * @throws IllegalStateException if log was deleted (index is too low)
      */
-    void release();
+    int read(byte[] buf, int offset, int length) throws IOException;
+
+    @Override
+    void close();
 }

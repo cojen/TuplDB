@@ -25,48 +25,17 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-abstract class LogWriter extends LogInfo {
+abstract class LogWriter extends LogInfo implements Writer {
     /**
      * Returns the term at the previous writer index.
      */
     abstract long prevTerm();
 
     /**
-     * Returns the fixed term being written to.
-     */
-    abstract long term();
-
-    /**
-     * Returns the next log index which will be written to.
-     */
-    abstract long index();
-
-    /**
-     * Write data to any index in the log, in no particular order. The write can be
-     * silently rejected due data duplication. Implementation is also permitted to truncate
-     * conflicting data, unless doing so would force the commit index to retreat.
-     *
-     * @param highestIndex highest index (exclusive) which can become the commit index
-     * @return amount of bytes written, which is less than the given length only if the
-     * term end has been reached
-     */
-    abstract int write(byte[] data, int offset, int length, long highestIndex)
-        throws IOException;
-
-    /**
-     * Blocks until the commit index reaches the given index.
-     *
-     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-     * @return current commit index, or -1 if timed out or if term finished before the index
-     * could be reached
-     */
-    abstract long waitForCommit(long index, long nanosTimeout) throws IOException;
-
-    /**
      * Invokes the given task when the commit index reaches the requested index. The current
      * commit index is passed to the task, or -1 if the term ended before the index could be
-     * reached. If the commit index is high enough when this method is called, then the current
-     * thread invokes the task.
+     * reached, or MIN_VALUE if closed. If the commit index is high enough when this method is
+     * called, then the current thread invokes the task.
      */
     abstract void uponCommit(Delayed task);
 

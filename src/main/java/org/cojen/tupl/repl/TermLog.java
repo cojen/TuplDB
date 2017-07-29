@@ -68,15 +68,15 @@ interface TermLog extends LKey<TermLog>, Closeable {
      *
      * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
      * @return current commit index, or -1 if timed out or if term finished before the index
-     * could be reached
+     * could be reached, or MIN_VALUE if closed
      */
     long waitForCommit(long index, long nanosTimeout) throws IOException;
 
     /**
      * Invokes the given task when the commit index reaches the requested index. The current
      * commit index is passed to the task, or -1 if the term ended before the index could be
-     * reached. If the commit index is high enough when this method is called, then the current
-     * thread invokes the task.
+     * reached, or MIN_VALUE if closed. If the commit index is high enough when this method is
+     * called, then the current thread invokes the task.
      */
     void uponCommit(Delayed task);
 

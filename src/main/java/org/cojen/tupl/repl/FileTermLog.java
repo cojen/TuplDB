@@ -365,6 +365,10 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long waitForCommit(long index, long nanosTimeout) throws IOException {
+        return waitForCommit(index, nanosTimeout, this);
+    }
+
+    long waitForCommit(long index, long nanosTimeout, Object waiter) throws IOException {
         boolean exclusive = false;
         acquireShared();
         while (true) {
@@ -377,6 +381,10 @@ final class FileTermLog extends Latch implements TermLog {
                 release(exclusive);
                 return -1;
             }
+            if (mLogClosed) {
+                release(exclusive);
+                return Long.MIN_VALUE;
+            }
             if (exclusive || tryUpgrade()) {
                 break;
             }
@@ -385,18 +393,19 @@ final class FileTermLog extends Latch implements TermLog {
             exclusive = true;
         }
 
-        DelayedWaiter waiter;
+        DelayedWaiter dwaiter;
         try {
-            waiter = cLocalDelayed.get();
-            if (waiter == null) {
-                waiter = new DelayedWaiter(index, Thread.currentThread());
-                cLocalDelayed.set(waiter);
+            dwaiter = cLocalDelayed.get();
+            if (dwaiter == null) {
+                dwaiter = new DelayedWaiter(index, Thread.currentThread(), waiter);
+                cLocalDelayed.set(dwaiter);
             } else {
-                waiter.mCounter = index;
-                waiter.mActualIndex = 0;
+                dwaiter.mCounter = index;
+                dwaiter.mWaiter = waiter;
+                dwaiter.mActualIndex = 0;
             }
 
-            mCommitTasks.add(waiter);
+            mCommitTasks.add(dwaiter);
         } finally {
             releaseExclusive();
         }
@@ -412,8 +421,11 @@ final class FileTermLog extends Latch implements TermLog {
             if (Thread.interrupted()) {
                 throw new InterruptedIOException();
             }
-            long commitIndex = waiter.mActualIndex;
+            long commitIndex = dwaiter.mActualIndex;
             if (commitIndex < 0) {
+                if (commitIndex == Long.MIN_VALUE) {
+                    throw new IOException("Closed");
+                }
                 return commitIndex;
             }
             if (commitIndex >= index) {
@@ -427,19 +439,38 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
+    void signal(Object waiter) {
+        acquireShared();
+        try {
+            for (Delayed delayed : mCommitTasks) {
+                if (delayed instanceof DelayedWaiter) {
+                    DelayedWaiter dwaiter = (DelayedWaiter) delayed;
+                    if (dwaiter.mWaiter == waiter) {
+                        dwaiter.run(-1);
+                    }
+                }
+            }
+        } finally {
+            releaseShared();
+        }
+    }
+
     static class DelayedWaiter extends Delayed {
-        private final Thread mWaiter;
+        final Thread mThread;
+        Object mWaiter;
         volatile long mActualIndex;
 
-        DelayedWaiter(long index, Thread waiter) {
+        DelayedWaiter(long index, Thread thread, Object waiter) {
             super(index);
+            mThread = thread;
             mWaiter = waiter;
         }
 
         @Override
         protected void doRun(long index) {
+            mWaiter = null;
             mActualIndex = index;
-            LockSupport.unpark(mWaiter);
+            LockSupport.unpark(mThread);
         }
     }
 
@@ -691,6 +722,12 @@ final class FileTermLog extends Latch implements TermLog {
                         segment.releaseExclusive();
                     }
                 }
+
+                for (Delayed delayed : mCommitTasks) {
+                    delayed.run(Long.MIN_VALUE);
+                }
+
+                mCommitTasks.clear();
             } finally {
                 releaseExclusive();
             }
@@ -1022,6 +1059,8 @@ final class FileTermLog extends Latch implements TermLog {
         long mWriterHighestIndex;
         Segment mWriterSegment;
 
+        private volatile boolean mClosed;
+
         private SegmentWriter mCacheNext;
         private SegmentWriter mCacheMoreUsed;
         private SegmentWriter mCacheLessUsed;
@@ -1037,17 +1076,19 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        long term() {
+        public long term() {
             return mLogTerm;
         }
 
         @Override
-        long index() {
+        public long index() {
             return mWriterIndex;
         }
 
         @Override
-        int write(byte[] data, int offset, int length, long highestIndex) throws IOException {
+        public int write(byte[] data, int offset, int length, long highestIndex)
+            throws IOException
+        {
             long index = mWriterIndex;
             Segment segment = mWriterSegment;
 
@@ -1084,9 +1125,20 @@ final class FileTermLog extends Latch implements TermLog {
             return total;
         }
 
+        private Segment segmentForWriting(long index) throws IOException {
+            if (mClosed) {
+                throw new IOException("Closed");
+            }
+            return FileTermLog.this.segmentForWriting(index);
+        }
+
         @Override
-        long waitForCommit(long index, long nanosTimeout) throws IOException {
-            return FileTermLog.this.waitForCommit(index, nanosTimeout);
+        public long waitForCommit(long index, long nanosTimeout) throws IOException {
+            long commitIndex = FileTermLog.this.waitForCommit(index, nanosTimeout, this);
+            if (commitIndex < 0 && (commitIndex == Long.MIN_VALUE || mClosed)) {
+                throw new IOException("Closed");
+            }
+            return commitIndex;
         }
 
         @Override
@@ -1097,6 +1149,13 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         void release() {
             FileTermLog.this.release(this);
+        }
+
+        @Override
+        public void close() {
+            mClosed = true;
+            release();
+            signal(this);
         }
 
         @Override
@@ -1150,6 +1209,8 @@ final class FileTermLog extends Latch implements TermLog {
         private long mReaderContigIndex;
         Segment mReaderSegment;
 
+        private volatile boolean mClosed;
+
         private SegmentReader mCacheNext;
         private SegmentReader mCacheMoreUsed;
         private SegmentReader mCacheLessUsed;
@@ -1181,8 +1242,11 @@ final class FileTermLog extends Latch implements TermLog {
             long avail = commitIndex - index;
 
             if (avail <= 0) {
-                commitIndex = waitForCommit(index + 1, -1);
-                if (commitIndex == -1) {
+                commitIndex = waitForCommit(index + 1, -1, this);
+                if (commitIndex < 0) {
+                    if (commitIndex == Long.MIN_VALUE || mClosed) {
+                        throw new IOException("Closed");
+                    }
                     return -1;
                 }
                 mReaderCommitIndex = commitIndex;
@@ -1250,9 +1314,23 @@ final class FileTermLog extends Latch implements TermLog {
             return amt;
         }
 
+        private Segment segmentForReading(long index) throws IOException {
+            if (mClosed) {
+                throw new IOException("Closed");
+            }
+            return FileTermLog.this.segmentForReading(index);
+        }
+
         @Override
         public void release() {
             FileTermLog.this.release(this);
+        }
+
+        @Override
+        public void close() {
+            mClosed = true;
+            release();
+            signal(this);
         }
 
         @Override
