@@ -248,8 +248,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 } finally {
                     locker.scopeUnlockAll();
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -509,8 +507,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -550,8 +546,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -593,8 +587,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -643,8 +635,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         };
 
@@ -999,16 +989,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             throw new DatabaseException("Custom transaction handler is not installed");
         }
         return handler;
-    }
-
-    private void notifyStore(Index ix, byte[] key, byte[] value) {
-        if (ix != null && !Tree.isInternal(ix.getId())) {
-            try {
-                mManager.notifyStore(ix, key, value);
-            } catch (Throwable e) {
-                uncaught(e);
-            }
-        }
     }
 
     private void fail(Throwable e) {
