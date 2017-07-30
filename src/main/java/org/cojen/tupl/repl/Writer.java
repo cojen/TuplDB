@@ -26,7 +26,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 public interface Writer extends Closeable {
-    /*
+    /**
      * Returns the fixed term being written to.
      */
     long term();
