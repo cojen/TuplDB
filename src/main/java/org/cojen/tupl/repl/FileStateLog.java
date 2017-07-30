@@ -58,7 +58,7 @@ final class FileStateLog extends Latch implements StateLog {
     /*
       File naming:
 
-      <base>                       (metadata file)
+      <base>.md                    (metadata file)
       <base>.<term>.<start index>  (log files)
 
       Metadata file stores little-endian fields at offset 0 and 4096, alternating.
@@ -123,7 +123,7 @@ final class FileStateLog extends Latch implements StateLog {
         mTermCondition = new LatchCondition();
 
         mMetadataFile = FileChannel.open
-            (base.toPath(),
+            (new File(base.getPath() + ".md").toPath(),
              StandardOpenOption.READ,
              StandardOpenOption.WRITE,
              StandardOpenOption.CREATE,
