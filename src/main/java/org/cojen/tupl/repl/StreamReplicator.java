@@ -32,13 +32,13 @@ import java.util.Set;
  *
  * @author Brian S O'Neill
  */
-public interface Replicator extends Closeable {
+public interface StreamReplicator extends Closeable {
     /**
      * Open a replicator instance, creating it if necessary.
      *
      * @throws IllegalArgumentException if misconfigured
      */
-    public static Replicator open(ReplicatorConfig config) throws IOException {
+    public static StreamReplicator open(ReplicatorConfig config) throws IOException {
         if (config == null) {
             throw new IllegalArgumentException("No configuration");
         }
