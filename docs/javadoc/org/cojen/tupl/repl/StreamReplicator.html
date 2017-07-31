@@ -49,7 +49,7 @@ var activeTableTab = "activeTableTab";
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/StreamReplicator.html" target="_top">Frames</a></li>
@@ -73,7 +73,7 @@ var activeTableTab = "activeTableTab";
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
@@ -112,6 +112,29 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<ul class="blockList">
+<li class="blockList"><a name="nested.class.summary">
+<!--   -->
+</a>
+<h3>Nested Class Summary</h3>
+<table class="memberSummary" border="0" cellpadding="3" cellspacing="0" summary="Nested Class Summary table, listing nested classes, and an explanation">
+<caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Interface and Description</th>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></span></code>&nbsp;</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></span></code>&nbsp;</td>
+</tr>
+</table>
+</li>
+</ul>
 <!-- ========== METHOD SUMMARY =========== -->
 <ul class="blockList">
 <li class="blockList"><a name="method.summary">
@@ -125,21 +148,21 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></code></td>
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-long-">newReader</a></span>(long&nbsp;index,
          long&nbsp;nanosTimeout)</code>
 <div class="block">Returns a new reader which accesses data starting from the given index.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></code></td>
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter--">newWriter</a></span>()</code>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></code></td>
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter-long-">newWriter</a></span>(long&nbsp;index)</code>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
@@ -195,9 +218,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockList">
 <li class="blockList">
 <h4>newReader</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a>&nbsp;newReader(long&nbsp;index,
-                 long&nbsp;nanosTimeout)
-          throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader(long&nbsp;index,
+                                  long&nbsp;nanosTimeout)
+                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new reader which accesses data starting from the given index. The reader
  returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
  new writer to determine if the local member has become the leader.
@@ -222,8 +245,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockList">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a>&nbsp;newWriter()
-          throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter()
+                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -244,8 +267,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockListLast">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a>&nbsp;newWriter(long&nbsp;index)
-          throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter(long&nbsp;index)
+                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -292,7 +315,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/StreamReplicator.html" target="_top">Frames</a></li>
@@ -316,7 +339,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>

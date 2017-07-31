@@ -138,4 +138,90 @@ public interface StreamReplicator extends Closeable {
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
     Writer newWriter(long index) throws IOException;
+
+    public static interface Reader extends Closeable {
+        /**
+         * Returns the fixed term this reader is accessing.
+         */
+        long term();
+
+        /**
+         * Returns the next log index which can be read from.
+         */
+        long index();
+
+        /**
+         * Blocks until log messages are available, never reading past a commit index or term.
+         *
+         * @return amount of bytes read, or EOF (-1) if the term end has been reached
+         * @throws IllegalStateException if log was deleted (index is too low)
+         */
+        default int read(byte[] buf) throws IOException {
+            return read(buf, 0, buf.length);
+        }
+
+        /**
+         * Blocks until log messages are available, never reading past a commit index or term.
+         *
+         * @return amount of bytes read, or EOF (-1) if the term end has been reached
+         * @throws IllegalStateException if log was deleted (index is too low)
+         */
+        int read(byte[] buf, int offset, int length) throws IOException;
+
+        @Override
+        void close();
+    }
+
+    public static interface Writer extends Closeable {
+        /**
+         * Returns the fixed term being written to.
+         */
+        long term();
+
+        /**
+         * Returns the next log index which will be written to.
+         */
+        long index();
+
+        /**
+         * Write complete messages to the log.
+         *
+         * @return amount of bytes written, which is less than the message length only if the term
+         * end has been reached
+         */
+        default int write(byte[] messages) throws IOException {
+            return write(messages, 0, messages.length);
+        }
+
+        /**
+         * Write complete messages to the log.
+         *
+         * @return amount of bytes written, which is less than the given length only if the
+         * term end has been reached
+         */
+        default int write(byte[] messages, int offset, int length) throws IOException {
+            return write(messages, offset, length, index() + length);
+        }
+
+        /**
+         * Write complete or partial messages to the log.
+         *
+         * @param highestIndex highest index (exclusive) which can become the commit index
+         * @return amount of bytes written, which is less than the given length only if the
+         * term end has been reached
+         */
+        int write(byte[] messages, int offset, int length, long highestIndex) throws IOException;
+
+        /**
+         * Blocks until the commit index reaches the given index.
+         *
+         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @return current commit index, or -1 if timed out or if term finished before the index
+         * could be reached, or MIN_VALUE if closed
+         */
+        long waitForCommit(long index, long nanosTimeout) throws IOException;
+
+        @Override
+        void close();
+    }
 }

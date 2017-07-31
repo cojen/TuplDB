@@ -387,9 +387,9 @@
 <dd>
 <div class="block">Closes a resource, which may throw a new exception.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Reader.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>&nbsp;</dd>
@@ -1353,11 +1353,11 @@
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Reader.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Returns the next log index which can be read from.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Returns the next log index which will be written to.</div>
 </dd>
@@ -2142,16 +2142,14 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#read-long-long-int-int-">read(long, long, int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Reader.html#read-byte:A-">read(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read-byte:A-">read(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Reader.html#read-byte:A-int-int-">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read-byte:A-int-int-">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
 </dd>
-<dt><a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#readFully-java.io.InputStream-byte:A-int-int-">readFully(InputStream, byte[], int, int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Fully reads the required length of bytes, throwing an EOFException if the end of stream
@@ -2475,6 +2473,10 @@
 </dd>
 <dt><a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">StripedPageArray</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block"><a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which stripes pages in a <a
@@ -2549,11 +2551,11 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Worker.Task.html#Task--">Task()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Reader.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Reader.html" title="interface in org.cojen.tupl.repl">Reader</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Returns the fixed term this reader is accessing.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Returns the fixed term being written to.</div>
 </dd>
@@ -3019,7 +3021,7 @@ the order they are declared.</div>
 </a>
 <h2 class="title">W</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#waitForCommit-long-long-">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#waitForCommit-long-long-">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </dd>
@@ -3054,15 +3056,15 @@ the order they are declared.</div>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#write-long-long-int-int-">write(long, long, int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#write-byte:A-">write(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-">write(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Write complete messages to the log.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#write-byte:A-int-int-">write(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-">write(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Write complete messages to the log.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Writer.html#write-byte:A-int-int-long-">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl">Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-long-">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Write complete or partial messages to the log.</div>
 </dd>
@@ -3106,8 +3108,6 @@ the order they are declared.</div>
 <dd>
 <div class="block">Returns an object which allows the leader to write changes.</div>
 </dd>
-<dt><a href="org/cojen/tupl/repl/Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#writeTo-java.io.OutputStream-">writeTo(OutputStream)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Writes out snapshot data, and then closes this object.</div>
