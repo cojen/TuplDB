@@ -35,7 +35,7 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class Controller extends Latch implements Replicator, Channel {
+final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int ROLE_FOLLOWER = 0, ROLE_CANDIDATE = 1, ROLE_LEADER = 2;
     private static final int ELECTION_DELAY_LOW_MILLIS = 200, ELECTION_DELAY_HIGH_MILLIS = 300;
     private static final int QUERY_TERMS_RATE_MILLIS = 1;

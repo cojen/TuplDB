@@ -1883,7 +1883,7 @@
 <div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
  using the fixed instance <a href="org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#newReader-long-long-">newReader(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newReader-long-long-">newReader(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Returns a new reader which accesses data starting from the given index.</div>
 </dd>
@@ -1917,12 +1917,12 @@
 <dd>
 <div class="block">Returns a new updater over this view.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#newWriter-long-">newWriter(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newWriter-long-">newWriter(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
@@ -1997,7 +1997,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#open--">open()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
 </dd>
@@ -2255,11 +2255,9 @@
 </dd>
 <dt><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Writer</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">ReplicatorConfig</span></a> - Class in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
-<div class="block">Configuration options used when <a href="org/cojen/tupl/repl/Replicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-"><code>opening</code></a> a replicator.</div>
+<div class="block">Configuration options used when <a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-"><code>opening</code></a> a replicator.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#ReplicatorConfig--">ReplicatorConfig()</a></span> - Constructor for class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>&nbsp;</dd>
@@ -2475,6 +2473,8 @@
 <dd>
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">StripedPageArray</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block"><a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which stripes pages in a <a

@@ -31,7 +31,7 @@ import java.util.Set;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Configuration options used when {@link Replicator#open opening} a replicator.
+ * Configuration options used when {@link StreamReplicator#open opening} a replicator.
  *
  * @author Brian S O'Neill
  */
