@@ -37,8 +37,7 @@ public interface Writer extends Closeable {
     long index();
 
     /**
-     * Write complete messages to the log. Implementation is permitted reject or truncate
-     * conflicting messages, unless doing so would force the commit index to retreat.
+     * Write complete messages to the log.
      *
      * @return amount of bytes written, which is less than the message length only if the term
      * end has been reached
@@ -48,8 +47,7 @@ public interface Writer extends Closeable {
     }
 
     /**
-     * Write complete messages to the log. Implementation is permitted reject or truncate
-     * conflicting messages, unless doing so would force the commit index to retreat.
+     * Write complete messages to the log.
      *
      * @return amount of bytes written, which is less than the given length only if the
      * term end has been reached
@@ -59,8 +57,7 @@ public interface Writer extends Closeable {
     }
 
     /**
-     * Write complete or partial messages to the log. Implementation is permitted reject or
-     * truncate conflicting messages, unless doing so would force the commit index to retreat.
+     * Write complete or partial messages to the log.
      *
      * @param highestIndex highest index (exclusive) which can become the commit index
      * @return amount of bytes written, which is less than the given length only if the
