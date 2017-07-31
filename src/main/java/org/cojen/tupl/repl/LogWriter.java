@@ -25,7 +25,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-abstract class LogWriter extends LogInfo implements Writer {
+abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
     /**
      * Returns the term at the previous writer index.
      */

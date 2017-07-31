@@ -24,7 +24,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface LogReader extends Reader {
+interface LogReader extends StreamReplicator.Reader {
     /**
      * Returns the term at the previous reader index.
      */
