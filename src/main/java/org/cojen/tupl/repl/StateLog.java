@@ -37,6 +37,8 @@ interface StateLog extends Closeable {
      * is less than the given commit index, the actual commit index doesn't advance until
      * the highest index catches up.
      */
+    // FIXME: Provide some sort of "token" object which is replaced when membership changes. When
+    // this happens, caller must get the current token and re-evaluate the commit decision.
     void commit(long commitIndex);
 
     /**

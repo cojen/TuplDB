@@ -213,8 +213,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <h4>write</h4>
 <pre>default&nbsp;int&nbsp;write(byte[]&nbsp;messages)
            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write complete messages to the log. Implementation is permitted reject or truncate
- conflicting messages, unless doing so would force the commit index to retreat.</div>
+<div class="block">Write complete messages to the log.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the message length only if the term
@@ -234,8 +233,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
                   int&nbsp;offset,
                   int&nbsp;length)
            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write complete messages to the log. Implementation is permitted reject or truncate
- conflicting messages, unless doing so would force the commit index to retreat.</div>
+<div class="block">Write complete messages to the log.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the given length only if the
@@ -256,8 +254,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
           int&nbsp;length,
           long&nbsp;highestIndex)
    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write complete or partial messages to the log. Implementation is permitted reject or
- truncate conflicting messages, unless doing so would force the commit index to retreat.</div>
+<div class="block">Write complete or partial messages to the log.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>highestIndex</code> - highest index (exclusive) which can become the commit index</dd>

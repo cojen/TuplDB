@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.net.SocketAddress;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -36,7 +35,7 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class Controller extends Latch implements Channel {
+final class Controller extends Latch implements Replicator, Channel {
     private static final int ROLE_FOLLOWER = 0, ROLE_CANDIDATE = 1, ROLE_LEADER = 2;
     private static final int ELECTION_DELAY_LOW_MILLIS = 200, ELECTION_DELAY_HIGH_MILLIS = 300;
     private static final int QUERY_TERMS_RATE_MILLIS = 1;
@@ -57,7 +56,8 @@ final class Controller extends Latch implements Channel {
     private int mGrantsRemaining;
     private int mElectionValidated;
 
-    private LogWriter mLeaderWriter;
+    private LogWriter mLeaderLogWriter;
+    private ReplWriter mLeaderReplWriter;
 
     // Index used to check for missing data.
     private long mMissingContigIndex = Long.MAX_VALUE; // unknown initially
@@ -66,67 +66,34 @@ final class Controller extends Latch implements Channel {
     // Limit the rate at which missing terms are queried.
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
-    // Unused after starting.
-    private Map<Long, Peer> mPeerMap;
-
-    Controller(StateLog log, long auth) {
+    Controller(StateLog log, long groupId) {
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(mScheduler, auth);
-        mPeerMap = new HashMap<>();
+        mChanMan = new ChannelManager(mScheduler, groupId);
     }
 
-    public void addPeer(long memberId, SocketAddress addr) {
+    void start(Map<Long, SocketAddress> members, long localMemberId) throws IOException {
         acquireExclusive();
         try {
-            Peer peer = new Peer(memberId, addr);
-            if (mChanMan.getLocalMemberId() != 0) {
-                throw new IllegalStateException();
-            }
-
-            Long key = memberId;
-            if (mPeerMap.containsKey(key)) {
-                throw new IllegalArgumentException("Duplicate peer: " + memberId);
-            }
-
-            mPeerMap.put(key, peer);
-        } finally {
-            releaseExclusive();
-        }
-    }
-
-    public void start(long localMemberId, SocketAddress addr) throws IOException {
-        acquireExclusive();
-        try {
-            if (localMemberId == 0) {
-                throw new IllegalArgumentException();
-            }
-            if (mChanMan.getLocalMemberId() != 0) {
-                throw new IllegalStateException();
-            }
-
-            if (mPeerMap.containsKey(localMemberId)) {
-                throw new IllegalStateException
-                    ("Local member is also a peer: " + localMemberId);
-            }
-
-            Peer[] peers = new Peer[mPeerMap.size()];
+            Peer[] peers = new Peer[members.size() - 1];
             Channel[] peerChannels = new Channel[peers.length];
 
             mChanMan.setLocalMemberId(localMemberId);
-            mChanMan.start(addr, this);
+            mChanMan.start(members.get(localMemberId), this);
 
             int i = 0;
-            for (Peer peer : mPeerMap.values()) {
-                peers[i] = peer;
-                peerChannels[i] = mChanMan.connect(peer, this);
-                i++;
+            for (Map.Entry<Long, SocketAddress> e : members.entrySet()) {
+                long memberId = e.getKey();
+                if (memberId != localMemberId) {
+                    Peer peer = new Peer(memberId, e.getValue());
+                    peers[i] = peer;
+                    peerChannels[i] = mChanMan.connect(peer, this);
+                    i++;
+                }
             }
 
             mPeers = peers;
             mPeerChannels = peerChannels;
-
-            mPeerMap = null;
         } finally {
             releaseExclusive();
         }
@@ -135,86 +102,134 @@ final class Controller extends Latch implements Channel {
         scheduleMissingDataTask();
     }
 
-    // FIXME: testing
-    public boolean writeData(byte[] data) throws IOException {
-        Channel[] peerChannels;
-        LogWriter writer;
-
-        acquireShared();
-        try {
-            peerChannels = mPeerChannels;
-            writer = mLeaderWriter;
-            if (peerChannels.length == 0 && writer != null) {
-                // Only a group of one, so commit changes immediately.
-                long highestIndex = writer.index() + data.length;
-                writer.write(data, 0, data.length, highestIndex);
-                mStateLog.commit(highestIndex);
-                return true;
-            }
-        } finally {
-            releaseShared();
-        }
-
-        if (writer == null) {
-            // Not leader anymore.
-            return false;
-        }
-
-        long prevTerm = writer.prevTerm();
-        long term = writer.term();
-        long index = writer.index();
-
-        writer.write(data, 0, data.length, index + data.length);
-
-        mStateLog.captureHighest(writer);
-        long highestIndex = writer.mHighestIndex;
-        long commitIndex = writer.mCommitIndex;
-
-        for (Channel peerChan : peerChannels) {
-            peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, data);
-        }
-
-        return true;
+    @Override
+    public Reader newReader(long index, long nanosTimeout) throws IOException {
+        return mStateLog.openReader(index, nanosTimeout);
     }
 
-    // FIXME: testing
-    public void readData(java.io.OutputStream out) throws IOException {
-        long index = 0;
-        byte[] buf = new byte[100];
-        java.util.zip.Checksum checksum = org.cojen.tupl.io.CRC32C.newInstance();
+    @Override
+    public Writer newWriter() throws IOException {
+        return createWriter(-1);
+    }
 
-        final int report = 1_000_000; // 10_000_000;
-        int accum = 0;
+    @Override
+    public Writer newWriter(long index) throws IOException {
+        if (index < 0) {
+            throw new IllegalArgumentException();
+        }
+        return createWriter(index);
+    }
 
-        while (true) {
-            LogReader reader = mStateLog.openReader(index, -1);
+    private Writer createWriter(long index) throws IOException {
+        acquireExclusive();
+        try {
+            if (mLeaderReplWriter != null) {
+                throw new IllegalStateException("Writer already exists");
+            }
+            if (mLeaderLogWriter == null || (index >= 0 && index != mLeaderLogWriter.index())) {
+                return null;
+            }
+            ReplWriter writer = new ReplWriter(mLeaderLogWriter, mPeerChannels);
+            mLeaderReplWriter = writer;
+            return writer;
+        } finally {
+            releaseExclusive();
+        }
+    }
 
-            while (true) {
-                // FIXME: NullPointerException (just testing, so who cares?)
-                int amt = reader.read(buf, 0, buf.length);
-                if (amt < 0) {
-                    index = reader.index();
-                    reader.release();
-                    break;
+    void writerClosed(ReplWriter writer) {
+        acquireExclusive();
+        if (mLeaderReplWriter == writer) {
+            mLeaderReplWriter = null;
+        }
+        releaseExclusive();
+    }
+
+    class ReplWriter implements Writer {
+        private final LogWriter mWriter;
+        private volatile Channel[] mPeerChannels;
+
+        ReplWriter(LogWriter writer, Channel[] peerChannels) {
+            mWriter = writer;
+            mPeerChannels = peerChannels;
+        }
+
+        @Override
+        public long term() {
+            return mWriter.term();
+        }
+
+        @Override
+        public long index() {
+            return mWriter.index();
+        }
+
+        @Override
+        public int write(byte[] data, int offset, int length, long highestIndex)
+            throws IOException
+        {
+            Channel[] peerChannels = mPeerChannels;
+
+            if (peerChannels == null) {
+                return -1;
+            }
+
+            LogWriter writer = mWriter;
+
+            long prevTerm = writer.prevTerm();
+            long term = writer.term();
+            long index = writer.index();
+
+            int amt = writer.write(data, offset, length, highestIndex);
+
+            if (amt <= 0) {
+                if (length > 0) {
+                    mPeerChannels = null;
                 }
-                //System.out.write(buf, 0, amt);
+                return amt;
+            }
 
-                //out.write(buf, 0, amt);
-                //out.flush();
+            mStateLog.captureHighest(writer);
+            highestIndex = writer.mHighestIndex;
+            if (peerChannels.length == 0) {
+                // Only a group of one, so commit changes immediately.
+                mStateLog.commit(highestIndex);
+            } else {
+                long commitIndex = writer.mCommitIndex;
 
-                int rem = report - accum;
-                if (rem >= amt) {
-                    checksum.update(buf, 0, amt);
-                    accum += amt;
-                } else {
-                    checksum.update(buf, 0, rem);
-                    System.out.println("\t\t\t\tchecksum: " + checksum.getValue());
-                    amt -= rem;
-                    checksum.update(buf, rem, amt);
-                    accum = amt;
+                // FIXME: stream it
+                data = Arrays.copyOfRange(data, offset, offset + length);
+
+                for (Channel peerChan : peerChannels) {
+                    peerChan.writeData
+                        (null, prevTerm, term, index, highestIndex, commitIndex, data);
                 }
             }
+
+            return amt;
         }
+
+        @Override
+        public long waitForCommit(long index, long nanosTimeout) throws IOException {
+            return mWriter.waitForCommit(index, nanosTimeout);
+        }
+
+        @Override
+        public void close() {
+            mWriter.close();
+            writerClosed(this);
+        }
+
+        void deactivate() {
+            mPeerChannels = null;
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        mChanMan.stop();
+        mScheduler.shutdown();
+        mStateLog.close();
     }
 
     private void scheduleMissingDataTask() {
@@ -398,7 +413,7 @@ final class Controller extends Latch implements Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void affirmLeadership() {
         Channel[] peerChannels = mPeerChannels;
-        LogWriter writer = mLeaderWriter;
+        LogWriter writer = mLeaderLogWriter;
         releaseExclusive();
 
         if (writer == null) {
@@ -430,10 +445,16 @@ final class Controller extends Latch implements Channel {
             mLocalRole = ROLE_FOLLOWER;
             mVotedFor = 0;
             mGrantsRemaining = 0;
-            if (mLeaderWriter != null) {
-                mLeaderWriter.release();
-                mLeaderWriter = null;
+
+            if (mLeaderLogWriter != null) {
+                mLeaderLogWriter.release();
+                mLeaderLogWriter = null;
             }
+
+            if (mLeaderReplWriter != null) {
+                mLeaderReplWriter.deactivate();
+            }
+
             if (originalRole == ROLE_LEADER && mSkipMissingDataTask) {
                 mSkipMissingDataTask = false;
                 scheduleMissingDataTask();
@@ -551,7 +572,7 @@ final class Controller extends Latch implements Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
-            mLeaderWriter = mStateLog.openWriter(0, term, index);
+            mLeaderLogWriter = mStateLog.openWriter(0, term, index);
             mLocalRole = ROLE_LEADER;
             System.out.println("leader: " + mChanMan.getLocalMemberId()
                                + ", " + mCurrentTerm);
@@ -770,8 +791,7 @@ final class Controller extends Latch implements Channel {
 
         acquireExclusive();
         try {
-            writer = mLeaderWriter;
-            if (mLocalRole != ROLE_LEADER || writer == null) {
+            if (mLocalRole != ROLE_LEADER) {
                 System.out.println("not leader, writeDataReply: " + from + ", " + term + ", "
                                    + highestIndex);
                 return true;

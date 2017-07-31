@@ -47,7 +47,7 @@ final class ChannelManager {
       New connection header structure: (little endian fields)
 
       0:  Magic number (long)
-      8:  Auth code (long)
+      8:  Group id (long)
       16: Member id (long)       -- 0: anonymous
       24: Connection type (int)  -- 0: replication RPC; FIXME: use a bit to enable CRCs
       28: CRC32C (int)
@@ -74,7 +74,7 @@ final class ChannelManager {
         OP_WRITE_DATA   = 8, OP_WRITE_DATA_REPLY   = 9;
 
     private final Scheduler mScheduler;
-    private final long mAuth;
+    private final long mGroupId;
     private final Map<Long, Peer> mPeerMap;
 
     private ServerSocket mServerSocket;
@@ -82,12 +82,12 @@ final class ChannelManager {
 
     private long mLocalMemberId;
     
-    ChannelManager(Scheduler scheduler, long auth) {
+    ChannelManager(Scheduler scheduler, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
         mScheduler = scheduler;
-        mAuth = auth;
+        mGroupId = groupId;
         mPeerMap = new HashMap<>();
     }
 
@@ -359,7 +359,7 @@ final class ChannelManager {
                 break check;
             }
 
-            if (decodeLongLE(header, 8) != mAuth) {
+            if (decodeLongLE(header, 8) != mGroupId) {
                 break check;
             }
 
@@ -411,7 +411,7 @@ final class ChannelManager {
 
                 byte[] header = new byte[INIT_HEADER_SIZE];
                 encodeLongLE(header, 0, MAGIC_NUMBER);
-                encodeLongLE(header, 8, mAuth);
+                encodeLongLE(header, 8, mGroupId);
                 encodeLongLE(header, 16, getLocalMemberId());
 
                 encodeHeaderCrc(header);
