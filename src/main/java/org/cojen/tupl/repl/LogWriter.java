@@ -19,6 +19,8 @@ package org.cojen.tupl.repl;
 
 import java.io.IOException;
 
+import java.util.function.LongConsumer;
+
 /**
  * For writing data into the log. The inherited info fields only exist for convenience, and are
  * not used directly by the writer.
@@ -30,6 +32,16 @@ abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
      * Returns the term at the previous writer index.
      */
     abstract long prevTerm();
+
+    @Override
+    public void uponCommit(long index, LongConsumer task) {
+        uponCommit(new Delayed(index) {
+            @Override
+            protected void doRun(long counter) {
+                task.accept(counter);
+            }
+        });
+    }
 
     /**
      * Invokes the given task when the commit index reaches the requested index. The current

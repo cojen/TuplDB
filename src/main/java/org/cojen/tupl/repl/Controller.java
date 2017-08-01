@@ -26,6 +26,8 @@ import java.util.Map;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.function.LongConsumer;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.io.Utils.*;
@@ -212,6 +214,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         @Override
         public long waitForCommit(long index, long nanosTimeout) throws IOException {
             return mWriter.waitForCommit(index, nanosTimeout);
+        }
+
+        @Override
+        public void uponCommit(long index, LongConsumer task) {
+            mWriter.uponCommit(index, task);
         }
 
         @Override
