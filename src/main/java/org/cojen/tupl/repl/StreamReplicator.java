@@ -184,6 +184,12 @@ public interface StreamReplicator extends Closeable {
         long index();
 
         /**
+         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
+         * index is always permitted to retreat, but never lower than the commit index.
+         */
+        long endIndex();
+
+        /**
          * Write complete messages to the log.
          *
          * @return amount of bytes written, which is less than the message length only if the term
