@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.function.LongConsumer;
+
 /**
  * 
  *
@@ -218,6 +220,14 @@ public interface StreamReplicator extends Closeable {
          * reached, or -2 if timed out, or MIN_VALUE if closed
          */
         long waitForCommit(long index, long nanosTimeout) throws IOException;
+
+        /**
+         * Invokes the given task when the commit index reaches the requested index. The current
+         * commit index is passed to the task, or -1 if the term ended before the index could be
+         * reached, or MIN_VALUE if closed. If the commit index is high enough when this method is
+         * called, then the current thread invokes the task.
+         */
+        void uponCommit(long index, LongConsumer task);
 
         @Override
         void close();
