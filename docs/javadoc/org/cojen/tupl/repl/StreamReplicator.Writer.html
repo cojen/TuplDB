@@ -306,10 +306,10 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <h4>uponCommit</h4>
 <pre>void&nbsp;uponCommit(long&nbsp;index,
                 <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</pre>
-<div class="block">Invokes the given task when the commit index reaches the requested index. The current
- commit index is passed to the task, or -1 if the term ended before the index could be
- reached, or MIN_VALUE if closed. If the commit index is high enough when this method is
- called, then the current thread invokes the task.</div>
+<div class="block">Invokes the given task when the commit index reaches the requested index. The
+ current commit index is passed to the task, or -1 if the term ended before the index
+ could be reached, or MIN_VALUE if closed. If the task can be run when this method is
+ called, then the current thread invokes it.</div>
 </li>
 </ul>
 <a name="close--">

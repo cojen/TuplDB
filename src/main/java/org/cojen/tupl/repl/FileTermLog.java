@@ -483,20 +483,14 @@ final class FileTermLog extends Latch implements TermLog {
 
         acquireShared();
 
-        long commitIndex = actualCommitIndex();
-        if (commitIndex >= task.mCounter) {
-            releaseShared();
-            task.run(commitIndex);
+        if (tryUponCommit(task, false)) {
             return;
         }
 
         if (!tryUpgrade()) {
             releaseShared();
             acquireExclusive();
-            commitIndex = actualCommitIndex();
-            if (commitIndex >= task.mCounter) {
-                releaseExclusive();
-                task.run(commitIndex);
+            if (tryUponCommit(task, true)) {
                 return;
             }
         }
@@ -506,6 +500,26 @@ final class FileTermLog extends Latch implements TermLog {
         } finally {
             releaseExclusive();
         }
+    }
+
+    private boolean tryUponCommit(Delayed task, boolean exclusive) {
+        long commitIndex = actualCommitIndex();
+        long waitFor = task.mCounter;
+
+        if (commitIndex < waitFor) {
+            if (mLogClosed) {
+                commitIndex = Long.MIN_VALUE;
+            } else if (waitFor > mLogEndIndex) {
+                commitIndex = WAIT_TERM_END;
+            } else {
+                return false;
+            }
+        }
+
+        release(exclusive);
+        task.run(commitIndex);
+
+        return true;
     }
 
     @Override

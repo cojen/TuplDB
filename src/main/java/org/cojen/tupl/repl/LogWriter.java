@@ -46,8 +46,8 @@ abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
     /**
      * Invokes the given task when the commit index reaches the requested index. The current
      * commit index is passed to the task, or -1 if the term ended before the index could be
-     * reached, or MIN_VALUE if closed. If the commit index is high enough when this method is
-     * called, then the current thread invokes the task.
+     * reached, or MIN_VALUE if closed. If the task can be run when this method is called, then
+     * the current thread invokes it.
      */
     abstract void uponCommit(Delayed task);
 
