@@ -1101,6 +1101,11 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
+        public long endIndex() {
+            return FileTermLog.this.endIndex();
+        }
+
+        @Override
         public int write(byte[] data, int offset, int length, long highestIndex)
             throws IOException
         {

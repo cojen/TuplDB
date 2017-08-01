@@ -167,6 +167,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
+        public long endIndex() {
+            return mWriter.endIndex();
+        }
+
+        @Override
         public int write(byte[] data, int offset, int length, long highestIndex)
             throws IOException
         {
