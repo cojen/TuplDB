@@ -105,12 +105,10 @@ public interface StreamReplicator extends Closeable {
      * <p><b>Note: Reader instances are not expected to be thread-safe.</b>
      *
      * @param index index to start reading from, known to have been committed
-     * @param nanosTimeout maximum time to wait for a term to be created at the given index;
-     * pass -1 for infinite timeout
      * @return reader or null if timed out
      * @throws IllegalStateException if index is lower than the start index
      */
-    Reader newReader(long index, long nanosTimeout) throws IOException;
+    Reader newReader(long index) throws IOException;
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local

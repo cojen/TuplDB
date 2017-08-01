@@ -149,8 +149,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-long-">newReader</a></span>(long&nbsp;index,
-         long&nbsp;nanosTimeout)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-">newReader</a></span>(long&nbsp;index)</code>
 <div class="block">Returns a new reader which accesses data starting from the given index.</div>
 </td>
 </tr>
@@ -212,14 +211,13 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </dl>
 </li>
 </ul>
-<a name="newReader-long-long-">
+<a name="newReader-long-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newReader</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader(long&nbsp;index,
-                                  long&nbsp;nanosTimeout)
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader(long&nbsp;index)
                            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new reader which accesses data starting from the given index. The reader
  returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
@@ -229,8 +227,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - index to start reading from, known to have been committed</dd>
-<dd><code>nanosTimeout</code> - maximum time to wait for a term to be created at the given index;
- pass -1 for infinite timeout</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>reader or null if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>

@@ -46,7 +46,6 @@ import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 
 /**
@@ -98,7 +97,6 @@ final class FileStateLog extends Latch implements StateLog {
 
     // Terms are keyed only by their start index.
     private final ConcurrentSkipListSet<LKey<TermLog>> mTermLogs;
-    private final LatchCondition mTermCondition;
 
     private final FileChannel mMetadataFile;
     private final MappedByteBuffer mMetadataBuffer;
@@ -120,7 +118,6 @@ final class FileStateLog extends Latch implements StateLog {
         mWorker = Worker.make(10, 15, TimeUnit.SECONDS, null);
 
         mTermLogs = new ConcurrentSkipListSet<>();
-        mTermCondition = new LatchCondition();
 
         mMetadataFile = FileChannel.open
             (new File(base.getPath() + ".md").toPath(),
@@ -647,7 +644,6 @@ final class FileStateLog extends Latch implements StateLog {
                 termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, commitIndex);
 
                 mTermLogs.add(termLog);
-                mTermCondition.signalAll();
             }
 
             return termLog;
@@ -657,18 +653,23 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public LogReader openReader(long index, long nanosTimeout) throws IOException {
+    public LogReader openReader(long index) throws IOException {
         LKey<TermLog> key = new LKey.Finder<>(index);
 
         boolean exclusive = false;
         acquireShared();
         try {
-            LogReader reader;
-            openReader: {
+            TermLog termLog;
+            findTerm: {
                 while (true) {
-                    reader = tryOpenReader(key);
-                    if (reader != null || nanosTimeout == 0) {
-                        break openReader;
+                    termLog = (TermLog) mTermLogs.floor(key); // findLe
+                    if (termLog != null) {
+                        break findTerm;
+                    }
+                    if (!mTermLogs.isEmpty()) {
+                        throw new IllegalStateException
+                            ("Index is lower than start index: " + key.key() + " < " +
+                             ((TermLog) mTermLogs.first()).startIndex());
                     }
                     if (exclusive) {
                         break;
@@ -682,44 +683,16 @@ final class FileStateLog extends Latch implements StateLog {
                     exclusive = true;
                 }
 
-                long nanosEnd = nanosTimeout > 0 ? System.nanoTime() : 0;
-
-                while (true) {
-                    int result = mTermCondition.await(this, nanosTimeout, nanosEnd);
-                    if (result < 0) {
-                        throw new InterruptedIOException();
-                    }
-                    reader = tryOpenReader(key);
-                    if (reader != null) {
-                        break openReader;
-                    }
-                    if (result == 0 ||
-                        (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
-                    {
-                        reader = null;
-                        break openReader;
-                    }
-                }
+                // Create a primordial term.
+                termLog = FileTermLog.newTerm(mWorker, mBase, 0, 0, 0, 0);
+                mTermLogs.add(termLog);
             }
 
-            return reader;
+            return termLog.openReader(index);
         } finally {
             release(exclusive);
         }
-    }
 
-    // Caller must hold any latch.
-    private LogReader tryOpenReader(LKey<TermLog> key) throws IOException {
-        TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
-        if (termLog != null) {
-            return termLog.openReader(key.key());
-        }
-        if (mTermLogs.isEmpty()) {
-            return null;
-        }
-        throw new IllegalStateException
-            ("Index is lower than start index: " + key.key() + " < " +
-             ((TermLog) mTermLogs.first()).startIndex());
     }
 
     @Override

@@ -237,48 +237,24 @@ public class FileStateLogTest {
         assertEquals(0, result.mRanges.size());
     }
 
-    @Test
-    public void waitForTerm() throws Exception {
-        // Opening a reader might require a wait.
 
-        LogReader reader = mLog.openReader(0, 0);
-        assertNull(reader);
-        reader = mLog.openReader(0, 10);
-        assertNull(reader);
+    @Test
+    public void primordialTerm() throws Exception {
+        LogReader reader = mLog.openReader(0);
+
+        byte[] buf = new byte[10];
+        assertEquals(0, reader.readAny(buf, 0, buf.length));
 
         new Thread(() -> {
             try {
                 TestUtils.sleep(500);
-                mLog.defineTerm(0, 2, 50);
+                mLog.defineTerm(0, 2, 0);
             } catch (Exception e) {
                 Utils.uncaught(e);
             }
         }).start();
 
-        reader = mLog.openReader(100, -1);
-        assertEquals(2, reader.term());
-        assertEquals(100, reader.index());
-
-        // Missing term at index 0 makes reading impossible.
-        try {
-            mLog.openReader(0, -1);
-            fail();
-        } catch (IllegalStateException e) {
-            // Expected.
-        }
-
-        // No wait because a term exists.
-        reader = mLog.openReader(60, -1);
-        assertTrue(reader != null);
-        assertEquals(2, reader.term());
-        assertEquals(60, reader.index());
-
-        mLog.defineTerm(1, 2, 1000);
-
-        reader = mLog.openReader(1100, -1);
-        assertTrue(reader != null);
-        assertEquals(2, reader.term());
-        assertEquals(1100, reader.index());
+        assertEquals(-1, reader.read(buf, 0, buf.length));
     }
 
     @Test
@@ -509,12 +485,12 @@ public class FileStateLogTest {
         @Override
         public void run() {
             try {
-                LogReader reader = mLog.openReader(mStartIndex, -1);
+                LogReader reader = mLog.openReader(mStartIndex);
                 byte[] buf = new byte[1000];
                 while (true) {
                     int amt = reader.read(buf, 0, buf.length);
                     if (amt < 0) {
-                        reader = mLog.openReader(reader.index(), -1);
+                        reader = mLog.openReader(reader.index());
                     } else {
                         mTotal += amt;
                     }
@@ -587,7 +563,7 @@ public class FileStateLogTest {
         rnd = new Random(seed);
         byte[] buf2 = new byte[buf.length];
 
-        LogReader r = mLog.openReader(0, -1);
+        LogReader r = mLog.openReader(0);
         for (int i=0; i<10_000; i++) {
             rnd.nextBytes(buf);
             readFully(r, buf2);
@@ -596,7 +572,7 @@ public class FileStateLogTest {
 
         assertEquals(-1, r.read(buf2, 0, 1)); // end of term
 
-        r = mLog.openReader(r.index(), -1);
+        r = mLog.openReader(r.index());
         for (int i=0; i<5_000; i++) {
             rnd.nextBytes(buf);
             readFully(r, buf2);
@@ -694,7 +670,7 @@ public class FileStateLogTest {
         LogWriter writer;
 
         while (true) {
-            reader = from.openReader(index, -1);
+            reader = from.openReader(index);
             writer = to.openWriter(reader.prevTerm(), reader.term(), index);
             if (writer != null) {
                 break;
@@ -713,7 +689,7 @@ public class FileStateLogTest {
                 if (amt == 0) {
                     break;
                 }
-                reader = from.openReader(index, -1);
+                reader = from.openReader(index);
                 writer = to.openWriter(reader.prevTerm(), reader.term(), index);
             } else {
                 write(writer, buf, 0, amt);
@@ -725,7 +701,7 @@ public class FileStateLogTest {
     private static void verifyLog(StateLog log, int index, byte[] expect, int finalAmt)
         throws IOException
     {
-        LogReader reader = log.openReader(index, -1);
+        LogReader reader = log.openReader(index);
 
         byte[] buf = new byte[expect.length];
         int offset = 0;
@@ -737,7 +713,7 @@ public class FileStateLogTest {
                 if (amt == 0) {
                     fail("nothing read");
                 }
-                reader = log.openReader(index, -1);
+                reader = log.openReader(index);
             } else {
                 index += amt;
                 offset += amt;
