@@ -58,6 +58,10 @@ final class FileTermLog extends Latch implements TermLog {
     private static final int MAX_CACHED_WRITERS = 10;
     private static final int MAX_CACHED_READERS = 10;
 
+    private static final int EOF = -1;
+    private static final int WAIT_TERM_END = EOF;
+    private static final int WAIT_TIMEOUT = -2;
+
     private static final ThreadLocal<DelayedWaiter> cLocalDelayed = new ThreadLocal<>();
 
     private final Worker mWorker;
@@ -379,7 +383,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
             if (index > mLogEndIndex) {
                 release(exclusive);
-                return -1;
+                return WAIT_TERM_END;
             }
             if (mLogClosed) {
                 release(exclusive);
@@ -423,9 +427,6 @@ final class FileTermLog extends Latch implements TermLog {
             }
             long commitIndex = dwaiter.mActualIndex;
             if (commitIndex < 0) {
-                if (commitIndex == Long.MIN_VALUE) {
-                    throw new IOException("Closed");
-                }
                 return commitIndex;
             }
             if (commitIndex >= index) {
@@ -434,19 +435,19 @@ final class FileTermLog extends Latch implements TermLog {
             if (nanosTimeout == 0
                 || (nanosTimeout > 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
             {
-                return -1;
+                return WAIT_TIMEOUT;
             }
         }
     }
 
-    void signal(Object waiter) {
+    void signalClosed(Object waiter) {
         acquireShared();
         try {
             for (Delayed delayed : mCommitTasks) {
                 if (delayed instanceof DelayedWaiter) {
                     DelayedWaiter dwaiter = (DelayedWaiter) delayed;
                     if (dwaiter.mWaiter == waiter) {
-                        dwaiter.run(-1);
+                        dwaiter.run(Long.MIN_VALUE);
                     }
                 }
             }
@@ -558,7 +559,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             mCommitTasks.removeIf(task -> {
                 if (task.mCounter > endIndex) {
-                    task.run(-1);
+                    task.run(WAIT_TERM_END);
                     return true;
                 }
                 return false;
@@ -1136,7 +1137,7 @@ final class FileTermLog extends Latch implements TermLog {
         public long waitForCommit(long index, long nanosTimeout) throws IOException {
             long commitIndex = FileTermLog.this.waitForCommit(index, nanosTimeout, this);
             if (commitIndex < 0 && (commitIndex == Long.MIN_VALUE || mClosed)) {
-                throw new IOException("Closed");
+                return Long.MIN_VALUE;
             }
             return commitIndex;
         }
@@ -1155,7 +1156,7 @@ final class FileTermLog extends Latch implements TermLog {
         public void close() {
             mClosed = true;
             release();
-            signal(this);
+            signalClosed(this);
         }
 
         @Override
@@ -1247,7 +1248,7 @@ final class FileTermLog extends Latch implements TermLog {
                     if (commitIndex == Long.MIN_VALUE || mClosed) {
                         throw new IOException("Closed");
                     }
-                    return -1;
+                    return EOF;
                 }
                 mReaderCommitIndex = commitIndex;
                 avail = commitIndex - index;
@@ -1272,7 +1273,7 @@ final class FileTermLog extends Latch implements TermLog {
                 avail = contigIndex - index;
 
                 if (avail <= 0) {
-                    return contigIndex == endIndex ? -1 : 0;
+                    return contigIndex == endIndex ? EOF : 0;
                 }
             }
 
@@ -1288,7 +1289,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
                 segment = segmentForReading(index);
                 if (segment == null) {
-                    return -1;
+                    return EOF;
                 }
                 mReaderSegment = segment;
                 mReaderPrevTerm = term();
@@ -1304,7 +1305,7 @@ final class FileTermLog extends Latch implements TermLog {
                 unreferenced(segment);
                 segment = segmentForReading(index);
                 if (segment == null) {
-                    return -1;
+                    return EOF;
                 }
                 mReaderSegment = segment;
                 amt = segment.read(index, buf, offset, length);
@@ -1330,7 +1331,7 @@ final class FileTermLog extends Latch implements TermLog {
         public void close() {
             mClosed = true;
             release();
-            signal(this);
+            signalClosed(this);
         }
 
         @Override
