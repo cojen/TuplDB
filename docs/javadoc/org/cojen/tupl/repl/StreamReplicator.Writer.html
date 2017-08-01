@@ -284,8 +284,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>current commit index, or -1 if timed out or if term finished before the index
- could be reached, or MIN_VALUE if closed</dd>
+<dd>current commit index, or -1 if term finished before the index could be
+ reached, or -2 if timed out, or MIN_VALUE if closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
