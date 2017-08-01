@@ -103,8 +103,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Reader newReader(long index, long nanosTimeout) throws IOException {
-        return mStateLog.openReader(index, nanosTimeout);
+    public Reader newReader(long index) throws IOException {
+        return mStateLog.openReader(index);
     }
 
     @Override
@@ -614,10 +614,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         try {
-            LogReader reader = mStateLog.openReader(startIndex, 0);
-            if (reader == null) {
-                return true;
-            }
+            LogReader reader = mStateLog.openReader(startIndex);
 
             try {
                 long remaining = endIndex - startIndex;
@@ -634,10 +631,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         if (amt < 0) {
                             // Move to next term.
                             reader.release();
-                            reader = mStateLog.openReader(startIndex, 0);
-                            if (reader != null) {
-                                continue;
-                            }
+                            reader = mStateLog.openReader(startIndex);
                         }
                         break;
                     }
