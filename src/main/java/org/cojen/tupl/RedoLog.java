@@ -271,7 +271,7 @@ final class RedoLog extends RedoWriter {
             oldChannel = mChannel;
 
             if (oldOut != null) {
-                context.doRedoTimestamp(this, RedoOps.OP_END_FILE);
+                context.doRedoTimestamp(this, RedoOps.OP_END_FILE, DurabilityMode.NO_FLUSH);
                 context.doFlush();
                 doFlush();
             }
@@ -290,7 +290,7 @@ final class RedoLog extends RedoWriter {
             // RedoLogDecoder always starts with an initial transaction id of 0.
             mLastTxnId = 0;
 
-            context.doRedoTimestamp(this, RedoOps.OP_TIMESTAMP);
+            context.doRedoTimestamp(this, RedoOps.OP_TIMESTAMP, DurabilityMode.NO_FLUSH);
             context.doRedoReset(this);
 
             context.doFlush();
