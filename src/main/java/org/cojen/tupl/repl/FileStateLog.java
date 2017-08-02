@@ -252,7 +252,10 @@ final class FileStateLog extends Latch implements StateLog {
                     break;
                 }
 
-                termLog.finishTerm(next.startIndex());
+                if (next.term() <= highestTerm) {
+                    termLog.finishTerm(next.startIndex());
+                }
+
                 termLog = next;
             }
         }
