@@ -707,6 +707,10 @@ final class FileStateLog extends Latch implements StateLog {
 
     // Caller must be synchronized on mMetadataInfo.
     private void doSync() throws IOException {
+        if (mClosed) {
+            return;
+        }
+
         acquireShared();
         try {
             TermLog highestLog = mHighestTermLog;
@@ -752,22 +756,24 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void close() throws IOException {
-        acquireExclusive();
-        try {
-            if (mClosed) {
-                return;
+        synchronized (mMetadataInfo) {
+            acquireExclusive();
+            try {
+                if (mClosed) {
+                    return;
+                }
+
+                mClosed = true;
+
+                mMetadataFile.close();
+                Utils.delete(mMetadataBuffer);
+
+                for (Object key : mTermLogs) {
+                    ((TermLog) key).close();
+                }
+            } finally {
+                releaseExclusive();
             }
-
-            mClosed = true;
-
-            mMetadataFile.close();
-            Utils.delete(mMetadataBuffer);
-
-            for (Object key : mTermLogs) {
-                ((TermLog) key).close();
-            }
-        } finally {
-            releaseExclusive();
         }
     }
 }
