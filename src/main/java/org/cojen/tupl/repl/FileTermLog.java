@@ -964,8 +964,10 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    void release(SegmentWriter writer) {
-        writer = mWriterCache.add(writer);
+    void release(SegmentWriter writer, boolean recycle) {
+        if (recycle) {
+            writer = mWriterCache.add(writer);
+        }
 
         if (writer != null) {
             Segment segment = writer.mWriterSegment;
@@ -976,8 +978,10 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    void release(SegmentReader reader) {
-        reader = mReaderCache.add(reader);
+    void release(SegmentReader reader, boolean recycle) {
+        if (recycle) {
+            reader = mReaderCache.add(reader);
+        }
 
         if (reader != null) {
             Segment segment = reader.mReaderSegment;
@@ -1168,13 +1172,13 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         void release() {
-            FileTermLog.this.release(this);
+            FileTermLog.this.release(this, true);
         }
 
         @Override
         public void close() {
             mClosed = true;
-            release();
+            FileTermLog.this.release(this, false);
             signalClosed(this);
         }
 
@@ -1346,13 +1350,13 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public void release() {
-            FileTermLog.this.release(this);
+            FileTermLog.this.release(this, true);
         }
 
         @Override
         public void close() {
             mClosed = true;
-            release();
+            FileTermLog.this.release(this, false);
             signalClosed(this);
         }
 
