@@ -80,15 +80,12 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             return -1;
         }
         while (true) {
-            System.out.println("reader: " + reader);
             int amt = reader.read(b, off, len);
-            System.out.println("amt: " + amt);
             if (amt >= 0) {
                 return amt;
             }
             StreamReplicator.Reader nextReader = mRepl.newReader(reader.index(), false);
             if (nextReader == null) {
-                System.out.println("no next reader");
                 return -1;
             }
             reader.close();
