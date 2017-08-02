@@ -1262,6 +1262,9 @@ final class FileTermLog extends Latch implements TermLog {
             long avail = commitIndex - index;
 
             if (avail <= 0) {
+                if (length == 0) {
+                    return 0;
+                }
                 commitIndex = waitForCommit(index + 1, -1, this);
                 if (commitIndex < 0) {
                     if (commitIndex == Long.MIN_VALUE || mClosed) {
