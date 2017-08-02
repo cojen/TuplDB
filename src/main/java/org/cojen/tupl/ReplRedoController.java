@@ -250,12 +250,11 @@ final class ReplRedoController extends ReplRedoWriter {
                 context.doRedoReset(redo);
 
                 // Record leader transition epoch.
-                context.doRedoTimestamp(redo, RedoOps.OP_TIMESTAMP);
+                context.doRedoTimestamp(redo, RedoOps.OP_TIMESTAMP, DurabilityMode.NO_FLUSH);
 
-                // Don't trust timestamp alone to help detect divergent logs.
-                context.doRedoNopRandom(redo);
-
-                context.doFlush();
+                // Don't trust timestamp alone to help detect divergent logs. Use NO_SYNC mode
+                // to flush everything out, but no need to wait for confirmation.
+                context.doRedoNopRandom(redo, DurabilityMode.NO_SYNC);
             } finally {
                 context.releaseRedoLatch();
             }
