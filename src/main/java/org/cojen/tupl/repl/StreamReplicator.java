@@ -104,13 +104,18 @@ public interface StreamReplicator extends Closeable {
      * returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
      * new writer to determine if the local member has become the leader.
      *
+     * <p>When passing true for the follow parameter, a reader is always provided at the
+     * requested index. When passing false for the follow parameter, null is returned if the
+     * current member is the leader for the given index.
+     *
      * <p><b>Note: Reader instances are not expected to be thread-safe.</b>
      *
      * @param index index to start reading from, known to have been committed
-     * @return reader or null if timed out
+     * @param follow pass true to obtain an active reader, even if local member is the leader
+     * @return reader or possibly null when follow is false
      * @throws IllegalStateException if index is lower than the start index
      */
-    Reader newReader(long index) throws IOException;
+    Reader newReader(long index, boolean follow) throws IOException;
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local
@@ -139,17 +144,33 @@ public interface StreamReplicator extends Closeable {
      */
     Writer newWriter(long index) throws IOException;
 
-    public static interface Reader extends Closeable {
+    public static interface Accessor extends Closeable {
         /**
-         * Returns the fixed term this reader is accessing.
+         * Returns the fixed term being accessed.
          */
         long term();
 
         /**
-         * Returns the next log index which can be read from.
+         * Returns the fixed index at the start of the term.
+         */
+        long termStartIndex();
+
+        /**
+         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
+         * index is always permitted to retreat, but never lower than the commit index.
+         */
+        long termEndIndex();
+
+        /**
+         * Returns the next log index which will be accessed.
          */
         long index();
 
+        @Override
+        void close();
+    }
+
+    public static interface Reader extends Accessor {
         /**
          * Blocks until log messages are available, never reading past a commit index or term.
          *
@@ -167,28 +188,9 @@ public interface StreamReplicator extends Closeable {
          * @throws IllegalStateException if log was deleted (index is too low)
          */
         int read(byte[] buf, int offset, int length) throws IOException;
-
-        @Override
-        void close();
     }
 
-    public static interface Writer extends Closeable {
-        /**
-         * Returns the fixed term being written to.
-         */
-        long term();
-
-        /**
-         * Returns the next log index which will be written to.
-         */
-        long index();
-
-        /**
-         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
-         * index is always permitted to retreat, but never lower than the commit index.
-         */
-        long endIndex();
-
+    public static interface Writer extends Accessor {
         /**
          * Write complete messages to the log.
          *
@@ -234,8 +236,5 @@ public interface StreamReplicator extends Closeable {
          * called, then the current thread invokes it.
          */
         void uponCommit(long index, LongConsumer task);
-
-        @Override
-        void close();
     }
 }

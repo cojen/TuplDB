@@ -105,8 +105,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Reader newReader(long index) throws IOException {
-        return mStateLog.openReader(index);
+    public Reader newReader(long index, boolean follow) throws IOException {
+        if (follow) {
+            return mStateLog.openReader(index);
+        }
+
+        acquireShared();
+        try {
+            Reader reader;
+            if (mLeaderLogWriter != null
+                && index >= mLeaderLogWriter.termStartIndex()
+                && index < mLeaderLogWriter.termEndIndex())
+            {
+                reader = null;
+            } else {
+                reader = mStateLog.openReader(index);
+            }
+            return reader;
+        } finally {
+            releaseShared();
+        }
     }
 
     @Override
@@ -162,13 +180,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public long index() {
-            return mWriter.index();
+        public long termStartIndex() {
+            return mWriter.termStartIndex();
         }
 
         @Override
-        public long endIndex() {
-            return mWriter.endIndex();
+        public long termEndIndex() {
+            return mWriter.termEndIndex();
+        }
+
+        @Override
+        public long index() {
+            return mWriter.index();
         }
 
         @Override

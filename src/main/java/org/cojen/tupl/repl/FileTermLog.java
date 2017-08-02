@@ -1100,13 +1100,18 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public long index() {
-            return mWriterIndex;
+        public long termStartIndex() {
+            return FileTermLog.this.startIndex();
         }
 
         @Override
-        public long endIndex() {
+        public long termEndIndex() {
             return FileTermLog.this.endIndex();
+        }
+
+        @Override
+        public long index() {
+            return mWriterIndex;
         }
 
         @Override
@@ -1252,6 +1257,16 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         public long term() {
             return mLogTerm;
+        }
+
+        @Override
+        public long termStartIndex() {
+            return FileTermLog.this.startIndex();
+        }
+
+        @Override
+        public long termEndIndex() {
+            return FileTermLog.this.endIndex();
         }
 
         @Override
