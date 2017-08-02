@@ -428,7 +428,8 @@ public class FileStateLogTest {
         assertEquals(1000, info.mHighestIndex);
         assertEquals(0, info.mCommitIndex);
 
-        verifyLog(mLog, 0, msg1, -1); // end of term
+        // Last term must always be opened without an end index.
+        verifyLog(mLog, 0, msg1, 0);
 
         term = mLog.incrementCurrentTerm(1);
         writer = mLog.openWriter(prevTerm, term, 1000);
