@@ -777,7 +777,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     LogInfo info = new LogInfo();
                     mStateLog.captureHighest(info);
                     System.out.println(info + ", " + highestIndex);
-                    if (highestIndex > info.mCommitIndex) {
+                    if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
                         System.out.println("call queryTerms: " + info + ", " + index);
                         System.out.println("was writeData: " + from + ", " + prevTerm + ", " +
                                            term + ", " +
