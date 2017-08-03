@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.net.SocketAddress;
@@ -105,7 +106,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Reader newReader(long index, boolean follow) throws IOException {
+    public Reader newReader(long index, boolean follow) {
         if (follow) {
             return mStateLog.openReader(index);
         }
@@ -128,19 +129,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Writer newWriter() throws IOException {
+    public Writer newWriter() {
         return createWriter(-1);
     }
 
     @Override
-    public Writer newWriter(long index) throws IOException {
+    public Writer newWriter(long index) {
         if (index < 0) {
             throw new IllegalArgumentException();
         }
         return createWriter(index);
     }
 
-    private Writer createWriter(long index) throws IOException {
+    private Writer createWriter(long index) {
         acquireExclusive();
         try {
             if (mLeaderReplWriter != null) {
@@ -240,7 +241,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public long waitForCommit(long index, long nanosTimeout) throws IOException {
+        public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
             return mWriter.waitForCommit(index, nanosTimeout);
         }
 

@@ -25,6 +25,8 @@ import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.EventListener;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * 
  *
@@ -95,16 +97,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void flip() {
-        try {
-            doFlip();
-        } catch (IOException e) {
-            // FIXME
-            e.printStackTrace();
-            System.exit(1);
-        }
-    }
-
-    public void doFlip() throws IOException {
         if (mStreamReader != null) {
             doFlip(mStreamReader.index());
             return;
@@ -121,11 +113,14 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             }
 
             long pos;
-            try {
-                System.out.println("flip wait: " + end);
-                pos = writer.waitForCommit(end, -1);
-            } catch (InterruptedIOException e) {
-                throw new ConfirmationInterruptedException();
+            while (true) {
+                try {
+                    pos = writer.waitForCommit(end, -1);
+                    break;
+                } catch (InterruptedIOException e) {
+                    // Ignore and keep trying.
+                    Thread.yield();
+                }
             }
 
             if (pos == end) {
@@ -133,15 +128,21 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 return;
             }
 
-            evaluateConfirmFailure(pos, -1);
+            if (pos != -1) {
+                String msg;
+                if (pos == Long.MIN_VALUE) {
+                    msg = "Closed";
+                } else {
+                    msg = "Unexpected result: " + pos;
+                }
+                throw new IllegalStateException(msg);
+            }
 
             // Term ended even lower, so try again.
         }
     }
 
-    private void doFlip(long pos) throws IOException {
-        System.out.println("doFlip: " + pos);
-
+    private void doFlip(long pos) {
         if (pos == Long.MAX_VALUE) {
             // Don't flip from active term.
             return;
@@ -160,13 +161,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         while (true) {
             StreamReplicator.Reader reader = mRepl.newReader(pos, false);
             if (reader != null) {
-                System.out.println("now reader: " + reader);
                 mStreamReader = reader;
                 return;
             }
             StreamReplicator.Writer writer = mRepl.newWriter(pos);
             if (writer != null) {
-                System.out.println("now writer: " + writer);
                 mDbWriter = new DbWriter(writer);
                 return;
             }
@@ -251,13 +250,19 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             } catch (InterruptedIOException e) {
                 throw new ConfirmationInterruptedException();
             }
-
             if (pos >= commitPos) {
                 return true;
-            } 
-
-            evaluateConfirmFailure(pos, nanosTimeout);
-            return false;
+            }
+            if (pos == -1) {
+                return false;
+            }
+            if (pos == Long.MIN_VALUE) {
+                throw new ConfirmationFailureException("Closed");
+            }
+            if (pos == -2) {
+                throw new ConfirmationTimeoutException(nanosTimeout);
+            }
+            throw new ConfirmationFailureException("Unexpected result: " + pos);
         }
     }
 }

@@ -18,6 +18,7 @@
 package org.cojen.tupl.repl;
 
 import java.io.Closeable;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 /**
@@ -70,7 +71,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * @return current commit index, or -1 if term finished before the index could be reached,
      * or -2 if timed out, or MIN_VALUE if closed
      */
-    long waitForCommit(long index, long nanosTimeout) throws IOException;
+    long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
 
     /**
      * Invokes the given task when the commit index reaches the requested index. The current
@@ -104,13 +105,13 @@ interface TermLog extends LKey<TermLog>, Closeable {
      *
      * @param index any index in the term
      */
-    LogWriter openWriter(long index) throws IOException;
+    LogWriter openWriter(long index);
 
     /**
      * Returns a new or existing reader which accesses data starting from the given index. The
      * reader returns EOF whenever the end of this term is reached.
      */
-    LogReader openReader(long index) throws IOException;
+    LogReader openReader(long index);
 
     /**
      * Durably persist all data up to the highest index.
