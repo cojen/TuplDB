@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.net.SocketAddress;
@@ -115,7 +116,7 @@ public interface StreamReplicator extends Closeable {
      * @return reader or possibly null when follow is false
      * @throws IllegalStateException if index is lower than the start index
      */
-    Reader newReader(long index, boolean follow) throws IOException;
+    Reader newReader(long index, boolean follow);
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local
@@ -127,7 +128,7 @@ public interface StreamReplicator extends Closeable {
      * @return writer or null if not the leader
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
-    Writer newWriter() throws IOException;
+    Writer newWriter();
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local
@@ -142,7 +143,7 @@ public interface StreamReplicator extends Closeable {
      * @throws IllegalArgumentException if given index is negative
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
-    Writer newWriter(long index) throws IOException;
+    Writer newWriter(long index);
 
     public static interface Accessor extends Closeable {
         /**
@@ -227,7 +228,7 @@ public interface StreamReplicator extends Closeable {
          * @return current commit index, or -1 if term finished before the index could be
          * reached, or -2 if timed out, or MIN_VALUE if closed
          */
-        long waitForCommit(long index, long nanosTimeout) throws IOException;
+        long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
 
         /**
          * Invokes the given task when the commit index reaches the requested index. The

@@ -656,7 +656,7 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public LogReader openReader(long index) throws IOException {
+    public LogReader openReader(long index) {
         LKey<TermLog> key = new LKey.Finder<>(index);
 
         boolean exclusive = false;

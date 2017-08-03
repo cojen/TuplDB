@@ -101,7 +101,7 @@ interface StateLog extends Closeable {
      * @return reader or null if timed out
      * @throws IllegalStateException if index is lower than the start index
      */
-    LogReader openReader(long index) throws IOException;
+    LogReader openReader(long index);
 
     /**
      * Durably persist all data up to the highest index. When recovering the state log, the

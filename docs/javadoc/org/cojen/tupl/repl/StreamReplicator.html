@@ -223,8 +223,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <li class="blockList">
 <h4>newReader</h4>
 <pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader(long&nbsp;index,
-                                  boolean&nbsp;follow)
-                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                                  boolean&nbsp;follow)</pre>
 <div class="block">Returns a new reader which accesses data starting from the given index. The reader
  returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
  new writer to determine if the local member has become the leader.
@@ -242,7 +241,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dd>reader or possibly null when follow is false</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if index is lower than the start index</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -252,8 +250,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockList">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter()
-                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter()</pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -264,7 +261,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -274,8 +270,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockListLast">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter(long&nbsp;index)
-                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter(long&nbsp;index)</pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -290,7 +285,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if given index is negative</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

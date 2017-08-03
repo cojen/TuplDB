@@ -107,7 +107,6 @@ final class FileTermLog extends Latch implements TermLog {
      */
     static TermLog newTerm(Worker worker, File base, long prevTerm, long term,
                            long startIndex, long commitIndex)
-        throws IOException
     {
         base = checkBase(base);
 
@@ -126,7 +125,6 @@ final class FileTermLog extends Latch implements TermLog {
     static TermLog openTerm(Worker worker, File base, long prevTerm, long term,
                             long startIndex, long commitIndex, long highestIndex,
                             List<String> segmentFileNames)
-        throws IOException
     {
         base = checkBase(base);
 
@@ -171,7 +169,6 @@ final class FileTermLog extends Latch implements TermLog {
     private FileTermLog(Worker worker, File base, long prevTerm, long term,
                         long startIndex, final long commitIndex, final long highestIndex,
                         List<String> segmentFileNames)
-        throws IOException
     {
         if (term < 0) {
             throw new IllegalArgumentException("Illegal term: " + term);
@@ -206,7 +203,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (startIndex == -1) {
             if (mSegments.isEmpty()) {
-                throw new IOException("No segment files exist for term: " + term);
+                throw new IllegalStateException("No segment files exist for term: " + term);
             }
             startIndex = ((Segment) mSegments.first()).mStartIndex;
         } else if (startIndex < highestIndex) {
@@ -214,7 +211,8 @@ final class FileTermLog extends Latch implements TermLog {
             if (mSegments.isEmpty()
                 || (first = (Segment) mSegments.first()).mStartIndex > startIndex)
             {
-                throw new IOException("Missing start segment: " + startIndex + ", term=" + term);
+                throw new IllegalStateException
+                    ("Missing start segment: " + startIndex + ", term=" + term);
             }
         }
 
@@ -228,7 +226,7 @@ final class FileTermLog extends Latch implements TermLog {
                 File file = seg.file();
                 long segHighest = seg.mStartIndex + file.length();
                 if (segHighest < highestIndex && segHighest < next.mStartIndex) {
-                    throw Utils.rethrow(new IOException("Incomplete segment: " + file));
+                    throw new IllegalStateException("Incomplete segment: " + file);
                 }
             }
             return true;
@@ -368,11 +366,13 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public long waitForCommit(long index, long nanosTimeout) throws IOException {
+    public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
         return waitForCommit(index, nanosTimeout, this);
     }
 
-    long waitForCommit(long index, long nanosTimeout, Object waiter) throws IOException {
+    long waitForCommit(long index, long nanosTimeout, Object waiter)
+        throws InterruptedIOException
+    {
         boolean exclusive = false;
         acquireShared();
         while (true) {
@@ -621,7 +621,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public LogWriter openWriter(long startIndex) throws IOException {
+    public LogWriter openWriter(long startIndex) {
         SegmentWriter writer = mWriterCache.remove(startIndex);
 
         if (writer == null) {
@@ -644,7 +644,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public LogReader openReader(long startIndex) throws IOException {
+    public LogReader openReader(long startIndex) {
         SegmentReader reader = mReaderCache.remove(startIndex);
 
         if (reader == null) {
@@ -997,7 +997,7 @@ final class FileTermLog extends Latch implements TermLog {
             return;
         }
 
-        // Unmap the segement and close the least recently used.
+        // Unmap the segment and close the least recently used.
 
         Segment toClose = mSegmentCache.add(segment);
 
@@ -1162,7 +1162,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public long waitForCommit(long index, long nanosTimeout) throws IOException {
+        public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
             long commitIndex = FileTermLog.this.waitForCommit(index, nanosTimeout, this);
             if (commitIndex < 0 && (commitIndex == Long.MIN_VALUE || mClosed)) {
                 return Long.MIN_VALUE;
