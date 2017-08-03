@@ -107,7 +107,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         while (true) {
             long end = writer.termEndIndex();
 
-            if (end == Long.MAX_VALUE) {
+            if (!writer.isDeactivated()) {
                 // Don't flip from active term.
                 return;
             }
@@ -143,11 +143,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     private void doFlip(long pos) {
-        if (pos == Long.MAX_VALUE) {
-            // Don't flip from active term.
-            return;
-        }
-
         if (mStreamReader != null) {
             mStreamReader.close();
             mStreamReader = null;

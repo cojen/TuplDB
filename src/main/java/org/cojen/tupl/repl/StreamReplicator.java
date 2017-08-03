@@ -195,8 +195,8 @@ public interface StreamReplicator extends Closeable {
         /**
          * Write complete messages to the log.
          *
-         * @return amount of bytes written, which is less than the message length only if the term
-         * end has been reached
+         * @return amount of bytes written, which is less than the message length only if the
+         * writer is deactivated
          */
         default int write(byte[] messages) throws IOException {
             return write(messages, 0, messages.length);
@@ -206,7 +206,7 @@ public interface StreamReplicator extends Closeable {
          * Write complete messages to the log.
          *
          * @return amount of bytes written, which is less than the given length only if the
-         * term end has been reached
+         * writer is deactivated
          */
         default int write(byte[] messages, int offset, int length) throws IOException {
             return write(messages, offset, length, index() + length);
@@ -217,7 +217,7 @@ public interface StreamReplicator extends Closeable {
          *
          * @param highestIndex highest index (exclusive) which can become the commit index
          * @return amount of bytes written, which is less than the given length only if the
-         * term end has been reached
+         * writer is deactivated
          */
         int write(byte[] messages, int offset, int length, long highestIndex) throws IOException;
 
@@ -225,7 +225,7 @@ public interface StreamReplicator extends Closeable {
          * Blocks until the commit index reaches the given index.
          *
          * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-         * @return current commit index, or -1 if term finished before the index could be
+         * @return current commit index, or -1 if deactivated before the index could be
          * reached, or -2 if timed out, or MIN_VALUE if closed
          */
         long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
@@ -237,5 +237,11 @@ public interface StreamReplicator extends Closeable {
          * called, then the current thread invokes it.
          */
         void uponCommit(long index, LongConsumer task);
+
+        /**
+         * Returns true if writes into the leader are deactived, after having become a
+         * follower. The term doesn't end until the new leader writes something.
+         */
+        boolean isDeactivated();
     }
 }
