@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":18,"i4":18,"i5":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -129,26 +129,33 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#isDeactivated--">isDeactivated</a></span>()</code>
+<div class="block">Returns true if writes into the leader are deactived, after having become a
+ follower.</div>
+</td>
+</tr>
+<tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit</a></span>(long&nbsp;index,
           <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code>
 <div class="block">Invokes the given task when the commit index reaches the requested index.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#waitForCommit-long-long-">waitForCommit</a></span>(long&nbsp;index,
              long&nbsp;nanosTimeout)</code>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>default int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-">write</a></span>(byte[]&nbsp;messages)</code>
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>default int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-">write</a></span>(byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -156,7 +163,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-long-">write</a></span>(byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -198,8 +205,8 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <div class="block">Write complete messages to the log.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>amount of bytes written, which is less than the message length only if the term
- end has been reached</dd>
+<dd>amount of bytes written, which is less than the message length only if the
+ writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
@@ -219,7 +226,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the given length only if the
- term end has been reached</dd>
+ writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
@@ -242,7 +249,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <dd><code>highestIndex</code> - highest index (exclusive) which can become the commit index</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the given length only if the
- term end has been reached</dd>
+ writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
@@ -262,7 +269,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>current commit index, or -1 if term finished before the index could be
+<dd>current commit index, or -1 if deactivated before the index could be
  reached, or -2 if timed out, or MIN_VALUE if closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code></dd>
@@ -272,7 +279,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <a name="uponCommit-long-java.util.function.LongConsumer-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>uponCommit</h4>
 <pre>void&nbsp;uponCommit(long&nbsp;index,
@@ -281,6 +288,17 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
  current commit index is passed to the task, or -1 if the term ended before the index
  could be reached, or MIN_VALUE if closed. If the task can be run when this method is
  called, then the current thread invokes it.</div>
+</li>
+</ul>
+<a name="isDeactivated--">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>isDeactivated</h4>
+<pre>boolean&nbsp;isDeactivated()</pre>
+<div class="block">Returns true if writes into the leader are deactived, after having become a
+ follower. The term doesn't end until the new leader writes something.</div>
 </li>
 </ul>
 </li>

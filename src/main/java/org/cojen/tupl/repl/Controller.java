@@ -256,6 +256,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             writerClosed(this);
         }
 
+        @Override
+        public boolean isDeactivated() {
+            return mPeerChannels == null;
+        }
+
         void deactivate() {
             mPeerChannels = null;
         }
