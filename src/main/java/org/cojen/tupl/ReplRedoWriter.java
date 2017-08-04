@@ -483,7 +483,9 @@ class ReplRedoWriter extends RedoWriter {
                     Utils.uncaught(e);
                 }
                 // Keep consuming until an official leadership change is observed.
+                mBufferLatch.releaseExclusive();
                 Thread.yield();
+                mBufferLatch.acquireExclusive();
                 continue;
             }
 
