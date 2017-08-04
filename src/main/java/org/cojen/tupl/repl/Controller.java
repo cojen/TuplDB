@@ -196,45 +196,51 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public synchronized int write(byte[] data, int offset, int length, long highestIndex)
+        public int write(byte[] data, int offset, int length, long highestIndex)
             throws IOException
         {
-            Channel[] peerChannels = mPeerChannels;
+            Channel[] peerChannels;
+            long prevTerm, term, index, commitIndex;
+            int amt;
 
-            if (peerChannels == null) {
-                return -1;
+            synchronized (this) {
+                peerChannels = mPeerChannels;
+
+                if (peerChannels == null) {
+                    return -1;
+                }
+
+                LogWriter writer = mWriter;
+                index = writer.index();
+
+                amt = writer.write(data, offset, length, highestIndex);
+
+                if (amt <= 0) {
+                    if (length > 0) {
+                        mPeerChannels = null;
+                    }
+                    return amt;
+                }
+
+                mStateLog.captureHighest(writer);
+                highestIndex = writer.mHighestIndex;
+
+                if (peerChannels.length == 0) {
+                    // Only a group of one, so commit changes immediately.
+                    mStateLog.commit(highestIndex);
+                    return amt;
+                }
+
+                prevTerm = writer.prevTerm();
+                term = writer.term();
+                commitIndex = writer.mCommitIndex;
             }
 
-            LogWriter writer = mWriter;
+            // FIXME: stream it
+            data = Arrays.copyOfRange(data, offset, offset + length);
 
-            long prevTerm = writer.prevTerm();
-            long term = writer.term();
-            long index = writer.index();
-
-            int amt = writer.write(data, offset, length, highestIndex);
-
-            if (amt <= 0) {
-                if (length > 0) {
-                    mPeerChannels = null;
-                }
-                return amt;
-            }
-
-            mStateLog.captureHighest(writer);
-            highestIndex = writer.mHighestIndex;
-            if (peerChannels.length == 0) {
-                // Only a group of one, so commit changes immediately.
-                mStateLog.commit(highestIndex);
-            } else {
-                long commitIndex = writer.mCommitIndex;
-
-                // FIXME: stream it
-                data = Arrays.copyOfRange(data, offset, offset + length);
-
-                for (Channel peerChan : peerChannels) {
-                    peerChan.writeData
-                        (null, prevTerm, term, index, highestIndex, commitIndex, data);
-                }
+            for (Channel peerChan : peerChannels) {
+                peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, data);
             }
 
             return amt;
