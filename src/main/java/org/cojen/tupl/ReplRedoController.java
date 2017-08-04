@@ -294,16 +294,17 @@ final class ReplRedoController extends ReplRedoWriter {
             // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
             // ReplRedoWriter while latched, which is an inconsistent order.
             new Thread(() -> {
+                long pos;
+
                 ReplRedoController.this.acquireExclusive();
                 try {
                     if (!switchToReplica(expect, true)) {
                         return;
                     }
+                    pos = mManager.readPosition();
                 } finally {
                     ReplRedoController.this.releaseExclusive();
                 }
-
-                long pos = mManager.readPosition();
 
                 redo.flipped(pos);
 
