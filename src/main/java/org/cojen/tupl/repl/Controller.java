@@ -168,7 +168,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     class ReplWriter implements Writer {
         private final LogWriter mWriter;
-        private volatile Channel[] mPeerChannels;
+        private Channel[] mPeerChannels;
 
         ReplWriter(LogWriter writer, Channel[] peerChannels) {
             mWriter = writer;
@@ -196,7 +196,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public int write(byte[] data, int offset, int length, long highestIndex)
+        public synchronized int write(byte[] data, int offset, int length, long highestIndex)
             throws IOException
         {
             Channel[] peerChannels = mPeerChannels;
@@ -257,11 +257,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public boolean isDeactivated() {
+        public synchronized boolean isDeactivated() {
             return mPeerChannels == null;
         }
 
-        void deactivate() {
+        synchronized void deactivate() {
             mPeerChannels = null;
         }
     }
