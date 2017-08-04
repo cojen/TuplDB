@@ -40,6 +40,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     private StreamReplicator.Reader mStreamReader;
     private DbWriter mDbWriter;
 
+    private StreamReplicator.Writer mNextStreamWriter;
+
     DatabaseStreamReplicator(StreamReplicator repl) {
         mRepl = repl;
     }
@@ -57,7 +59,19 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }
-        doFlip(position);
+
+        while (true) {
+            StreamReplicator.Reader reader = mRepl.newReader(position, false);
+            if (reader != null) {
+                mStreamReader = reader;
+                break;
+            }
+            StreamReplicator.Writer writer = mRepl.newWriter(position);
+            if (writer != null) {
+                mDbWriter = new DbWriter(writer);
+                break;
+            }
+        }
     }
 
     @Override
@@ -71,6 +85,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         if (reader != null) {
             return reader.index();
         } else {
+            // FIXME: Try to eliminate this case.
+            System.out.println("writer index. " + Thread.currentThread());
             return mDbWriter.mWriter.index();
         }
     }
@@ -78,18 +94,71 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     @Override
     public int read(byte[] b, int off, int len) throws IOException {
         StreamReplicator.Reader reader = mStreamReader;
+
         if (reader == null) {
-            return -1;
+            StreamReplicator.Writer streamWriter = mDbWriter.mWriter;
+
+            if (!streamWriter.isDeactivated()) {
+                System.out.println("no reader (i am the leader). " + Thread.currentThread());
+                return -1;
+            }
+
+            while (true) {
+                System.out.println("wait for it... " + mDbWriter + ", " + streamWriter);
+
+                long end = streamWriter.termEndIndex();
+                System.out.println("wait for end: " + end);
+
+                long pos = streamWriter.waitForCommit(end, -1);
+
+                if (pos == end) {
+                    streamWriter.close();
+                    mDbWriter = null;
+
+                    while ((reader = mRepl.newReader(pos, false)) == null) {
+                        StreamReplicator.Writer nextWriter = mRepl.newWriter(pos);
+                        if (nextWriter != null) {
+                            System.out.println("leader (1) " + nextWriter);
+                            mNextStreamWriter = nextWriter;
+                            return -1;
+                        }
+                    }
+
+                    System.out.println("new reader: " + reader);
+                    mStreamReader = reader;
+                    break;
+                }
+
+                if (pos != -1) {
+                    String msg;
+                    if (pos == Long.MIN_VALUE) {
+                        msg = "Closed";
+                    } else {
+                        msg = "Unexpected result: " + pos;
+                    }
+                    throw new IllegalStateException(msg);
+                }
+
+                // Term ended even lower, so try again.
+            }
         }
+
         while (true) {
             int amt = reader.read(b, off, len);
             if (amt >= 0) {
                 return amt;
             }
-            StreamReplicator.Reader nextReader = mRepl.newReader(reader.index(), false);
-            if (nextReader == null) {
-                return -1;
+
+            StreamReplicator.Reader nextReader;
+            while ((nextReader = mRepl.newReader(reader.index(), false)) == null) {
+                StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.index());
+                if (nextWriter != null) {
+                    System.out.println("leader (2) " + nextWriter);
+                    mNextStreamWriter = nextWriter;
+                    return -1;
+                }
             }
+
             reader.close();
             mStreamReader = reader = nextReader;
         }
@@ -97,73 +166,16 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void flip() {
-        if (mStreamReader != null) {
-            doFlip(mStreamReader.index());
-            return;
-        }
+        StreamReplicator.Writer nextWriter = mNextStreamWriter;
 
-        StreamReplicator.Writer writer = mDbWriter.mWriter;
-
-        while (true) {
-            long end = writer.termEndIndex();
-
-            if (!writer.isDeactivated()) {
-                // Don't flip from active term.
-                return;
+        if (nextWriter != null) {
+            // Finish flip to leader.
+            mDbWriter = new DbWriter(nextWriter);
+            if (mStreamReader != null) {
+                mStreamReader.close();
+                mStreamReader = null;
             }
-
-            long pos;
-            while (true) {
-                try {
-                    pos = writer.waitForCommit(end, -1);
-                    break;
-                } catch (InterruptedIOException e) {
-                    // Ignore and keep trying.
-                    Thread.yield();
-                }
-            }
-
-            if (pos == end) {
-                doFlip(pos);
-                return;
-            }
-
-            if (pos != -1) {
-                String msg;
-                if (pos == Long.MIN_VALUE) {
-                    msg = "Closed";
-                } else {
-                    msg = "Unexpected result: " + pos;
-                }
-                throw new IllegalStateException(msg);
-            }
-
-            // Term ended even lower, so try again.
-        }
-    }
-
-    private void doFlip(long pos) {
-        if (mStreamReader != null) {
-            mStreamReader.close();
-            mStreamReader = null;
-        }
-
-        if (mDbWriter != null) {
-            mDbWriter.mWriter.close();
-            mDbWriter = null;
-        }
-
-        while (true) {
-            StreamReplicator.Reader reader = mRepl.newReader(pos, false);
-            if (reader != null) {
-                mStreamReader = reader;
-                return;
-            }
-            StreamReplicator.Writer writer = mRepl.newWriter(pos);
-            if (writer != null) {
-                mDbWriter = new DbWriter(writer);
-                return;
-            }
+            mNextStreamWriter = null;
         }
     }
 
@@ -248,11 +260,9 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             if (pos >= commitPos) {
                 return true;
             }
-            if (pos == -1) {
+            // FIXME: eliminate the magic MIN_VALUE
+            if (pos == -1 || pos == Long.MIN_VALUE) {
                 return false;
-            }
-            if (pos == Long.MIN_VALUE) {
-                throw new ConfirmationFailureException("Closed");
             }
             if (pos == -2) {
                 throw new ConfirmationTimeoutException(nanosTimeout);
