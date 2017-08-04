@@ -49,6 +49,7 @@ class ReplRedoWriter extends RedoWriter {
     private final Latch mBufferLatch;
     private Thread mProducer;
     private Thread mConsumer;
+    private boolean mConsumerParked;
     // Circular buffer; empty when mBufferTail < 0, full when mBufferHead == mBufferTail.
     private byte[] mBuffer;
     // If mBufferTail is in the range of [0, buffer.length] then this is the first used byte in
@@ -272,8 +273,14 @@ class ReplRedoWriter extends RedoWriter {
                     try {
                         Thread consumer = mConsumer;
                         do {
+                            boolean parked = mConsumerParked;
+                            if (parked) {
+                                mConsumerParked = false;
+                            }
                             mBufferLatch.releaseExclusive();
-                            LockSupport.unpark(consumer);
+                            if (parked) {
+                                LockSupport.unpark(consumer);
+                            }
                             LockSupport.park(mBufferLatch);
                             mBufferLatch.acquireExclusive();
                             buffer = mBuffer;
@@ -329,7 +336,10 @@ class ReplRedoWriter extends RedoWriter {
                         mLastCommitTxnId = mLastTxnId;
                     }
 
-                    LockSupport.unpark(mConsumer);
+                    if (mConsumerParked) {
+                        mConsumerParked = false;
+                        LockSupport.unpark(mConsumer);
+                    }
                     return pos;
                 }
 
@@ -381,6 +391,7 @@ class ReplRedoWriter extends RedoWriter {
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;
         mConsumer = null;
+        mConsumerParked = false;
         mBufferLatch.releaseExclusive();
 
         if (consumer != null) {
@@ -477,6 +488,7 @@ class ReplRedoWriter extends RedoWriter {
             }
 
             // Wait for producer and loop back.
+            mConsumerParked = true;
             Thread producer = mProducer;
             mBufferLatch.releaseExclusive();
             LockSupport.unpark(producer);
