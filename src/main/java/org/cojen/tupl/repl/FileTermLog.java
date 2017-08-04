@@ -573,6 +573,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             mCommitTasks.removeIf(task -> {
                 if (task.mCounter > endIndex) {
+                    // FIXME: run without exclusive latch held
                     task.run(WAIT_TERM_END);
                     return true;
                 }

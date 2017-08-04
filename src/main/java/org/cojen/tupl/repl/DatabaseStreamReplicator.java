@@ -85,9 +85,9 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         if (reader != null) {
             return reader.index();
         } else {
-            // FIXME: Try to eliminate this case.
-            System.out.println("writer index. " + Thread.currentThread());
-            return mDbWriter.mWriter.index();
+            // Might start off as the leader, so return it's start position. Nothing is
+            // actually readable, however.
+            return mDbWriter.mWriter.termStartIndex();
         }
     }
 
@@ -99,16 +99,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             StreamReplicator.Writer streamWriter = mDbWriter.mWriter;
 
             if (!streamWriter.isDeactivated()) {
-                System.out.println("no reader (i am the leader). " + Thread.currentThread());
                 return -1;
             }
 
             while (true) {
-                System.out.println("wait for it... " + mDbWriter + ", " + streamWriter);
-
                 long end = streamWriter.termEndIndex();
-                System.out.println("wait for end: " + end);
-
                 long pos = streamWriter.waitForCommit(end, -1);
 
                 if (pos == end) {
@@ -118,13 +113,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                     while ((reader = mRepl.newReader(pos, false)) == null) {
                         StreamReplicator.Writer nextWriter = mRepl.newWriter(pos);
                         if (nextWriter != null) {
-                            System.out.println("leader (1) " + nextWriter);
                             mNextStreamWriter = nextWriter;
                             return -1;
                         }
                     }
 
-                    System.out.println("new reader: " + reader);
                     mStreamReader = reader;
                     break;
                 }
@@ -153,7 +146,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             while ((nextReader = mRepl.newReader(reader.index(), false)) == null) {
                 StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.index());
                 if (nextWriter != null) {
-                    System.out.println("leader (2) " + nextWriter);
                     mNextStreamWriter = nextWriter;
                     return -1;
                 }

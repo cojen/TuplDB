@@ -396,7 +396,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (mLocalRole == ROLE_CANDIDATE) {
                 // Abort current election and start a new one.
-                System.out.println("follower (1)");
                 toFollower();
             }
 
@@ -412,12 +411,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // suspended. Need to double check against local clock to detect this. Or perhaps
             // check with peers to see if leader is up.
             mLocalRole = ROLE_CANDIDATE;
-            System.out.println("candidate! " + mElectionValidated);
 
             peerChannels = mPeerChannels;
 
             mStateLog.captureHighest(info);
-            System.out.println("elect me: " + info);
 
             try {
                 mCurrentTerm = term = mStateLog.incrementCurrentTerm(1);
@@ -442,8 +439,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             toLeader(term, info.mHighestIndex);
         } else {
             releaseExclusive();
-
-            System.out.println("vote for self with term: " + term);
 
             for (Channel peerChan : peerChannels) {
                 peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestIndex);
@@ -483,6 +478,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void toFollower() {
         final int originalRole = mLocalRole;
         if (originalRole != ROLE_FOLLOWER) {
+            System.out.println("follower: " + mCurrentTerm);
+
             mLocalRole = ROLE_FOLLOWER;
             mVotedFor = 0;
             mGrantsRemaining = 0;
@@ -512,9 +509,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean requestVote(Channel from, long term, long candidateId,
                                long highestTerm, long highestIndex)
     {
-        System.out.println("requestVote: " + from + ", " + term + ", " + candidateId + ", " +
-                           highestTerm + ", " + highestIndex);
-
         long currentTerm;
         acquireExclusive();
         try {
@@ -527,11 +521,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return false;
             }
 
-            System.out.println("term: " + term + ", original: " + originalTerm +
-                               ", current: " + currentTerm);
-
             if (currentTerm > originalTerm) {
-                System.out.println("convert to follower(2) " + term);
                 toFollower();
             }
 
@@ -540,8 +530,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     && !isBehind(highestTerm, highestIndex)))
             {
                 mVotedFor = candidateId;
-                System.out.println("mVotedFor: " + candidateId + ", role: " + mLocalRole
-                                   + ", " + term + " >= " + currentTerm);
                 // Set voteGranted result bit to true.
                 currentTerm |= 1L << 63;
                 mElectionValidated = 1;
@@ -557,14 +545,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private boolean isBehind(long term, long index) {
         LogInfo info = new LogInfo();
         mStateLog.captureHighest(info);
-        System.out.println("local term and highest: " + info.mTerm + ", " + info.mHighestIndex);
         return term < info.mTerm || (term == info.mTerm && index < info.mHighestIndex);
     }
 
     @Override
     public boolean requestVoteReply(Channel from, long term) {
-        System.out.println("requestVoteReply: " + from + ", " + term);
-
         acquireExclusive();
 
         final long originalTerm = mCurrentTerm;
@@ -595,10 +580,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return false;
             }
 
-            if (mCurrentTerm > originalTerm) {
-                System.out.println("greater term: " + mCurrentTerm + " > " + originalTerm);
-                System.out.println("follower(3)");
-            } else {
+            if (mCurrentTerm <= originalTerm) {
                 // Remain candidate for now, waiting for more votes.
                 releaseExclusive();
                 return true;
@@ -613,10 +595,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
+            System.out.println("leader: " + term + ", " + index);
+
             mLeaderLogWriter = mStateLog.openWriter(0, term, index);
             mLocalRole = ROLE_LEADER;
-            System.out.println("leader: " + mChanMan.getLocalMemberId()
-                               + ", " + mCurrentTerm);
             for (Channel channel : mPeerChannels) {
                 channel.peer().mMatchIndex = 0;
             }
@@ -712,9 +694,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 } finally {
                     writer.release();
                 }
-            } else {
-                System.out.println("no queryDataReply: " + from + ", " + prevTerm + ", " + term +
-                                   ", " + index + ", " + data.length);
             }
         } catch (IOException e) {
             uncaught(e);
@@ -757,7 +736,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         return false;
                     }
                     if (mCurrentTerm > originalTerm) {
-                        System.out.println("convert to follower(1)");
                         toFollower();
                     }
                 }
@@ -776,13 +754,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (now >= mNextQueryTermTime) {
                     LogInfo info = new LogInfo();
                     mStateLog.captureHighest(info);
-                    System.out.println(info + ", " + highestIndex);
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
-                        System.out.println("call queryTerms: " + info + ", " + index);
-                        System.out.println("was writeData: " + from + ", " + prevTerm + ", " +
-                                           term + ", " +
-                                           index + ", " + highestIndex + ", " + commitIndex +
-                                           ", " + data.length);
                         from.queryTerms(null, info.mCommitIndex, index);
                     }
                     mNextQueryTermTime = now + QUERY_TERMS_RATE_MILLIS;
@@ -792,10 +764,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             try {
-                int amt = writer.write(data, 0, data.length, highestIndex);
-                if (amt < data.length) {
-                    System.out.println("unfinished write: " + amt + " < " + data.length);
-                }
+                writer.write(data, 0, data.length, highestIndex);
                 mStateLog.commit(commitIndex);
                 mStateLog.captureHighest(writer);
                 long highestTerm = writer.mTerm;
@@ -827,8 +796,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
         try {
             if (mLocalRole != ROLE_LEADER) {
-                System.out.println("not leader, writeDataReply: " + from + ", " + term + ", "
-                                   + highestIndex);
                 return true;
             }
 
@@ -843,12 +810,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 if (mCurrentTerm > originalTerm) {
-                    System.out.println("convert to follower(5)");
                     toFollower();
                 } else {
                     // Cannot commit on behalf of older terms.
-                    System.out.println("cannot commit: " + originalTerm + " < " + term + ", "
-                                       + from);
                 }
                 return true;
             }
