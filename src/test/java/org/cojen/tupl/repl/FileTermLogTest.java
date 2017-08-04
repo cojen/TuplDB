@@ -21,6 +21,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.nio.channels.ClosedByInterruptException;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -263,7 +265,7 @@ public class FileTermLogTest {
                 FileTermLog.openTerm
                     (mWorker, mBase, 0, term, -1, startIndex, info.mHighestIndex, null);
                 fail();
-            } catch (IOException e) {
+            } catch (Exception e) {
                 assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
             }
 
@@ -320,7 +322,7 @@ public class FileTermLogTest {
             FileTermLog.openTerm
                 (mWorker, mBase, 0, term, startWith, startIndex, info.mHighestIndex, null);
             fail();
-        } catch (IOException e) {
+        } catch (Exception e) {
             String msg = e.getMessage();
             String expect;
             if (!discoverStart) {
@@ -678,7 +680,7 @@ public class FileTermLogTest {
                         Thread.sleep(500);
                         mLog.sync();
                     }
-                } catch (InterruptedException e) {
+                } catch (InterruptedException | ClosedByInterruptException e) {
                     // Done.
                 } catch (IOException e) {
                     Utils.uncaught(e);
