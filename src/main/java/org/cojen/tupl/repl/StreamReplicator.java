@@ -145,6 +145,13 @@ public interface StreamReplicator extends Closeable {
      */
     Writer newWriter(long index);
 
+    /**
+     * Durably persist all data up to the highest index. The highest term, the highest index,
+     * and the commit index are all recovered when reopening the replicator. Incomplete data
+     * beyond this is discarded.
+     */
+    void sync() throws IOException;
+
     public static interface Accessor extends Closeable {
         /**
          * Returns the fixed term being accessed.

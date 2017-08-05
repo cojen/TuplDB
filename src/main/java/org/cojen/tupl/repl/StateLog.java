@@ -104,8 +104,8 @@ interface StateLog extends Closeable {
     LogReader openReader(long index);
 
     /**
-     * Durably persist all data up to the highest index. When recovering the state log, the
-     * highest term, the highest index, and the commit index are all recovered. Incomplete data
+     * Durably persist all data up to the highest index. The highest term, the highest index,
+     * and the commit index are all recovered when reopening the state log. Incomplete data
      * beyond this is discarded.
      */
     void sync() throws IOException;
