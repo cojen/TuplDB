@@ -167,6 +167,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         releaseExclusive();
     }
 
+    @Override
+    public void sync() throws IOException {
+        mStateLog.sync();
+    }
+
     class ReplWriter implements Writer {
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;

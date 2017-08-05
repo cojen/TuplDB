@@ -178,17 +178,18 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void sync() throws IOException {
-        // FIXME
+        mRepl.sync();
     }
 
     @Override
     public void syncConfirm(long position, long timeoutNanos) throws IOException {
-        // FIXME
+        mRepl.sync();
+        // FIXME: Require that a majority have also persisted up to the given position.
     }
 
     @Override
     public void checkpointed(long position) throws IOException {
-        // FIXME
+        // FIXME: Can perform log compaction.
     }
 
     @Override
