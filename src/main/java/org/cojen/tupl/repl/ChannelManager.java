@@ -70,7 +70,7 @@ final class ChannelManager {
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
-    private static final int WRITE_CHECK_DELAY_MILLIS = 250;
+    private static final int WRITE_CHECK_DELAY_MILLIS = 125;
     private static final int INIT_HEADER_SIZE = 32;
 
     private static final int
@@ -413,10 +413,12 @@ final class ChannelManager {
 
         for (SocketChannel channel : mChannels) {
             int state = channel.mWriteState;
-            if (state == 1) {
+            if (state >= channel.maxWriteTagCount()) {
+                if (cWriteStateUpdater.compareAndSet(channel, state, 0)) {
+                    channel.closeSocket();
+                }
+            } else if (state == 1) {
                 cWriteStateUpdater.compareAndSet(channel, 1, 2);
-            } else if (state == 2 && cWriteStateUpdater.compareAndSet(channel, 2, 0)) {
-                channel.closeSocket();
             }
         }
 
@@ -433,7 +435,7 @@ final class ChannelManager {
         private OutputStream mOut;
         private ChannelInputStream mIn;
 
-        // 0: not writing;  1: writing;  2: tagged to be closed due to timeout
+        // 0: not writing;  1: writing;  2+: tagged to be closed due to timeout
         volatile int mWriteState;
 
         SocketChannel(Peer peer, Channel localServer) {
@@ -879,11 +881,23 @@ final class ChannelManager {
         public String toString() {
             return getClass().getSimpleName() + ": {peer=" + mPeer + ", socket=" + mSocket + '}';
         }
+
+        /**
+         * Effective write timeout varies from (WRITE_CHECK_DELAY_MILLIS * count) to
+         * (WRITE_CHECK_DELAY_MILLIS * (count + 1)).
+         */
+        abstract int maxWriteTagCount();
     }
 
     final class ClientChannel extends SocketChannel {
         ClientChannel(Peer peer, Channel localServer) {
             super(peer, localServer);
+        }
+
+        @Override
+        int maxWriteTagCount() {
+            // Effective timeout is 250..375ms.
+            return 2;
         }
     }
 
@@ -896,6 +910,13 @@ final class ChannelManager {
         void reconnect(InputStream existing) {
             // Don't reconnect.
             close();
+        }
+
+        @Override
+        int maxWriteTagCount() {
+            // Be more lenient with connections requested by remote endpoint, because writes
+            // through it don't block critical operations. Effective timeout is 6500..6625ms.
+            return 50;
         }
     }
 }
