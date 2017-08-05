@@ -65,6 +65,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Index used to check for missing data.
     private long mMissingContigIndex = Long.MAX_VALUE; // unknown initially
     private boolean mSkipMissingDataTask;
+    private volatile boolean mReceivingMissingData;
 
     // Limit the rate at which missing terms are queried.
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
@@ -286,8 +287,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void missingDataTask() {
-        // FIXME: don't check if data is flowing in from queryDataReply
-
         if (tryAcquireShared()) {
             if (mLocalRole == ROLE_LEADER) {
                 // Leader doesn't need to check for missing data.
@@ -297,6 +296,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
             releaseShared();
+        }
+
+        if (mReceivingMissingData) {
+            // Avoid overlapping requests for missing data if results are flowing in.
+            mReceivingMissingData = false;
         }
 
         class Collector implements IndexRange {
@@ -692,6 +696,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean queryDataReply(Channel from, long prevTerm, long term,
                                   long index, byte[] data)
     {
+        mReceivingMissingData = true;
+
         try {
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
             if (writer != null) {
