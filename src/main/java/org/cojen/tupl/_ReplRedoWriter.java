@@ -336,6 +336,10 @@ class _ReplRedoWriter extends _RedoWriter {
                         mLastCommitTxnId = mLastTxnId;
                     }
 
+                    // FIXME: If consumer is parked, attempt to do the write immediately.
+                    // Still do the arraycopy, to support auto-tuning. Release the latch and
+                    // then do the write. This creates a race condition with the consumer
+                    // thread, and so somethig extra is needed.
                     if (mConsumerParked) {
                         mConsumerParked = false;
                         LockSupport.unpark(mConsumer);
