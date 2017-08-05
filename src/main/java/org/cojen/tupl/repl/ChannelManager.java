@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.Closeable;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -26,7 +27,12 @@ import java.net.Socket;
 import java.net.SocketAddress;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
+
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import java.util.function.LongPredicate;
 
@@ -64,6 +70,7 @@ final class ChannelManager {
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
+    private static final int WRITE_CHECK_DELAY_MILLIS = 250;
     private static final int INIT_HEADER_SIZE = 32;
 
     private static final int
@@ -76,12 +83,13 @@ final class ChannelManager {
     private final Scheduler mScheduler;
     private final long mGroupId;
     private final Map<Long, Peer> mPeerMap;
+    private final Set<SocketChannel> mChannels;
 
     private ServerSocket mServerSocket;
     private Channel mLocalServer;
 
     private long mLocalMemberId;
-    
+
     ChannelManager(Scheduler scheduler, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
@@ -89,6 +97,7 @@ final class ChannelManager {
         mScheduler = scheduler;
         mGroupId = groupId;
         mPeerMap = new HashMap<>();
+        mChannels = new HashSet<>();
     }
 
     /**
@@ -114,6 +123,10 @@ final class ChannelManager {
     synchronized boolean start(SocketAddress listenAddress, Channel localServer)
         throws IOException
     {
+        if (localServer == null) {
+            throw new IllegalArgumentException();
+        }
+
         if (mLocalMemberId == 0) {
             throw new IllegalStateException();
         }
@@ -136,6 +149,9 @@ final class ChannelManager {
         mServerSocket = ss;
         mLocalServer = localServer;
 
+        // Start task.
+        checkWrites();
+
         return true;
     }
 
@@ -153,13 +169,12 @@ final class ChannelManager {
 
         mLocalServer = null;
 
-        /* FIXME: track all client and server channels
-        for (Client client : mClients) {
-            client.disconnect();
+        for (SocketChannel channel : mChannels) {
+            channel.disconnect();
         }
 
-        mClients.clear();
-        */
+        mChannels.clear();
+
         return true;
     }
 
@@ -189,7 +204,7 @@ final class ChannelManager {
             throw new IllegalArgumentException();
         }
 
-        ClientChannel client = new ClientChannel(peer, localServer);
+        ClientChannel client;
 
         synchronized (this) {
             if (mLocalMemberId == 0) {
@@ -211,7 +226,10 @@ final class ChannelManager {
                 throw new IllegalStateException("Already connected with a different address");
             }
 
+            client = new ClientChannel(peer, localServer);
+
             mPeerMap.put(key, peer);
+            mChannels.add(client);
         }
 
         execute(client::connect);
@@ -229,36 +247,36 @@ final class ChannelManager {
     }
 
     /**
-     * Disconnect any channel for the given remote member, and disallow any new connections
+     * Disconnect all channels for the given remote member, and disallow any new connections
      * from it.
      */
     void disconnect(long remoteMemberId) {
-        /* FIXME
         if (remoteMemberId == 0) {
             throw new IllegalArgumentException();
         }
 
-        Client client = new Client(remoteMemberId);
-
-        synchronized (this) {
-            client = mClients.floor(client); // findLe
-            if (client == null || client.mRemoteMemberId != remoteMemberId) {
-                return;
-            }
-            mClients.remove(client);
-        }
-
-        client.disconnect();
-        */
+        disconnect(id -> id == remoteMemberId);
     }
 
     /**
      * Iterates over all the channels and passes the remote member id to the given tester to
-     * decide if the channel should be disconnected.
+     * decide if the member should be disconnected.
      */
-    void disconnect(LongPredicate tester) {
-        // FIXME: disconnect
-        throw null;
+    synchronized void disconnect(LongPredicate tester) {
+        Iterator<SocketChannel> it = mChannels.iterator();
+        while (it.hasNext()) {
+            SocketChannel channel = it.next();
+            long memberId = channel.mPeer.mMemberId;
+            if (tester.test(memberId)) {
+                it.remove();
+                channel.disconnect();
+                mPeerMap.remove(memberId);
+            }
+        }
+    }
+
+    synchronized void unregister(SocketChannel channel) {
+        mChannels.remove(channel);
     }
 
     private void acceptLoop() {
@@ -291,6 +309,8 @@ final class ChannelManager {
     private void doAccept(final ServerSocket ss, final Channel localServer) throws IOException {
         Socket s = ss.accept();
 
+        ServerChannel server = null;
+
         try {
             byte[] header = readHeader(s);
             if (header == null) {
@@ -319,22 +339,27 @@ final class ChannelManager {
                     }
                 }
 
+                server = new ServerChannel(peer, localServer);
+                mChannels.add(server);
+
                 encodeLongLE(header, 16, mLocalMemberId);
             }
 
-            ServerChannel server = new ServerChannel(peer, localServer);
             encodeHeaderCrc(header);
+
+            final ServerChannel fserver = server;
 
             execute(() -> {
                 try {
                     s.getOutputStream().write(header);
-                    server.connected(s);
+                    fserver.connected(s);
                 } catch (IOException e) {
-                    closeQuietly(null, s);
+                    closeQuietly(null, fserver);
                 }
             });
         } catch (Throwable e) {
             closeQuietly(null, s);
+            closeQuietly(null, server);
             throw e;
         }
     }
@@ -381,12 +406,35 @@ final class ChannelManager {
         return null;
     }
 
-    abstract class SocketChannel extends Latch implements Channel {
+    private synchronized void checkWrites() {
+        if (mServerSocket == null) {
+            return;
+        }
+
+        for (SocketChannel channel : mChannels) {
+            int state = channel.mWriteState;
+            if (state == 1) {
+                cWriteStateUpdater.compareAndSet(channel, 1, 2);
+            } else if (state == 2 && cWriteStateUpdater.compareAndSet(channel, 2, 0)) {
+                channel.closeSocket();
+            }
+        }
+
+        schedule(this::checkWrites, WRITE_CHECK_DELAY_MILLIS);
+    }
+
+    static final AtomicIntegerFieldUpdater<SocketChannel> cWriteStateUpdater =
+        AtomicIntegerFieldUpdater.newUpdater(SocketChannel.class, "mWriteState");
+
+    abstract class SocketChannel extends Latch implements Channel, Closeable {
         final Peer mPeer;
         private Channel mLocalServer;
-        protected Socket mSocket;
+        private Socket mSocket;
         private OutputStream mOut;
         private ChannelInputStream mIn;
+
+        // 0: not writing;  1: writing;  2: tagged to be closed due to timeout
+        volatile int mWriteState;
 
         SocketChannel(Peer peer, Channel localServer) {
             mPeer = peer;
@@ -466,7 +514,18 @@ final class ChannelManager {
             }
         }
 
-        // FIXME: Rename to close.
+        /**
+         * Unregister the channel, disconnect, and don't attempt to reconnect.
+         */
+        @Override
+        public void close() {
+            unregister(this);
+            disconnect();
+        }
+
+        /**
+         * Disconnect and don't attempt to reconnect.
+         */
         void disconnect() {
             Socket s;
             synchronized (this) {
@@ -478,6 +537,13 @@ final class ChannelManager {
             }
 
             closeQuietly(null, s);
+        }
+
+        /**
+         * Close the socket and reconnect if possible. Reconnect will be attempted by inputLoop.
+         */
+        void closeSocket() {
+            closeQuietly(null, mSocket);
         }
 
         synchronized boolean connected(Socket s) {
@@ -797,25 +863,27 @@ final class ChannelManager {
          */
         private boolean writeCommand(byte[] command, int offset, int length) {
             try {
+                mWriteState = 1;
                 mOut.write(command, offset, length);
+                mWriteState = 0;
                 return true;
             } catch (IOException e) {
                 mOut = null;
-                // Reconnect will be attempted by inputLoop.
-                closeQuietly(null, mSocket);
+                // Close and attempt to reconnect.
+                closeSocket();
                 return false;
             }
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName() + ": {peer=" + mPeer + ", socket=" + mSocket + '}';
         }
     }
 
     final class ClientChannel extends SocketChannel {
         ClientChannel(Peer peer, Channel localServer) {
             super(peer, localServer);
-        }
-
-        @Override
-        public String toString() {
-            return "ClientChannel: {peer=" + mPeer + ", socket=" + mSocket + '}';
         }
     }
 
@@ -826,12 +894,8 @@ final class ChannelManager {
 
         @Override
         void reconnect(InputStream existing) {
-            disconnect();
-        }
-
-        @Override
-        public String toString() {
-            return "ServerChannel: {peer=" + mPeer + ", socket=" + mSocket + '}';
+            // Don't reconnect.
+            close();
         }
     }
 }
