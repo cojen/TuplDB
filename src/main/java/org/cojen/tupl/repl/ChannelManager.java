@@ -54,9 +54,10 @@ final class ChannelManager {
 
       0:  Magic number (long)
       8:  Group id (long)
-      16: Member id (long)       -- 0: anonymous
-      24: Connection type (int)  -- 0: replication RPC; FIXME: use a bit to enable CRCs
-      28: CRC32C (int)
+      16: Group token (long)
+      24: Member id (long)       -- 0: anonymous
+      32: Connection type (int)  -- 0: replication RPC; FIXME: use a bit to enable CRCs
+      36: CRC32C (int)
 
       Command header structure: (little endian fields)
 
@@ -71,7 +72,7 @@ final class ChannelManager {
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
-    private static final int INIT_HEADER_SIZE = 32;
+    private static final int INIT_HEADER_SIZE = 40;
 
     private static final int
         OP_NOP          = 0, //OP_NOP_REPLY = 1,
@@ -317,8 +318,8 @@ final class ChannelManager {
                 return;
             }
 
-            long remoteMemberId = decodeLongLE(header, 16);
-            int connectionType = decodeIntLE(header, 24);
+            long remoteMemberId = decodeLongLE(header, 24);
+            int connectionType = decodeIntLE(header, 32);
 
             if (connectionType != 0) {
                 // Connection type field is unused.
@@ -342,7 +343,7 @@ final class ChannelManager {
                 server = new ServerChannel(peer, localServer);
                 mChannels.add(server);
 
-                encodeLongLE(header, 16, mLocalMemberId);
+                encodeLongLE(header, 24, mLocalMemberId);
             }
 
             encodeHeaderCrc(header);
@@ -387,6 +388,9 @@ final class ChannelManager {
             if (decodeLongLE(header, 8) != mGroupId) {
                 break check;
             }
+
+            // FIXME: check the token
+            long token = decodeLongLE(header, 16);
 
             Checksum crc = CRC32C.newInstance();
             crc.update(header, 0, header.length - 4);
@@ -462,7 +466,9 @@ final class ChannelManager {
                 byte[] header = new byte[INIT_HEADER_SIZE];
                 encodeLongLE(header, 0, MAGIC_NUMBER);
                 encodeLongLE(header, 8, mGroupId);
-                encodeLongLE(header, 16, getLocalMemberId());
+                encodeLongLE(header, 16, 0); // FIXME: token
+                encodeLongLE(header, 24, getLocalMemberId());
+                encodeIntLE(header, 32, 0); // connection type
 
                 encodeHeaderCrc(header);
 
@@ -473,11 +479,11 @@ final class ChannelManager {
                     break doConnect;
                 }
 
-                if (decodeLongLE(header, 16) != mPeer.mMemberId) {
+                if (decodeLongLE(header, 24) != mPeer.mMemberId) {
                     break doConnect;
                 }
 
-                int connectionType = decodeIntLE(header, 24);
+                int connectionType = decodeIntLE(header, 32);
 
                 if (connectionType != 0) {
                     // Connection type field is unused.
