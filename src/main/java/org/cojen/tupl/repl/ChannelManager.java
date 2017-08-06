@@ -88,7 +88,6 @@ final class ChannelManager {
 
     private final Scheduler mScheduler;
     private final long mGroupId;
-    private final Consumer<Socket> mAcceptor;
     private final Map<SocketAddress, Peer> mPeerMap;
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
@@ -98,13 +97,14 @@ final class ChannelManager {
 
     private long mLocalMemberId;
 
-    ChannelManager(Scheduler scheduler, long groupId, Consumer<Socket> acceptor) {
+    private volatile Consumer<Socket> mAcceptor;
+
+    ChannelManager(Scheduler scheduler, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
         mScheduler = scheduler;
         mGroupId = groupId;
-        mAcceptor = acceptor;
         mPeerMap = new HashMap<>();
         mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
         mChannels = new HashSet<>();
@@ -163,6 +163,12 @@ final class ChannelManager {
         checkWrites();
 
         return true;
+    }
+
+    synchronized Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
+        Consumer<Socket> old = mAcceptor;
+        mAcceptor = acceptor;
+        return old;
     }
 
     /**
@@ -406,11 +412,15 @@ final class ChannelManager {
             long remoteMemberId = decodeLongLE(header, 24);
             int connectionType = decodeIntLE(header, 32);
 
+            Consumer<Socket> acceptor;
+
             switch (connectionType) {
             case CONNECT_CONTROL:
+                acceptor = null;
                 break;
             case CONNECT_PLAIN:
-                if (mAcceptor != null) {
+                acceptor = mAcceptor;
+                if (acceptor != null) {
                     break;
                 }
                 // fallthrough
@@ -418,8 +428,6 @@ final class ChannelManager {
                 closeQuietly(null, s);
                 return;
             }
-
-            Consumer<Socket> acceptor;
 
             synchronized (this) {
                 Peer peer;
@@ -437,8 +445,6 @@ final class ChannelManager {
                 if (connectionType == CONNECT_CONTROL) {
                     acceptor = server = new ServerChannel(peer, localServer);
                     mChannels.add(server);
-                } else {
-                    acceptor = mAcceptor;
                 }
 
                 encodeLongLE(header, 24, mLocalMemberId);
@@ -446,10 +452,12 @@ final class ChannelManager {
 
             encodeHeaderCrc(header);
 
+            final Consumer<Socket> facceptor = acceptor;
+
             execute(() -> {
                 try {
                     s.getOutputStream().write(header);
-                    acceptor.accept(s);
+                    facceptor.accept(s);
                     return;
                 } catch (IOException e) {
                     // Ignore.
@@ -457,9 +465,9 @@ final class ChannelManager {
                     uncaught(e);
                 }
                 Closeable c = s;
-                if (acceptor instanceof ServerChannel) {
+                if (facceptor instanceof ServerChannel) {
                     // Closing the ServerChannel also unregisters it.
-                    c = (ServerChannel) acceptor;
+                    c = (ServerChannel) facceptor;
                 }
                 closeQuietly(null, c);
             });

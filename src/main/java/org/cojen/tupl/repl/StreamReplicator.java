@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
@@ -96,7 +97,7 @@ public interface StreamReplicator extends Closeable {
             base.getParentFile().mkdirs();
         }
 
-        Controller con = new Controller(new FileStateLog(base), groupId, config.mSocketAcceptor);
+        Controller con = new Controller(new FileStateLog(base), groupId);
         con.start(members, localMemberId);
 
         return con;
@@ -156,8 +157,8 @@ public interface StreamReplicator extends Closeable {
 
     /**
      * Connect to any replication group member, for any particular use. An {@link
-     * ReplicatorConfig#socketAcceptor acceptor} must have been configured on the group member
-     * being connected to.
+     * #socketAcceptor acceptor} must be installed on the group member being connected to for
+     * the connect to succeed.
      *
      * @throws IllegalArgumentException if address is null
      * @throws ConnectException if not given a member address or of the connect fails
@@ -165,9 +166,18 @@ public interface StreamReplicator extends Closeable {
     Socket connect(SocketAddress addr) throws IOException;
 
     /**
+     * Install a callback to be invoked when plain connections are established to the local
+     * group member. No new connections are accepted (of any type) until the callback returns.
+     *
+     * @param acceptor acceptor to use, or pass null to disable
+     * @return previous acceptor or null if none
+     */
+    Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor);
+
+    /**
      * Connect to a remote replication group member, for receiving a database snapshot. An
-     * {@link ReplicatorConfig#snapshotAcceptor acceptor} must have been configured on the
-     * potential senders.
+     * {@link #snapshotAcceptor acceptor} must be installed on the group member being connected
+     * to for the request to succeed.
      * 
      * <p>The sender is selected as the one which has the fewest count of active snapshot
      * sessions. If all the counts are the same, then a sender is instead randomly selected,
@@ -177,6 +187,14 @@ public interface StreamReplicator extends Closeable {
      * @throws ConnectException if no senders could be connected to
      */
     SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException;
+
+    /**
+     * Install a callback to be invoked when a snapshot is requested by a new group member.
+     *
+     * @param acceptor acceptor to use, or pass null to disable
+     * @return previous acceptor or null if none
+     */
+    Consumer<SnapshotSender> snapshotAcceptor(Consumer<SnapshotSender> acceptor);
 
     public static interface Accessor extends Closeable {
         /**
