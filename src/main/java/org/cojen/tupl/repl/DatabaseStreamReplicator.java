@@ -23,6 +23,7 @@ import java.io.IOException;
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
+import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
 
 import org.cojen.tupl.io.Utils;
@@ -75,7 +76,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public void recover(EventListener listener) throws IOException {
+    public void recover(Database db, EventListener listener) throws IOException {
         // FIXME
     }
 

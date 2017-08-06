@@ -55,7 +55,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
     public void recover(long initialTxnId, EventListener listener) throws IOException {
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
-        mManager.recover(listener);
+        mManager.recover(mEngine.mDatabase, listener);
     }
 
     @Override

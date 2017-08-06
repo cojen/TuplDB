@@ -158,6 +158,14 @@
 </td>
 </tr>
 <tr class="altColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><span class="typeNameLabel">ReplicationManager.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.Database-org.cojen.tupl.EventListener-">recover</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+       <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code>
+<div class="block">Called after replication threads have started, providing an opportunity to wait until
+ replication has sufficiently "caught up".</div>
+</td>
+</tr>
+<tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
     <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -165,7 +173,7 @@
 <div class="block">Non-transactionally apply an idempotent redo operation.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-long-byte:A-">redo</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
     <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -175,7 +183,7 @@
 <div class="block">Non-transactionally apply an idempotent redo operation.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#setCheckpointLock-org.cojen.tupl.Database-java.util.concurrent.locks.Lock-">setCheckpointLock</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
                  <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</code>
@@ -183,7 +191,7 @@
  exclusively by checkpoints.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#undo-org.cojen.tupl.Database-byte:A-">undo</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
     byte[]&nbsp;message)</code>

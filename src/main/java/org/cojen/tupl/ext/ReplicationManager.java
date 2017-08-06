@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.cojen.tupl.ConfirmationFailureException;
+import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
@@ -61,11 +62,27 @@ public interface ReplicationManager extends Closeable {
     /**
      * Called after replication threads have started, providing an opportunity to wait until
      * replication has sufficiently "caught up". The thread which is opening the database
-     * invokes this method, and so it blocks until recovery completes.
+     * invokes this method, and so it blocks until recovery completes. Default implementation
+     * calls the other recover method, which itself does nothing by default.
+     *
+     * @param db recovered database instance
+     * @param listener optional listener for posting recovery events to
+     */
+    default void recover(Database db, EventListener listener) throws IOException {
+        recover(listener);
+    }
+
+    /**
+     * Called after replication threads have started, providing an opportunity to wait until
+     * replication has sufficiently "caught up". The thread which is opening the database
+     * invokes this method, and so it blocks until recovery completes. Default implementation
+     * does nothing.
      *
      * @param listener optional listener for posting recovery events to
      */
-    void recover(EventListener listener) throws IOException;
+    default void recover(EventListener listener) throws IOException {
+        // Do nothing.
+    }
 
     /**
      * Returns the next position a replica will read from, which must be confirmed. Position is
