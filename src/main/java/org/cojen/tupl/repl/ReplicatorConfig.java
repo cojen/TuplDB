@@ -47,7 +47,8 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     SocketAddress mLocalAddress;
     Map<Long, SocketAddress> mStaticMembers;
     Set<SocketAddress> mSeeds;
-    Consumer<Socket> mAcceptor;
+    Consumer<Socket> mSocketAcceptor;
+    Consumer<SnapshotSender> mSnapshotAcceptor;
 
     public ReplicatorConfig() {
         createFilePath(true);
@@ -164,8 +165,16 @@ public class ReplicatorConfig implements Cloneable, Serializable {
      * Specify a callback to be invoked when plain connections are established to the local
      * group member. No new connections are accepted (of any type) until the callback returns.
      */
-    public ReplicatorConfig acceptor(Consumer<Socket> acceptor) {
-        mAcceptor = acceptor;
+    public ReplicatorConfig socketAcceptor(Consumer<Socket> acceptor) {
+        mSocketAcceptor = acceptor;
+        return this;
+    }
+
+    /**
+     * Specify a callback to be invoked when a snapshot is requested by a new group member.
+     */
+    public ReplicatorConfig snapshotAcceptor(Consumer<SnapshotSender> acceptor) {
+        mSnapshotAcceptor = acceptor;
         return this;
     }
 

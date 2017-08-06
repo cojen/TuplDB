@@ -179,6 +179,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return mChanMan.connectPlain(addr);
     }
 
+    @Override
+    public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
+        // FIXME
+        throw null;
+    }
+
     class ReplWriter implements Writer {
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;

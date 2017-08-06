@@ -75,11 +75,6 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EntryConsumer.html#accept-byte:A-byte:A-">accept(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#acceptor-java.util.function.Consumer-">acceptor(Consumer&lt;Socket&gt;)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
-<dd>
-<div class="block">Specify a callback to be invoked when plain connections are established to the local
- group member.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#acquireExclusive--">acquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -228,6 +223,10 @@
 <dd>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#begin-long-long-java.util.Map-">begin(long, long, Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Begin writing the snapshot to the receiver.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#beginSnapshot--">beginSnapshot()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -1362,6 +1361,10 @@
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns the log index to begin reading from.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Accessor.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the next log index which will be accessed.</div>
@@ -1435,6 +1438,10 @@
 <dd>
 <div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, using the given initialization
  vector.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#inputStream--">inputStream()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns a stream to read the snapshot from.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#insert-org.cojen.tupl.Transaction-byte:A-byte:A-">insert(Transaction, byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -1637,6 +1644,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#length--">length()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#length--">length()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#length--">length()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Returns total amount of bytes expected to be written to the snapshot
@@ -2033,6 +2044,14 @@
 <dd>
 <div class="block">Open options for <a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io"><code>FilePageArray</code></a>.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#options--">options()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Options granted by the sender.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#options--">options()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Options requested by the receiver.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl"><span class="typeNameLink">Ordering</span></a> - Enum in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Describes entry ordering in <a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>views</code></a> and <a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursors</code></a>.</div>
@@ -2193,6 +2212,10 @@
 <dd>
 <div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#receiverAddress--">receiverAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Member address which is receiving the snapshot.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.EventListener-">recover(EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
@@ -2276,6 +2299,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/VerificationObserver.html#reportFailure-java.lang.String-">reportFailure(String)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
 <dd>
 <div class="block">Invoked by default implementation of <a href="org/cojen/tupl/VerificationObserver.html#indexNodeFailed-long-int-java.lang.String-"><code>indexNodeFailed</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-">requestSnapshot(Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transformer.html#requireValue--">requireValue()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl">Transformer</a></dt>
 <dd>
@@ -2362,6 +2389,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#secretKey--">secretKey()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#senderAddress--">senderAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Member address which is sending the snapshot.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-">separate(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
 <div class="block">Separates a combined result, for use when storing a value into a view which uses this
@@ -2449,6 +2480,19 @@
 <dt><a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Snapshot</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Control object used to capture a database snapshot.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#snapshotAcceptor-java.util.function.Consumer-">snapshotAcceptor(Consumer&lt;SnapshotSender&gt;)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Specify a callback to be invoked when a snapshot is requested by a new group member.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotReceiver</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotSender</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor(Consumer&lt;Socket&gt;)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Specify a callback to be invoked when plain connections are established to the local
+ group member.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#source">source</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>&nbsp;</dd>

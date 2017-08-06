@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -49,7 +49,7 @@ var activeTableTab = "activeTableTab";
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/ReplicatorConfig.html" target="_top">Frames</a></li>
@@ -157,67 +157,73 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#acceptor-java.util.function.Consumer-">acceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
-<div class="block">Specify a callback to be invoked when plain connections are established to the local
- group member.</div>
-</td>
-</tr>
-<tr id="i1" class="rowColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#addMember-long-java.net.SocketAddress-">addMember</a></span>(long&nbsp;memberId,
          <a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Add a local or remote member to the replication group, which cannot be dynamically
  removed.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i1" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#addSeed-java.net.SocketAddress-">addSeed</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#baseFile-java.io.File-">baseFile</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io">File</a>&nbsp;file)</code>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#baseFilePath-java.lang.String-">baseFilePath</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;path)</code>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#clone--">clone</a></span>()</code>&nbsp;</td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#createFilePath-boolean-">createFilePath</a></span>(boolean&nbsp;mkdirs)</code>
 <div class="block">Set true to create the directory for the replication files, if it doesn't already
  exist.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#groupId-long-">groupId</a></span>(long&nbsp;groupId)</code>
 <div class="block">Set a unique group identifier, which acts as a simple security measure to prevent
  different replication groups from communicating with each other.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#localAddress-java.net.SocketAddress-">localAddress</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Set the local member socket address and port.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#localPort-int-">localPort</a></span>(int&nbsp;port)</code>
 <div class="block">Set the local member socket port, for accepting connections on any address.</div>
+</td>
+</tr>
+<tr id="i9" class="rowColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#snapshotAcceptor-java.util.function.Consumer-">snapshotAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code>
+<div class="block">Specify a callback to be invoked when a snapshot is requested by a new group member.</div>
+</td>
+</tr>
+<tr id="i10" class="altColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
+<div class="block">Specify a callback to be invoked when plain connections are established to the local
+ group member.</div>
 </td>
 </tr>
 </table>
@@ -372,15 +378,25 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 </dl>
 </li>
 </ul>
-<a name="acceptor-java.util.function.Consumer-">
+<a name="socketAcceptor-java.util.function.Consumer-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>acceptor</h4>
-<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;acceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</pre>
+<h4>socketAcceptor</h4>
+<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;socketAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</pre>
 <div class="block">Specify a callback to be invoked when plain connections are established to the local
  group member. No new connections are accepted (of any type) until the callback returns.</div>
+</li>
+</ul>
+<a name="snapshotAcceptor-java.util.function.Consumer-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>snapshotAcceptor</h4>
+<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;snapshotAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</pre>
+<div class="block">Specify a callback to be invoked when a snapshot is requested by a new group member.</div>
 </li>
 </ul>
 <a name="clone--">
@@ -424,7 +440,7 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/ReplicatorConfig.html" target="_top">Frames</a></li>
