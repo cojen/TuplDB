@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":17,"i5":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":17,"i5":6,"i6":6};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -48,7 +48,7 @@ var activeTableTab = "activeTableTab";
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
 <li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
@@ -185,6 +185,12 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i5" class="rowColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-">requestSnapshot</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util">Map</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>,<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&gt;&nbsp;options)</code>
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
+</td>
+</tr>
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#sync--">sync</a></span>()</code>
 <div class="block">Durably persist all data up to the highest index.</div>
@@ -320,17 +326,41 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <a name="connect-java.net.SocketAddress-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>connect</h4>
 <pre><a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&nbsp;connect(<a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)
         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Connect to any replication group member, for any particular use. An <a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#acceptor-java.util.function.Consumer-"><code>acceptor</code></a> must have been configured on the group member being
- connected to.</div>
+<div class="block">Connect to any replication group member, for any particular use. An <a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#socketAcceptor-java.util.function.Consumer-"><code>acceptor</code></a> must have been configured on the group member
+ being connected to.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if address is null</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/ConnectException.html?is-external=true" title="class or interface in java.net">ConnectException</a></code> - if not given a member address or of the connect fails</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="requestSnapshot-java.util.Map-">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>requestSnapshot</h4>
+<pre><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a>&nbsp;requestSnapshot(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util">Map</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>,<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&gt;&nbsp;options)
+                          throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot. An
+ <a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#snapshotAcceptor-java.util.function.Consumer-"><code>acceptor</code></a> must have been configured on the
+ potential senders.
+ 
+ <p>The sender is selected as the one which has the fewest count of active snapshot
+ sessions. If all the counts are the same, then a sender is instead randomly selected,
+ favoring a follower over a leader.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>options</code> - requested options; can pass null if none</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/ConnectException.html?is-external=true" title="class or interface in java.net">ConnectException</a></code> - if no senders could be connected to</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
@@ -362,7 +392,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
 <li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">

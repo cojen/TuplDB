@@ -96,7 +96,7 @@ public interface StreamReplicator extends Closeable {
             base.getParentFile().mkdirs();
         }
 
-        Controller con = new Controller(new FileStateLog(base), groupId, config.mAcceptor);
+        Controller con = new Controller(new FileStateLog(base), groupId, config.mSocketAcceptor);
         con.start(members, localMemberId);
 
         return con;
@@ -156,13 +156,27 @@ public interface StreamReplicator extends Closeable {
 
     /**
      * Connect to any replication group member, for any particular use. An {@link
-     * ReplicatorConfig#acceptor acceptor} must have been configured on the group member being
-     * connected to.
+     * ReplicatorConfig#socketAcceptor acceptor} must have been configured on the group member
+     * being connected to.
      *
      * @throws IllegalArgumentException if address is null
      * @throws ConnectException if not given a member address or of the connect fails
      */
     Socket connect(SocketAddress addr) throws IOException;
+
+    /**
+     * Connect to a remote replication group member, for receiving a database snapshot. An
+     * {@link ReplicatorConfig#snapshotAcceptor acceptor} must have been configured on the
+     * potential senders.
+     * 
+     * <p>The sender is selected as the one which has the fewest count of active snapshot
+     * sessions. If all the counts are the same, then a sender is instead randomly selected,
+     * favoring a follower over a leader.
+     *
+     * @param options requested options; can pass null if none
+     * @throws ConnectException if no senders could be connected to
+     */
+    SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException;
 
     public static interface Accessor extends Closeable {
         /**
