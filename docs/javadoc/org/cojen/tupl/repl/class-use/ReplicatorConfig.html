@@ -103,57 +103,64 @@
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#acceptor-java.util.function.Consumer-">acceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
+<div class="block">Specify a callback to be invoked when plain connections are established to the local
+ group member.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#addMember-long-java.net.SocketAddress-">addMember</a></span>(long&nbsp;memberId,
          <a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Add a local or remote member to the replication group, which cannot be dynamically
  removed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#addSeed-java.net.SocketAddress-">addSeed</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#baseFile-java.io.File-">baseFile</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io">File</a>&nbsp;file)</code>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#baseFilePath-java.lang.String-">baseFilePath</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;path)</code>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#clone--">clone</a></span>()</code>&nbsp;</td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#createFilePath-boolean-">createFilePath</a></span>(boolean&nbsp;mkdirs)</code>
 <div class="block">Set true to create the directory for the replication files, if it doesn't already
  exist.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#groupId-long-">groupId</a></span>(long&nbsp;groupId)</code>
 <div class="block">Set a unique group identifier, which acts as a simple security measure to prevent
  different replication groups from communicating with each other.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#localAddress-java.net.SocketAddress-">localAddress</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;addr)</code>
 <div class="block">Set the local member socket address and port.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">ReplicatorConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/ReplicatorConfig.html#localPort-int-">localPort</a></span>(int&nbsp;port)</code>
 <div class="block">Set the local member socket port, for accepting connections on any address.</div>

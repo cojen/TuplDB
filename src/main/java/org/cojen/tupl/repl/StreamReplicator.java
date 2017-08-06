@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.net.ConnectException;
+import java.net.Socket;
 import java.net.SocketAddress;
 
 import java.util.HashSet;
@@ -94,7 +96,7 @@ public interface StreamReplicator extends Closeable {
             base.getParentFile().mkdirs();
         }
 
-        Controller con = new Controller(new FileStateLog(base), groupId);
+        Controller con = new Controller(new FileStateLog(base), groupId, config.mAcceptor);
         con.start(members, localMemberId);
 
         return con;
@@ -151,6 +153,16 @@ public interface StreamReplicator extends Closeable {
      * beyond this is discarded.
      */
     void sync() throws IOException;
+
+    /**
+     * Connect to any replication group member, for any particular use. An {@link
+     * ReplicatorConfig#acceptor acceptor} must have been configured on the group member being
+     * connected to.
+     *
+     * @throws IllegalArgumentException if address is null
+     * @throws ConnectException if not given a member address or of the connect fails
+     */
+    Socket connect(SocketAddress addr) throws IOException;
 
     public static interface Accessor extends Closeable {
         /**
