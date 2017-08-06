@@ -22,11 +22,14 @@ import java.io.Serializable;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.net.Socket;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import java.util.function.Consumer;
 
 import org.cojen.tupl.io.Utils;
 
@@ -44,6 +47,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     SocketAddress mLocalAddress;
     Map<Long, SocketAddress> mStaticMembers;
     Set<SocketAddress> mSeeds;
+    Consumer<Socket> mAcceptor;
 
     public ReplicatorConfig() {
         createFilePath(true);
@@ -153,6 +157,15 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             mSeeds = new HashSet<>();
         }
         mSeeds.add(addr);
+        return this;
+    }
+
+    /**
+     * Specify a callback to be invoked when plain connections are established to the local
+     * group member. No new connections are accepted (of any type) until the callback returns.
+     */
+    public ReplicatorConfig acceptor(Consumer<Socket> acceptor) {
+        mAcceptor = acceptor;
         return this;
     }
 

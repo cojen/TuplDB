@@ -30,6 +30,14 @@ final class Peer implements Comparable<Peer> {
 
     long mMatchIndex;
 
+    /**
+     * Construct a key for finding peers in a set ordered by member id.
+     */
+    Peer(long memberId) {
+        mMemberId = memberId;
+        mAddress = null;
+    }
+
     Peer(long memberId, SocketAddress addr) {
         if (memberId == 0 || addr == null) {
             throw new IllegalArgumentException();

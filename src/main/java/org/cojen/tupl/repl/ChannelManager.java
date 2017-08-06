@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -30,10 +31,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import java.util.function.Consumer;
 import java.util.function.LongPredicate;
 
 import java.util.zip.Checksum;
@@ -68,6 +72,7 @@ final class ChannelManager {
     */
 
     private static final long MAGIC_NUMBER = 480921776540805866L;
+    private static final int CONNECT_CONTROL = 0, CONNECT_PLAIN = 1;
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
@@ -83,7 +88,9 @@ final class ChannelManager {
 
     private final Scheduler mScheduler;
     private final long mGroupId;
-    private final Map<Long, Peer> mPeerMap;
+    private final Consumer<Socket> mAcceptor;
+    private final Map<SocketAddress, Peer> mPeerMap;
+    private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
 
     private ServerSocket mServerSocket;
@@ -91,13 +98,15 @@ final class ChannelManager {
 
     private long mLocalMemberId;
 
-    ChannelManager(Scheduler scheduler, long groupId) {
+    ChannelManager(Scheduler scheduler, long groupId, Consumer<Socket> acceptor) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
         mScheduler = scheduler;
         mGroupId = groupId;
+        mAcceptor = acceptor;
         mPeerMap = new HashMap<>();
+        mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
         mChannels = new HashSet<>();
     }
 
@@ -220,22 +229,49 @@ final class ChannelManager {
                 throw new IllegalArgumentException("Cannot connect to self");
             }
 
-            Long key = peer.mMemberId;
-            Peer existing = mPeerMap.get(key);
+            Peer existing = mPeerSet.ceiling(peer); // findGe
 
-            if (existing != null && !existing.mAddress.equals(peer.mAddress)) {
+            if (existing != null && existing.mMemberId == peer.mMemberId
+                && !existing.mAddress.equals(peer.mAddress))
+            {
                 throw new IllegalStateException("Already connected with a different address");
             }
 
             client = new ClientChannel(peer, localServer);
 
-            mPeerMap.put(key, peer);
+            if (mPeerMap.putIfAbsent(peer.mAddress, peer) != null) {
+                throw new IllegalStateException("Duplicate address: " + peer);
+            }
+
+            mPeerSet.add(peer);
             mChannels.add(client);
         }
 
         execute(client::connect);
 
         return client;
+    }
+
+    Socket connectPlain(SocketAddress addr) throws IOException {
+        if (addr == null) {
+            throw new IllegalArgumentException();
+        }
+
+        Peer peer;
+        synchronized (this) {
+            peer = mPeerMap.get(addr);
+            if (peer == null) {
+                throw new ConnectException("Not a group member: " + addr);
+            }
+        }
+
+        Socket s = doConnect(peer, CONNECT_PLAIN);
+
+        if (s == null) {
+            throw new ConnectException("Rejected");
+        }
+
+        return s;
     }
 
     /**
@@ -245,6 +281,51 @@ final class ChannelManager {
     Channel connectAnonymous(SocketAddress remoteAddress, Channel localServer) throws IOException {
         // FIXME: connectAnonymous
         throw null;
+    }
+
+    /**
+     * @return null if peer response was malformed
+     */
+    Socket doConnect(Peer peer, int connectionType) throws IOException {
+        Socket s = new Socket();
+
+        doConnect: try {
+            s.connect(peer.mAddress, CONNECT_TIMEOUT_MILLIS);
+
+            byte[] header = new byte[INIT_HEADER_SIZE];
+            encodeLongLE(header, 0, MAGIC_NUMBER);
+            encodeLongLE(header, 8, mGroupId);
+            encodeLongLE(header, 16, 0); // FIXME: token
+            encodeLongLE(header, 24, getLocalMemberId());
+            encodeIntLE(header, 32, connectionType);
+
+            encodeHeaderCrc(header);
+
+            s.getOutputStream().write(header);
+
+            header = readHeader(s);
+            if (header == null) {
+                break doConnect;
+            }
+
+            if (decodeLongLE(header, 24) != peer.mMemberId) {
+                break doConnect;
+            }
+
+            int actualType = decodeIntLE(header, 32);
+
+            if (actualType != connectionType) {
+                break doConnect;
+            }
+
+            return s;
+        } catch (IOException e) {
+            closeQuietly(null, s);
+            throw e;
+        }
+
+        closeQuietly(null, s);
+        return null;
     }
 
     /**
@@ -271,7 +352,11 @@ final class ChannelManager {
             if (tester.test(memberId)) {
                 it.remove();
                 channel.disconnect();
-                mPeerMap.remove(memberId);
+                Peer peer = mPeerSet.ceiling(new Peer(memberId)); // findGe
+                if (peer != null && peer.mMemberId == memberId) {
+                    mPeerSet.remove(peer);
+                    mPeerMap.remove(peer.mAddress);
+                }
             }
         }
     }
@@ -321,42 +406,62 @@ final class ChannelManager {
             long remoteMemberId = decodeLongLE(header, 24);
             int connectionType = decodeIntLE(header, 32);
 
-            if (connectionType != 0) {
-                // Connection type field is unused.
+            switch (connectionType) {
+            case CONNECT_CONTROL:
+                break;
+            case CONNECT_PLAIN:
+                if (mAcceptor != null) {
+                    break;
+                }
+                // fallthrough
+            default:
                 closeQuietly(null, s);
                 return;
             }
 
-            Peer peer;
+            Consumer<Socket> acceptor;
+
             synchronized (this) {
+                Peer peer;
                 if (remoteMemberId == 0) {
                     peer = new Peer(0, s.getRemoteSocketAddress());
                 } else {
-                    peer = mPeerMap.get(remoteMemberId);
-                    if (peer == null) {
+                    peer = mPeerSet.ceiling(new Peer(remoteMemberId)); // findGe
+                    if (peer == null || peer.mMemberId != remoteMemberId) {
                         // Unknown member.
                         closeQuietly(null, s);
                         return;
                     }
                 }
 
-                server = new ServerChannel(peer, localServer);
-                mChannels.add(server);
+                if (connectionType == CONNECT_CONTROL) {
+                    acceptor = server = new ServerChannel(peer, localServer);
+                    mChannels.add(server);
+                } else {
+                    acceptor = mAcceptor;
+                }
 
                 encodeLongLE(header, 24, mLocalMemberId);
             }
 
             encodeHeaderCrc(header);
 
-            final ServerChannel fserver = server;
-
             execute(() -> {
                 try {
                     s.getOutputStream().write(header);
-                    fserver.connected(s);
+                    acceptor.accept(s);
+                    return;
                 } catch (IOException e) {
-                    closeQuietly(null, fserver);
+                    // Ignore.
+                } catch (Throwable e) {
+                    uncaught(e);
                 }
+                Closeable c = s;
+                if (acceptor instanceof ServerChannel) {
+                    // Closing the ServerChannel also unregisters it.
+                    c = (ServerChannel) acceptor;
+                }
+                closeQuietly(null, c);
             });
         } catch (Throwable e) {
             closeQuietly(null, s);
@@ -432,7 +537,7 @@ final class ChannelManager {
     static final AtomicIntegerFieldUpdater<SocketChannel> cWriteStateUpdater =
         AtomicIntegerFieldUpdater.newUpdater(SocketChannel.class, "mWriteState");
 
-    abstract class SocketChannel extends Latch implements Channel, Closeable {
+    abstract class SocketChannel extends Latch implements Channel, Closeable, Consumer<Socket> {
         final Peer mPeer;
         private Channel mLocalServer;
         private Socket mSocket;
@@ -448,55 +553,17 @@ final class ChannelManager {
         }
 
         void connect() {
-            SocketAddress remoteAddress;
             InputStream in;
             synchronized (this) {
-                remoteAddress = mPeer.mAddress;
-                if (remoteAddress == null) {
-                    return;
-                }
                 in = mIn;
             }
 
-            Socket s = new Socket();
-
-            doConnect: try {
-                s.connect(remoteAddress, CONNECT_TIMEOUT_MILLIS);
-
-                byte[] header = new byte[INIT_HEADER_SIZE];
-                encodeLongLE(header, 0, MAGIC_NUMBER);
-                encodeLongLE(header, 8, mGroupId);
-                encodeLongLE(header, 16, 0); // FIXME: token
-                encodeLongLE(header, 24, getLocalMemberId());
-                encodeIntLE(header, 32, 0); // connection type
-
-                encodeHeaderCrc(header);
-
-                s.getOutputStream().write(header);
-
-                header = readHeader(s);
-                if (header == null) {
-                    break doConnect;
-                }
-
-                if (decodeLongLE(header, 24) != mPeer.mMemberId) {
-                    break doConnect;
-                }
-
-                int connectionType = decodeIntLE(header, 32);
-
-                if (connectionType != 0) {
-                    // Connection type field is unused.
-                    break doConnect;
-                }
-
-                connected(s);
-                return;
+            try {
+                connected(doConnect(mPeer, CONNECT_CONTROL));
             } catch (IOException e) {
-                // Ignore and close socket.
+                // Ignore.
             }
 
-            closeQuietly(null, s);
             reconnect(in);
         }
 
@@ -552,6 +619,11 @@ final class ChannelManager {
          */
         void closeSocket() {
             closeQuietly(null, mSocket);
+        }
+
+        @Override
+        public void accept(Socket s) {
+            connected(s);
         }
 
         synchronized boolean connected(Socket s) {
