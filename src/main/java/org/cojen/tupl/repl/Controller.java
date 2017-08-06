@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 import org.cojen.tupl.util.Latch;
@@ -72,10 +73,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Limit the rate at which missing terms are queried.
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
-    Controller(StateLog log, long groupId, Consumer<Socket> acceptor) {
+    Controller(StateLog log, long groupId) {
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(mScheduler, groupId, acceptor);
+        mChanMan = new ChannelManager(mScheduler, groupId);
     }
 
     void start(Map<Long, SocketAddress> members, long localMemberId) throws IOException {
@@ -180,7 +181,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
+        return mChanMan.socketAcceptor(acceptor);
+    }
+
+    @Override
     public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
+        // FIXME
+        throw null;
+    }
+
+    @Override
+    public Consumer<SnapshotSender> snapshotAcceptor(Consumer<SnapshotSender> acceptor) {
         // FIXME
         throw null;
     }

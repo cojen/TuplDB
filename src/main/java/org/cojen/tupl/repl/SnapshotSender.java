@@ -29,7 +29,7 @@ import java.util.Map;
  * 
  *
  * @author Brian S O'Neill
- * @see ReplicatorConfig#snapshotAcceptor ReplicatorConfig.snapshotAcceptor
+ * @see StreamReplicator#snapshotAcceptor StreamReplicator.snapshotAcceptor
  * @see SnapshotReceiver
  */
 public interface SnapshotSender extends Closeable {

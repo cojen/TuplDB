@@ -20,6 +20,11 @@ package org.cojen.tupl.repl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.net.Socket;
+import java.net.SocketAddress;
+
+import java.util.function.Consumer;
+
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
@@ -45,6 +50,16 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     DatabaseStreamReplicator(StreamReplicator repl) {
         mRepl = repl;
+    }
+
+    @Override
+    public Socket connect(SocketAddress addr) throws IOException {
+        return mRepl.connect(addr);
+    }
+
+    @Override
+    public Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
+        return mRepl.socketAcceptor(acceptor);
     }
 
     @Override
