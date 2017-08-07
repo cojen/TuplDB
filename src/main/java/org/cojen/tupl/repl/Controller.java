@@ -192,7 +192,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Consumer<SnapshotSender> snapshotAcceptor(Consumer<SnapshotSender> acceptor) {
+    public Consumer<SnapshotSender> snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
         // FIXME
         throw null;
     }
