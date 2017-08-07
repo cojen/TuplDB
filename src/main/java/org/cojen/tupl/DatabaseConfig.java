@@ -613,7 +613,54 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return file.getAbsoluteFile();
     }
 
-    Class<?> directOpenClass() throws IOException {
+    final Database open(boolean destroy, InputStream restore) throws IOException {
+        Method m;
+        Object[] args;
+        if (restore != null) {
+            args = new Object[] {this, restore};
+            m = directRestoreMethod();
+        } else {
+            args = new Object[] {this};
+            if (destroy) {
+                m = directDestroyMethod();
+            } else {
+                m = directOpenMethod();
+            }
+        }
+
+        Throwable e1 = null;
+        if (m != null) {
+            try {
+                return (Database) m.invoke(null, args);
+            } catch (Exception e) {
+                handleDirectException(e);
+                e1 = e;
+            }
+        }
+
+        try {
+            if (restore != null) {
+                return LocalDatabase.restoreFromSnapshot(this, restore);
+            } else if (destroy) {
+                return LocalDatabase.destroy(this);
+            } else {
+                return LocalDatabase.open(this);
+            }
+        } catch (Throwable e2) {
+            e1 = Utils.rootCause(e1);
+            e2 = Utils.rootCause(e2);
+            if (e1 == null || (e2 instanceof Error && !(e1 instanceof Error))) {
+                // Throw the second, considering it to be more severe.
+                Utils.suppress(e2, e1);
+                throw Utils.rethrow(e2);
+            } else {
+                Utils.suppress(e1, e2);
+                throw Utils.rethrow(e1);
+            }
+        }
+    }
+
+    private Class<?> directOpenClass() throws IOException {
         if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
@@ -625,7 +672,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         }
     }
 
-    Method directOpenMethod() throws IOException {
+    private Method directOpenMethod() throws IOException {
         if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
@@ -636,7 +683,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return m;
     }
 
-    Method directDestroyMethod() throws IOException {
+    private Method directDestroyMethod() throws IOException {
         if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
@@ -647,7 +694,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return m;
     }
 
-    Method directRestoreMethod() throws IOException {
+    private Method directRestoreMethod() throws IOException {
         if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
@@ -659,7 +706,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         return m;
     }
 
-    void handleDirectException(Exception e) throws IOException {
+    private void handleDirectException(Exception e) throws IOException {
         if (e instanceof RuntimeException || e instanceof IOException) {
             throw rethrow(e);
         }
