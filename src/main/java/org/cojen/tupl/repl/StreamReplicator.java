@@ -176,8 +176,8 @@ public interface StreamReplicator extends Closeable {
 
     /**
      * Connect to a remote replication group member, for receiving a database snapshot. An
-     * {@link #snapshotAcceptor acceptor} must be installed on the group member being connected
-     * to for the request to succeed.
+     * {@link #snapshotRequestAcceptor acceptor} must be installed on the group member being
+     * connected to for the request to succeed.
      * 
      * <p>The sender is selected as the one which has the fewest count of active snapshot
      * sessions. If all the counts are the same, then a sender is instead randomly selected,
@@ -194,7 +194,7 @@ public interface StreamReplicator extends Closeable {
      * @param acceptor acceptor to use, or pass null to disable
      * @return previous acceptor or null if none
      */
-    Consumer<SnapshotSender> snapshotAcceptor(Consumer<SnapshotSender> acceptor);
+    Consumer<SnapshotSender> snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
 
     public static interface Accessor extends Closeable {
         /**
