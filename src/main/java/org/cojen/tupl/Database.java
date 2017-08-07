@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import java.lang.reflect.Method;
-
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -77,32 +75,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Open a database, creating it if necessary.
      */
     public static Database open(DatabaseConfig config) throws IOException {
-        Method m = config.directOpenMethod();
-
-        Throwable e1 = null;
-        if (m != null) {
-            try {
-                return (Database) m.invoke(null, config);
-            } catch (Exception e) {
-                config.handleDirectException(e);
-                e1 = e;
-            }
-        }
-
-        try {
-            return LocalDatabase.open(config);
-        } catch (Throwable e2) {
-            e1 = Utils.rootCause(e1);
-            e2 = Utils.rootCause(e2);
-            if (e1 == null || (e2 instanceof Error && !(e1 instanceof Error))) {
-                // Throw the second, considering it to be more severe.
-                Utils.suppress(e2, e1);
-                throw Utils.rethrow(e2);
-            } else {
-                Utils.suppress(e1, e2);
-                throw Utils.rethrow(e1);
-            }
-        }
+        return config.open(false, null);
     }
 
     /**
@@ -111,15 +84,7 @@ public interface Database extends CauseCloseable, Flushable {
      * must be used to format it.
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
-        Method m = config.directDestroyMethod();
-        if (m != null) {
-            try {
-                return (Database) m.invoke(null, config);
-            } catch (Exception e) {
-                config.handleDirectException(e);
-            }
-        }
-        return LocalDatabase.destroy(config);
+        return config.open(true, null);
     }
 
     /**
@@ -333,15 +298,7 @@ public interface Database extends CauseCloseable, Flushable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
-        Method m = config.directRestoreMethod();
-        if (m != null) {
-            try {
-                return (Database) m.invoke(null, config, in);
-            } catch (Exception e) {
-                config.handleDirectException(e);
-            }
-        }
-        return LocalDatabase.restoreFromSnapshot(config, in);
+        return config.open(false, in);
     }
 
     /**
