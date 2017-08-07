@@ -5,7 +5,7 @@ The Unnamed Persistence Library
 
 Tupl is a high-performance, concurrent, transactional, scalable, low-level embedded database. Features include record-level locking, upgradable locks, deadlock detection, cursors, hot backups, striped files, encryption, pluggable replication, nested transaction scopes, and direct lock control.
 
-* [Javadocs](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/package-summary.html)
+* [Javadocs](http://tupl.cojen.org/javadoc/org/cojen/tupl/package-summary.html)
 * [FAQ](https://github.com/cojen/Tupl/wiki/FAQ)
 
 Tupl can be used directly, or it can be used for implementing a high-level database. Tupl is
