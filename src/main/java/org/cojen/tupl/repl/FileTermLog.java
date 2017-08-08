@@ -381,13 +381,9 @@ final class FileTermLog extends Latch implements TermLog {
                 release(exclusive);
                 return commitIndex;
             }
-            if (index > mLogEndIndex) {
+            if (index > mLogEndIndex || mLogClosed) {
                 release(exclusive);
                 return WAIT_TERM_END;
-            }
-            if (mLogClosed) {
-                release(exclusive);
-                return Long.MIN_VALUE;
             }
             if (exclusive || tryUpgrade()) {
                 break;
@@ -447,7 +443,7 @@ final class FileTermLog extends Latch implements TermLog {
                 if (delayed instanceof DelayedWaiter) {
                     DelayedWaiter dwaiter = (DelayedWaiter) delayed;
                     if (dwaiter.mWaiter == waiter) {
-                        dwaiter.run(Long.MIN_VALUE);
+                        dwaiter.run(WAIT_TERM_END);
                     }
                 }
             }
@@ -507,9 +503,7 @@ final class FileTermLog extends Latch implements TermLog {
         long waitFor = task.mCounter;
 
         if (commitIndex < waitFor) {
-            if (mLogClosed) {
-                commitIndex = Long.MIN_VALUE;
-            } else if (waitFor > mLogEndIndex) {
+            if (mLogClosed || waitFor > mLogEndIndex) {
                 commitIndex = WAIT_TERM_END;
             } else {
                 return false;
@@ -740,7 +734,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 for (Delayed delayed : mCommitTasks) {
-                    delayed.run(Long.MIN_VALUE);
+                    delayed.run(WAIT_TERM_END);
                 }
 
                 mCommitTasks.clear();
@@ -1164,11 +1158,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
-            long commitIndex = FileTermLog.this.waitForCommit(index, nanosTimeout, this);
-            if (commitIndex < 0 && (commitIndex == Long.MIN_VALUE || mClosed)) {
-                return Long.MIN_VALUE;
-            }
-            return commitIndex;
+            return FileTermLog.this.waitForCommit(index, nanosTimeout, this);
         }
 
         @Override
@@ -1292,7 +1282,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
                 commitIndex = waitForCommit(index + 1, -1, this);
                 if (commitIndex < 0) {
-                    if (commitIndex == Long.MIN_VALUE || mClosed) {
+                    if (mClosed) {
                         throw new IOException("Closed");
                     }
                     return EOF;

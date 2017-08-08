@@ -34,7 +34,7 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.io.Utils;
 
 /**
- * 
+ * DatabaseReplicator implementation backed by a StreamReplicator.
  *
  * @author Brian S O'Neill
  */
@@ -139,13 +139,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 }
 
                 if (pos != -1) {
-                    String msg;
-                    if (pos == Long.MIN_VALUE) {
-                        msg = "Closed";
-                    } else {
-                        msg = "Unexpected result: " + pos;
-                    }
-                    throw new IllegalStateException(msg);
+                    throw new IllegalStateException("Unexpected result: " + pos);
                 }
 
                 // Term ended even lower, so try again.
@@ -213,23 +207,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         mRepl.close();
     }
 
-    /**
-     * Returns normally only if term ended before reaching the desired position.
-     */
-    static void evaluateConfirmFailure(long pos, long nanosTimeout)
-        throws ConfirmationFailureException
-    {
-        if (pos != -1) {
-            if (pos == Long.MIN_VALUE) {
-                throw new ConfirmationFailureException("Closed");
-            }
-            if (pos == -2) {
-                throw new ConfirmationTimeoutException(nanosTimeout);
-            }
-            throw new ConfirmationFailureException("Unexpected result: " + pos);
-        }
-    }
-
     private static final class DbWriter implements DatabaseReplicator.Writer {
         final StreamReplicator.Writer mWriter;
 
@@ -244,12 +221,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
         @Override
         public boolean leaderNotify(Runnable callback) {
-            mWriter.uponCommit(Long.MAX_VALUE, index -> {
-                if (index != Long.MIN_VALUE) {
-                    new Thread(callback).start();
-                }
-            });
-
+            mWriter.uponCommit(Long.MAX_VALUE, index -> new Thread(callback).start());
             return true;
         }
 
@@ -269,8 +241,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             if (pos >= commitPos) {
                 return true;
             }
-            // FIXME: eliminate the magic MIN_VALUE
-            if (pos == -1 || pos == Long.MIN_VALUE) {
+            if (pos == -1) {
                 return false;
             }
             if (pos == -2) {

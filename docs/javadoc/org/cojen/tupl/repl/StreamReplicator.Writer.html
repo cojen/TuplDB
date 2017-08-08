@@ -270,7 +270,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>current commit index, or -1 if deactivated before the index could be
- reached, or -2 if timed out, or MIN_VALUE if closed</dd>
+ reached, or -2 if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code></dd>
 </dl>
@@ -286,8 +286,8 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
                 <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</pre>
 <div class="block">Invokes the given task when the commit index reaches the requested index. The
  current commit index is passed to the task, or -1 if the term ended before the index
- could be reached, or MIN_VALUE if closed. If the task can be run when this method is
- called, then the current thread invokes it.</div>
+ could be reached. If the task can be run when this method is called, then the
+ current thread invokes it immediately.</div>
 </li>
 </ul>
 <a name="isDeactivated--">
