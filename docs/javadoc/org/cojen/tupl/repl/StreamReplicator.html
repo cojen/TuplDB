@@ -191,13 +191,13 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i6" class="altColor">
-<td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;</code></td>
+<td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-">snapshotRequestAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
 <tr id="i7" class="rowColor">
-<td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;</code></td>
+<td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member.</div>
@@ -360,14 +360,12 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockList">
 <li class="blockList">
 <h4>socketAcceptor</h4>
-<pre><a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;socketAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</pre>
+<pre>void&nbsp;socketAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</pre>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member. No new connections are accepted (of any type) until the callback returns.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>acceptor</code> - acceptor to use, or pass null to disable</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>previous acceptor or null if none</dd>
 </dl>
 </li>
 </ul>
@@ -389,8 +387,10 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>options</code> - requested options; can pass null if none</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>null if no snapshot could be found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/ConnectException.html?is-external=true" title="class or interface in java.net">ConnectException</a></code> - if no senders could be connected to</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/ConnectException.html?is-external=true" title="class or interface in java.net">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
@@ -401,13 +401,11 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <ul class="blockListLast">
 <li class="blockList">
 <h4>snapshotRequestAcceptor</h4>
-<pre><a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;snapshotRequestAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</pre>
+<pre>void&nbsp;snapshotRequestAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</pre>
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>acceptor</code> - acceptor to use, or pass null to disable</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>previous acceptor or null if none</dd>
 </dl>
 </li>
 </ul>
