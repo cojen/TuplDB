@@ -59,7 +59,6 @@ public interface DatabaseReplicator extends ReplicationManager {
      * group member. No new connections are accepted (of any type) until the callback returns.
      *
      * @param acceptor acceptor to use, or pass null to disable
-     * @return previous acceptor or null if none
      */
-    Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor);
+    void socketAcceptor(Consumer<Socket> acceptor);
 }

@@ -58,8 +58,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
-        return mRepl.socketAcceptor(acceptor);
+    public void socketAcceptor(Consumer<Socket> acceptor) {
+        mRepl.socketAcceptor(acceptor);
     }
 
     @Override

@@ -97,7 +97,7 @@ final class ChannelManager {
 
     private long mLocalMemberId;
 
-    private volatile Consumer<Socket> mAcceptor;
+    private volatile Consumer<Socket> mSocketAcceptor;
 
     ChannelManager(Scheduler scheduler, long groupId) {
         if (scheduler == null) {
@@ -165,10 +165,8 @@ final class ChannelManager {
         return true;
     }
 
-    synchronized Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
-        Consumer<Socket> old = mAcceptor;
-        mAcceptor = acceptor;
-        return old;
+    void socketAcceptor(Consumer<Socket> acceptor) {
+        mSocketAcceptor = acceptor;
     }
 
     /**
@@ -419,7 +417,7 @@ final class ChannelManager {
                 acceptor = null;
                 break;
             case CONNECT_PLAIN:
-                acceptor = mAcceptor;
+                acceptor = mSocketAcceptor;
                 if (acceptor != null) {
                     break;
                 }

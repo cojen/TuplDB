@@ -181,8 +181,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor) {
-        return mChanMan.socketAcceptor(acceptor);
+    public void socketAcceptor(Consumer<Socket> acceptor) {
+        mChanMan.socketAcceptor(acceptor);
     }
 
     @Override
@@ -192,7 +192,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Consumer<SnapshotSender> snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
+    public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
         // FIXME
         throw null;
     }

@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":18,"i4":18,"i5":6};
+var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18,"i5":18,"i6":18,"i7":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -143,19 +143,31 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 </td>
 </tr>
 <tr id="i2" class="altColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code>
+<div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
+</td>
+</tr>
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#waitForCommit-long-long-">waitForCommit</a></span>(long&nbsp;index,
              long&nbsp;nanosTimeout)</code>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i4" class="altColor">
+<td class="colFirst"><code>default long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#waitForEndCommit-long-">waitForEndCommit</a></span>(long&nbsp;nanosTimeout)</code>
+<div class="block">Blocks until the commit index reaches the end of the term.</div>
+</td>
+</tr>
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>default int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-">write</a></span>(byte[]&nbsp;messages)</code>
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>default int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-">write</a></span>(byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -163,7 +175,7 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-long-">write</a></span>(byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -276,6 +288,26 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
 </dl>
 </li>
 </ul>
+<a name="waitForEndCommit-long-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>waitForEndCommit</h4>
+<pre>default&nbsp;long&nbsp;waitForEndCommit(long&nbsp;nanosTimeout)
+                       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></pre>
+<div class="block">Blocks until the commit index reaches the end of the term.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>current commit index, or -1 if closed before the index could be
+ reached, or -2 if timed out</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code></dd>
+</dl>
+</li>
+</ul>
 <a name="uponCommit-long-java.util.function.LongConsumer-">
 <!--   -->
 </a>
@@ -288,6 +320,18 @@ extends <a href="../../../../org/cojen/tupl/repl/StreamReplicator.Accessor.html"
  current commit index is passed to the task, or -1 if the term ended before the index
  could be reached. If the task can be run when this method is called, then the
  current thread invokes it immediately.</div>
+</li>
+</ul>
+<a name="uponEndCommit-java.util.function.LongConsumer-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>uponEndCommit</h4>
+<pre>default&nbsp;void&nbsp;uponEndCommit(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</pre>
+<div class="block">Invokes the given task when the commit index reaches the end of the term. The
+ current commit index is passed to the task, or -1 if if closed. If the task can be
+ run when this method is called, then the current thread invokes it immediately.</div>
 </li>
 </ul>
 <a name="isDeactivated--">

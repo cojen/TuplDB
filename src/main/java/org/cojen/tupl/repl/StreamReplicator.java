@@ -170,9 +170,8 @@ public interface StreamReplicator extends Closeable {
      * group member. No new connections are accepted (of any type) until the callback returns.
      *
      * @param acceptor acceptor to use, or pass null to disable
-     * @return previous acceptor or null if none
      */
-    Consumer<Socket> socketAcceptor(Consumer<Socket> acceptor);
+    void socketAcceptor(Consumer<Socket> acceptor);
 
     /**
      * Connect to a remote replication group member, for receiving a database snapshot. An
@@ -184,7 +183,8 @@ public interface StreamReplicator extends Closeable {
      * favoring a follower over a leader.
      *
      * @param options requested options; can pass null if none
-     * @throws ConnectException if no senders could be connected to
+     * @return null if no snapshot could be found
+     * @throws ConnectException if a snapshot was found, but requesting it failed
      */
     SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException;
 
@@ -192,9 +192,8 @@ public interface StreamReplicator extends Closeable {
      * Install a callback to be invoked when a snapshot is requested by a new group member.
      *
      * @param acceptor acceptor to use, or pass null to disable
-     * @return previous acceptor or null if none
      */
-    Consumer<SnapshotSender> snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
+    void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
 
     public static interface Accessor extends Closeable {
         /**
@@ -282,12 +281,67 @@ public interface StreamReplicator extends Closeable {
         long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
 
         /**
+         * Blocks until the commit index reaches the end of the term.
+         *
+         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @return current commit index, or -1 if closed before the index could be
+         * reached, or -2 if timed out
+         */
+        default long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
+            long endNanos = nanosTimeout > 0 ? (System.nanoTime() + nanosTimeout) : 0;
+
+            long endIndex = termEndIndex();
+
+            while (true) {
+                long index = waitForCommit(endIndex, nanosTimeout);
+                if (index == -2) {
+                    // Timed out.
+                    return -2;
+                }
+                endIndex = termEndIndex();
+                if (endIndex == Long.MAX_VALUE) {
+                    // Assume closed.
+                    return -1;
+                }
+                if (index == endIndex) {
+                    // End reached.
+                    return index;
+                }
+                // Term ended even lower, so try again.
+                if (nanosTimeout > 0) {
+                    nanosTimeout = Math.max(0, endNanos - System.nanoTime());
+                }
+            }
+        }
+
+        /**
          * Invokes the given task when the commit index reaches the requested index. The
          * current commit index is passed to the task, or -1 if the term ended before the index
          * could be reached. If the task can be run when this method is called, then the
          * current thread invokes it immediately.
          */
         void uponCommit(long index, LongConsumer task);
+
+        /**
+         * Invokes the given task when the commit index reaches the end of the term. The
+         * current commit index is passed to the task, or -1 if if closed. If the task can be
+         * run when this method is called, then the current thread invokes it immediately.
+         */
+        default void uponEndCommit(LongConsumer task) {
+            uponCommit(termEndIndex(), index -> {
+                long endIndex = termEndIndex();
+                if (endIndex == Long.MAX_VALUE) {
+                    // Assume closed.
+                    task.accept(-1);
+                } else if (index == endIndex) {
+                    // End reached.
+                    task.accept(index);
+                } else {
+                    // Term ended even lower, so try again.                        
+                    uponEndCommit(task);
+                }
+            });
+        }
 
         /**
          * Returns true if writes into the leader are deactived, after having become a
