@@ -746,7 +746,7 @@ public class FileStateLogTest {
         assertEquals(len, amt);
     }
 
-    private static void readFully(LogReader reader, byte[] buf) throws IOException {
+    static void readFully(StreamReplicator.Reader reader, byte[] buf) throws IOException {
         int off = 0;
         int len = buf.length;
         while (len > 0) {

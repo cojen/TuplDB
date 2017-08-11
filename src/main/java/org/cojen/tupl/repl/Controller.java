@@ -20,6 +20,7 @@ package org.cojen.tupl.repl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 
@@ -79,14 +80,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan = new ChannelManager(mScheduler, groupId);
     }
 
-    void start(Map<Long, SocketAddress> members, long localMemberId) throws IOException {
+    /**
+     * @param localSocket optional; used for testing
+     */
+    void init(Map<Long, SocketAddress> members, long localMemberId, ServerSocket localSocket)
+        throws IOException
+    {
         acquireExclusive();
         try {
             Peer[] peers = new Peer[members.size() - 1];
             Channel[] peerChannels = new Channel[peers.length];
 
-            mChanMan.setLocalMemberId(localMemberId);
-            mChanMan.start(members.get(localMemberId), this);
+            if (localSocket == null) {
+                mChanMan.setLocalMemberId(localMemberId, members.get(localMemberId));
+            } else {
+                mChanMan.setLocalMemberId(localMemberId, localSocket);
+            }
 
             int i = 0;
             for (Map.Entry<Long, SocketAddress> e : members.entrySet()) {
@@ -107,6 +116,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         scheduleElectionTask();
         scheduleMissingDataTask();
+    }
+
+    @Override
+    public void start(long index) throws IOException {
+        if (index < 0) {
+            throw new IllegalArgumentException("Start index: " + index);
+        }
+
+        long commitIndex = mStateLog.captureHighest().mCommitIndex;
+        if (index > commitIndex) {
+            throw new IllegalArgumentException
+                ("Cannot start higher than the commit index: " + index + " > " + commitIndex);
+        }
+
+        // FIXME: do something with index
+
+        mChanMan.start(this);
     }
 
     @Override
@@ -173,6 +199,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public void sync() throws IOException {
         mStateLog.sync();
+    }
+
+    @Override
+    public long getLocalMemberId() {
+        return mChanMan.getLocalMemberId();
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        return mChanMan.getLocalAddress();
     }
 
     @Override
@@ -583,8 +619,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private boolean isBehind(long term, long index) {
-        LogInfo info = new LogInfo();
-        mStateLog.captureHighest(info);
+        LogInfo info = mStateLog.captureHighest();
         return term < info.mTerm || (term == info.mTerm && index < info.mHighestIndex);
     }
 
@@ -604,8 +639,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             if (mLocalRole == ROLE_CANDIDATE) {
-                LogInfo info = new LogInfo();
-                mStateLog.captureHighest(info);
+                LogInfo info = mStateLog.captureHighest();
                 toLeader(term, info.mHighestIndex);
                 return true;
             }
@@ -794,8 +828,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Cannot write because terms are missing, so request them.
                 long now = System.currentTimeMillis();
                 if (now >= mNextQueryTermTime) {
-                    LogInfo info = new LogInfo();
-                    mStateLog.captureHighest(info);
+                    LogInfo info = mStateLog.captureHighest();
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
                         from.queryTerms(null, info.mCommitIndex, index);
                     }

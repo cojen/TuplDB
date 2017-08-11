@@ -53,6 +53,16 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
+    public long getLocalMemberId() {
+        return mRepl.getLocalMemberId();
+    }
+
+    @Override
+    public SocketAddress getLocalAddress() {
+        return mRepl.getLocalAddress();
+    }
+
+    @Override
     public Socket connect(SocketAddress addr) throws IOException {
         return mRepl.connect(addr);
     }
@@ -75,6 +85,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }
+
+        mRepl.start(position);
 
         while (true) {
             StreamReplicator.Reader reader = mRepl.newReader(position, false);

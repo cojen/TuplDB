@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.Serializable;
 
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.SocketAddress;
 
 import java.util.HashMap;
@@ -42,6 +43,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     boolean mMkdirs;
     long mGroupId;
     SocketAddress mLocalAddress;
+    ServerSocket mLocalSocket;
     Map<Long, SocketAddress> mStaticMembers;
     Set<SocketAddress> mSeeds;
 
@@ -118,6 +120,13 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             throw new IllegalArgumentException();
         }
         mLocalAddress = addr;
+        return this;
+    }
+
+    // Intended only for testing.
+    ReplicatorConfig localSocket(ServerSocket ss) {
+        mLocalAddress = ss.getLocalSocketAddress();
+        mLocalSocket = ss;
         return this;
     }
 

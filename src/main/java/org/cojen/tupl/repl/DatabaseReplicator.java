@@ -19,12 +19,6 @@ package org.cojen.tupl.repl;
 
 import java.io.IOException;
 
-import java.net.ConnectException;
-import java.net.Socket;
-import java.net.SocketAddress;
-
-import java.util.function.Consumer;
-
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
@@ -32,7 +26,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  *
  * @author Brian S O'Neill
  */
-public interface DatabaseReplicator extends ReplicationManager {
+public interface DatabaseReplicator extends Replicator, ReplicationManager {
     /**
      * Open a replicator instance, creating it if necessary.
      *
@@ -43,22 +37,4 @@ public interface DatabaseReplicator extends ReplicationManager {
         DatabaseReplicator dbRepl = new DatabaseStreamReplicator(streamRepl);
         return dbRepl;
     }
-
-    /**
-     * Connect to any replication group member, for any particular use. An {@link
-     * #socketAcceptor acceptor} must be installed on the group member being connected to for
-     * the connect to succeed.
-     *
-     * @throws IllegalArgumentException if address is null
-     * @throws ConnectException if not given a member address or of the connect fails
-     */
-    Socket connect(SocketAddress addr) throws IOException;
-
-    /**
-     * Install a callback to be invoked when plain connections are established to the local
-     * group member. No new connections are accepted (of any type) until the callback returns.
-     *
-     * @param acceptor acceptor to use, or pass null to disable
-     */
-    void socketAcceptor(Consumer<Socket> acceptor);
 }

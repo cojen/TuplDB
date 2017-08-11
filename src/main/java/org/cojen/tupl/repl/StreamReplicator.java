@@ -38,7 +38,7 @@ import java.util.function.LongConsumer;
  *
  * @author Brian S O'Neill
  */
-public interface StreamReplicator extends Closeable {
+public interface StreamReplicator extends Replicator {
     /**
      * Open a replicator instance, creating it if necessary.
      *
@@ -98,10 +98,18 @@ public interface StreamReplicator extends Closeable {
         }
 
         Controller con = new Controller(new FileStateLog(base), groupId);
-        con.start(members, localMemberId);
+        con.init(members, localMemberId, config.mLocalSocket);
 
         return con;
     }
+
+    /**
+     * Start accepting replication data starting from the given index, which is assumed to be a
+     * valid commit index.
+     *
+     * @throws IllegalStateException if the given index is higher than the known commit index
+     */
+    void start(long index) throws IOException;
 
     /**
      * Returns a new reader which accesses data starting from the given index. The reader
@@ -154,24 +162,6 @@ public interface StreamReplicator extends Closeable {
      * beyond this is discarded.
      */
     void sync() throws IOException;
-
-    /**
-     * Connect to any replication group member, for any particular use. An {@link
-     * #socketAcceptor acceptor} must be installed on the group member being connected to for
-     * the connect to succeed.
-     *
-     * @throws IllegalArgumentException if address is null
-     * @throws ConnectException if not given a member address or if the connect fails
-     */
-    Socket connect(SocketAddress addr) throws IOException;
-
-    /**
-     * Install a callback to be invoked when plain connections are established to the local
-     * group member. No new connections are accepted (of any type) until the callback returns.
-     *
-     * @param acceptor acceptor to use, or pass null to disable
-     */
-    void socketAcceptor(Consumer<Socket> acceptor);
 
     /**
      * Connect to a remote replication group member, for receiving a database snapshot. An

@@ -27,6 +27,16 @@ import java.io.IOException;
  */
 interface StateLog extends Closeable {
     /**
+     * Copies into all relevant fields of the returned info object, for the highest term over a
+     * contiguous range (by highest index).
+     */
+    default LogInfo captureHighest() {
+        LogInfo info = new LogInfo();
+        captureHighest(info);
+        return info;
+    }
+
+    /**
      * Copies into all relevant fields of the given info object, for the highest term over a
      * contiguous range (by highest index).
      */
