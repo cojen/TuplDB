@@ -92,10 +92,11 @@ final class ChannelManager {
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
 
-    private ServerSocket mServerSocket;
-    private Channel mLocalServer;
-
     private long mLocalMemberId;
+    private SocketAddress mLocalAddress;
+    private ServerSocket mServerSocket;
+
+    private Channel mLocalServer;
 
     private volatile Consumer<Socket> mSocketAcceptor;
 
@@ -113,26 +114,65 @@ final class ChannelManager {
     /**
      * Set the local member id to a non-zero value, which cannot be changed later.
      */
-    synchronized void setLocalMemberId(long localMemberId) {
-        if (localMemberId == 0) {
+    synchronized void setLocalMemberId(long localMemberId, SocketAddress localAddress)
+        throws IOException
+    {
+        setLocalMemberId(localMemberId, localAddress, null);
+    }
+
+    /**
+     * Set the local member id to a non-zero value, which cannot be changed later.
+     */
+    synchronized void setLocalMemberId(long localMemberId, ServerSocket ss)
+        throws IOException
+    {
+        setLocalMemberId(localMemberId, null, ss);
+    }
+
+    /**
+     * Set the local member id to a non-zero value, which cannot be changed later.
+     */
+    private synchronized void setLocalMemberId(long localMemberId,
+                                               SocketAddress localAddress, ServerSocket ss)
+        throws IOException
+    {
+        if (localMemberId == 0 || ((localAddress == null) == (ss == null))) {
             throw new IllegalArgumentException();
         }
         if (mLocalMemberId != 0) {
             throw new IllegalStateException();
         }
+
+        if (localAddress == null) {
+            localAddress = ss.getLocalSocketAddress();
+        } else {
+            try {
+                ss = new ServerSocket();
+                ss.setReuseAddress(true);
+                ss.bind(localAddress);
+            } catch (Throwable e) {
+                closeQuietly(null, ss);
+                throw e;
+            }
+        }
+
         mLocalMemberId = localMemberId;
+        mLocalAddress = localAddress;
+        mServerSocket = ss;
     }
 
     synchronized long getLocalMemberId() {
         return mLocalMemberId;
     }
 
+    synchronized SocketAddress getLocalAddress() {
+        return mLocalAddress;
+    }
+
     /**
      * Starts accepting incoming channels, but does nothing if already started.
      */
-    synchronized boolean start(SocketAddress listenAddress, Channel localServer)
-        throws IOException
-    {
+    synchronized boolean start(Channel localServer) throws IOException {
         if (localServer == null) {
             throw new IllegalArgumentException();
         }
@@ -141,22 +181,12 @@ final class ChannelManager {
             throw new IllegalStateException();
         }
 
-        if (mServerSocket != null) {
+        if (mLocalServer != null) {
             return false;
         }
 
-        ServerSocket ss = new ServerSocket();
+        execute(this::acceptLoop);
 
-        try {
-            ss.setReuseAddress(true);
-            ss.bind(listenAddress);
-            execute(this::acceptLoop);
-        } catch (Throwable e) {
-            closeQuietly(null, ss);
-            throw e;
-        }
-
-        mServerSocket = ss;
         mLocalServer = localServer;
 
         // Start task.
@@ -223,10 +253,6 @@ final class ChannelManager {
         synchronized (this) {
             if (mLocalMemberId == 0) {
                 throw new IllegalStateException("Local member id isn't set");
-            }
-
-            if (mServerSocket == null) {
-                throw new IllegalStateException("Not started");
             }
 
             if (mLocalMemberId == remoteMemberId) {
