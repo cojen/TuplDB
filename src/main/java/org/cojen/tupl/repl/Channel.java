@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.InterruptedIOException;
+
 /**
  * Defines a collection of remote asynchronous methods. Method invocations are permitted to
  * block if the send buffer is full.
@@ -26,6 +28,18 @@ package org.cojen.tupl.repl;
 interface Channel {
     default Peer peer() {
         return null;
+    }
+
+    /**
+     * Returns immediately if connected, else waits a bit until connected. Connection
+     * establishment happens in the background, and channels attempt to stay connected unless
+     * explicitly closed.
+     *
+     * @param timeoutMillis is infinite if negative
+     * @return timeout remaining
+     */
+    default int waitForConnection(int timeoutMillis) throws InterruptedIOException {
+        return timeoutMillis;
     }
 
     /**
