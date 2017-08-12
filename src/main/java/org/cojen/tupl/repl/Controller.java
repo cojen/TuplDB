@@ -696,12 +696,45 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex) {
         try {
+            queryReplyTermCheck(term);
+
             mStateLog.defineTerm(prevTerm, term, startIndex);
         } catch (IOException e) {
             uncaught(e);
         }
 
         return true;
+    }
+
+    /**
+     * Term check to apply when receiving results from a query. Forces a conversion to follower
+     * if necessary, although leaders don't issue queries.
+     */
+    private void queryReplyTermCheck(long term) throws IOException {
+        acquireShared();
+        long originalTerm = mCurrentTerm;
+
+        if (term < originalTerm) {
+            releaseShared();
+            return;
+        }
+
+        if (!tryUpgrade()) {
+            releaseShared();
+            acquireExclusive();
+            originalTerm = mCurrentTerm;
+        }
+
+        try {
+            if (term > originalTerm) {
+                mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                if (mCurrentTerm > originalTerm) {
+                    toFollower();
+                }
+            }
+        } finally {
+            releaseExclusive();
+        }
     }
 
     @Override
@@ -763,6 +796,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mReceivingMissingData = true;
 
         try {
+            queryReplyTermCheck(term);
+
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
             if (writer != null) {
                 try {
@@ -784,8 +819,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     {
         checkTerm: {
             acquireShared();
-
-            final long originalTerm = mCurrentTerm;
+            long originalTerm = mCurrentTerm;
 
             if (term == originalTerm) {
                 if (mElectionValidated > 0) {
@@ -798,8 +832,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            releaseShared();
-            acquireExclusive();
+            if (!tryUpgrade()) {
+                releaseShared();
+                acquireExclusive();
+                originalTerm = mCurrentTerm;
+            }
 
             try {
                 if (term == originalTerm) {
