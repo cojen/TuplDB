@@ -475,6 +475,11 @@ final class FileStateLog extends Latch implements StateLog {
         LKey<TermLog> startKey = new LKey.Finder<>(startIndex);
         LKey<TermLog> endKey = new LKey.Finder<>(endIndex);
 
+        LKey<TermLog> prev = mTermLogs.floor(startKey); // findLe
+        if (prev != null && ((TermLog) prev).endIndex() > startIndex) {
+            startKey = prev;
+        }
+
         for (Object key : mTermLogs.subSet(startKey, endKey)) {
             TermLog termLog = (TermLog) key;
             results.term(termLog.prevTerm(), termLog.term(), termLog.startIndex());
@@ -775,5 +780,7 @@ final class FileStateLog extends Latch implements StateLog {
                 releaseExclusive();
             }
         }
+
+        mWorker.join(true);
     }
 }
