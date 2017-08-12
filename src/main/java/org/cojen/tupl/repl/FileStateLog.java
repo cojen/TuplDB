@@ -472,6 +472,10 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void queryTerms(long startIndex, long endIndex, TermQuery results) {
+        if (startIndex >= endIndex) {
+            return;
+        }
+
         LKey<TermLog> startKey = new LKey.Finder<>(startIndex);
         LKey<TermLog> endKey = new LKey.Finder<>(endIndex);
 
