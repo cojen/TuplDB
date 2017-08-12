@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.Closeable;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -678,6 +679,9 @@ final class ChannelManager {
             releaseExclusive();
 
             execute(this::inputLoop);
+
+            notifyAll();
+
             return true;
         }
 
@@ -777,6 +781,42 @@ final class ChannelManager {
         @Override
         public Peer peer() {
             return mPeer;
+        }
+
+        @Override
+        public int waitForConnection(int timeoutMillis) throws InterruptedIOException {
+            if (timeoutMillis == 0) {
+                return 0;
+            }
+
+            long end = Long.MIN_VALUE;
+
+            synchronized (this) {
+                while (true) {
+                    if (mSocket != null || mLocalServer == null) {
+                        return timeoutMillis;
+                    }
+
+                    try {
+                        if (timeoutMillis < 0) {
+                            wait();
+                        } else {
+                            long now = System.currentTimeMillis();
+                            if (end == Long.MIN_VALUE) {
+                                end = now + timeoutMillis;
+                            } else {
+                                timeoutMillis = (int) (end - now);
+                            }
+                            if (timeoutMillis <= 0) {
+                                return 0;
+                            }
+                            wait(timeoutMillis);
+                        }
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                }
+            }
         }
 
         @Override
