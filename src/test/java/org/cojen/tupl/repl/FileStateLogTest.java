@@ -165,6 +165,13 @@ public class FileStateLogTest {
         });
 
         assertEquals(1, countRef[0]);
+
+        countRef[0] = 0;
+        mLog.queryTerms(2100, 2100, (prevTerm, trm, startIndex) -> {
+            countRef[0]++;
+        });
+
+        assertEquals(0, countRef[0]);
     }
 
     @Test
