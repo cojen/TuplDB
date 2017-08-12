@@ -200,12 +200,12 @@ public class Worker {
             // Keep trying before parking.
             for (int i=1; i<Latch.SPIN_LIMIT; i++) {
                 if (mSize <= 0) {
-                    return;
+                    break;
                 }
             }
             Thread.yield();
             if (mSize <= 0) {
-                return;
+                break;
             }
             mWaiter = Thread.currentThread();
             if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_BLOCKED)) {
