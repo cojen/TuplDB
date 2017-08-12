@@ -276,6 +276,61 @@ public class FileStateLogTest {
         assertEquals(0, result.mRanges.size());
     }
 
+    @Test
+    public void missingRangesHighStart() throws Exception {
+        // Verify missing ranges when log starts higher than index zero.
+
+        // Start at index 1000.
+        mLog.defineTerm(0, 10, 1000);
+
+        RangeResult result = new RangeResult();
+        assertEquals(1000, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+
+        LogWriter writer = mLog.openWriter(0, 10, 1000);
+        write(writer, new byte[100]);
+        writer.release();
+
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(1000, result));
+        assertEquals(0, result.mRanges.size());
+
+        // Define a new term before the previous one is filled in.
+        mLog.defineTerm(10, 11, 2000);
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(1100, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(1100, 2000), result.mRanges.get(0));
+
+        // Write some data into the new term.
+        writer = mLog.openWriter(10, 11, 2000);
+        write(writer, new byte[100]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(1100, mLog.checkForMissingData(1100, result));
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(1100, 2000), result.mRanges.get(0));
+
+        // Fill in the missing range.
+        writer = mLog.openWriter(10, 10, 1100);
+        write(writer, new byte[900]);
+        writer.release();
+        result = new RangeResult();
+        assertEquals(2100, mLog.checkForMissingData(Long.MAX_VALUE, result));
+        assertEquals(0, result.mRanges.size());
+        result = new RangeResult();
+        assertEquals(2100, mLog.checkForMissingData(2100, result));
+        assertEquals(0, result.mRanges.size());
+    }
 
     @Test
     public void primordialTerm() throws Exception {
