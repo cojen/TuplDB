@@ -133,6 +133,38 @@ public class FileStateLogTest {
         });
 
         assertEquals(3, countRef[0]);
+
+        // Find terms when the index range doesn't touch a boundary.
+
+        countRef[0] = 0;
+        mLog.queryTerms(1100, 1200, (prevTerm, trm, startIndex) -> {
+            countRef[0]++;
+            assertEquals(0, prevTerm);
+            assertEquals(10, trm);
+            assertEquals(1000, startIndex);
+        });
+
+        assertEquals(1, countRef[0]);
+
+        countRef[0] = 0;
+        mLog.queryTerms(1100, 2000, (prevTerm, trm, startIndex) -> {
+            countRef[0]++;
+            assertEquals(0, prevTerm);
+            assertEquals(10, trm);
+            assertEquals(1000, startIndex);
+        });
+
+        assertEquals(1, countRef[0]);
+
+        countRef[0] = 0;
+        mLog.queryTerms(2000, 2100, (prevTerm, trm, startIndex) -> {
+            countRef[0]++;
+            assertEquals(10, prevTerm);
+            assertEquals(11, trm);
+            assertEquals(2000, startIndex);
+        });
+
+        assertEquals(1, countRef[0]);
     }
 
     @Test
