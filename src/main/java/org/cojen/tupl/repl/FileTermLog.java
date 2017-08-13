@@ -410,7 +410,7 @@ final class FileTermLog extends Latch implements TermLog {
             releaseExclusive();
         }
 
-        long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime();
+        long endNanos = nanosTimeout > 0 ? (System.nanoTime() + nanosTimeout) : 0;
 
         while (true) {
             if (nanosTimeout < 0) {
@@ -429,7 +429,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return commitIndex;
             }
             if (nanosTimeout == 0
-                || (nanosTimeout > 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+                || (nanosTimeout > 0 && (nanosTimeout = endNanos - System.nanoTime()) <= 0))
             {
                 return WAIT_TIMEOUT;
             }
