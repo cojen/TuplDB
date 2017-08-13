@@ -259,4 +259,88 @@ public class SnapshotTest {
 
         restored.close();
     }
+
+    @Test
+    public void incompleteRestore() throws Exception {
+        File base = newTempBaseFile(getClass());
+        File snapshotFile = newTempBaseFile(getClass());
+        File restoredBase = newTempBaseFile(getClass());
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .baseFile(base)
+            .minCacheSize(100_000_000)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(config);
+
+        Database db = Database.open(config);
+        Index index = db.openIndex("test1");
+
+        for (int i=0; i<1_000_000; i++) {
+            String key = "key-" + i;
+            String value = "value-" + i;
+            index.store(null, key.getBytes(), value.getBytes());
+        }
+
+        db.checkpoint();
+
+        FileOutputStream out = new FileOutputStream(snapshotFile);
+
+        Snapshot s = db.beginSnapshot();
+        long expectedLength = s.length();
+        s.writeTo(out);
+        out.close();
+        s.close();
+        db.close();
+        db = null;
+        index = null;
+
+        assertEquals(expectedLength, snapshotFile.length());
+
+        // Throw an exception before the restore can complete.
+        long limit = expectedLength / 2;
+
+        InputStream broken = new FilterInputStream(new FileInputStream(snapshotFile)) {
+            private long mTotal = 0;
+
+            @Override
+            public int read(byte[] b, int off, int len) throws IOException {
+                if (mTotal >= limit) {
+                    close();
+                    throw new IOException("Broken");
+                } else {
+                    int amt = super.read(b, off, len);
+                    if (amt > 0) {
+                        mTotal += amt;
+                    }
+                    return amt;
+                }
+            }
+        };
+
+        DatabaseConfig restoredConfig = new DatabaseConfig()
+            .directPageAccess(false)
+            .baseFile(restoredBase)
+            .minCacheSize(100_000_000)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(restoredConfig);
+
+        try {
+            Database.restoreFromSnapshot(restoredConfig, broken);
+            fail();
+        } catch (IOException e) {
+            assertEquals("Broken", e.getMessage());
+        }
+
+        try {
+            Database.open(restoredConfig);
+            fail();
+        } catch (IncompleteRestoreException e) {
+            // Expected.
+        }
+
+        deleteTempFiles(getClass());
+    }
 }
