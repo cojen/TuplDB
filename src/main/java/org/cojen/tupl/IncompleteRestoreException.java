@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -18,26 +18,26 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when the internal structure of the {@link Database database} is
- * corrupt.
+ * Thrown when opening a database which wasn't completely {@link Database#restoreFromSnapshot
+ * restored}.
  *
  * @author Brian S O'Neill
  */
-public class CorruptDatabaseException extends DatabaseException {
+public class IncompleteRestoreException extends CorruptDatabaseException {
     private static final long serialVersionUID = 1L;
 
-    public CorruptDatabaseException() {
+    public IncompleteRestoreException() {
     }
 
-    public CorruptDatabaseException(String message) {
+    public IncompleteRestoreException(String message) {
         super(message);
     }
 
-    public CorruptDatabaseException(Throwable cause) {
+    public IncompleteRestoreException(Throwable cause) {
         super(cause);
     }
 
-    public CorruptDatabaseException(String message, Throwable cause) {
+    public IncompleteRestoreException(String message, Throwable cause) {
         super(message, cause);
     }
 }
