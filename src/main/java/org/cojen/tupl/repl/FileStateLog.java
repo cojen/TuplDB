@@ -190,6 +190,7 @@ final class FileStateLog extends Latch implements StateLog {
             throw new IOException("Start index is higher than commit index");
         }
 
+        mStartIndex = startIndex;
         mCurrentTerm = currentTerm;
 
         // Open all the existing terms.
