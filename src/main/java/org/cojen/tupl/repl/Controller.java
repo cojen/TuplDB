@@ -24,7 +24,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import java.util.function.Consumer;
@@ -47,6 +50,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int ELECTION_DELAY_LOW_MILLIS = 200, ELECTION_DELAY_HIGH_MILLIS = 300;
     private static final int QUERY_TERMS_RATE_MILLIS = 1;
     private static final int MISSING_DELAY_LOW_MILLIS = 400, MISSING_DELAY_HIGH_MILLIS = 600;
+    private static final int CONNECT_TIMEOUT_MILLIS = 500;
+    private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 2000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
 
     private final Scheduler mScheduler;
@@ -113,26 +118,48 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } finally {
             releaseExclusive();
         }
-
-        scheduleElectionTask();
-        scheduleMissingDataTask();
     }
 
     @Override
-    public void start(long index) throws IOException {
+    public boolean start(long index) throws IOException {
         if (index < 0) {
             throw new IllegalArgumentException("Start index: " + index);
         }
 
-        long commitIndex = mStateLog.captureHighest().mCommitIndex;
-        if (index > commitIndex) {
-            throw new IllegalArgumentException
-                ("Cannot start higher than the commit index: " + index + " > " + commitIndex);
+        if (mChanMan.isStarted()) {
+            return false;
         }
 
-        // FIXME: do something with index
+        mStateLog.startIndex(index);
+
+        if (index != 0 && mStateLog.termAt(index) == 0) {
+            acquireShared();
+            Channel[] channels = mPeerChannels;
+            releaseShared();
+
+            waitForConnections(channels);
+
+            for (Channel channel : channels) {
+                channel.queryTerms(null, index, Long.MAX_VALUE);
+            }
+
+            // FIXME: instead of waiting, permit missing data task to do the check
+
+            // FIXME: use condition variable
+            while (mStateLog.termAt(index) == 0) {
+                try {
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                }
+            }
+        }
 
         mChanMan.start(this);
+
+        scheduleElectionTask();
+        scheduleMissingDataTask();
+
+        return true;
     }
 
     @Override
@@ -223,14 +250,71 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
-        // FIXME
-        throw null;
+        acquireShared();
+        Channel[] channels = mPeerChannels;
+        releaseShared();
+
+        // Snapshots are requested early, so wait for connections to be established.
+        waitForConnections(channels);
+
+        final Object requestedBy = Thread.currentThread();
+        for (Channel channel : channels) {
+            channel.peer().resetSnapshotScore(new SnapshotScore(requestedBy, channel));
+            channel.snapshotScore(this);
+        }
+
+        long timeoutMillis = SNAPSHOT_REPLY_TIMEOUT_MILLIS;
+        long end = System.currentTimeMillis() + timeoutMillis;
+
+        List<SnapshotScore> results = new ArrayList<>(channels.length);
+
+        for (int i=0; i<channels.length; ) {
+            Channel channel = channels[i];
+            SnapshotScore score = channel.peer().awaitSnapshotScore(requestedBy, timeoutMillis);
+            if (score != null) {
+                results.add(score);
+            }
+            if (++i >= channels.length) {
+                break;
+            }
+            timeoutMillis = end - System.currentTimeMillis();
+            if (timeoutMillis <= 0) {
+                break;
+            }
+        }
+
+        if (results.isEmpty()) {
+            return null;
+        }
+
+        Collections.shuffle(results); // random selection in case of ties
+        Collections.sort(results); // stable sort
+
+        Socket sock = mChanMan.connectSnapshot(results.get(0).mChannel.peer().mAddress);
+
+        try {
+            return new SocketSnapshotReceiver(sock, options);
+        } catch (IOException e) {
+            closeQuietly(e, sock);
+            throw e;
+        }
     }
 
     @Override
     public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
-        // FIXME
-        throw null;
+        mChanMan.snapshotRequestAcceptor(sock -> {
+            SnapshotSender sender;
+            try {
+                sender = new SocketSnapshotSender(sock);
+            } catch (IOException e) {
+                closeQuietly(e, sock);
+                return;
+            }
+
+            // FIXME: register the sender
+
+            mScheduler.execute(() -> acceptor.accept(sender));
+        });
     }
 
     class ReplWriter implements Writer {
@@ -344,6 +428,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan.stop();
         mScheduler.shutdown();
         mStateLog.close();
+    }
+
+    private static void waitForConnections(Channel[] channels) throws InterruptedIOException {
+        int timeoutMillis = CONNECT_TIMEOUT_MILLIS;
+        for (Channel channel : channels) {
+            timeoutMillis = channel.waitForConnection(timeoutMillis);
+        }
     }
 
     private void scheduleMissingDataTask() {
@@ -669,9 +760,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
-            System.out.println("leader: " + term + ", " + index);
-
-            mLeaderLogWriter = mStateLog.openWriter(0, term, index);
+            long prevTerm = mStateLog.termAt(index - 1);
+            System.out.println("leader: " + prevTerm + " -> " + term + " @" + index);
+            mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
             mLocalRole = ROLE_LEADER;
             for (Channel channel : mPeerChannels) {
                 channel.peer().mMatchIndex = 0;
@@ -947,6 +1038,30 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         mStateLog.commit(commitIndex);
+        return true;
+    }
+
+    @Override
+    public boolean snapshotScore(Channel from) {
+        System.out.println("snapshotScore: " + from);
+
+        // FIXME: reply with high session count and weight if no acceptor is installed
+
+        acquireShared();
+        int role = mLocalRole;
+        releaseShared();
+
+        // FIXME: provide active session count
+        from.snapshotScoreReply(null, 0, role == ROLE_LEADER ? 1 : -1);
+
+        return true;
+    }
+
+    @Override
+    public boolean snapshotScoreReply(Channel from, int activeSessions, float weight) {
+        synchronized (from) {
+            from.peer().snapshotScoreReply(activeSessions, weight);
+        }
         return true;
     }
 }

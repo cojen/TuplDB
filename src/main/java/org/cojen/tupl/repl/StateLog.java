@@ -83,6 +83,11 @@ interface StateLog extends Closeable {
     boolean defineTerm(long prevTerm, long term, long index) throws IOException;
 
     /**
+     * Return the term at the given index, or 0 if unknown.
+     */
+    long termAt(long index);
+
+    /**
      * Query for all the terms which are defined over the given range.
      *
      * @param startIndex inclusive log start index

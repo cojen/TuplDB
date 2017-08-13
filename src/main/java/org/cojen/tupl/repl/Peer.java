@@ -19,16 +19,25 @@ package org.cojen.tupl.repl;
 
 import java.net.SocketAddress;
 
+import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 /**
  * Peers are ordered by match index, for determining the commit index.
  *
  * @author Brian S O'Neill
  */
 final class Peer implements Comparable<Peer> {
+    private static final AtomicReferenceFieldUpdater<Peer, SnapshotScore> cSnapshotScoreUpdater =
+        AtomicReferenceFieldUpdater.newUpdater(Peer.class, SnapshotScore.class, "mSnapshotScore");
+
     final long mMemberId;
     final SocketAddress mAddress;
 
     long mMatchIndex;
+
+    private volatile SnapshotScore mSnapshotScore;
 
     /**
      * Construct a key for finding peers in a set ordered by member id.
@@ -44,6 +53,38 @@ final class Peer implements Comparable<Peer> {
         }
         mMemberId = memberId;
         mAddress = addr;
+    }
+
+    void resetSnapshotScore(SnapshotScore score) {
+        mSnapshotScore = score;
+    }
+
+    SnapshotScore awaitSnapshotScore(Object requestedBy, long timeoutMillis) {
+        SnapshotScore score = mSnapshotScore;
+
+        if (score != null) {
+            final SnapshotScore waitFor = score;
+
+            try {
+                if (!waitFor.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                    score = null;
+                }
+            } catch (InterruptedException e) {
+            }
+
+            if (waitFor.mRequestedBy == requestedBy) {
+                cSnapshotScoreUpdater.compareAndSet(this, waitFor, null);
+            }
+        }
+
+        return score;
+    }
+
+    void snapshotScoreReply(int activeSessions, float weight) {
+        SnapshotScore score = mSnapshotScore;
+        if (score != null) {
+            score.snapshotScoreReply(activeSessions, weight);
+        }
     }
 
     @Override
