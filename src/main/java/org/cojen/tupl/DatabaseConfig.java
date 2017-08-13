@@ -732,7 +732,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
         if (cause == null) {
             cause = e;
         }
-        if (cause instanceof RuntimeException || e instanceof IOException) {
+        if (cause instanceof RuntimeException || cause instanceof IOException) {
             throw rethrow(cause);
         }
         if (mDirectPageAccess == Boolean.TRUE) {
