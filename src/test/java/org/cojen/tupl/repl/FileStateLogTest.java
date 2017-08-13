@@ -82,11 +82,13 @@ public class FileStateLogTest {
         // No such previous term exists.
         assertFalse(mLog.defineTerm(10, 11, 1000));
 
-        // Allow leader to define a term with no previous term check.
+        // Allow term definition with no previous term at the start.
+        mLog.startIndex(1000);
+        assertTrue(mLog.defineTerm(0, 10, 1000));
         assertTrue(mLog.defineTerm(0, 10, 1000));
 
-        // Allow leader to define a higher term with no previous term check.
-        assertTrue(mLog.defineTerm(0, 11, 2000));
+        assertFalse(mLog.defineTerm(0, 11, 2000));
+        assertTrue(mLog.defineTerm(10, 11, 2000));
 
         // Allow follower to define a higher term.
         TermLog term = mLog.defineTermLog(11, 15, 3000);
@@ -101,9 +103,11 @@ public class FileStateLogTest {
 
         // Index in the middle of an existing term, but index is out of bounds.
         assertFalse(mLog.defineTerm(11, 11, 1000));
+        assertFalse(mLog.defineTerm(11, 11, 1500));
         assertFalse(mLog.defineTerm(11, 11, 2000));
         assertFalse(mLog.defineTerm(11, 11, 3000));
         assertFalse(mLog.defineTerm(11, 11, 5000));
+        assertTrue(mLog.defineTerm(11, 11, 2500)); // actually in bounds
 
         // Mustn't define a term if index as the highest, although it's not usable.
         term = mLog.defineTermLog(15, 15, 10000);
@@ -281,6 +285,7 @@ public class FileStateLogTest {
         // Verify missing ranges when log starts higher than index zero.
 
         // Start at index 1000.
+        mLog.startIndex(1000);
         mLog.defineTerm(0, 10, 1000);
 
         RangeResult result = new RangeResult();

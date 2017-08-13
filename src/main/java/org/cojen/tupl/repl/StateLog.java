@@ -67,9 +67,15 @@ interface StateLog extends Closeable {
     long checkCurrentTerm(long term) throws IOException;
 
     /**
-     * Ensures that a term is defined at the given index.
+     * Set the log start index, potentially truncating any lower data.
+     */
+    void startIndex(long index) throws IOException;
+
+    /**
+     * Ensures that a term is defined at the given index. No previous term is required when the
+     * index is at the start of the log.
      *
-     * @param prevTerm expected term at previous index; pass 0 to not check
+     * @param prevTerm expected term at previous index
      * @param term term to define
      * @param index any index in the term
      * @return false if not defined due to term mismatch
