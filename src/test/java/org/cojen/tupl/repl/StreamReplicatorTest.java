@@ -37,7 +37,7 @@ public class StreamReplicatorTest {
         org.junit.runner.JUnitCore.main(StreamReplicatorTest.class.getName());
     }
 
-    private static final long ONE_SECOND_IN_NANOS = 1_000_000_000L;
+    private static final long COMMIT_TIMEOUT_NANOS = 5_000_000_000L;
 
     @Before
     public void setup() throws Exception {
@@ -182,7 +182,7 @@ public class StreamReplicatorTest {
         byte[] message = "hello".getBytes();
         assertEquals(message.length, writer.write(message));
         long highIndex = message.length;
-        assertEquals(highIndex, writer.waitForCommit(highIndex, ONE_SECOND_IN_NANOS));
+        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
 
         byte[] buf = new byte[message.length];
         readFully(reader, buf);
@@ -194,7 +194,7 @@ public class StreamReplicatorTest {
         message = "world!".getBytes();
         assertEquals(message.length, writer.write(message));
         highIndex += message.length;
-        assertEquals(highIndex, writer.waitForCommit(highIndex, ONE_SECOND_IN_NANOS));
+        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
 
         buf = new byte[message.length];
         readFully(reader, buf);
