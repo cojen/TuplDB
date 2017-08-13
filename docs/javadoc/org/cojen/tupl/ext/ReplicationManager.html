@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18,"i5":18,"i6":6,"i7":6,"i8":18,"i9":18,"i10":6,"i11":6,"i12":18,"i13":6,"i14":6};
+var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18,"i5":18,"i6":6,"i7":6,"i8":18,"i9":18,"i10":18,"i11":6,"i12":6,"i13":18,"i14":6,"i15":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -224,25 +224,32 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i10" class="altColor">
+<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest--">restoreRequest</a></span>()</code>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer.</div>
+</td>
+</tr>
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#start-long-">start</a></span>(long&nbsp;position)</code>
 <div class="block">Start the replication manager in replica mode.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#sync--">sync</a></span>()</code>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the current position.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#syncConfirm-long-">syncConfirm</a></span>(long&nbsp;position)</code>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#syncConfirm-long-long-">syncConfirm</a></span>(long&nbsp;position,
            long&nbsp;timeoutNanos)</code>
@@ -250,7 +257,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#writer--">writer</a></span>()</code>
 <div class="block">Returns an object which allows the leader to write changes.</div>
@@ -288,6 +295,25 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="block">Return a fixed non-zero value which identifies the replication manager implementation
  and its encoding format. Value should be chosen randomly, so as not to collide with
  other implementations.</div>
+</li>
+</ul>
+<a name="restoreRequest--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>restoreRequest</h4>
+<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest()
+                            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer. If null is returned, the database will try to start
+ reading replication data at the lowest position.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>null if no snapshot could be found</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if a snapshot was found, but requesting it failed</dd>
+</dl>
 </li>
 </ul>
 <a name="start-long-">

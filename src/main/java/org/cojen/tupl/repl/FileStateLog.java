@@ -474,12 +474,8 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public void startIndex(long index) throws IOException {
         acquireExclusive();
-        if (mStartIndex != 0) {
-            // FIXME: Allow changing the start index to a higher value, but not higher than the
-            // commit index. Sync metadata before deleting any segments.
-            releaseExclusive();
-            throw new IllegalStateException();
-        }
+        // FIXME: Allow changing the start index to a higher value, but not higher than the
+        // commit index. Sync metadata before deleting any segments.
         mStartIndex = index;
         releaseExclusive();
     }
@@ -487,6 +483,12 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public boolean defineTerm(long prevTerm, long term, long index) throws IOException {
         return defineTermLog(prevTerm, term, index) != null;
+    }
+
+    @Override
+    public long termAt(long index) {
+        LKey<TermLog> prev = mTermLogs.floor(new LKey.Finder<>(index)); // findLe
+        return prev == null ? 0 : ((TermLog) prev).term();
     }
 
     @Override

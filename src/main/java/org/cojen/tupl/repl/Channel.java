@@ -112,4 +112,16 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean writeDataReply(Channel from, long term, long highestIndex);
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean snapshotScore(Channel from);
+
+    /**
+     * @param activeSessions count of active snapshot sessions; negative if rejected
+     * @param weight -1 if follower, or 1 if leader (lower is preferred)
+     * @return false if not sent or processed
+     */
+    boolean snapshotScoreReply(Channel from, int activeSessions, float weight);
 }

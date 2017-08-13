@@ -191,7 +191,7 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </td>
 </tr>
 <tr id="i6" class="altColor">
-<td class="colFirst"><code>void</code></td>
+<td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#start-long-">start</a></span>(long&nbsp;index)</code>
 <div class="block">Start accepting replication data starting from the given index, which is assumed to be a
  valid commit index.</div>
@@ -254,13 +254,14 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 <ul class="blockList">
 <li class="blockList">
 <h4>start</h4>
-<pre>void&nbsp;start(long&nbsp;index)
-    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>boolean&nbsp;start(long&nbsp;index)
+       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Start accepting replication data starting from the given index, which is assumed to be a
  valid commit index.</div>
 <dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>false if already started</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if the given index is higher than the known commit index</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>

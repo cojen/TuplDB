@@ -18,6 +18,7 @@
 package org.cojen.tupl.ext;
 
 import java.io.Closeable;
+import java.io.InputStream;
 import java.io.IOException;
 
 import org.cojen.tupl.ConfirmationFailureException;
@@ -43,6 +44,18 @@ public interface ReplicationManager extends Closeable {
      * other implementations.
      */
     long encoding();
+
+    /**
+     * Called when the database is created, in an attempt to retrieve an existing database
+     * snapshot from a replication peer. If null is returned, the database will try to start
+     * reading replication data at the lowest position.
+     *
+     * @return null if no snapshot could be found
+     * @throws IOException if a snapshot was found, but requesting it failed
+     */
+    default InputStream restoreRequest() throws IOException {
+        return null;
+    }
 
     /**
      * Start the replication manager in replica mode. Invocation of this method implies that

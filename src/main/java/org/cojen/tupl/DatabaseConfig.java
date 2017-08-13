@@ -614,6 +614,24 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     final Database open(boolean destroy, InputStream restore) throws IOException {
+        if (!destroy && restore == null && mReplManager != null) shouldRestore: {
+            // If no data files exist, attempt to restore from a peer.
+
+            File[] dataFiles = dataFiles();
+            if (dataFiles == null) {
+                // No data files are expected.
+                break shouldRestore;
+            }
+
+            for (File file : dataFiles) if (file.exists()) {
+                // Don't restore if any data files are found to exist.
+                break shouldRestore;
+            }
+
+            // ReplicationManager returns null if no restore should be performed.
+            restore = mReplManager.restoreRequest();
+        }
+
         Method m;
         Object[] args;
         if (restore != null) {

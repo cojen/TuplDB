@@ -107,9 +107,9 @@ public interface StreamReplicator extends Replicator {
      * Start accepting replication data starting from the given index, which is assumed to be a
      * valid commit index.
      *
-     * @throws IllegalStateException if the given index is higher than the known commit index
+     * @return false if already started
      */
-    void start(long index) throws IOException;
+    boolean start(long index) throws IOException;
 
     /**
      * Returns a new reader which accesses data starting from the given index. The reader

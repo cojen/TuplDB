@@ -17,8 +17,10 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -30,6 +32,7 @@ import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
+import org.cojen.tupl.Snapshot;
 
 import org.cojen.tupl.io.Utils;
 
@@ -78,10 +81,27 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public void start(long position) throws IOException {
-        if (position < 0) {
-            throw new IllegalArgumentException();
+    public InputStream restoreRequest() throws IOException {
+        // FIXME: more layering required; verify length; CRC options too
+        SnapshotReceiver receiver = mRepl.requestSnapshot(null);
+        if (receiver == null) {
+            return null;
         }
+
+        InputStream in = receiver.inputStream();
+
+        try {
+            mRepl.start(receiver.index());
+        } catch (Throwable e) {
+            Utils.closeQuietly(null, in);
+            throw e;
+        }
+
+        return in;
+    }
+
+    @Override
+    public void start(long position) throws IOException {
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }
@@ -104,7 +124,25 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void recover(Database db, EventListener listener) throws IOException {
-        // FIXME
+        // Can now accept snapshot requests.
+        mRepl.snapshotRequestAcceptor(sender -> {
+            try {
+                sendSnapshot(db, sender);
+            } catch (IOException e) {
+                Utils.closeQuietly(e, sender);
+            }
+        });
+
+        // FIXME: Wait until caught up?
+    }
+
+    private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
+        try (Snapshot snapshot = db.beginSnapshot()) {
+            // FIXME: options
+            try (OutputStream out = sender.begin(snapshot.length(), snapshot.position(), null)) {
+                snapshot.writeTo(out);
+            }
+        }
     }
 
     @Override

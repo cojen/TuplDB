@@ -61,7 +61,7 @@ final class ChannelManager {
       8:  Group id (long)
       16: Group token (long)
       24: Member id (long)       -- 0: anonymous
-      32: Connection type (int)  -- 0: replication RPC; FIXME: use a bit to enable CRCs
+      32: Connection type (int)  -- 0: control, 1: plain  FIXME: use a bit to enable CRCs
       36: CRC32C (int)
 
       Command header structure: (little endian fields)
@@ -73,7 +73,7 @@ final class ChannelManager {
     */
 
     private static final long MAGIC_NUMBER = 480921776540805866L;
-    private static final int CONNECT_CONTROL = 0, CONNECT_PLAIN = 1;
+    private static final int CONNECT_CONTROL = 0, CONNECT_PLAIN = 1, CONNECT_SNAPSHOT = 2;
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
@@ -81,11 +81,12 @@ final class ChannelManager {
     private static final int INIT_HEADER_SIZE = 40;
 
     private static final int
-        OP_NOP          = 0, //OP_NOP_REPLY = 1,
-        OP_REQUEST_VOTE = 2, OP_REQUEST_VOTE_REPLY = 3,
-        OP_QUERY_TERMS  = 4, OP_QUERY_TERMS_REPLY  = 5,
-        OP_QUERY_DATA   = 6, OP_QUERY_DATA_REPLY   = 7,
-        OP_WRITE_DATA   = 8, OP_WRITE_DATA_REPLY   = 9;
+        OP_NOP            = 0,  //OP_NOP_REPLY = 1,
+        OP_REQUEST_VOTE   = 2,  OP_REQUEST_VOTE_REPLY   = 3,
+        OP_QUERY_TERMS    = 4,  OP_QUERY_TERMS_REPLY    = 5,
+        OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
+        OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
+        OP_SNAPSHOT_SCORE = 10, OP_SNAPSHOT_SCORE_REPLY = 11;
 
     private final Scheduler mScheduler;
     private final long mGroupId;
@@ -100,6 +101,7 @@ final class ChannelManager {
     private Channel mLocalServer;
 
     private volatile Consumer<Socket> mSocketAcceptor;
+    private volatile Consumer<Socket> mSnapshotRequestAcceptor;
 
     ChannelManager(Scheduler scheduler, long groupId) {
         if (scheduler == null) {
@@ -170,6 +172,10 @@ final class ChannelManager {
         return mLocalAddress;
     }
 
+    synchronized boolean isStarted() {
+        return mLocalServer != null;
+    }
+
     /**
      * Starts accepting incoming channels, but does nothing if already started.
      */
@@ -198,6 +204,10 @@ final class ChannelManager {
 
     void socketAcceptor(Consumer<Socket> acceptor) {
         mSocketAcceptor = acceptor;
+    }
+
+    void snapshotRequestAcceptor(Consumer<Socket> acceptor) {
+        mSnapshotRequestAcceptor = acceptor;
     }
 
     /**
@@ -284,6 +294,14 @@ final class ChannelManager {
     }
 
     Socket connectPlain(SocketAddress addr) throws IOException {
+        return connectSocket(addr, CONNECT_PLAIN);
+    }
+
+    Socket connectSnapshot(SocketAddress addr) throws IOException {
+        return connectSocket(addr, CONNECT_SNAPSHOT);
+    }
+
+    private Socket connectSocket(SocketAddress addr, int connectionType) throws IOException {
         if (addr == null) {
             throw new IllegalArgumentException();
         }
@@ -296,7 +314,7 @@ final class ChannelManager {
             }
         }
 
-        Socket s = doConnect(peer, CONNECT_PLAIN);
+        Socket s = doConnect(peer, connectionType);
 
         if (s == null) {
             throw new ConnectException("Rejected");
@@ -439,17 +457,25 @@ final class ChannelManager {
 
             Consumer<Socket> acceptor;
 
-            switch (connectionType) {
-            case CONNECT_CONTROL:
-                acceptor = null;
-                break;
-            case CONNECT_PLAIN:
-                acceptor = mSocketAcceptor;
-                if (acceptor != null) {
+            checkType: {
+                switch (connectionType) {
+                case CONNECT_CONTROL:
+                    acceptor = null;
+                    break checkType;
+                case CONNECT_PLAIN:
+                    acceptor = mSocketAcceptor;
+                    if (acceptor != null) {
+                        break checkType;
+                    }
+                    break;
+                case CONNECT_SNAPSHOT:
+                    acceptor = mSnapshotRequestAcceptor;
+                    if (acceptor != null) {
+                        break checkType;
+                    }
                     break;
                 }
-                // fallthrough
-            default:
+
                 closeQuietly(null, s);
                 return;
             }
@@ -716,11 +742,11 @@ final class ChannelManager {
                     case OP_REQUEST_VOTE:
                         localServer.requestVote(this, in.readLongLE(), in.readLongLE(),
                                                 in.readLongLE(), in.readLongLE());
-                        commandLength -= 8 * 4;
+                        commandLength -= (8 * 4);
                         break;
                     case OP_REQUEST_VOTE_REPLY:
                         localServer.requestVoteReply(this, in.readLongLE());
-                        commandLength -= 8;
+                        commandLength -= (8 * 1);
                         break;
                     case OP_QUERY_TERMS:
                         localServer.queryTerms(this, in.readLongLE(), in.readLongLE());
@@ -761,6 +787,14 @@ final class ChannelManager {
                     case OP_WRITE_DATA_REPLY:
                         localServer.writeDataReply(this, in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 2);
+                        break;
+                    case OP_SNAPSHOT_SCORE:
+                        localServer.snapshotScore(this);
+                        break;
+                    case OP_SNAPSHOT_SCORE_REPLY:
+                        localServer.snapshotScoreReply(this, in.readIntLE(),
+                                                       Float.intBitsToFloat(in.readIntLE()));
+                        commandLength -= (4 * 2);
                         break;
                     default:
                         System.out.println("unknown op: " + op);
@@ -821,98 +855,34 @@ final class ChannelManager {
 
         @Override
         public boolean nop(Channel from) {
-            acquireExclusive();
-            try {
-                if (mOut == null) {
-                    return false;
-                }
-                byte[] command = new byte[8];
-                prepareCommand(command, OP_NOP, 0, 0);
-                return writeCommand(command, 0, command.length);
-            } finally {
-                releaseExclusive();
-            }
+            return writeCommand(OP_NOP);
         }
 
         @Override
         public boolean requestVote(Channel from, long term, long candidateId,
                                    long highestTerm, long highestIndex)
         {
-            acquireExclusive();
-            try {
-                if (mOut == null) {
-                    return false;
-                }
-                byte[] command = new byte[8 + 8 * 4];
-                prepareCommand(command, OP_REQUEST_VOTE, 0, 8 * 4);
-                encodeLongLE(command, 8, term);
-                encodeLongLE(command, 16, candidateId);
-                encodeLongLE(command, 24, highestTerm);
-                encodeLongLE(command, 32, highestIndex);
-                return writeCommand(command, 0, command.length);
-            } finally {
-                releaseExclusive();
-            }
+            return writeCommand(OP_REQUEST_VOTE, term, candidateId, highestTerm, highestIndex);
         }
 
         @Override
         public boolean requestVoteReply(Channel from, long term) {
-            acquireExclusive();
-            try {
-                if (mOut == null) {
-                    return false;
-                }
-                byte[] command = new byte[8 + 8];
-                prepareCommand(command, OP_REQUEST_VOTE_REPLY, 0, 8);
-                encodeLongLE(command, 8, term);
-                return writeCommand(command, 0, command.length);
-            } finally {
-                releaseExclusive();
-            }
+            return writeCommand(OP_REQUEST_VOTE_REPLY, term);
         }
 
         @Override
         public boolean queryTerms(Channel from, long startIndex, long endIndex) {
-            return query(OP_QUERY_TERMS, startIndex, endIndex);
-        }
-
-        private boolean query(int op, long startIndex, long endIndex) {
-            acquireExclusive();
-            try {
-                if (mOut == null) {
-                    return false;
-                }
-                byte[] command = new byte[8 + 8 * 2];
-                prepareCommand(command, op, 0, 8 * 2);
-                encodeLongLE(command, 8, startIndex);
-                encodeLongLE(command, 16, endIndex);
-                return writeCommand(command, 0, command.length);
-            } finally {
-                releaseExclusive();
-            }
+            return writeCommand(OP_QUERY_TERMS, startIndex, endIndex);
         }
 
         @Override
         public boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex) {
-            acquireExclusive();
-            try {
-                if (mOut == null) {
-                    return false;
-                }
-                byte[] command = new byte[8 + 8 * 3];
-                prepareCommand(command, OP_QUERY_TERMS_REPLY, 0, 8 * 3);
-                encodeLongLE(command, 8, prevTerm);
-                encodeLongLE(command, 16, term);
-                encodeLongLE(command, 24, startIndex);
-                return writeCommand(command, 0, command.length);
-            } finally {
-                releaseExclusive();
-            }
+            return writeCommand(OP_QUERY_TERMS_REPLY, prevTerm, term, startIndex);
         }
 
         @Override
         public boolean queryData(Channel from, long startIndex, long endIndex) {
-            return query(OP_QUERY_DATA, startIndex, endIndex);
+            return writeCommand(OP_QUERY_DATA, startIndex, endIndex);
         }
 
         @Override
@@ -971,15 +941,105 @@ final class ChannelManager {
 
         @Override
         public boolean writeDataReply(Channel from, long term, long highestIndex) {
+            return writeCommand(OP_WRITE_DATA_REPLY, term, highestIndex);
+        }
+
+        @Override
+        public boolean snapshotScore(Channel from) {
+            return writeCommand(OP_SNAPSHOT_SCORE);
+        }
+
+        @Override
+        public boolean snapshotScoreReply(Channel from, int activeSessions, float weight) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8 + 4 * 2];
+                prepareCommand(command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
+                encodeIntLE(command, 8, activeSessions);
+                encodeIntLE(command, 12, Float.floatToIntBits(weight));
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8];
+                prepareCommand(command, op, 0, 0);
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8 + 8 * 1];
+                prepareCommand(command, op, 0, 8 * 1);
+                encodeLongLE(command, 8, a);
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a, long b) {
             acquireExclusive();
             try {
                 if (mOut == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 2];
-                prepareCommand(command, OP_WRITE_DATA_REPLY, 0, 8 * 2);
-                encodeLongLE(command, 8, term);
-                encodeLongLE(command, 16, highestIndex);
+                prepareCommand(command, op, 0, 8 * 2);
+                encodeLongLE(command, 8, a);
+                encodeLongLE(command, 16, b);
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a, long b, long c) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8 + 8 * 3];
+                prepareCommand(command, op, 0, 8 * 3);
+                encodeLongLE(command, 8, a);
+                encodeLongLE(command, 16, b);
+                encodeLongLE(command, 24, c);
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a, long b, long c, long d) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8 + 8 * 4];
+                prepareCommand(command, op, 0, 8 * 4);
+                encodeLongLE(command, 8, a);
+                encodeLongLE(command, 16, b);
+                encodeLongLE(command, 24, c);
+                encodeLongLE(command, 32, d);
                 return writeCommand(command, 0, command.length);
             } finally {
                 releaseExclusive();
