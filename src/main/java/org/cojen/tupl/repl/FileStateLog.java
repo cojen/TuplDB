@@ -65,11 +65,12 @@ final class FileStateLog extends Latch implements StateLog {
       0:  Magic number (long)
       8:  Encoding version (int)
       12: Metadata counter (int)
-      16: Current term (long)
-      24: Highest log term (long)
-      32: Highest contiguous log index (exclusive) (long)
-      40: Commit log index (exclusive) (long)
-      48: CRC32C (int)
+      16: Start index (long)
+      24: Current term (long)
+      32: Highest log term (long)
+      40: Highest contiguous log index (exclusive) (long)
+      48: Commit log index (exclusive) (long)
+      56: CRC32C (int)
 
       Example files with base of "mydata.repl":
 
@@ -82,14 +83,13 @@ final class FileStateLog extends Latch implements StateLog {
     */
 
     private static final long MAGIC_NUMBER = 5267718596810043313L;
-    private static final int ENCODING_VERSION = 20170725;
+    private static final int ENCODING_VERSION = 20170812;
     private static final int SECTION_POW = 12;
     private static final int SECTION_SIZE = 1 << SECTION_POW;
-    private static final int METADATA_SIZE = 52;
+    private static final int METADATA_SIZE = 60;
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
     private static final int COUNTER_OFFSET = 12;
-    private static final int CURRENT_TERM_OFFSET = 16;
-    private static final int HIGHEST_TERM_OFFSET = 24;
+    private static final int START_INDEX_OFFSET = 16;
     private static final int CRC_OFFSET = METADATA_SIZE - 4;
 
     private final File mBase;
@@ -103,6 +103,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
     private int mMetadataCounter;
+    private long mStartIndex;
     private long mCurrentTerm;
 
     private TermLog mHighestTermLog;
@@ -172,7 +173,8 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataCounter = counter;
 
         mMetadataBuffer.clear();
-        mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
+        mMetadataBuffer.position(offset + START_INDEX_OFFSET);
+        long startIndex = mMetadataBuffer.getLong();
         long currentTerm = mMetadataBuffer.getLong();
         long highestTerm = mMetadataBuffer.getLong();
         long highestIndex = mMetadataBuffer.getLong();
@@ -183,6 +185,9 @@ final class FileStateLog extends Latch implements StateLog {
         }
         if (highestIndex < commitIndex) {
             throw new IOException("Highest index is lower than commit index");
+        }
+        if (startIndex > commitIndex) {
+            throw new IOException("Start index is higher than commit index");
         }
 
         mCurrentTerm = currentTerm;
@@ -276,11 +281,11 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(ENCODING_VERSION);
         bb.putInt(counter);
 
-        // Current term, highest log term, highest log index, commit log index.
-        if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
+        // Start index, current term, highest log term, highest log index, commit log index.
+        if (bb.position() != (offset + START_INDEX_OFFSET)) {
             throw new AssertionError();
         }
-        for (int i=0; i<4; i++) {
+        for (int i=0; i<5; i++) {
             bb.putLong(0);
         }
 
@@ -466,6 +471,19 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
+    public void startIndex(long index) throws IOException {
+        acquireExclusive();
+        if (mStartIndex != 0) {
+            // FIXME: Allow changing the start index to a higher value, but not higher than the
+            // commit index. Sync metadata before deleting any segments.
+            releaseExclusive();
+            throw new IllegalStateException();
+        }
+        mStartIndex = index;
+        releaseExclusive();
+    }
+
+    @Override
     public boolean defineTerm(long prevTerm, long term, long index) throws IOException {
         return defineTermLog(prevTerm, term, index) != null;
     }
@@ -569,13 +587,11 @@ final class FileStateLog extends Latch implements StateLog {
             defineTermLog: while (true) {
                 TermLog prevTermLog = (TermLog) mTermLogs.lower(key); // findLt
 
-                if (prevTerm == 0) {
-                    if (prevTermLog != null) {
-                        prevTerm = prevTermLog.term();
+                if (prevTermLog == null) {
+                    if (index != mStartIndex) {
+                        termLog = null;
+                        break defineTermLog;
                     }
-                } else if (prevTermLog == null) {
-                    termLog = null;
-                    break defineTermLog;
                 } else {
                     long actualPrevTerm = prevTermLog.term();
                     if (prevTerm != actualPrevTerm) {
@@ -597,7 +613,7 @@ final class FileStateLog extends Latch implements StateLog {
                         break defineTermLog;
                     }
 
-                    if (term < actualTerm) {
+                    if (term < actualTerm || (actualTerm > 0 && prevTermLog == null)) {
                         termLog = null;
                         break defineTermLog;
                     }
@@ -656,6 +672,7 @@ final class FileStateLog extends Latch implements StateLog {
                 termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, commitIndex);
 
                 mTermLogs.add(termLog);
+                break defineTermLog;
             }
 
             return termLog;
@@ -696,7 +713,7 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 // Create a primordial term.
-                termLog = FileTermLog.newTerm(mWorker, mBase, 0, 0, 0, 0);
+                termLog = FileTermLog.newTerm(mWorker, mBase, 0, 0, mStartIndex, mStartIndex);
                 mTermLogs.add(termLog);
             }
 
@@ -746,6 +763,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.limit(offset + CRC_OFFSET);
 
         bb.putInt(counter);
+        bb.putLong(mStartIndex);
         bb.putLong(mCurrentTerm);
         bb.putLong(mMetadataInfo.mTerm);
         bb.putLong(mMetadataInfo.mHighestIndex);
