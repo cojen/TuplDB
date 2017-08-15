@@ -175,7 +175,7 @@ class ReplRedoWriter extends RedoWriter {
             // Treat as leader switch.
         }
 
-        mEngine.mController.switchToReplica(mReplWriter, false);
+        mEngine.mController.switchToReplica(mReplWriter);
 
         return false;
     }
@@ -507,6 +507,6 @@ class ReplRedoWriter extends RedoWriter {
         LockSupport.unpark(mProducer);
         mBufferLatch.releaseExclusive();
 
-        mEngine.mController.switchToReplica(mReplWriter, false);
+        mEngine.mController.switchToReplica(mReplWriter);
     }
 }

@@ -991,7 +991,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return handler;
     }
 
-    private void fail(Throwable e) {
+    void fail(Throwable e) {
         if (!mDatabase.isClosed()) {
             EventListener listener = mDatabase.eventListener();
             if (listener != null) {

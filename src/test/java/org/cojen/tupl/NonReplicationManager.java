@@ -76,16 +76,11 @@ class NonReplicationManager implements ReplicationManager {
             while (mState == REPLICA) {
                 wait();
             }
+            mWriter = new NonWriter();
             return -1;
         } catch (InterruptedException e) {
             throw new InterruptedIOException();
         }
-    }
-
-    @Override
-    public synchronized void flip() {
-        mWriter = mState == LEADER ? new NonWriter() : null;
-        notifyAll();
     }
 
     @Override
@@ -108,6 +103,12 @@ class NonReplicationManager implements ReplicationManager {
     @Override
     public synchronized void close() {
         mState = CLOSED;
+        notifyAll();
+    }
+
+    synchronized void toReplica() {
+        mState = REPLICA;
+        mWriter = null;
         notifyAll();
     }
 
@@ -156,6 +157,17 @@ class NonReplicationManager implements ReplicationManager {
                 } catch (InterruptedException e) {
                 }
             }
+        }
+
+        @Override
+        public synchronized long confirmEnd(long timeoutNanos)
+            throws ConfirmationFailureException
+        {
+            if (!mClosed) {
+                throw new ConfirmationFailureException("Not closed");
+            }
+            toReplica();
+            return mPosition;
         }
 
         synchronized void close() {

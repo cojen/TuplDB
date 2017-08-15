@@ -531,6 +531,14 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ConfirmationTimeoutException.html#ConfirmationTimeoutException-long-">ConfirmationTimeoutException(long)</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd--">confirmEnd()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd-long-">confirmEnd(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#connect-java.net.SocketAddress-">connect(SocketAddress)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Connect to any replication group member, for any particular use.</div>
@@ -1182,10 +1190,6 @@
 <dd>
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#flip--">flip()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called to acknowledge mode change from replica to leader, or vice versa.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Flushes, but does not sync, all non-flushed transactions.</div>
@@ -1509,11 +1513,6 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#isContended--">isContended()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>
 <div class="block">Returns true if clutch is operating in contended mode.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#isDeactivated--">isDeactivated()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
-<dd>
-<div class="block">Returns true if writes into the leader are deactived, after having become a
- follower.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#isEmpty--">isEmpty()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>

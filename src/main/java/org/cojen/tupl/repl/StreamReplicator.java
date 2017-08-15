@@ -332,11 +332,5 @@ public interface StreamReplicator extends Replicator {
                 }
             });
         }
-
-        /**
-         * Returns true if writes into the leader are deactived, after having become a
-         * follower. The term doesn't end until the new leader writes something.
-         */
-        boolean isDeactivated();
     }
 }
