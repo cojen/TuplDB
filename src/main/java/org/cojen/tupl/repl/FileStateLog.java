@@ -266,6 +266,13 @@ final class FileStateLog extends Latch implements StateLog {
             }
         }
 
+        if (mTermLogs.isEmpty()) {
+            // Create a primordial term.
+            TermLog termLog = FileTermLog.newTerm
+                (mWorker, mBase, 0, highestTerm, mStartIndex, mStartIndex);
+            mTermLogs.add(termLog);
+        }
+
         if (commitIndex > 0) {
             commit(commitIndex);
         }
@@ -474,10 +481,21 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public void startIndex(long index) throws IOException {
         acquireExclusive();
-        // FIXME: Allow changing the start index to a higher value, but not higher than the
-        // commit index. Sync metadata before deleting any segments.
         mStartIndex = index;
-        releaseExclusive();
+        downgrade();
+        try {
+            Iterator<LKey<TermLog>> it = mTermLogs.iterator();
+            while (it.hasNext()) {
+                TermLog termLog = (TermLog) it.next();
+                termLog.truncateStart(index);
+                if (termLog.startIndex() < termLog.endIndex()) {
+                    break;
+                }
+                it.remove();
+            }
+        } finally {
+            releaseShared();
+        }
     }
 
     @Override
@@ -591,10 +609,12 @@ final class FileStateLog extends Latch implements StateLog {
                 TermLog prevTermLog = (TermLog) mTermLogs.lower(key); // findLt
 
                 if (prevTermLog == null) {
-                    if (index != mStartIndex) {
+                    if (index > mStartIndex) {
                         termLog = null;
                         break defineTermLog;
                     }
+                    // Adjust the first term to start no lower than is required.
+                    index = mStartIndex;
                 } else {
                     long actualPrevTerm = prevTermLog.term();
                     if (prevTerm != actualPrevTerm) {
@@ -715,6 +735,7 @@ final class FileStateLog extends Latch implements StateLog {
                     exclusive = true;
                 }
 
+                // FIXME: remove this and the exclusive latch
                 // Create a primordial term.
                 termLog = FileTermLog.newTerm(mWorker, mBase, 0, 0, mStartIndex, mStartIndex);
                 mTermLogs.add(termLog);
