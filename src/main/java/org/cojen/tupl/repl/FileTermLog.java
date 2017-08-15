@@ -1167,11 +1167,6 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public boolean isDeactivated() {
-            return mClosed;
-        }
-
-        @Override
         void release() {
             FileTermLog.this.release(this, true);
         }

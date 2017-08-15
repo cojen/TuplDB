@@ -69,6 +69,7 @@ final class ReplRedoController extends ReplRedoWriter {
         try {
             ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
             long pos = writer == null ? mEngine.decodePosition() : writer.position();
+            // FIXME: Always returns true becauase mCheckpointPos is always zero.
             return (pos - mCheckpointPos) >= sizeThreshold;
         } finally {
             releaseShared();
@@ -219,11 +220,11 @@ final class ReplRedoController extends ReplRedoWriter {
                 return;
             }
 
-            mManager.flip();
             ReplicationManager.Writer writer = mManager.writer();
 
             if (writer == null) {
-                // False alarm?
+                // Panic.
+                mEngine.fail(new IllegalStateException("No writer for the leader"));
                 return;
             }
 
@@ -242,7 +243,7 @@ final class ReplRedoController extends ReplRedoWriter {
                 // last transaction id to 0. Delta encoding will continue to work correctly.
                 context.confirmed(redo.mLastCommitPos = writer.position(), 0);
 
-                if (!writer.leaderNotify(() -> switchToReplica(writer, false))) {
+                if (!writer.leaderNotify(() -> switchToReplica(writer))) {
                     throw nowUnmodifiable(writer);
                 }
 
@@ -267,53 +268,67 @@ final class ReplRedoController extends ReplRedoWriter {
     UnmodifiableReplicaException nowUnmodifiable(ReplicationManager.Writer expect)
         throws DatabaseException
     {
-        switchToReplica(expect, false);
+        switchToReplica(expect);
         return mEngine.unmodifiable();
     }
 
-    boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
-        if (mEngine.mDatabase.isClosed()) {
-            // Don't bother switching modes, since it won't work properly anyhow.
-            return false;
+    // Must be called without latch held.
+    void switchToReplica(ReplicationManager.Writer expect) {
+        if (shouldSwitchToReplica(expect) != null) {
+            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
+            // ReplRedoWriter while latched, which is an inconsistent order.
+            new Thread(() -> doSwitchToReplica(expect)).start();
+        }
+    }
+
+    private void doSwitchToReplica(ReplicationManager.Writer expect) {
+        ReplRedoWriter redo;
+
+        ReplRedoController.this.acquireExclusive();
+        try {
+            redo = shouldSwitchToReplica(expect);
+            if (redo == null) {
+                return;
+            }
+            // Use this instance for replica mode.
+            mTxnRedoWriter = this;
+        } finally {
+            ReplRedoController.this.releaseExclusive();
         }
 
-        final ReplRedoWriter redo = mTxnRedoWriter;
+        long pos;
+        try {
+            pos = redo.mReplWriter.confirmEnd();
+        } catch (ConfirmationFailureException e) {
+            // Position is required, so panic.
+            mEngine.fail(e);
+            return;
+        }
+
+        redo.flipped(pos);
+
+        // Start receiving if not, but does nothing if already receiving. A reset op is
+        // expected, and so the initial transaction id can be zero.
+        mEngine.startReceiving(pos, 0);
+    }
+
+    /**
+     * @return null if shouldn't switch; mTxnRedoWriter otherwise
+     */
+    private ReplRedoWriter shouldSwitchToReplica(ReplicationManager.Writer expect) {
+        if (mEngine.mDatabase.isClosed()) {
+            // Don't bother switching modes, since it won't work properly anyhow.
+            return null;
+        }
+
+        ReplRedoWriter redo = mTxnRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer == null || writer != expect) {
             // Must be in leader mode.
-            return false;
+            return null;
         }
 
-        if (syncd) {
-            mManager.flip();
-
-            // Use this instance for replica mode.
-            mTxnRedoWriter = this;
-        } else {
-            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
-            // ReplRedoWriter while latched, which is an inconsistent order.
-            new Thread(() -> {
-                long pos;
-
-                ReplRedoController.this.acquireExclusive();
-                try {
-                    if (!switchToReplica(expect, true)) {
-                        return;
-                    }
-                    pos = mManager.readPosition();
-                } finally {
-                    ReplRedoController.this.releaseExclusive();
-                }
-
-                redo.flipped(pos);
-
-                // Start receiving if not, but does nothing if already receiving. A reset
-                // op is expected, and so the initial transaction id can be zero.
-                mEngine.startReceiving(pos, 0);
-            }).start();
-        }
-
-        return true;
+        return redo;
     }
 }

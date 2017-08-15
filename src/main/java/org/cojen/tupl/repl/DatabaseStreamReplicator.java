@@ -49,8 +49,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     private StreamReplicator.Reader mStreamReader;
     private DbWriter mDbWriter;
 
-    private StreamReplicator.Writer mNextStreamWriter;
-
     DatabaseStreamReplicator(StreamReplicator repl) {
         mRepl = repl;
     }
@@ -162,38 +160,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         StreamReplicator.Reader reader = mStreamReader;
 
         if (reader == null) {
-            StreamReplicator.Writer streamWriter = mDbWriter.mWriter;
-
-            if (!streamWriter.isDeactivated()) {
-                return -1;
-            }
-
-            while (true) {
-                long end = streamWriter.termEndIndex();
-                long pos = streamWriter.waitForCommit(end, -1);
-
-                if (pos == end) {
-                    streamWriter.close();
-                    mDbWriter = null;
-
-                    while ((reader = mRepl.newReader(pos, false)) == null) {
-                        StreamReplicator.Writer nextWriter = mRepl.newWriter(pos);
-                        if (nextWriter != null) {
-                            mNextStreamWriter = nextWriter;
-                            return -1;
-                        }
-                    }
-
-                    mStreamReader = reader;
-                    break;
-                }
-
-                if (pos != -1) {
-                    throw new IllegalStateException("Unexpected result: " + pos);
-                }
-
-                // Term ended even lower, so try again.
-            }
+            return -1;
         }
 
         while (true) {
@@ -202,32 +169,22 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 return amt;
             }
 
+            // Term ended.
+
             StreamReplicator.Reader nextReader;
             while ((nextReader = mRepl.newReader(reader.index(), false)) == null) {
                 StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.index());
                 if (nextWriter != null) {
-                    mNextStreamWriter = nextWriter;
+                    // Switch to leader mode.
+                    mDbWriter = new DbWriter(nextWriter);
+                    mStreamReader = null;
+                    reader.close();
                     return -1;
                 }
             }
 
             reader.close();
             mStreamReader = reader = nextReader;
-        }
-    }
-
-    @Override
-    public void flip() {
-        StreamReplicator.Writer nextWriter = mNextStreamWriter;
-
-        if (nextWriter != null) {
-            // Finish flip to leader.
-            mDbWriter = new DbWriter(nextWriter);
-            if (mStreamReader != null) {
-                mStreamReader.close();
-                mStreamReader = null;
-            }
-            mNextStreamWriter = null;
         }
     }
 
@@ -257,7 +214,25 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         mRepl.close();
     }
 
-    private static final class DbWriter implements DatabaseReplicator.Writer {
+    void toReplica(DbWriter expect, long index) {
+        if (mDbWriter != expect) {
+            throw new IllegalStateException("Mismatched writer: " + mDbWriter + " != " + expect);
+        }
+
+        mDbWriter.mWriter.close();
+        mDbWriter = null;
+
+        while ((mStreamReader = mRepl.newReader(index, false)) == null) {
+            StreamReplicator.Writer nextWriter = mRepl.newWriter(index);
+            if (nextWriter != null) {
+                // Actually the leader now.
+                mDbWriter = new DbWriter(nextWriter);
+                return;
+            }
+        }
+    }
+
+    private final class DbWriter implements DatabaseReplicator.Writer {
         final StreamReplicator.Writer mWriter;
 
         DbWriter(StreamReplicator.Writer writer) {
@@ -293,6 +268,27 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             }
             if (pos == -1) {
                 return false;
+            }
+            if (pos == -2) {
+                throw new ConfirmationTimeoutException(nanosTimeout);
+            }
+            throw new ConfirmationFailureException("Unexpected result: " + pos);
+        }
+
+        @Override
+        public long confirmEnd(long nanosTimeout) throws ConfirmationFailureException {
+            long pos;
+            try {
+                pos = mWriter.waitForEndCommit(nanosTimeout);
+            } catch (InterruptedIOException e) {
+                throw new ConfirmationInterruptedException();
+            }
+            if (pos >= 0) {
+                toReplica(this, pos);
+                return pos;
+            }
+            if (pos == -1) {
+                throw new ConfirmationFailureException("Closed");
             }
             if (pos == -2) {
                 throw new ConfirmationTimeoutException(nanosTimeout);

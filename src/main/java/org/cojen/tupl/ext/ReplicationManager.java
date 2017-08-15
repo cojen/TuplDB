@@ -105,20 +105,12 @@ public interface ReplicationManager extends Closeable {
 
     /**
      * Blocks at most once, reading as much replication input as possible. Returns -1 if local
-     * instance has become the leader.
+     * instance has become the leader, and a writer instance now exists.
      *
      * @return amount read, or -1 if leader
      * @throws IllegalStateException if not started
      */
     int read(byte[] b, int off, int len) throws IOException;
-
-    /**
-     * Called to acknowledge mode change from replica to leader, or vice versa. Until flip is
-     * called, all read and write operations fail as if the leadership mode is indeterminate.
-     * Reads fail as if the local instance is the leader, and writes fail as if the local
-     * instance is a replica.
-     */
-    void flip();
 
     /**
      * Returns an object which allows the leader to write changes. A new instance is required
@@ -181,6 +173,26 @@ public interface ReplicationManager extends Closeable {
          * @throws ConfirmationFailureException
          */
         boolean confirm(long commitPos, long timeoutNanos) throws IOException;
+
+        /**
+         * Blocks until the leadership end is confirmed. This method must be called before
+         * switching to replica mode.
+         *
+         * @return the end commit position; same as next read position
+         * @throws ConfirmationFailureException if end position cannot be determined
+         */
+        default long confirmEnd() throws ConfirmationFailureException {
+            return confirmEnd(-1);
+        }
+
+        /**
+         * Blocks until the leadership end is confirmed. This method must be called before
+         * switching to replica mode.
+         *
+         * @return the end commit position; same as next read position
+         * @throws ConfirmationFailureException if end position cannot be determined
+         */
+        long confirmEnd(long timeoutNanos) throws ConfirmationFailureException;
     }
 
     /**

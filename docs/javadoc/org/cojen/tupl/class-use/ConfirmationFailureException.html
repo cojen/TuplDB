@@ -87,6 +87,12 @@
 <div class="block">See <a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
 </td>
 </tr>
+<tr class="rowColor">
+<td class="colFirst"><a href="#org.cojen.tupl.ext">org.cojen.tupl.ext</a></td>
+<td class="colLast">
+<div class="block">Support for database extensions.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </li>
@@ -113,6 +119,32 @@
 <td class="colFirst"><code>class&nbsp;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></span></code>
 <div class="block">Thrown by <a href="../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication confirmation timed out.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li class="blockList"><a name="org.cojen.tupl.ext">
+<!--   -->
+</a>
+<h3>Uses of <a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a> in <a href="../../../../org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></h3>
+<table class="useSummary" border="0" cellpadding="3" cellspacing="0" summary="Use table, listing methods, and an explanation">
+<caption><span>Methods in <a href="../../../../org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a> that throw <a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Method and Description</th>
+</tr>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>default long</code></td>
+<td class="colLast"><span class="typeNameLabel">ReplicationManager.Writer.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd--">confirmEnd</a></span>()</code>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><span class="typeNameLabel">ReplicationManager.Writer.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd-long-">confirmEnd</a></span>(long&nbsp;timeoutNanos)</code>
+<div class="block">Blocks until the leadership end is confirmed.</div>
 </td>
 </tr>
 </tbody>

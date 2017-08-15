@@ -100,12 +100,12 @@ class SocketReplicationManager implements ReplicationManager {
         int amt = in.read(b, off, len);
         if (amt > 0) {
             mPos += amt;
+        } else {
+            // Socket closed, but a leader writer is required. Write to dev/null.
+            mWriter = new StreamWriter(null);
+            mWriter.mDisabled = true;
         }
         return amt;
-    }
-
-    @Override
-    public void flip() {
     }
 
     @Override
@@ -136,7 +136,7 @@ class SocketReplicationManager implements ReplicationManager {
         if (mReader != null) {
             mReader.close();
         }
-        if (mWriter != null) {
+        if (mWriter != null && mWriter.mOut != null) {
             mWriter.mOut.close();
         }
     }
@@ -210,6 +210,14 @@ class SocketReplicationManager implements ReplicationManager {
                 throw new ConfirmationFailureException();
             }
             return true;
+        }
+
+        @Override
+        public long confirmEnd(long timeoutNanos) throws ConfirmationFailureException {
+            if (!mDisabled) {
+                throw new ConfirmationFailureException("Not disabled");
+            }
+            return mPos;
         }
     }
 }

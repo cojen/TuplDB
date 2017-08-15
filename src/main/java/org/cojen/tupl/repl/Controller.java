@@ -413,11 +413,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             writerClosed(this);
         }
 
-        @Override
-        public synchronized boolean isDeactivated() {
-            return mPeerChannels == null;
-        }
-
         synchronized void deactivate() {
             mPeerChannels = null;
         }
