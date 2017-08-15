@@ -43,9 +43,16 @@ interface TermLog extends LKey<TermLog>, Closeable {
     long term();
 
     /**
-     * Returns the fixed index at the start of the term.
+     * Returns the index at the start of the term.
      */
     long startIndex();
+
+    /**
+     * Attempt to increase the term start index, and truncate as much data as possible lower
+     * than it. The effective start index applied might be lower than what was requested,
+     * dependent on how much data could be truncated.
+     */
+    void truncateStart(long startIndex) throws IOException;
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.
