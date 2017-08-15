@@ -328,6 +328,14 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public void truncateStart(long startIndex) throws IOException {
+        if (mSegments.isEmpty()) {
+            acquireExclusive();
+            if (mSegments.isEmpty() && startIndex > mLogStartIndex) {
+                mLogStartIndex = Math.min(startIndex, mLogEndIndex);
+            }
+            releaseExclusive();
+        }
+
         // Delete all lower segments.
 
         long appliedStartIndex = 0;
@@ -353,12 +361,14 @@ final class FileTermLog extends Latch implements TermLog {
 
             appliedStartIndex = endIndex;
             it.remove();
+
+            mSegmentCache.remove(seg.cacheKey());
         }
 
         if (appliedStartIndex > 0) {
             acquireExclusive();
             if (appliedStartIndex > mLogStartIndex) {
-                mLogStartIndex = appliedStartIndex;
+                mLogStartIndex = Math.min(appliedStartIndex, mLogEndIndex);
             }
             releaseExclusive();
         }
@@ -642,14 +652,14 @@ final class FileTermLog extends Latch implements TermLog {
 
                     for (SegmentWriter writer : writers) {
                         long missingEndIndex = writer.mWriterStartIndex;
-                        if (missingStartIndex != missingEndIndex) {
+                        if (missingStartIndex < missingEndIndex) {
                             results.range(missingStartIndex, missingEndIndex);
                         }
                         missingStartIndex = writer.mWriterIndex;
                     }
                 }
 
-                if (expectedIndex > missingStartIndex) {
+                if (missingStartIndex < expectedIndex) {
                     results.range(missingStartIndex, expectedIndex);
                 }
             }
@@ -839,6 +849,11 @@ final class FileTermLog extends Latch implements TermLog {
                 mSegmentCache.remove(startSegment.cacheKey());
                 cRefCountUpdater.getAndIncrement(startSegment);
                 return startSegment;
+            }
+
+            if (index < mLogStartIndex) {
+                throw new IllegalStateException
+                    ("Cannot write lower than start: " + index + " < " + mLogStartIndex);
             }
 
             if (mLogClosed) {

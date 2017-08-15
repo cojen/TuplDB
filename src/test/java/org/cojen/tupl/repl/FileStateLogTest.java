@@ -121,6 +121,7 @@ public class FileStateLogTest {
             switch ((int) trm) {
             default:
                 fail("unknown term: " + trm);
+                break;
             case 10:
                 assertEquals(0, prevTerm);
                 assertEquals(1000, startIndex);
