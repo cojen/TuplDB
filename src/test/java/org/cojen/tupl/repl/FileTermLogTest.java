@@ -336,6 +336,15 @@ public class FileTermLogTest {
 
     @Test
     public void tail() throws Throwable {
+        tail(false);
+    }
+
+    @Test
+    public void tailAndTruncate() throws Throwable {
+        tail(true);
+    }
+
+    private void tail(boolean truncate) throws Throwable {
         // Write and commit a bunch of data, while concurrently reading it.
 
         final int seed = 762390;
@@ -351,6 +360,9 @@ public class FileTermLogTest {
                     Random rnd2 = new Random(seed + 1);
                     LogReader reader = mLog.openReader(0);
 
+                    int truncateAdvance = 0;
+                    int truncateNotAdvance = 0;
+
                     while (true) {
                         int amt = reader.read(buf, 0, buf.length);
                         if (amt <= 0) {
@@ -360,16 +372,29 @@ public class FileTermLogTest {
                         for (int j=0; j<amt; j++) {
                             assertEquals((byte) rnd2.nextInt(), buf[j]);
                         }
+                        if (truncate) {
+                            mLog.truncateStart(reader.index());
+                            if (mLog.startIndex() != reader.index()) {
+                                truncateAdvance++;
+                            } else {
+                                truncateNotAdvance++;
+                            }
+                        }
                     }
 
                     mTotal = reader.index();
+
+                    if (truncate) {
+                        assertNotEquals(0, truncateAdvance);
+                        assertNotEquals(0, truncateNotAdvance);
+                    }
                 } catch (Throwable e) {
                     mEx = e;
                 }
             }
         }
 
-        Reader r = new Reader();
+        final Reader r = new Reader();
         TestUtils.startAndWaitUntilBlocked(r);
 
         final byte[] buf = new byte[10000];

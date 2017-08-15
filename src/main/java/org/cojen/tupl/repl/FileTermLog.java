@@ -78,7 +78,7 @@ final class FileTermLog extends Latch implements TermLog {
         min(commit, highest).
     */
 
-    private final long mLogStartIndex;
+    private long mLogStartIndex;
     private long mLogCommitIndex;
     private long mLogHighestIndex;
     private long mLogContigIndex;
@@ -320,7 +320,52 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long startIndex() {
-        return mLogStartIndex;
+        acquireShared();
+        long index = mLogStartIndex;
+        releaseShared();
+        return index;
+    }
+
+    @Override
+    public void truncateStart(long startIndex) throws IOException {
+        // Delete all lower segments.
+
+        long appliedStartIndex = 0;
+        IOException ex = null;
+        
+        Iterator<LKey<Segment>> it = mSegments.iterator();
+        while (it.hasNext()) {
+            Segment seg = (Segment) it.next();
+
+            long endIndex = seg.endIndex();
+            if (endIndex > startIndex) {
+                appliedStartIndex = Math.min(startIndex, seg.mStartIndex);
+                break;
+            }
+
+            try {
+                seg.close(true);
+                seg.file().delete();
+            } catch (IOException e) {
+                ex = e;
+                break;
+            }
+
+            appliedStartIndex = endIndex;
+            it.remove();
+        }
+
+        if (appliedStartIndex > 0) {
+            acquireExclusive();
+            if (appliedStartIndex > mLogStartIndex) {
+                mLogStartIndex = appliedStartIndex;
+            }
+            releaseExclusive();
+        }
+
+        if (ex != null) {
+            throw ex;
+        }
     }
 
     @Override
@@ -621,12 +666,13 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (writer == null) {
             writer = new SegmentWriter();
-            writer.mWriterPrevTerm = startIndex == mLogStartIndex ? mLogPrevTerm : mLogTerm;
-            writer.mWriterStartIndex = startIndex;
-            writer.mWriterIndex = startIndex;
 
             acquireExclusive();
             try {
+                writer.mWriterPrevTerm = startIndex == mLogStartIndex ? mLogPrevTerm : mLogTerm;
+                writer.mWriterStartIndex = startIndex;
+                writer.mWriterIndex = startIndex;
+
                 if (startIndex > mLogContigIndex && startIndex < mLogEndIndex) {
                     mNonContigWriters.add(writer);
                 }
@@ -643,7 +689,9 @@ final class FileTermLog extends Latch implements TermLog {
         SegmentReader reader = mReaderCache.remove(startIndex);
 
         if (reader == null) {
+            acquireShared();
             long prevTerm = startIndex <= mLogStartIndex ? mLogPrevTerm : mLogTerm;
+            releaseShared();
             reader = new SegmentReader(prevTerm, startIndex);
         }
 
@@ -774,12 +822,12 @@ final class FileTermLog extends Latch implements TermLog {
      * @return null if index is at or higher than end index
      */
     Segment segmentForWriting(long index) throws IOException {
-        indexCheck(index);
-
         LKey<Segment> key = new LKey.Finder<>(index);
 
         acquireExclusive();
         find: try {
+            indexCheck(index);
+
             if (index >= mLogEndIndex) {
                 releaseExclusive();
                 return null;
@@ -826,12 +874,12 @@ final class FileTermLog extends Latch implements TermLog {
      * @return null if segment doesn't exist
      */
     Segment segmentForReading(long index) throws IOException {
-        indexCheck(index);
-
         LKey<Segment> key = new LKey.Finder<>(index);
 
         acquireExclusive();
         try {
+            indexCheck(index);
+
             Segment segment = (Segment) mSegments.floor(key); // findLe
             if (segment != null && index < segment.endIndex()) {
                 cRefCountUpdater.getAndIncrement(segment);
@@ -844,6 +892,7 @@ final class FileTermLog extends Latch implements TermLog {
         return null;
     }
 
+    // Caller must hold any latch.
     private void indexCheck(long index) throws IllegalArgumentException {
         if (index < mLogStartIndex) {
             throw new IllegalArgumentException
