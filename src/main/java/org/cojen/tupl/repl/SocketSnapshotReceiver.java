@@ -37,6 +37,7 @@ import org.cojen.tupl.io.Utils;
 final class SocketSnapshotReceiver implements SnapshotReceiver {
     private final Socket mSocket;
     private final long mLength;
+    private final long mPrevTerm;
     private final long mIndex;
     private final Map<String, String> mOptions;
 
@@ -63,6 +64,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         mSocket = socket;
         mLength = dec.decodeLongLE();
         mIndex = dec.decodeLongLE();
+        mPrevTerm = dec.decodeLongLE();
         mOptions = dec.decodeMap();
     }
 
@@ -72,7 +74,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     }
 
     @Override
-    public Map<String, String> options() throws IOException {
+    public Map<String, String> options() {
         return mOptions;
     }
 
@@ -84,6 +86,11 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     @Override
     public long index() {
         return mIndex;
+    }
+
+    @Override
+    public long prevTerm() {
+        return mPrevTerm;
     }
 
     @Override
@@ -99,6 +106,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     @Override
     public String toString() {
         return "SnapshotReceiver: {sender=" + senderAddress() + ", length=" + length() +
-            ", index=" + index() + '}';
+            ", index=" + index() + ", prevTerm=" + prevTerm() + '}';
+            
     }
 }

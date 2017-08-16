@@ -302,10 +302,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
+        final class Sender extends SocketSnapshotSender {
+            Sender(Socket socket) throws IOException {
+                super(socket);
+            }
+
+            @Override
+            long prevTermFor(long index) {
+                return mStateLog.termAt(index - 1);
+            }
+        }
+
         mChanMan.snapshotRequestAcceptor(sock -> {
             SnapshotSender sender;
             try {
-                sender = new SocketSnapshotSender(sock);
+                sender = new Sender(sock);
             } catch (IOException e) {
                 closeQuietly(e, sock);
                 return;
@@ -317,7 +328,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         });
     }
 
-    class ReplWriter implements Writer {
+    final class ReplWriter implements Writer {
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;
 

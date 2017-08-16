@@ -39,6 +39,7 @@ final class OptionsEncoder extends ByteArrayOutputStream {
     private Writer mWriter;
 
     OptionsEncoder() {
+        super(64);
         // Reserve space for the full length.
         count = 4;
     }
@@ -46,7 +47,7 @@ final class OptionsEncoder extends ByteArrayOutputStream {
     public void encodeIntLE(int value) {
         int pos = count;
         if (pos + 4 > buf.length) {
-            buf = Arrays.copyOfRange(buf, 0, pos);
+            buf = Arrays.copyOf(buf, buf.length << 1);
         }
         Utils.encodeIntLE(buf, pos, value);
         count = pos + 4;
@@ -55,7 +56,7 @@ final class OptionsEncoder extends ByteArrayOutputStream {
     public void encodeLongLE(long value) {
         int pos = count;
         if (pos + 8 > buf.length) {
-            buf = Arrays.copyOfRange(buf, 0, pos);
+            buf = Arrays.copyOf(buf, buf.length << 1);
         }
         Utils.encodeLongLE(buf, pos, value);
         count = pos + 8;

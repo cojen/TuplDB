@@ -34,7 +34,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-final class SocketSnapshotSender extends OutputStream implements SnapshotSender {
+abstract class SocketSnapshotSender extends OutputStream implements SnapshotSender {
     private final Socket mSocket;
     private final OutputStream mOut;
     private final Map<String, String> mOptions;
@@ -60,47 +60,57 @@ final class SocketSnapshotSender extends OutputStream implements SnapshotSender 
     }
 
     @Override
-    public SocketAddress receiverAddress() {
+    public final SocketAddress receiverAddress() {
         return mSocket.getRemoteSocketAddress();
     }
 
     @Override
-    public Map<String, String> options() {
+    public final Map<String, String> options() {
         return mOptions;
     }
 
     @Override
-    public OutputStream begin(long length, long index, Map<String, String> options)
+    public final OutputStream begin(long length, long index, Map<String, String> options)
         throws IOException
     {
-        OptionsEncoder enc = new OptionsEncoder();
-        enc.encodeIntLE(0); // encoding format
-        enc.encodeLongLE(length);
-        enc.encodeLongLE(index);
-        enc.encodeMap(options == null ? Collections.emptyMap() : options);
-        enc.writeTo(this);
+        try {
+            long prevTerm = prevTermFor(index);
 
-        return this;
+            OptionsEncoder enc = new OptionsEncoder();
+            enc.encodeIntLE(0); // encoding format
+            enc.encodeLongLE(length);
+            enc.encodeLongLE(index);
+            enc.encodeLongLE(prevTerm);
+            enc.encodeMap(options == null ? Collections.emptyMap() : options);
+            enc.writeTo(this);
+
+            return this;
+        } catch (Throwable e) {
+            Utils.closeQuietly(null, this);
+            throw e;
+        }
     }
 
     @Override
-    public void write(int b) throws IOException {
+    public final void write(int b) throws IOException {
         mOut.write(b);
     }
 
     @Override
-    public void write(byte[] b, int off, int len) throws IOException {
+    public final void write(byte[] b, int off, int len) throws IOException {
         mOut.write(b, off, len);
     }
 
     @Override
-    public void flush() throws IOException {
+    public final void flush() throws IOException {
         mOut.flush();
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         // FIXME: unregister from Controller
         mSocket.close();
     }
+
+    abstract long prevTermFor(long index) throws IOException;
 }
