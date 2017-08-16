@@ -27,6 +27,8 @@ import java.net.SocketAddress;
 import java.util.Collections;
 import java.util.Map;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -38,6 +40,11 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     private final Socket mSocket;
     private final OutputStream mOut;
     private final Map<String, String> mOptions;
+
+    private static final AtomicIntegerFieldUpdater<SocketSnapshotSender> cSendingUpdater =
+        AtomicIntegerFieldUpdater.newUpdater(SocketSnapshotSender.class, "mSending");
+
+    private volatile int mSending;
 
     SocketSnapshotSender(Socket socket) throws IOException {
         OptionsDecoder dec;
@@ -73,6 +80,10 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     public final OutputStream begin(long length, long index, Map<String, String> options)
         throws IOException
     {
+        if (!cSendingUpdater.compareAndSet(this, 0, 1)) {
+            throw new IllegalStateException("Already began");
+        }
+
         try {
             long prevTerm = prevTermFor(index);
 
