@@ -1078,7 +1078,7 @@ final class FileTermLog extends Latch implements TermLog {
                 try {
                     doUnreferenced(segment, toClose);
                 } catch (IOException e) {
-                    Utils.uncaught(e);
+                    uncaught(e);
                 }
             }
         };
@@ -1122,14 +1122,14 @@ final class FileTermLog extends Latch implements TermLog {
                 try {
                     segment.truncate();
                 } catch (IOException e) {
-                    Utils.uncaught(e);
+                    uncaught(e);
                 }
 
                 if (cRefCountUpdater.getAndDecrement(segment) <= 0) {
                     try {
                         doUnreferenced(segment, mSegmentCache.add(segment));
                     } catch (IOException e) {
-                        Utils.uncaught(e);
+                        uncaught(e);
                     }
                 }
             }
@@ -1137,6 +1137,17 @@ final class FileTermLog extends Latch implements TermLog {
 
         synchronized (mWorker) {
             mWorker.enqueue(task);
+        }
+    }
+
+    void uncaught(IOException e) {
+        if (!mLogClosed) {
+            acquireShared();
+            boolean closed = mLogClosed;
+            releaseShared();
+            if (closed) {
+                Utils.uncaught(e);
+            }
         }
     }
 
