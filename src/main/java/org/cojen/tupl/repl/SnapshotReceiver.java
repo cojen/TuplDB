@@ -66,7 +66,6 @@ public interface SnapshotReceiver extends Closeable {
      * Returns the log index to start reading from. Is expected to be the highest exclusive
      * index applied by the snapshot.
      */
-    // FIXME: hide
     long index();
 
     /**

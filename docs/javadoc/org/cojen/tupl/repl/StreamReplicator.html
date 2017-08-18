@@ -269,7 +269,6 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if already started</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if previous term is unknown</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
@@ -285,14 +284,15 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
               long&nbsp;index)
        throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Start accepting replication data starting from the given index, which is assumed to be a
- valid commit index. This start variant is used to restore from a <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a>.</div>
+ valid commit index. This start variant can be used to restore from a <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a>.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>prevTerm</code> - log term immediately before the start index</dd>
+<dd><code>prevTerm</code> - the log term immediately before the start index</dd>
+<dd><code>term</code> - the log term at the start index</dd>
+<dd><code>index</code> - index to start reading from</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if already started</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if previous term already exists and doesn't match one given</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
