@@ -74,6 +74,10 @@ class _ReplRedoWriter extends _RedoWriter {
     void start() {
         mBufferLatch.acquireExclusive();
         try {
+            if (mEngine.mDatabase.isClosed()) {
+                return;
+            }
+
             mWritePos = mReplWriter.position();
             mBuffer = new byte[65536];
 
