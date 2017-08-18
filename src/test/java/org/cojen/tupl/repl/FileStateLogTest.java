@@ -83,7 +83,7 @@ public class FileStateLogTest {
         assertFalse(mLog.defineTerm(10, 11, 1000));
 
         // Allow term definition with no previous term at the start.
-        mLog.startIndex(1000);
+        mLog.truncateStart(1000);
         assertTrue(mLog.defineTerm(0, 10, 1000));
         assertTrue(mLog.defineTerm(0, 10, 1000));
 
@@ -286,7 +286,7 @@ public class FileStateLogTest {
         // Verify missing ranges when log starts higher than index zero.
 
         // Start at index 1000.
-        mLog.startIndex(1000);
+        mLog.truncateStart(1000);
         mLog.defineTerm(0, 10, 1000);
 
         RangeResult result = new RangeResult();

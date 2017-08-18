@@ -330,8 +330,8 @@ final class FileTermLog extends Latch implements TermLog {
     public void truncateStart(long startIndex) throws IOException {
         if (mSegments.isEmpty()) {
             acquireExclusive();
-            if (mSegments.isEmpty() && startIndex > mLogStartIndex) {
-                mLogStartIndex = Math.min(startIndex, mLogEndIndex);
+            if (mSegments.isEmpty()) {
+                increaseStartIndex(startIndex);
             }
             releaseExclusive();
         }
@@ -367,15 +367,25 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (appliedStartIndex > 0) {
             acquireExclusive();
-            if (appliedStartIndex > mLogStartIndex) {
-                mLogStartIndex = Math.min(appliedStartIndex, mLogEndIndex);
-            }
+            increaseStartIndex(appliedStartIndex);
             releaseExclusive();
         }
 
         if (ex != null) {
             throw ex;
         }
+    }
+
+    // Caller must hold exclusive latch.
+    private boolean increaseStartIndex(long startIndex) {
+        if (startIndex <= mLogStartIndex) {
+            return false;
+        }
+        mLogStartIndex = startIndex = Math.min(startIndex, mLogEndIndex);
+        mLogCommitIndex = Math.max(startIndex, mLogCommitIndex);
+        mLogHighestIndex = Math.max(startIndex, mLogHighestIndex);
+        mLogContigIndex = Math.max(startIndex, mLogContigIndex);
+        return true;
     }
 
     @Override
@@ -572,7 +582,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public void finishTerm(long endIndex) throws IOException {
+    public long finishTerm(long endIndex) throws IOException {
         acquireExclusive();
         try {
             long commitIndex = actualCommitIndex();
@@ -582,7 +592,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (endIndex == mLogEndIndex) {
-                return;
+                return commitIndex;
             }
 
             if (endIndex > mLogEndIndex) {
@@ -628,6 +638,8 @@ final class FileTermLog extends Latch implements TermLog {
                 }
                 return false;
             });
+
+            return commitIndex;
         } finally {
             releaseExclusive();
         }

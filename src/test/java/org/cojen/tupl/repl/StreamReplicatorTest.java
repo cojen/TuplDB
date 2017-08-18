@@ -88,7 +88,7 @@ public class StreamReplicatorTest {
         final long start = 0;
 
         for (StreamReplicator repl : mReplicators) {
-            repl.start(start);
+            repl.start();
         }
 
         // Wait for a leader.

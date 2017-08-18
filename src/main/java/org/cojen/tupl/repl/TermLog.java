@@ -47,10 +47,19 @@ interface TermLog extends LKey<TermLog>, Closeable {
      */
     long startIndex();
 
+    default long prevTermAt(long index) {
+        long startIndex = startIndex();
+        if (index < startIndex) {
+            throw new IllegalStateException
+                ("Index is lower than start: " + index + " < " + startIndex);
+        }
+        return index == startIndex ? prevTerm() : term();
+    }
+
     /**
-     * Attempt to increase the term start index, and truncate as much data as possible lower
-     * than it. The effective start index applied might be lower than what was requested,
-     * dependent on how much data could be truncated.
+     * Attempt to increase the term start index, assumed to be a valid commit index, and
+     * truncate as much data as possible lower than it. The effective start index applied might
+     * be lower than what was requested, dependent on how much data could be truncated.
      */
     void truncateStart(long startIndex) throws IOException;
 
@@ -92,10 +101,11 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * Set the end index for this term instance, truncating all higher data. The highest index
      * will also be set, if the given index is within the contiguous region of data.
      *
+     * @return the commit index
      * @throws IllegalArgumentException if the given index is lower than the commit index
      * @throws IllegalStateException if the term is already finished at a lower index
      */
-    void finishTerm(long endIndex) throws IOException;
+    long finishTerm(long endIndex) throws IOException;
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest

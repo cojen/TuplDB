@@ -104,12 +104,25 @@ public interface StreamReplicator extends Replicator {
     }
 
     /**
-     * Start accepting replication data starting from the given index, which is assumed to be a
-     * valid commit index.
+     * Start accepting replication data, to be called for new or existing replicators.
      *
      * @return false if already started
+     * @throws IllegalStateException if previous term is unknown
      */
-    boolean start(long index) throws IOException;
+    boolean start() throws IOException;
+
+    /**
+     * Start accepting replication data starting from the given index, which is assumed to be a
+     * valid commit index. This start variant is used to restore from a {@link #requestSnapshot
+     * snapshot}.
+     *
+     * @param prevTerm log term immediately before the start index
+     * @return false if already started
+     * @throws IllegalStateException if previous term already exists and doesn't match one given
+     */
+    // FIXME: no IllegalStateException
+    // FIXME: hide this method?
+    boolean start(long prevTerm, long term, long index) throws IOException;
 
     /**
      * Returns a new reader which accesses data starting from the given index. The reader
