@@ -85,13 +85,18 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         }
 
         try {
-            long prevTerm = prevTermFor(index);
+            // FIXME: Must disable log start truncation.
+            TermLog termLog = termLogAt(index);
+            if (termLog == null) {
+                throw new IllegalStateException("Unknown term at index: " + index);
+            }
 
             OptionsEncoder enc = new OptionsEncoder();
             enc.encodeIntLE(0); // encoding format
             enc.encodeLongLE(length);
+            enc.encodeLongLE(termLog.prevTermAt(index));
+            enc.encodeLongLE(termLog.term());
             enc.encodeLongLE(index);
-            enc.encodeLongLE(prevTerm);
             enc.encodeMap(options == null ? Collections.emptyMap() : options);
             enc.writeTo(this);
 
@@ -123,5 +128,5 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         mSocket.close();
     }
 
-    abstract long prevTermFor(long index) throws IOException;
+    abstract TermLog termLogAt(long index) throws IOException;
 }

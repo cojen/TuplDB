@@ -67,13 +67,16 @@ interface StateLog extends Closeable {
     long checkCurrentTerm(long term) throws IOException;
 
     /**
-     * Set the log start index, potentially truncating any lower data.
+     * Set the log start index higher, assumed to be a valid commit index, and potentially
+     * truncate any lower data. Method does nothing if given start index is lower than the
+     * current start.
+     *
+     * @throws IllegalStateException if term is unknown at given index
      */
-    void startIndex(long index) throws IOException;
+    void truncateStart(long index) throws IOException;
 
     /**
-     * Ensures that a term is defined at the given index. No previous term is required when the
-     * index is at the start of the log.
+     * Ensures that a term is defined at the given index.
      *
      * @param prevTerm expected term at previous index
      * @param term term to define
@@ -83,9 +86,9 @@ interface StateLog extends Closeable {
     boolean defineTerm(long prevTerm, long term, long index) throws IOException;
 
     /**
-     * Return the term at the given index, or 0 if unknown.
+     * Return the term for the given index, or null if unknown.
      */
-    long termAt(long index);
+    TermLog termLogAt(long index);
 
     /**
      * Query for all the terms which are defined over the given range.

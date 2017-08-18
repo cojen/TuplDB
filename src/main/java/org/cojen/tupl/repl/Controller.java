@@ -121,7 +121,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean start(long index) throws IOException {
+    public boolean start() throws IOException {
+        return start(0, 0, 0, false);
+    }
+
+    @Override
+    public boolean start(long prevTerm, long term, long index) throws IOException {
+        return start(prevTerm, term, index, true);
+    }
+
+    private boolean start(long prevTerm, long term, long index, boolean truncateStart)
+        throws IOException
+    {
         if (index < 0) {
             throw new IllegalArgumentException("Start index: " + index);
         }
@@ -130,28 +141,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             return false;
         }
 
-        mStateLog.startIndex(index);
-
-        if (index != 0 && mStateLog.termAt(index) == 0) {
-            acquireShared();
-            Channel[] channels = mPeerChannels;
-            releaseShared();
-
-            waitForConnections(channels);
-
-            for (Channel channel : channels) {
-                channel.queryTerms(null, index, Long.MAX_VALUE);
-            }
-
-            // FIXME: instead of waiting, permit missing data task to do the check
-
-            // FIXME: use condition variable
-            while (mStateLog.termAt(index) == 0) {
-                try {
-                    Thread.sleep(100);
-                } catch (Exception e) {
-                }
-            }
+        if (truncateStart) {
+            mStateLog.truncateStart(index);
+            mStateLog.defineTerm(prevTerm, term, index);
         }
 
         mChanMan.start(this);
@@ -308,8 +300,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             @Override
-            long prevTermFor(long index) {
-                return mStateLog.termAt(index - 1);
+            TermLog termLogAt(long index) {
+                return mStateLog.termLogAt(index);
             }
         }
 
@@ -766,7 +758,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
-            long prevTerm = mStateLog.termAt(index - 1);
+            long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
             System.out.println("leader: " + prevTerm + " -> " + term + " @" + index);
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
             mLocalRole = ROLE_LEADER;

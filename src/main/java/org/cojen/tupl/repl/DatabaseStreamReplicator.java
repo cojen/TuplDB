@@ -89,7 +89,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         InputStream in = receiver.inputStream();
 
         try {
-            mRepl.start(receiver.index());
+            mRepl.start(receiver.prevTerm(), receiver.term(), receiver.index());
         } catch (Throwable e) {
             Utils.closeQuietly(null, in);
             throw e;
@@ -104,7 +104,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             throw new IllegalStateException();
         }
 
-        mRepl.start(position);
+        mRepl.start();
 
         while (true) {
             StreamReplicator.Reader reader = mRepl.newReader(position, false);

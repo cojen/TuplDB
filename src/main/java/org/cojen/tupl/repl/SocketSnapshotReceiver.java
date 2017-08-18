@@ -38,6 +38,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     private final Socket mSocket;
     private final long mLength;
     private final long mPrevTerm;
+    private final long mTerm;
     private final long mIndex;
     private final Map<String, String> mOptions;
 
@@ -62,9 +63,10 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         }
 
         mSocket = socket;
-        mLength = dec.decodeLongLE();
+        mLength = dec.decodeLongLE(); 
+        mPrevTerm = dec.decodeLongLE(); 
+        mTerm = dec.decodeLongLE();
         mIndex = dec.decodeLongLE();
-        mPrevTerm = dec.decodeLongLE();
         mOptions = dec.decodeMap();
     }
 
@@ -84,13 +86,18 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     }
 
     @Override
-    public long index() {
-        return mIndex;
+    public long prevTerm() {
+        return mPrevTerm;
     }
 
     @Override
-    public long prevTerm() {
-        return mPrevTerm;
+    public long term() {
+        return mTerm;
+    }
+
+    @Override
+    public long index() {
+        return mIndex;
     }
 
     @Override
@@ -106,7 +113,6 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     @Override
     public String toString() {
         return "SnapshotReceiver: {sender=" + senderAddress() + ", length=" + length() +
-            ", index=" + index() + ", prevTerm=" + prevTerm() + '}';
-            
+            ", prevTerm=" + prevTerm() + ", term=" + term() + ", index=" + index() + '}';
     }
 }
