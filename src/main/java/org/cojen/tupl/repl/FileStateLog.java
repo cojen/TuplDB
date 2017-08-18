@@ -653,7 +653,16 @@ final class FileStateLog extends Latch implements StateLog {
                         break defineTermLog;
                     }
 
-                    // Replace the primordial term.
+                    // Replace the primordial term, but only if the new term is higher than any
+                    // existing term.
+
+                    for (Object t : mTermLogs) {
+                        if (term <= ((TermLog) t).term()) {
+                            // Found a conflict.
+                            termLog = null;
+                            break defineTermLog;
+                        }
+                    }
 
                     if (!exclusive) {
                         if (tryUpgrade()) {
