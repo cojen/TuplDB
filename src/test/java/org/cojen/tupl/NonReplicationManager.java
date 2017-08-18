@@ -139,7 +139,8 @@ class NonReplicationManager implements ReplicationManager {
                 return false;
             }
             mPosition += len;
-            notify();
+            // Confirm method is called by checkpointer and main thread.
+            notifyAll();
             return true;
         }
 
@@ -175,6 +176,7 @@ class NonReplicationManager implements ReplicationManager {
             for (Runnable r : mCallbacks) {
                 r.run();
             }
+            notifyAll();
         }
     }
 }
