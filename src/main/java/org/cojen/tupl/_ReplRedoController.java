@@ -53,9 +53,9 @@ final class _ReplRedoController extends _ReplRedoWriter {
         releaseExclusive();
     }
 
-    public void recover(long initialTxnId, EventListener listener) throws IOException {
+    public void ready(long initialTxnId, ReplicationManager.Accessor accessor) throws IOException {
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
-        mManager.recover(mEngine.mDatabase, listener);
+        mManager.ready(accessor);
     }
 
     @Override

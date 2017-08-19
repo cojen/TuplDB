@@ -31,14 +31,6 @@ abstract class AbstractDatabase implements Database {
     abstract EventListener eventListener();
 
     /**
-     * Writes a redo control operation.
-     *
-     * @return redo position after the message, or 0 if cannot write redo messages
-     * @throws UnmodifiableReplicaException if not leader
-     */
-    abstract long redoControl(byte[] message) throws IOException;
-
-    /**
      * Called by Checkpointer task.
      */
     abstract void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)

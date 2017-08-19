@@ -62,10 +62,6 @@ class NonReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public void recover(EventListener listener) {
-    }
-
-    @Override
     public long readPosition() {
         return 0;
     }

@@ -543,9 +543,23 @@
 <dd>
 <div class="block">Connect to any replication group member, for any particular use.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#control-byte:A-">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
+<dd>
+<div class="block">Attempt to write a replicated control message, returning the log position just after
+ the message.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control(long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Called after a control operation has been received.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Install a callback to be invoked when the replicator needs to send control messages,
+ which must propagate through the replication log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-">controlMessageReceived(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#copy--">copy()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -653,6 +667,10 @@
 <dt><a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#database--">database()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
+<dd>
+<div class="block">Access the database which is being replicated.</div>
 </dd>
 <dt><a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Database.Stats</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -2235,19 +2253,14 @@
 <dd>
 <div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#ready-org.cojen.tupl.ext.ReplicationManager.Accessor-">ready(ReplicationManager.Accessor)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dd>
+<div class="block">Called after replication threads have started, providing an opportunity to wait until
+ replication has sufficiently "caught up".</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#receiverAddress--">receiverAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
 <dd>
 <div class="block">Member address which is receiving the snapshot.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.Database-org.cojen.tupl.EventListener-">recover(Database, EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called after replication threads have started, providing an opportunity to wait until
- replication has sufficiently "caught up".</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.EventListener-">recover(EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called after replication threads have started, providing an opportunity to wait until
- replication has sufficiently "caught up".</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo(Database, Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
@@ -2316,6 +2329,8 @@
 <dd>
 <div class="block">Interface which replaces the redo log, for replicating transactional operations.</div>
 </dd>
+<dt><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Accessor</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Writer</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>

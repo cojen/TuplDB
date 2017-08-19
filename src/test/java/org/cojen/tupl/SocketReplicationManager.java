@@ -41,6 +41,8 @@ class SocketReplicationManager implements ReplicationManager {
     private volatile InputStream mReader;
     private volatile StreamWriter mWriter;
 
+    private volatile Accessor mAccessor;
+
     private volatile long mPos;
 
     private byte[] mControlMessage;
@@ -86,7 +88,8 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public void recover(EventListener listener) throws IOException {
+    public void ready(Accessor accessor) throws IOException {
+        mAccessor = accessor;
     }
 
     @Override
@@ -157,6 +160,10 @@ class SocketReplicationManager implements ReplicationManager {
 
     public void disableWrites() {
         mWriter.mDisabled = true;
+    }
+
+    public long writeControl(byte[] message) throws IOException {
+        return mAccessor.control(message);
     }
 
     public synchronized long waitForControl(long position, byte[] message)

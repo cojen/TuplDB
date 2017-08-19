@@ -548,7 +548,7 @@ public class ReplicationTest {
      */
     private void fence() throws IOException, InterruptedException {
         byte[] message = ("fence:" + System.nanoTime()).getBytes();
-        long pos = ((AbstractDatabase) mLeader).redoControl(message);
+        long pos = mLeaderMan.writeControl(message);
         mReplicaMan.waitForControl(pos, message);
     }
 

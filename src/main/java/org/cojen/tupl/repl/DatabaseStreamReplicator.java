@@ -36,6 +36,8 @@ import org.cojen.tupl.Snapshot;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.ext.ReplicationManager;
+
 /**
  * DatabaseReplicator implementation backed by a StreamReplicator.
  *
@@ -121,7 +123,18 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public void recover(Database db, EventListener listener) throws IOException {
+    public void ready(ReplicationManager.Accessor accessor) throws IOException {
+        // Can now send control messages.
+        mRepl.controlMessageAcceptor(message -> {
+            try {
+                accessor.control(message);
+            } catch (IOException e) {
+                // Drop it.
+            }
+        });
+
+        Database db = accessor.database();
+
         // Can now accept snapshot requests.
         mRepl.snapshotRequestAcceptor(sender -> {
             try {
