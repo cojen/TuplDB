@@ -547,8 +547,9 @@ public class ReplicationTest {
      * Writes a fence to the leader and waits for the replica to catch up.
      */
     private void fence() throws IOException, InterruptedException {
-        long pos = ((AbstractDatabase) mLeader).redoFence();
-        mReplicaMan.waitForFence(pos);
+        byte[] message = ("fence:" + System.nanoTime()).getBytes();
+        long pos = ((AbstractDatabase) mLeader).redoControl(message);
+        mReplicaMan.waitForControl(pos, message);
     }
 
     private static class Handler implements TransactionHandler {

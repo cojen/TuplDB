@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":6,"i7":18,"i8":18,"i9":18,"i10":6,"i11":6,"i12":18,"i13":6,"i14":6};
+var methods = {"i0":6,"i1":18,"i2":6,"i3":18,"i4":18,"i5":6,"i6":6,"i7":18,"i8":18,"i9":18,"i10":6,"i11":6,"i12":18,"i13":6,"i14":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -162,16 +162,17 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i1" class="rowColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control</a></span>(long&nbsp;position,
+       byte[]&nbsp;message)</code>
+<div class="block">Called after a control operation has been received.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#encoding--">encoding</a></span>()</code>
 <div class="block">Return a fixed non-zero value which identifies the replication manager implementation
  and its encoding format.</div>
-</td>
-</tr>
-<tr id="i2" class="altColor">
-<td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#fenced-long-">fenced</a></span>(long&nbsp;position)</code>
-<div class="block">Called after a fence operation has been received and processed.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
@@ -496,19 +497,20 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </dl>
 </li>
 </ul>
-<a name="fenced-long-">
+<a name="control-long-byte:A-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>fenced</h4>
-<pre>default&nbsp;void&nbsp;fenced(long&nbsp;position)
-             throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Called after a fence operation has been received and processed. All replication
- processing and checkpoints are suspended until this method returns.</div>
+<h4>control</h4>
+<pre>default&nbsp;void&nbsp;control(long&nbsp;position,
+                     byte[]&nbsp;message)
+              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Called after a control operation has been received. All replication processing and
+ checkpoints are suspended until this method returns.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - log position immediately after the fence operation</dd>
+<dd><code>position</code> - log position at message end</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>

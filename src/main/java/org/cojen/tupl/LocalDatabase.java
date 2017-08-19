@@ -4557,9 +4557,9 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     @Override
-    long redoFence() throws IOException {
+    long redoControl(byte[] message) throws IOException {
         RedoWriter redo = txnRedoWriter();
-        return redo == null ? 0 : redo.writeFence();
+        return redo == null ? 0 : anyTransactionContext().redoControl(redo, message);
     }
 
     @Override
