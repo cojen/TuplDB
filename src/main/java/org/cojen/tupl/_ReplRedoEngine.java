@@ -204,14 +204,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean fence() throws IOException {
+    public boolean control(byte[] message) throws IOException {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
             mWorkerGroup.join(false);
         }
 
         // Call with decode latch held, suspending checkpoints.
-        mManager.fenced(mDecoder.mIn.mPos);
+        mManager.control(mDecoder.mIn.mPos, message);
 
         return true;
     }

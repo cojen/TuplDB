@@ -539,6 +539,24 @@ final class TransactionContext extends Latch implements Flushable {
         redoNonTxnTerminateCommit(redo, mode);
     }
 
+    long redoControl(RedoWriter redo, byte[] message) throws IOException {
+        if (message == null) {
+            throw new NullPointerException("Message is null");
+        }
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteOp(redo, OP_CONTROL);
+            redoWriteUnsignedVarInt(message.length);
+            redoWriteBytes(message, true);
+            // Must use SYNC to obtain the log position.
+            return redoNonTxnTerminateCommit(redo, DurabilityMode.SYNC);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     /**
      * Terminate and commit a non-transactional operation. Caller must hold redo latch.
      *

@@ -31,11 +31,12 @@ abstract class AbstractDatabase implements Database {
     abstract EventListener eventListener();
 
     /**
-     * Writes a redo fence operation.
+     * Writes a redo control operation.
      *
-     * @return highest log position afterwards
+     * @return redo position after the message, or 0 if cannot write redo messages
+     * @throws UnmodifiableReplicaException if not leader
      */
-    abstract long redoFence() throws IOException;
+    abstract long redoControl(byte[] message) throws IOException;
 
     /**
      * Called by Checkpointer task.

@@ -72,21 +72,6 @@ abstract class _RedoWriter extends Latch implements Closeable {
     abstract _RedoWriter txnRedoWriter();
 
     /**
-     * Writes a fence operation into this _RedoWriter.
-     *
-     * @return highest log position afterwards
-     */
-    final long writeFence() throws IOException {
-        byte[] op = {RedoOps.OP_FENCE};
-        acquireExclusive();
-        try {
-            return write(true, op, 0, 1);
-        } finally {
-            releaseExclusive();
-        }
-    }
-
-    /**
      * Returns true if uncheckpointed redo size is at least the given threshold
      */
     abstract boolean shouldCheckpoint(long sizeThreshold);

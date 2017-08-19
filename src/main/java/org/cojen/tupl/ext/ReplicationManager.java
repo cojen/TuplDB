@@ -229,12 +229,12 @@ public interface ReplicationManager extends Closeable {
     void checkpointed(long position) throws IOException;
 
     /**
-     * Called after a fence operation has been received and processed. All replication
-     * processing and checkpoints are suspended until this method returns.
+     * Called after a control operation has been received. All replication processing and
+     * checkpoints are suspended until this method returns.
      *
-     * @param position log position immediately after the fence operation
+     * @param position log position at message end
      */
-    default void fenced(long position) throws IOException {}
+    default void control(long position, byte[] message) throws IOException {}
 
     /**
      * Notification to replica after an index is renamed. The current thread is free to perform

@@ -62,7 +62,7 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean fence() {
+    public boolean control(byte[] message) {
         return true;
     }
 

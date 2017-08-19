@@ -24,6 +24,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.ServerSocket;
 
+import java.util.Arrays;
+
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
@@ -41,7 +43,8 @@ class SocketReplicationManager implements ReplicationManager {
 
     private volatile long mPos;
 
-    private long mFencedPos;
+    private byte[] mControlMessage;
+    private long mControlPos;
 
     /**
      * @param replicaHost replica to connect to; pass null if local host is the replica
@@ -126,8 +129,9 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public synchronized void fenced(long position) throws IOException {
-        mFencedPos = position;
+    public synchronized void control(long position, byte[] message) throws IOException {
+        mControlMessage = message;
+        mControlPos = position;
         notifyAll();
     }
 
@@ -155,10 +159,15 @@ class SocketReplicationManager implements ReplicationManager {
         mWriter.mDisabled = true;
     }
 
-    public synchronized long waitForFence(long position) throws InterruptedException {
+    public synchronized long waitForControl(long position, byte[] message)
+        throws InterruptedException
+    {
         while (true) {
-            long current = mFencedPos;
+            long current = mControlPos;
             if (current >= position) {
+                if (current == position && !Arrays.equals(mControlMessage, message)) {
+                    throw new IllegalStateException("Wrong message");
+                }
                 return current;
             }
             wait();
