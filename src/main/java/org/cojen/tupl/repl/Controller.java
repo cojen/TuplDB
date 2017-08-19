@@ -241,6 +241,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public void controlMessageReceived(byte[] message) {
+        // FIXME
+    }
+
+    @Override
+    public void controlMessageAcceptor(Consumer<byte[]> acceptor) {
+        // FIXME
+    }
+
+    @Override
     public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
         acquireShared();
         Channel[] channels = mPeerChannels;

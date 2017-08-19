@@ -76,25 +76,23 @@ public interface ReplicationManager extends Closeable {
      * Called after replication threads have started, providing an opportunity to wait until
      * replication has sufficiently "caught up". The thread which is opening the database
      * invokes this method, and so it blocks until recovery completes. Default implementation
-     * calls the other recover method, which itself does nothing by default.
-     *
-     * @param db recovered database instance
-     * @param listener optional listener for posting recovery events to
-     */
-    default void recover(Database db, EventListener listener) throws IOException {
-        recover(listener);
-    }
-
-    /**
-     * Called after replication threads have started, providing an opportunity to wait until
-     * replication has sufficiently "caught up". The thread which is opening the database
-     * invokes this method, and so it blocks until recovery completes. Default implementation
      * does nothing.
      *
-     * @param listener optional listener for posting recovery events to
+     * @param accessor provides access to the database
      */
-    default void recover(EventListener listener) throws IOException {
-        // Do nothing.
+    default void ready(Accessor accessor) throws IOException {}
+
+    static interface Accessor extends EventListener {
+        /**
+         * Access the database which is being replicated.
+         */
+        Database database();
+
+        /**
+         * Attempt to write a replicated control message, returning the log position just after
+         * the message.
+         */
+        long control(byte[] message) throws IOException;
     }
 
     /**
@@ -232,7 +230,7 @@ public interface ReplicationManager extends Closeable {
      * Called after a control operation has been received. All replication processing and
      * checkpoints are suspended until this method returns.
      *
-     * @param position log position at message end
+     * @param position log position just after the message
      */
     default void control(long position, byte[] message) throws IOException {}
 

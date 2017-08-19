@@ -895,13 +895,29 @@ final class _LocalDatabase extends AbstractDatabase {
         if (mRedoWriter instanceof _ReplRedoController) {
             // Start replication and recovery.
             _ReplRedoController controller = (_ReplRedoController) mRedoWriter;
+
             try {
-                // Pass the original listener, in case it has been specialized.
-                controller.recover(config.mReplInitialTxnId, config.mEventListener);
+                controller.ready(config.mReplInitialTxnId, new ReplicationManager.Accessor() {
+                    @Override
+                    public void notify(EventType type, String message, Object... args) {
+                        mEventListener.notify(type, message, args);
+                    }
+
+                    @Override
+                    public Database database() {
+                        return _LocalDatabase.this;
+                    }
+
+                    @Override
+                    public long control(byte[] message) throws IOException {
+                        return anyTransactionContext().redoControl(txnRedoWriter(), message);
+                    }
+                });
             } catch (Throwable e) {
                 closeQuietly(null, this, e);
                 throw e;
             }
+
             recoveryComplete(config.mReplRecoveryStartNanos);
             initialCheckpoint = true;
         }
@@ -4554,12 +4570,6 @@ final class _LocalDatabase extends AbstractDatabase {
     @Override
     EventListener eventListener() {
         return mEventListener;
-    }
-
-    @Override
-    long redoControl(byte[] message) throws IOException {
-        _RedoWriter redo = txnRedoWriter();
-        return redo == null ? 0 : anyTransactionContext().redoControl(redo, message);
     }
 
     @Override

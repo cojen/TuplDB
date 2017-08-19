@@ -175,6 +175,30 @@ public interface StreamReplicator extends Replicator {
     void sync() throws IOException;
 
     /**
+     * Called to pass along a control message, which was originally provided through an {@link
+     * #controlMessageAcceptor acceptor}. Control messages must be passed along in the original
+     * order in which they were created.
+     */
+    void controlMessageReceived(byte[] message);
+
+    /**
+     * Install a callback to be invoked when the replicator needs to send control messages,
+     * which must propagate through the replication log. From the perspective of the acceptor,
+     * control messages should be treated as opaque. Control messages are primarily used for
+     * supporting group membership changes, and without an acceptor, members cannot be added or
+     * removed.
+     *
+     * <p>Acceptor implementations are expected to wrap messages such that they can be
+     * propagated along with regular messages, and then later be passed to the {@link
+     * #controlMessageReceived controlMessageReceived} method. If a control message cannot be
+     * written (possibly because the local member isn't the leader), it might be silently
+     * dropped. Implementations are not required to pass control messages to a remote leader.
+     *
+     * @param acceptor acceptor to use, or pass null to disable
+     */
+    void controlMessageAcceptor(Consumer<byte[]> acceptor);
+
+    /**
      * Connect to a remote replication group member, for receiving a database snapshot. An
      * {@link #snapshotRequestAcceptor acceptor} must be installed on the group member being
      * connected to for the request to succeed.

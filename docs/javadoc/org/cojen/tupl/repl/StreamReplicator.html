@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":17,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":17,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -152,51 +152,64 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</code>
+<div class="block">Install a callback to be invoked when the replicator needs to send control messages,
+ which must propagate through the replication log.</div>
+</td>
+</tr>
+<tr id="i1" class="rowColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-">controlMessageReceived</a></span>(byte[]&nbsp;message)</code>
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-boolean-">newReader</a></span>(long&nbsp;index,
          boolean&nbsp;follow)</code>
 <div class="block">Returns a new reader which accesses data starting from the given index.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter--">newWriter</a></span>()</code>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter-long-">newWriter</a></span>(long&nbsp;index)</code>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open</a></span>(<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-">requestSnapshot</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util">Map</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>,<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&gt;&nbsp;options)</code>
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-">snapshotRequestAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#start--">start</a></span>()</code>
 <div class="block">Start accepting replication data, to be called for new or existing replicators.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#start-long-long-long-">start</a></span>(long&nbsp;prevTerm,
      long&nbsp;term,
@@ -205,7 +218,7 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
  valid commit index.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#sync--">sync</a></span>()</code>
 <div class="block">Durably persist all data up to the highest index.</div>
@@ -383,6 +396,40 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="controlMessageReceived-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>controlMessageReceived</h4>
+<pre>void&nbsp;controlMessageReceived(byte[]&nbsp;message)</pre>
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>. Control messages must be passed along in the original
+ order in which they were created.</div>
+</li>
+</ul>
+<a name="controlMessageAcceptor-java.util.function.Consumer-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>controlMessageAcceptor</h4>
+<pre>void&nbsp;controlMessageAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</pre>
+<div class="block">Install a callback to be invoked when the replicator needs to send control messages,
+ which must propagate through the replication log. From the perspective of the acceptor,
+ control messages should be treated as opaque. Control messages are primarily used for
+ supporting group membership changes, and without an acceptor, members cannot be added or
+ removed.
+
+ <p>Acceptor implementations are expected to wrap messages such that they can be
+ propagated along with regular messages, and then later be passed to the <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-"><code>controlMessageReceived</code></a> method. If a control message cannot be
+ written (possibly because the local member isn't the leader), it might be silently
+ dropped. Implementations are not required to pass control messages to a remote leader.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>acceptor</code> - acceptor to use, or pass null to disable</dd>
 </dl>
 </li>
 </ul>
