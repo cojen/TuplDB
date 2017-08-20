@@ -46,7 +46,7 @@ import static org.cojen.tupl.io.Utils.*;
  * @author Brian S O'Neill
  */
 final class Controller extends Latch implements StreamReplicator, Channel {
-    private static final int ROLE_FOLLOWER = 0, ROLE_CANDIDATE = 1, ROLE_LEADER = 2;
+    private static final int MODE_FOLLOWER = 0, MODE_CANDIDATE = 1, MODE_LEADER = 2;
     private static final int ELECTION_DELAY_LOW_MILLIS = 200, ELECTION_DELAY_HIGH_MILLIS = 300;
     private static final int QUERY_TERMS_RATE_MILLIS = 1;
     private static final int MISSING_DELAY_LOW_MILLIS = 400, MISSING_DELAY_HIGH_MILLIS = 600;
@@ -58,7 +58,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
 
-    private int mLocalRole;
+    private int mLocalMode;
 
     private Peer[] mPeers;
     private Channel[] mPeerChannels;
@@ -453,7 +453,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void missingDataTask() {
         if (tryAcquireShared()) {
-            if (mLocalRole == ROLE_LEADER) {
+            if (mLocalMode == MODE_LEADER) {
                 // Leader doesn't need to check for missing data.
                 mMissingContigIndex = Long.MAX_VALUE; // reset to unknown
                 mSkipMissingDataTask = true;
@@ -562,14 +562,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         acquireExclusive();
         try {
-            if (mLocalRole == ROLE_LEADER) {
+            if (mLocalMode == MODE_LEADER) {
                 // FIXME: If commit index is lagging behind and not moving, switch to follower.
                 // This isn't in the Raft algorithm, but it really should be.
                 affirmLeadership();
                 return;
             }
 
-            if (mLocalRole == ROLE_CANDIDATE) {
+            if (mLocalMode == MODE_CANDIDATE) {
                 // Abort current election and start a new one.
                 toFollower();
             }
@@ -585,7 +585,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // FIXME: Don't permit rogue members to steal leadership if process is
             // suspended. Need to double check against local clock to detect this. Or perhaps
             // check with peers to see if leader is up.
-            mLocalRole = ROLE_CANDIDATE;
+            mLocalMode = MODE_CANDIDATE;
 
             peerChannels = mPeerChannels;
 
@@ -651,11 +651,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Caller must hold exclusive latch.
     private void toFollower() {
-        final int originalRole = mLocalRole;
-        if (originalRole != ROLE_FOLLOWER) {
+        final int originalMode = mLocalMode;
+        if (originalMode != MODE_FOLLOWER) {
             System.out.println("follower: " + mCurrentTerm);
 
-            mLocalRole = ROLE_FOLLOWER;
+            mLocalMode = MODE_FOLLOWER;
             mVotedFor = 0;
             mGrantsRemaining = 0;
 
@@ -668,7 +668,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderReplWriter.deactivate();
             }
 
-            if (originalRole == ROLE_LEADER && mSkipMissingDataTask) {
+            if (originalMode == MODE_LEADER && mSkipMissingDataTask) {
                 mSkipMissingDataTask = false;
                 scheduleMissingDataTask();
             }
@@ -731,13 +731,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (term < 0 && (term &= ~(1L << 63)) == originalTerm) {
             // Vote granted.
 
-            if (--mGrantsRemaining > 0 || mLocalRole != ROLE_CANDIDATE) {
+            if (--mGrantsRemaining > 0 || mLocalMode != MODE_CANDIDATE) {
                 // Majority not received yet, or voting is over.
                 releaseExclusive();
                 return true;
             }
 
-            if (mLocalRole == ROLE_CANDIDATE) {
+            if (mLocalMode == MODE_CANDIDATE) {
                 LogInfo info = mStateLog.captureHighest();
                 toLeader(term, info.mHighestIndex);
                 return true;
@@ -771,7 +771,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
             System.out.println("leader: " + prevTerm + " -> " + term + " @" + index);
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
-            mLocalRole = ROLE_LEADER;
+            mLocalMode = MODE_LEADER;
             for (Channel channel : mPeerChannels) {
                 channel.peer().mMatchIndex = 0;
             }
@@ -1006,7 +1006,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         acquireExclusive();
         try {
-            if (mLocalRole != ROLE_LEADER) {
+            if (mLocalMode != MODE_LEADER) {
                 return true;
             }
 
@@ -1056,11 +1056,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         // FIXME: reply with high session count and weight if no acceptor is installed
 
         acquireShared();
-        int role = mLocalRole;
+        int mode = mLocalMode;
         releaseShared();
 
         // FIXME: provide active session count
-        from.snapshotScoreReply(null, 0, role == ROLE_LEADER ? 1 : -1);
+        from.snapshotScoreReply(null, 0, mode == MODE_LEADER ? 1 : -1);
 
         return true;
     }
