@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Flushable;
 import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
@@ -54,7 +55,7 @@ import java.util.concurrent.TimeUnit;
  * @author Brian S O'Neill
  * @see Database#newTransaction Database.newTransaction
  */
-public interface Transaction {
+public interface Transaction extends Flushable {
     /**
      * Transaction instance which isn't a transaction at all. It always
      * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link

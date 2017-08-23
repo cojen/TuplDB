@@ -490,6 +490,16 @@ final class RedoLog extends RedoWriter {
         }
     }
 
+    @Override
+    public void flush() throws IOException {
+        acquireExclusive();
+        try {
+            doFlush();
+        } finally {
+            releaseExclusive();
+        }
+    }
+
     private void doFlush() throws IOException {
         try {
             if (mBufferPos > 0) {
