@@ -289,6 +289,18 @@ public class ReplicationTest {
 
         for (int i=0; i<200_000; i++) {
             Utils.increment(value, 0, value.length);
+            /* FIXME: caused by pending commit waiter backlog
+[ERROR] lockOrdering(org.cojen.tupl.ReplicationTest)  Time elapsed: 24.77 s  <<< ERROR!
+org.cojen.tupl.LockTimeoutException: Waited 1 second
+        at org.cojen.tupl.Locker.failed(Locker.java:494)
+        at org.cojen.tupl.Locker.lock(Locker.java:137)
+        at org.cojen.tupl.TreeCursor.doLoad(TreeCursor.java:2469)
+        at org.cojen.tupl.TreeCursor.find(TreeCursor.java:2006)
+        at org.cojen.tupl.TreeCursor.doFind(TreeCursor.java:1778)
+        at org.cojen.tupl.TxnTree.txnStore(TxnTree.java:55)
+        at org.cojen.tupl.TxnTree.store(TxnTree.java:45)
+        at org.cojen.tupl.ReplicationTest.lockOrdering(ReplicationTest.java:292)
+        */
             lix.store(null, key, value);
         }
 
