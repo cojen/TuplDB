@@ -357,8 +357,13 @@ class _ReplRedoWriter extends _RedoWriter {
     }
 
     @Override
-    void alwaysFlush(boolean enable) throws IOException {
+    final void alwaysFlush(boolean enable) {
         // Always flushes already.
+    }
+
+    @Override
+    public final void flush() {
+        // Nothing to flush.
     }
 
     @Override

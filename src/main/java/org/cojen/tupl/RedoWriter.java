@@ -18,6 +18,7 @@
 package org.cojen.tupl;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 
 import org.cojen.tupl.util.Latch;
@@ -30,7 +31,7 @@ import org.cojen.tupl.util.Latch;
  * @see RedoDecoder
  */
 /*P*/
-abstract class RedoWriter extends Latch implements Closeable {
+abstract class RedoWriter extends Latch implements Closeable, Flushable {
     // Only access while latched. Is accessed by TransactionContext and ReplRedoWriter.
     long mLastTxnId;
 

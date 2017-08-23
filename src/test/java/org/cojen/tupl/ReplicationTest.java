@@ -230,7 +230,7 @@ public class ReplicationTest {
         Transaction ltxn = mLeader.newTransaction();
         lix.store(ltxn, "hello".getBytes(), "world".getBytes());
         // Explicit flush of the TransactionContext.
-        mLeader.flush();
+        ltxn.flush();
         fence();
 
         Index rix = mReplica.openIndex("test");
@@ -341,7 +341,7 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         ltxn.lockExclusive(lix.getId(), "key".getBytes());
         ltxn.customRedo("hello".getBytes(), lix.getId(), "key".getBytes());
 
-        mLeader.flush();
+        ltxn.flush();
         fence();
 
         fastAssertArrayEquals("hello".getBytes(), mReplicaHandler.mMessage);
@@ -371,7 +371,7 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         ltxn.enter();
         lix.store(ltxn, "k2".getBytes(), "v2".getBytes());
         // Explicit flush of the TransactionContext.
-        mLeader.flush();
+        ltxn.flush();
         fence();
 
         Index rix = mReplica.openIndex("test");
@@ -422,7 +422,7 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         ltxn.enter();
         lix.store(ltxn, "k2".getBytes(), "v2".getBytes());
         // Explicit flush of the TransactionContext.
-        mLeader.flush();
+        ltxn.flush();
         fence();
 
         Index rix = mReplica.openIndex("test");
@@ -485,7 +485,7 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         c.commit("v2".getBytes());
 
         // Need explicit flush because nested commits don't flush immediately.
-        mLeader.flush();
+        ltxn.flush();
 
         fence();
         Index rix = mReplica.openIndex("test");
