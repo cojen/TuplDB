@@ -318,6 +318,17 @@ public class RecoverTest {
     @Test
     public void largeUndoExit() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
+            /* FIXME
+               largeUndoExit(org.cojen.tupl.RecoverTest)  Time elapsed: 2.916 s  <<< FAILURE!
+               java.lang.AssertionError: expected:<0> but was:<1>
+               at org.junit.Assert.fail(Assert.java:88)
+               at org.junit.Assert.failNotEquals(Assert.java:743)
+               at org.junit.Assert.assertEquals(Assert.java:118)
+               at org.junit.Assert.assertEquals(Assert.java:555)
+               at org.junit.Assert.assertEquals(Assert.java:542)
+               at org.cojen.tupl.RecoverTest.testRecover(RecoverTest.java:419)
+               at org.cojen.tupl.RecoverTest.largeUndoExit(RecoverTest.java:321)
+            */
             testRecover(10000, false, true, chkpnt);
         }
     }
@@ -416,7 +427,7 @@ public class RecoverTest {
 
         if (!commit) {
             assertEquals(0, CrudTest.count(ix1));
-            assertEquals(0, CrudTest.count(ix2));
+            assertEquals(0, CrudTest.count(ix2)); // FIXME: failed here
         }
 
         if (commit) {

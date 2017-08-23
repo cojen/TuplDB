@@ -277,7 +277,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <tr id="i14" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#flush--">flush</a></span>()</code>
-<div class="block">Flushes, but does not sync, all non-flushed transactions.</div>
+<div class="block">Flushes all committed transactions, but not durably.</div>
 </td>
 </tr>
 <tr id="i15" class="rowColor">
@@ -399,7 +399,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <tr id="i33" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#sync--">sync</a></span>()</code>
-<div class="block">Persists all non-flushed and non-sync'd transactions.</div>
+<div class="block">Durably flushes all committed transactions.</div>
 </td>
 </tr>
 <tr id="i34" class="altColor">
@@ -882,9 +882,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <h4>flush</h4>
 <pre>void&nbsp;flush()
     throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Flushes, but does not sync, all non-flushed transactions. Transactions
- committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> effectively
- become <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> durable.</div>
+<div class="block">Flushes all committed transactions, but not durably. Transactions committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> effectively become <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> durable.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code>&nbsp;in interface&nbsp;<code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></code></dd>
@@ -901,8 +899,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <h4>sync</h4>
 <pre>void&nbsp;sync()
    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Persists all non-flushed and non-sync'd transactions. Transactions
- committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> and <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> effectively become <a href="../../../org/cojen/tupl/DurabilityMode.html#SYNC"><code>sync</code></a> durable.</div>
+<div class="block">Durably flushes all committed transactions. Transactions committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> and <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> effectively
+ become <a href="../../../org/cojen/tupl/DurabilityMode.html#SYNC"><code>sync</code></a> durable.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
