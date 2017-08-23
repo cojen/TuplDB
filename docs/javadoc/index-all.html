@@ -1210,7 +1210,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Flushes, but does not sync, all non-flushed transactions.</div>
+<div class="block">Flushes all committed transactions, but not durably.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
 <dd>
@@ -2619,7 +2619,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#sync--">sync()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Persists all non-flushed and non-sync'd transactions.</div>
+<div class="block">Durably flushes all committed transactions.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#sync--">sync()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>

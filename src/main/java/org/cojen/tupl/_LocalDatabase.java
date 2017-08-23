@@ -1906,17 +1906,6 @@ final class _LocalDatabase extends AbstractDatabase {
             // Ignore.
         }
 
-        if (mTxnContexts != null) {
-            // Flush out any lingering NO_FLUSH commits.
-            for (_TransactionContext context : mTxnContexts) {
-                try {
-                    context.flush();
-                } catch (IOException e) {
-                    // Ignore for now and discover again later.
-                }
-            }
-        }
-
         try {
             _TransactionContext context = anyTransactionContext();
             context.redoTimestamp(redo, op); 
@@ -1950,27 +1939,11 @@ final class _LocalDatabase extends AbstractDatabase {
      * @param level 0: flush only, 1: flush and sync, 2: flush and sync metadata
      */
     private void flush(int level) throws IOException {
-        UnmodifiableReplicaException ure = null;
-
         if (!isClosed() && mRedoWriter != null) {
-            for (_TransactionContext context : mTxnContexts) {
-                try {
-                    context.flush();
-                } catch (UnmodifiableReplicaException e) {
-                    // Discard all transaction contexts if no longer the leader.
-                    if (ure == null) {
-                        ure = e;
-                    }
-                }
-            }
-
+            mRedoWriter.flush();
             if (level > 0) {
                 mRedoWriter.force(level > 1);
             }
-        }
-
-        if (ure != null) {
-            throw ure;
         }
     }
 
@@ -4608,11 +4581,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    try {
-                        flush(2); // flush and sync metadata
-                    } catch (UnmodifiableReplicaException e) {
-                        // Ignore.
-                    }
+                    flush(2); // flush and sync metadata
 
                     return;
                 }
@@ -4631,11 +4600,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     // Root is clean, so no need for full checkpoint, but fully sync the redo
                     // log for durability.
-                    try {
-                        flush(2); // flush and sync metadata
-                    } catch (UnmodifiableReplicaException e) {
-                        // Ignore.
-                    }
+                    flush(2); // flush and sync metadata
 
                     return;
                 }
