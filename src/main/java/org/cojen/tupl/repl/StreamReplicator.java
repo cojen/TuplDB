@@ -54,9 +54,9 @@ public interface StreamReplicator extends Replicator {
             throw new IllegalArgumentException("No base file configured");
         }
 
-        long groupId = config.mGroupId;
-        if (groupId == 0) {
-            throw new IllegalArgumentException("No group id configured");
+        long groupToken = config.mGroupToken;
+        if (groupToken == 0) {
+            throw new IllegalArgumentException("No group token configured");
         }
 
         SocketAddress localAddress = config.mLocalAddress;
@@ -97,7 +97,7 @@ public interface StreamReplicator extends Replicator {
             base.getParentFile().mkdirs();
         }
 
-        Controller con = new Controller(new FileStateLog(base), groupId);
+        Controller con = new Controller(new FileStateLog(base), groupToken);
         con.init(members, localMemberId, config.mLocalSocket);
 
         return con;
