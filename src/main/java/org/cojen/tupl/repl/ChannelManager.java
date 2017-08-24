@@ -483,7 +483,8 @@ final class ChannelManager {
             synchronized (this) {
                 Peer peer;
                 if (remoteMemberId == 0) {
-                    peer = new Peer(0, s.getRemoteSocketAddress());
+                    // FIXME: anonymous
+                    peer = new Peer(0);
                 } else {
                     peer = mPeerSet.ceiling(new Peer(remoteMemberId)); // findGe
                     if (peer == null || peer.mMemberId != remoteMemberId) {
