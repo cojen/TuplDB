@@ -19,6 +19,8 @@ package org.cojen.tupl.repl;
 
 import java.net.SocketAddress;
 
+import java.util.Objects;
+
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -88,6 +90,24 @@ final class Peer implements Comparable<Peer> {
         if (score != null) {
             score.snapshotScoreReply(activeSessions, weight);
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Long.hashCode(mMemberId) + Objects.hashCode(mAddress) + Objects.hashCode(mRole);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof Peer) {
+            Peer other = (Peer) obj;
+            return mMemberId == other.mMemberId && Objects.equals(mAddress, other.mAddress)
+                && Objects.equals(mRole, other.mRole);
+        }
+        return false;
     }
 
     @Override
