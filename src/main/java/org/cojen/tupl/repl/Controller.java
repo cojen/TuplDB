@@ -106,7 +106,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             for (Map.Entry<Long, SocketAddress> e : members.entrySet()) {
                 long memberId = e.getKey();
                 if (memberId != localMemberId) {
-                    Peer peer = new Peer(memberId, e.getValue());
+                    Peer peer = new Peer(memberId, e.getValue(), Role.NORMAL);
                     peers[i] = peer;
                     peerChannels[i] = mChanMan.connect(peer, this);
                     i++;

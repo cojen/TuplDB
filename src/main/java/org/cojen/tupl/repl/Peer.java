@@ -35,24 +35,27 @@ final class Peer implements Comparable<Peer> {
     final long mMemberId;
     final SocketAddress mAddress;
 
+    Role mRole;
+
     long mMatchIndex;
 
     private volatile SnapshotScore mSnapshotScore;
 
     /**
-     * Construct a key for finding peers in a set ordered by member id.
+     * Construct a key for finding peers in an ordered set.
      */
     Peer(long memberId) {
         mMemberId = memberId;
         mAddress = null;
     }
 
-    Peer(long memberId, SocketAddress addr) {
-        if (memberId == 0 || addr == null) {
+    Peer(long memberId, SocketAddress addr, Role role) {
+        if (memberId == 0 || addr == null || role == null) {
             throw new IllegalArgumentException();
         }
         mMemberId = memberId;
         mAddress = addr;
+        mRole = role;
     }
 
     void resetSnapshotScore(SnapshotScore score) {
@@ -94,6 +97,7 @@ final class Peer implements Comparable<Peer> {
 
     @Override
     public String toString() {
-        return "Peer: {memberId=" + mMemberId + ", address=" + mAddress + '}';
+        return "Peer: {memberId=" + Long.toUnsignedString(mMemberId)
+            + ", address=" + mAddress + ", role=" + mRole + '}';
     }
 }
