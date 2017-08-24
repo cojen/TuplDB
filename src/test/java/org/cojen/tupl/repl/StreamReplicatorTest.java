@@ -75,7 +75,7 @@ public class StreamReplicatorTest {
         for (int i=0; i<members; i++) {
             mConfigs[i] = new ReplicatorConfig()
                 .baseFile(TestUtils.newTempBaseFile(getClass()))
-                .groupId(1)
+                .groupToken(1)
                 .localSocket(sockets[i]);
 
             for (int j=0; j<members; j++) {

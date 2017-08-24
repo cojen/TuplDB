@@ -58,8 +58,8 @@ final class ChannelManager {
       New connection header structure: (little endian fields)
 
       0:  Magic number (long)
-      8:  Group id (long)
-      16: Group token (long)
+      8:  Group token (long)
+      16: Group id (long)
       24: Member id (long)       -- 0: anonymous
       32: Connection type (int)  -- 0: control, 1: plain  FIXME: use a bit to enable CRCs
       36: CRC32C (int)
@@ -89,7 +89,7 @@ final class ChannelManager {
         OP_SNAPSHOT_SCORE = 10, OP_SNAPSHOT_SCORE_REPLY = 11;
 
     private final Scheduler mScheduler;
-    private final long mGroupId;
+    private final long mGroupToken;
     private final Map<SocketAddress, Peer> mPeerMap;
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
@@ -103,12 +103,12 @@ final class ChannelManager {
     private volatile Consumer<Socket> mSocketAcceptor;
     private volatile Consumer<Socket> mSnapshotRequestAcceptor;
 
-    ChannelManager(Scheduler scheduler, long groupId) {
+    ChannelManager(Scheduler scheduler, long groupToken) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
         mScheduler = scheduler;
-        mGroupId = groupId;
+        mGroupToken = groupToken;
         mPeerMap = new HashMap<>();
         mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
         mChannels = new HashSet<>();
@@ -343,8 +343,8 @@ final class ChannelManager {
 
             byte[] header = new byte[INIT_HEADER_SIZE];
             encodeLongLE(header, 0, MAGIC_NUMBER);
-            encodeLongLE(header, 8, mGroupId);
-            encodeLongLE(header, 16, 0); // FIXME: token
+            encodeLongLE(header, 8, mGroupToken);
+            encodeLongLE(header, 16, 0); // FIXME: id
             encodeLongLE(header, 24, getLocalMemberId());
             encodeIntLE(header, 32, connectionType);
 
@@ -549,12 +549,12 @@ final class ChannelManager {
                 break check;
             }
 
-            if (decodeLongLE(header, 8) != mGroupId) {
+            if (decodeLongLE(header, 8) != mGroupToken) {
                 break check;
             }
 
-            // FIXME: check the token
-            long token = decodeLongLE(header, 16);
+            // FIXME: check the id
+            long id = decodeLongLE(header, 16);
 
             Checksum crc = CRC32C.newInstance();
             crc.update(header, 0, header.length - 4);

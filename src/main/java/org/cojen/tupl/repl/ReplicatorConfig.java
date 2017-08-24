@@ -41,7 +41,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
 
     File mBaseFile;
     boolean mMkdirs;
-    long mGroupId;
+    long mGroupToken;
     SocketAddress mLocalAddress;
     ServerSocket mLocalSocket;
     Map<Long, SocketAddress> mStaticMembers;
@@ -92,13 +92,13 @@ public class ReplicatorConfig implements Cloneable, Serializable {
      * Set a unique group identifier, which acts as a simple security measure to prevent
      * different replication groups from communicating with each other.
      *
-     * @throws IllegalArgumentException if groupId is zero
+     * @throws IllegalArgumentException if groupToken is zero
      */
-    public ReplicatorConfig groupId(long groupId) {
-        if (groupId == 0) {
+    public ReplicatorConfig groupToken(long groupToken) {
+        if (groupToken == 0) {
             throw new IllegalArgumentException();
         }
-        mGroupId = groupId;
+        mGroupToken = groupToken;
         return this;
     }
 

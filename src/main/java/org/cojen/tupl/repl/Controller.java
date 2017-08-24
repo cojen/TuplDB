@@ -79,10 +79,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Limit the rate at which missing terms are queried.
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
-    Controller(StateLog log, long groupId) {
+    Controller(StateLog log, long groupToken) {
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(mScheduler, groupId);
+        mChanMan = new ChannelManager(mScheduler, groupToken);
     }
 
     /**
