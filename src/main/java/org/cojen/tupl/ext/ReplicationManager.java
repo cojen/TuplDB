@@ -108,6 +108,11 @@ public interface ReplicationManager extends Closeable {
      * @return amount read, or -1 if leader
      * @throws IllegalStateException if not started
      */
+    // FIXME: Need a way to detect when the term has ended, in order for the replica to reset
+    // all transactions which don't carry over (all of them). The prevents locks from being
+    // held indefinitely until a leader is elected. Implementation can prepare the next reader,
+    // but return 0 to signal that the term ended. The next read call will access the next
+    // reader and potentially block (which is desired).
     int read(byte[] b, int off, int len) throws IOException;
 
     /**
