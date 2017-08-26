@@ -29,7 +29,7 @@ enum Role {
      *
      * receive:yes, consensus:yes, vote:yes, leadership:yes
      */
-    NORMAL,
+    NORMAL((byte) 1),
 
     /**
      * Standby members receive replicated data, and they provide consensus. They don't cast
@@ -37,7 +37,7 @@ enum Role {
      *
      * receive:yes, consensus:yes, vote:no, leadership:no
      */
-    STANDBY,
+    STANDBY((byte) 2),
 
     /**
      * Observers only receive replicated data. They don't provide consensus, they don't cast
@@ -45,5 +45,24 @@ enum Role {
      *
      * receive:yes, consensus:no, vote:no, leadership:no
      */
-    OBSERVER;
+    OBSERVER((byte) 3);
+
+    byte mCode;
+
+    private Role(byte code) {
+        mCode = code;
+    }
+
+    static Role decode(byte code) {
+        switch (code) {
+        case 1:
+            return NORMAL;
+        case 2:
+            return STANDBY;
+        case 3:
+            return OBSERVER;
+        default:
+            throw new IllegalArgumentException();
+        }
+    }
 }

@@ -50,7 +50,7 @@ public class GroupFileTest {
     @Test
     public void basic() throws Exception {
         try {
-            new GroupFile(null, null);
+            GroupFile.open(null, null, true);
             fail();
         } catch (IllegalArgumentException e) {
         }
@@ -58,12 +58,16 @@ public class GroupFileTest {
         File f = TestUtils.newTempBaseFile(getClass());
 
         try {
-            new GroupFile(f, null);
+            GroupFile.open(f, null, true);
             fail();
         } catch (IllegalArgumentException e) {
         }
 
-        GroupFile gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        assertNull(GroupFile.open(f, new InetSocketAddress("localhost", 1001), false));
+
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+
+        assertEquals(1, gf.version());
 
         long groupId = gf.groupId();
         assertTrue(groupId != 0);
@@ -77,20 +81,20 @@ public class GroupFileTest {
 
         // Re-open with wrong address.
         try {
-            gf = new GroupFile(f, new InetSocketAddress("localhost", 1002));
+            gf = GroupFile.open(f, new InetSocketAddress("localhost", 1002), true);
             fail();
         } catch (IllegalStateException e) {
         }
         
         // Re-open with wrong address.
         try {
-            gf = new GroupFile(f, new InetSocketAddress("localhost", 1002));
+            gf = GroupFile.open(f, new InetSocketAddress("localhost", 1002), true);
             fail();
         } catch (IllegalStateException e) {
         }
 
         // Re-open correctly.
-        gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         assertEquals(groupId, gf.groupId());
         assertEquals(localMemberId, gf.localMemberId());
@@ -103,7 +107,7 @@ public class GroupFileTest {
     @Test
     public void addPeer() throws Exception {
         File f = TestUtils.newTempBaseFile(getClass());
-        GroupFile gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         long groupId = gf.groupId();
         long localMemberId = gf.localMemberId();
@@ -152,7 +156,7 @@ public class GroupFileTest {
         assertEquals(2, allPeers.size());
 
         // Re-open.
-        gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         assertEquals(groupId, gf.groupId());
         assertEquals(localMemberId, gf.localMemberId());
@@ -174,9 +178,40 @@ public class GroupFileTest {
     }
 
     @Test
+    public void addPeerMessage() throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+
+        byte[] message = gf.proposeAddPeer
+            ((byte) 10, new InetSocketAddress("localhost", 1002), Role.OBSERVER);
+
+        assertEquals(10, message[0]);
+
+        Peer peer = gf.applyAddPeer(message);
+
+        assertTrue(peer.mMemberId != 0);
+        assertEquals(new InetSocketAddress("localhost", 1002), peer.mAddress);
+        assertEquals(Role.OBSERVER, peer.mRole);
+
+        Set<Peer> allPeers = gf.allPeers();
+        assertEquals(1, allPeers.size());
+        assertEquals(peer, allPeers.iterator().next());
+
+        // Capture the version.
+        message = gf.proposeAddPeer
+            ((byte) 1, new InetSocketAddress("localhost", 1003), Role.NORMAL);
+
+        // Update version.
+        gf.updateRole(peer.mMemberId, Role.NORMAL);
+
+        // Version mismatch, so peer not added.
+        assertNull(gf.applyAddPeer(message));
+    }
+
+    @Test
     public void updateRole() throws Exception {
         File f = TestUtils.newTempBaseFile(getClass());
-        GroupFile gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
         Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
 
@@ -218,7 +253,7 @@ public class GroupFileTest {
         assertEquals(Role.NORMAL, peer2.mRole);
 
         // Re-open.
-        gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         assertEquals(Role.OBSERVER, gf.localMemberRole());
 
@@ -239,9 +274,34 @@ public class GroupFileTest {
     }
 
     @Test
+    public void updateRoleMessage() throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+        Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
+        Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
+
+        byte[] message = gf.proposeUpdateRole((byte) 11, peer.mMemberId, Role.NORMAL);
+
+        assertEquals(11, message[0]);
+
+        assertTrue(gf.applyUpdateRole(message));
+
+        assertEquals(Role.NORMAL, peer.mRole);
+
+        // Capture the version.
+        message = gf.proposeUpdateRole((byte) 11, peer2.mMemberId, Role.NORMAL);
+
+        // Update version.
+        gf.updateRole(peer.mMemberId, Role.STANDBY);
+
+        // Version mismatch, so role not updated.
+        assertFalse(gf.applyUpdateRole(message));
+    }
+
+    @Test
     public void removePeer() throws Exception {
         File f = TestUtils.newTempBaseFile(getClass());
-        GroupFile gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         assertFalse(gf.removePeer(gf.localMemberId() + 1));
 
@@ -273,11 +333,40 @@ public class GroupFileTest {
         assertTrue(allPeers.contains(peer2));
 
         // Re-open.
-        gf = new GroupFile(f, new InetSocketAddress("localhost", 1001));
+        gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
         allPeers = gf.allPeers();
         assertEquals(1, allPeers.size());
         assertFalse(allPeers.contains(peer));
         assertTrue(allPeers.contains(peer2));
+    }
+
+    @Test
+    public void removePeerMessage() throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+
+        Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
+        Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
+
+        byte[] message = gf.proposeRemovePeer((byte) -1, peer.mMemberId);
+
+        assertEquals(-1, message[0]);
+
+        assertTrue(gf.applyRemovePeer(message));
+
+        Set<Peer> allPeers = gf.allPeers();
+        assertEquals(1, allPeers.size());
+        assertFalse(allPeers.contains(peer));
+        assertTrue(allPeers.contains(peer2));
+
+        // Capture the version.
+        message = gf.proposeRemovePeer((byte) -1, peer2.mMemberId);
+
+        // Update version.
+        gf.updateRole(peer2.mMemberId, Role.NORMAL);
+
+        // Version mismatch, so not removed.
+        assertFalse(gf.applyRemovePeer(message));
     }
 }

@@ -17,18 +17,8 @@
 
 package org.cojen.tupl.repl;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.IOException;
-import java.io.Reader;
-
-import java.nio.charset.StandardCharsets;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.cojen.tupl.io.Utils;
 
@@ -37,9 +27,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-final class OptionsDecoder extends ByteArrayInputStream {
-    private Reader mReader;
-
+final class OptionsDecoder extends DecodingInputStream {
     OptionsDecoder(InputStream in) throws IOException {
         super(decode(in));
     }
@@ -50,44 +38,5 @@ final class OptionsDecoder extends ByteArrayInputStream {
         buf = new byte[Utils.decodeIntLE(buf, 0) - 4];
         Utils.readFully(in, buf, 0, buf.length);
         return buf;
-    }
-
-    public int decodeIntLE() {
-        int value = Utils.decodeIntLE(buf, pos);
-        pos += 4;
-        return value;
-    }
-
-    public long decodeLongLE() {
-        long value = Utils.decodeLongLE(buf, pos);
-        pos += 8;
-        return value;
-    }
-
-    public String decodeStr() {
-        Reader reader = mReader;
-        if (reader == null) {
-            mReader = reader = new InputStreamReader(this);
-        }
-        try {
-            char[] chars = new char[decodeIntLE()];
-            reader.read(chars);
-            return new String(chars);
-        } catch (IOException e) {
-            // Not expected.
-            throw Utils.rethrow(e);
-        }
-    }
-
-    public Map<String, String> decodeMap() {
-        int size = decodeIntLE();
-        if (size == 0) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> map = new HashMap<>();
-        while (--size >= 0) {
-            map.put(decodeStr(), decodeStr());
-        }
-        return map;
     }
 }

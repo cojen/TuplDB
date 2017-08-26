@@ -17,16 +17,8 @@
 
 package org.cojen.tupl.repl;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-
-import java.nio.charset.StandardCharsets;
-
-import java.util.Arrays;
-import java.util.Map;
 
 import org.cojen.tupl.io.Utils;
 
@@ -35,54 +27,11 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-final class OptionsEncoder extends ByteArrayOutputStream {
-    private Writer mWriter;
-
+final class OptionsEncoder extends EncodingOutputStream {
     OptionsEncoder() {
         super(64);
         // Reserve space for the full length.
         count = 4;
-    }
-
-    public void encodeIntLE(int value) {
-        int pos = count;
-        if (pos + 4 > buf.length) {
-            buf = Arrays.copyOf(buf, buf.length << 1);
-        }
-        Utils.encodeIntLE(buf, pos, value);
-        count = pos + 4;
-    }
-
-    public void encodeLongLE(long value) {
-        int pos = count;
-        if (pos + 8 > buf.length) {
-            buf = Arrays.copyOf(buf, buf.length << 1);
-        }
-        Utils.encodeLongLE(buf, pos, value);
-        count = pos + 8;
-    }
-
-    public void encodeStr(String str) {
-        try {
-            Writer writer = mWriter;
-            if (writer == null) {
-                mWriter = writer = new OutputStreamWriter(this, StandardCharsets.UTF_8);
-            }
-            encodeIntLE(str.length());
-            writer.write(str);
-            writer.flush();
-        } catch (IOException e) {
-            // Not expected.
-            throw Utils.rethrow(e);
-        }
-    }
-
-    public void encodeMap(Map<String, String> map) {
-        encodeIntLE(map.size());
-        for (Map.Entry<String, String> e : map.entrySet()) {
-            encodeStr(e.getKey());
-            encodeStr(e.getValue());
-        }
     }
 
     @Override
@@ -92,7 +41,7 @@ final class OptionsEncoder extends ByteArrayOutputStream {
                 mWriter.flush();
             }
             Utils.encodeIntLE(buf, 0, count); // full length
-            super.writeTo(out);
+            defaultWriteTo(out);
         } catch (IOException e) {
             // Not expected.
             throw Utils.rethrow(e);
