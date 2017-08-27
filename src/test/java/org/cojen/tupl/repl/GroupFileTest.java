@@ -18,6 +18,8 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 
 import java.net.InetSocketAddress;
 
@@ -25,6 +27,8 @@ import java.util.Set;
 
 import org.junit.*;
 import static org.junit.Assert.*;
+
+import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.TestUtils;
 
@@ -395,5 +399,53 @@ public class GroupFileTest {
 
         // Version mismatch, so not removed.
         assertFalse(gf.applyRemovePeer(message));
+    }
+
+    @Test
+    public void snapshot() throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+
+        Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.STANDBY);
+
+        assertFalse(gf.discardSnapshot(new byte[1]));
+        assertFalse(gf.applySnapshot(new byte[1]));
+
+        byte[] message = gf.proposeSnapshot((byte) 1, 123, 456, in -> {});
+
+        assertEquals(1, message[0]);
+
+        assertTrue(gf.discardSnapshot(message));
+        assertFalse(gf.discardSnapshot(message));
+        assertFalse(gf.applySnapshot(message));
+
+        File newFile = TestUtils.newTempBaseFile(getClass());
+
+        message = gf.proposeSnapshot((byte) 1, 123, 456, in -> {
+            try (FileOutputStream out = new FileOutputStream(newFile)) {
+                byte[] buf = new byte[1000];
+                int amt;
+                while ((amt = in.read(buf)) > 0) {
+                    out.write(buf, 0, amt);
+                }
+            } catch (Exception e) {
+                throw Utils.rethrow(e);
+            }
+        });
+
+        assertTrue(gf.applySnapshot(message));
+        assertFalse(gf.applySnapshot(message));
+        assertFalse(gf.discardSnapshot(message));
+
+        GroupFile gf2 = GroupFile.open(f, new InetSocketAddress("localhost", 1001), false);
+
+        assertEquals(gf.groupId(), gf2.groupId());
+        assertEquals(gf.localMemberId(), gf2.localMemberId());
+        assertEquals(new InetSocketAddress("localhost", 1001), gf2.localMemberAddress());
+        assertEquals(Role.NORMAL, gf2.localMemberRole());
+
+        Set<Peer> allPeers = gf2.allPeers();
+        assertEquals(1, allPeers.size());
+        assertTrue(allPeers.contains(peer));
     }
 }
