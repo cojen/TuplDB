@@ -43,12 +43,14 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.util.Latch;
+
 /**
  * Persists members and group information into a text file.
  *
  * @author Brian S O'Neill
  */
-final class GroupFile {
+final class GroupFile extends Latch {
     /*
       File format example:
 
@@ -64,10 +66,10 @@ final class GroupFile {
     private final SocketAddress mLocalMemberAddress;
     private final NavigableSet<Peer> mPeerSet;
     private final long mGroupId;
-    private final long mLocalMemberId;
 
     private long mVersion;
 
+    private long mLocalMemberId;
     private Role mLocalMemberRole;
 
     /**
@@ -200,11 +202,6 @@ final class GroupFile {
             throw new IllegalStateException("Group identifier not found");
         }
 
-        if (localMemberId == 0) {
-            throw new IllegalStateException
-                ("Local member identifier not found: " + localMemberAddress);
-        }
-
         mVersion = version;
         mGroupId = groupId;
         mLocalMemberId = localMemberId;
@@ -218,13 +215,6 @@ final class GroupFile {
     }
 
     /**
-     * @return non-zero local member identifier
-     */
-    public long localMemberId() {
-        return mLocalMemberId;
-    }
-
-    /**
      * @return non-null local member address
      */
     public SocketAddress localMemberAddress() {
@@ -232,10 +222,23 @@ final class GroupFile {
     }
 
     /**
-     * @return non-null local member role
+     * @return local member identifier, or 0 if not in the group
      */
-    public synchronized Role localMemberRole() {
-        return mLocalMemberRole;
+    public long localMemberId() {
+        acquireShared();
+        long id = mLocalMemberId;
+        releaseShared();
+        return id;
+    }
+
+    /**
+     * @return local member role, or null if not in the group
+     */
+    public Role localMemberRole() {
+        acquireShared();
+        Role role = mLocalMemberRole;
+        releaseShared();
+        return role;
     }
 
     /**
@@ -248,8 +251,11 @@ final class GroupFile {
     /**
      * @return the current file version, which increases with each update
      */
-    public synchronized long version() {
-        return mVersion;
+    public long version() {
+        acquireShared();
+        long version = mVersion;
+        releaseShared();
+        return version;
     }
 
     /**
@@ -261,25 +267,31 @@ final class GroupFile {
      * @throws IllegalArgumentException if address or role is null
      * @throws IllegalStateException if address is already in use
      */
-    public synchronized byte[] proposeAddPeer(byte op, SocketAddress address, Role role) {
-        checkAddPeer(address, role);
+    public byte[] proposeAddPeer(byte op, SocketAddress address, Role role) {
+        acquireShared();
+        try {
+            checkAddPeer(address, role);
 
-        EncodingOutputStream eout = new EncodingOutputStream();
-        eout.write(op);
-        eout.encodeLongLE(mVersion);
-        eout.encodeStr(address.toString());
-        eout.write(role.mCode);
+            EncodingOutputStream eout = new EncodingOutputStream();
+            eout.write(op);
+            eout.encodeLongLE(mVersion);
+            eout.encodeStr(address.toString());
+            eout.write(role.mCode);
 
-        return eout.toByteArray();
+            return eout.toByteArray();
+        } finally {
+            releaseShared();
+        }
     }
 
     /**
      * @param message first byte is the opcode, which is not examined by this method
-     * @return peer with non-zero member id, or null if version doesn't match
+     * @return peer with non-zero member id, or null if version doesn't match, or null if
+     * address matched the local member address
      * @throws RuntimeException if message encoding is wrong
      * @throws IllegalStateException if address is already in use
      */
-    public synchronized Peer applyAddPeer(byte[] message) throws IOException {
+    public Peer applyAddPeer(byte[] message) throws IOException {
         DecodingInputStream din = new DecodingInputStream(message);
         din.read(); // skip opcode
         long version = din.decodeLongLE();
@@ -296,57 +308,85 @@ final class GroupFile {
     }
 
     /**
-     * @return non-zero member id
+     * @return peer with non-zero member id, or null if address matched the local member address
      * @throws IllegalArgumentException if address or role is null
      * @throws IllegalStateException if address is already in use
      */
-    public synchronized Peer addPeer(SocketAddress address, Role role) throws IOException {
+    public Peer addPeer(SocketAddress address, Role role) throws IOException {
         return addPeer(mVersion, address, role);
     }
 
     /**
      * @param version expected version
-     * @return peer with non-zero member id, or null if version doesn't match
+     * @return peer with non-zero member id, or null if version doesn't match, or null if
+     * address matched the local member address
      * @throws IllegalArgumentException if address or role is null
      * @throws IllegalStateException if address is already in use
      */
-    public synchronized Peer addPeer(long version, SocketAddress address, Role role)
-        throws IOException
-    {
-        if (version != mVersion) {
-            return null;
-        }
-
-        checkAddPeer(address, role);
-
-        Peer peer = new Peer(mVersion + 1, address, role);
-
-        if (!mPeerSet.add(peer)) {
-            // 64-bit identifier wrapped around, which is unlikely.
-            throw new IllegalStateException("Identifier collision: " + peer);
-        }
-
+    public Peer addPeer(long version, SocketAddress address, Role role) throws IOException {
+        acquireExclusive();
         try {
-            persist();
-        } catch (IOException e) {
-            // Rollback.
-            mPeerSet.remove(peer);
-            throw e;
-        }
+            if (version != mVersion) {
+                return null;
+            }
 
-        return peer;
+            boolean isPeer = checkAddPeer(address, role);
+
+            if (isPeer) {
+                Peer peer = new Peer(mVersion + 1, address, role);
+
+                if (!mPeerSet.add(peer)) {
+                    // 64-bit identifier wrapped around, which is unlikely.
+                    throw new IllegalStateException("Identifier collision: " + peer);
+                }
+
+                try {
+                    persist();
+                } catch (IOException e) {
+                    // Rollback.
+                    mPeerSet.remove(peer);
+                    throw e;
+                }
+
+                return peer;
+            }
+
+            mLocalMemberId = mVersion + 1;
+            mLocalMemberRole = role;
+            
+            try {
+                persist();
+            } catch (IOException e) {
+                // Rollback.
+                mLocalMemberId = 0;
+                mLocalMemberRole = null;
+                throw e;
+            }
+
+            return null;
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**
-     * Caller must be synchronized.
+     * Caller must hold any latch.
+     *
+     * @return true if peer, false if adding local member id
      */
-    private void checkAddPeer(SocketAddress address, Role role) {
+    private boolean checkAddPeer(SocketAddress address, Role role) {
         if (address == null || role == null) {
             throw new IllegalArgumentException();
         }
 
+        boolean isPeer = true;
+
         if (address.equals(mLocalMemberAddress)) {
-            throw new IllegalStateException("Address used by local member");
+            if (mLocalMemberId == 0) {
+                isPeer = false;
+            } else {
+                throw new IllegalStateException("Address used by local member");
+            }
         }
 
         for (Peer peer : mPeerSet) {
@@ -354,6 +394,8 @@ final class GroupFile {
                 throw new IllegalStateException("Address used by another peer");
             }
         }
+
+        return isPeer;
     }
 
     /**
@@ -365,17 +407,22 @@ final class GroupFile {
      * @throws IllegalArgumentException if role is null
      * @throws IllegalStateException if member doesn't exist
      */
-    public synchronized byte[] proposeUpdateRole(byte op, long memberId, Role role) {
-        checkUpdateRole(memberId, role);
+    public byte[] proposeUpdateRole(byte op, long memberId, Role role) {
+        acquireShared();
+        try {
+            checkUpdateRole(memberId, role);
 
-        byte[] message = new byte[1 + 8 + 8 + 1];
+            byte[] message = new byte[1 + 8 + 8 + 1];
 
-        message[0] = op;
-        Utils.encodeLongLE(message, 1, mVersion);
-        Utils.encodeLongLE(message, 1 + 8, memberId);
-        message[1 + 8 + 8] = role.mCode;
+            message[0] = op;
+            Utils.encodeLongLE(message, 1, mVersion);
+            Utils.encodeLongLE(message, 1 + 8, memberId);
+            message[1 + 8 + 8] = role.mCode;
 
-        return message;
+            return message;
+        } finally {
+            releaseShared();
+        }
     }
 
     /**
@@ -384,7 +431,7 @@ final class GroupFile {
      * @throws RuntimeException if message encoding is wrong
      * @throws IllegalStateException if member doesn't exist
      */
-    public synchronized boolean applyUpdateRole(byte[] message) throws IOException {
+    public boolean applyUpdateRole(byte[] message) throws IOException {
         long version = Utils.decodeLongLE(message, 1);
         long memberId = Utils.decodeLongLE(message, 1 + 8);
         Role role = Role.decode(message[1 + 8 + 8]);
@@ -395,7 +442,7 @@ final class GroupFile {
      * @throws IllegalArgumentException if role is null
      * @throws IllegalStateException if member doesn't exist
      */
-    public synchronized void updateRole(long memberId, Role role) throws IOException {
+    public void updateRole(long memberId, Role role) throws IOException {
         updateRole(mVersion, memberId, role);
     }
 
@@ -405,52 +452,55 @@ final class GroupFile {
      * @throws IllegalArgumentException if role is null
      * @throws IllegalStateException if member doesn't exist
      */
-    public synchronized boolean updateRole(long version, long memberId, Role role)
-        throws IOException
-    {
-        if (version != mVersion) {
-            return false;
-        }
+    public boolean updateRole(long version, long memberId, Role role) throws IOException {
+        acquireExclusive();
+        try {
+            if (version != mVersion) {
+                return false;
+            }
 
-        Peer existing = checkUpdateRole(memberId, role);
+            Peer existing = checkUpdateRole(memberId, role);
 
-        if (memberId == mLocalMemberId) {
-            Role existingRole = mLocalMemberRole;
+            if (memberId == mLocalMemberId) {
+                Role existingRole = mLocalMemberRole;
+
+                if (existingRole != role) {
+                    mLocalMemberRole = role;
+
+                    try {
+                        persist();
+                    } catch (IOException e) {
+                        // Rollback.
+                        mLocalMemberRole = existingRole;
+                        throw e;
+                    }
+                }
+
+                return true;
+            }
+
+            Role existingRole = existing.mRole;
 
             if (existingRole != role) {
-                mLocalMemberRole = role;
+                existing.mRole = role;
 
                 try {
                     persist();
                 } catch (IOException e) {
                     // Rollback.
-                    mLocalMemberRole = existingRole;
+                    existing.mRole = existingRole;
                     throw e;
                 }
             }
 
             return true;
+        } finally {
+            releaseExclusive();
         }
-
-        Role existingRole = existing.mRole;
-
-        if (existingRole != role) {
-            existing.mRole = role;
-
-            try {
-                persist();
-            } catch (IOException e) {
-                // Rollback.
-                existing.mRole = existingRole;
-                throw e;
-            }
-        }
-
-        return true;
     }
 
     /**
-     * Caller must be synchronized.
+     * Caller must hold any latch.
      *
      * @return existing peer instance, or null for local member
      */
@@ -484,16 +534,21 @@ final class GroupFile {
      * @return control message; first byte is the opcode
      * @throws IllegalStateException if removing the local member
      */
-    public synchronized byte[] proposeRemovePeer(byte op, long memberId) {
-        checkRemovePeer(memberId);
+    public byte[] proposeRemovePeer(byte op, long memberId) {
+        acquireShared();
+        try {
+            checkRemovePeer(memberId);
 
-        byte[] message = new byte[1 + 8 + 8];
+            byte[] message = new byte[1 + 8 + 8];
 
-        message[0] = op;
-        Utils.encodeLongLE(message, 1, mVersion);
-        Utils.encodeLongLE(message, 1 + 8, memberId);
+            message[0] = op;
+            Utils.encodeLongLE(message, 1, mVersion);
+            Utils.encodeLongLE(message, 1 + 8, memberId);
 
-        return message;
+            return message;
+        } finally {
+            releaseShared();
+        }
     }
 
     /**
@@ -502,7 +557,7 @@ final class GroupFile {
      * @throws RuntimeException if message encoding is wrong
      * @throws IllegalStateException if removing the local member
      */
-    public synchronized boolean applyRemovePeer(byte[] message) throws IOException {
+    public boolean applyRemovePeer(byte[] message) throws IOException {
         long version = Utils.decodeLongLE(message, 1);
         long memberId = Utils.decodeLongLE(message, 1 + 8);
         return removePeer(version, memberId);
@@ -512,7 +567,7 @@ final class GroupFile {
      * @return false if member doesn't exist
      * @throws IllegalStateException if removing the local member
      */
-    public synchronized boolean removePeer(long memberId) throws IOException {
+    public boolean removePeer(long memberId) throws IOException {
         return removePeer(mVersion, memberId);
     }
 
@@ -521,41 +576,46 @@ final class GroupFile {
      * @return false if member doesn't exist or if version doesn't match
      * @throws IllegalStateException if removing the local member
      */
-    public synchronized boolean removePeer(long version, long memberId) throws IOException {
-        if (version != mVersion) {
-            return false;
-        }
-
-        checkRemovePeer(memberId);
-
-        if (memberId == 0) {
-            return false;
-        }
-
-        NavigableSet<Peer> peers = mPeerSet;
-
-        Peer existing = peers.floor(new Peer(memberId));
-        if (existing == null || existing.mMemberId != memberId) {
-            return false;
-        }
-
-        if (!peers.remove(existing)) {
-            throw new AssertionError();
-        }
-
+    public boolean removePeer(long version, long memberId) throws IOException {
+        acquireExclusive();
         try {
-            persist();
-        } catch (IOException e) {
-            // Rollback.
-            peers.add(existing);
-            throw e;
-        }
+            if (version != mVersion) {
+                return false;
+            }
 
-        return true;
+            checkRemovePeer(memberId);
+
+            if (memberId == 0) {
+                return false;
+            }
+
+            NavigableSet<Peer> peers = mPeerSet;
+
+            Peer existing = peers.floor(new Peer(memberId));
+            if (existing == null || existing.mMemberId != memberId) {
+                return false;
+            }
+
+            if (!peers.remove(existing)) {
+                throw new AssertionError();
+            }
+
+            try {
+                persist();
+            } catch (IOException e) {
+                // Rollback.
+                peers.add(existing);
+                throw e;
+            }
+
+            return true;
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**
-     * Caller must be synchronized.
+     * Caller must hold any latch.
      */
     private void checkRemovePeer(long memberId) {
         if (memberId == mLocalMemberId) {
@@ -563,7 +623,10 @@ final class GroupFile {
         }
     }
 
-    private synchronized void persist() throws IOException {
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private void persist() throws IOException {
         mVersion++;
         try {
             doPersist();
@@ -574,7 +637,10 @@ final class GroupFile {
         }
     }
 
-    private synchronized void doPersist() throws IOException {
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private void doPersist() throws IOException {
         String path = mFile.getPath();
         File oldFile = new File(path + ".old");
         File newFile = new File(path + ".new");
@@ -660,7 +726,7 @@ final class GroupFile {
         }
     }
 
-    private static SocketAddress parseSocketAddress(String str) throws UnknownHostException {
+    static SocketAddress parseSocketAddress(String str) throws UnknownHostException {
         int ix = str.indexOf(':');
         if (ix <= 0) {
             return null;
