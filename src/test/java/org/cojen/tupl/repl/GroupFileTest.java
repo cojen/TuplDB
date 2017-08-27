@@ -80,18 +80,10 @@ public class GroupFileTest {
         assertEquals(0, gf.allPeers().size());
 
         // Re-open with wrong address.
-        try {
-            gf = GroupFile.open(f, new InetSocketAddress("localhost", 1002), true);
-            fail();
-        } catch (IllegalStateException e) {
-        }
-        
-        // Re-open with wrong address.
-        try {
-            gf = GroupFile.open(f, new InetSocketAddress("localhost", 1002), true);
-            fail();
-        } catch (IllegalStateException e) {
-        }
+        gf = GroupFile.open(f, new InetSocketAddress("localhost", 1002), true);
+        assertEquals(new InetSocketAddress("localhost", 1002), gf.localMemberAddress());
+        assertEquals(0, gf.localMemberId());
+        assertNull(gf.localMemberRole());
 
         // Re-open correctly.
         gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
@@ -206,6 +198,41 @@ public class GroupFileTest {
 
         // Version mismatch, so peer not added.
         assertNull(gf.applyAddPeer(message));
+    }
+
+    @Test
+    public void addLocalMember() throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+
+        // Re-open with different address (restored member perhaps)
+        InetSocketAddress addr2 = new InetSocketAddress("localhost", 1002);
+
+        gf = GroupFile.open(f, addr2, false);
+
+        assertEquals(addr2, gf.localMemberAddress());
+        assertEquals(0, gf.localMemberId());
+        assertNull(gf.localMemberRole());
+
+        assertNull(gf.addPeer(addr2, Role.NORMAL));
+
+        assertEquals(addr2, gf.localMemberAddress());
+        assertEquals(2, gf.localMemberId());
+        assertEquals(Role.NORMAL, gf.localMemberRole());
+
+        Set<Peer> allPeers = gf.allPeers();
+        assertEquals(1, allPeers.size());
+        Peer peer = allPeers.iterator().next();
+        assertEquals(1, peer.mMemberId);
+        assertEquals(new InetSocketAddress("localhost", 1001), peer.mAddress);
+
+        // Add again will fail, now that local member address is assigned.
+        try {
+            gf.addPeer(addr2, Role.NORMAL);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("local") > 0);
+        }
     }
 
     @Test
