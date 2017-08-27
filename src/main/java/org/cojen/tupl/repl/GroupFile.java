@@ -20,9 +20,11 @@ package org.cojen.tupl.repl;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
@@ -39,7 +41,10 @@ import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Properties;
 
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+
+import java.util.function.Consumer;
 
 import org.cojen.tupl.io.Utils;
 
@@ -71,6 +76,8 @@ final class GroupFile extends Latch {
 
     private long mLocalMemberId;
     private Role mLocalMemberRole;
+
+    private Map<byte[], Consumer<InputStream>> mSnapshotConsumers;
 
     /**
      * @return null if file doesn't exist and create is false
@@ -256,6 +263,106 @@ final class GroupFile extends Latch {
         long version = mVersion;
         releaseShared();
         return version;
+    }
+
+    /**
+     * Create a control message for capturing a stable snapshot of the group file to another
+     * member. If the control message is accepted, apply it by calling applySnapshot. To avoid
+     * leaking memory in case the message is rejected, call discardSnapshot when timed out.
+     *
+     * @param op opcode used to identify the snapshot control message
+     * @param dest callback which is registered and invoked when message is accepted
+     * @return control message; first byte is the opcode
+     * @throws IllegalArgumentException if dest is null
+     */
+    public byte[] proposeSnapshot(byte op, long term, long index, Consumer<InputStream> dest) {
+        if (dest == null) {
+            throw new IllegalArgumentException();
+        }
+
+        byte[] message = new byte[1 + 8 + 8];
+
+        message[0] = op;
+        Utils.encodeLongLE(message, 1, term);
+        Utils.encodeLongLE(message, 1 + 8, index);
+
+        acquireExclusive();
+        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
+        try {
+            if (consumers == null) {
+                consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
+                mSnapshotConsumers = consumers;
+            }
+        } finally {
+            releaseExclusive();
+        }
+
+        consumers.put(message, dest);
+
+        return message;
+    }
+
+    /**
+     * Discard a proposed snapshot message, releasing the registered callback.
+     *
+     * @param message exact message as returned by proposeSnapshot
+     * @return false if not found
+     */
+    public boolean discardSnapshot(byte[] message) {
+        acquireShared();
+        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
+        releaseShared();
+
+        if (consumers == null || consumers.remove(message) == null) {
+            return false;
+        }
+
+        acquireExclusive();
+        if (mSnapshotConsumers.isEmpty()) {
+            mSnapshotConsumers = null;
+        }
+        releaseExclusive();
+
+        return true;
+    }
+
+    /**
+     * Invokes the registered callback corresponding to the given snapshot control message. The
+     * callback is invoked with a shared latch held on this GroupFile object, preventing
+     * changes to the group until the callback returns. The stream is also closed automatically
+     * when it returns.
+     *
+     * @param message exact message as returned by proposeSnapshot
+     * @return false if not found
+     */
+    public boolean applySnapshot(byte[] message) {
+        acquireExclusive();
+
+        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
+        Consumer<InputStream> consumer;
+
+        if (consumers == null || (consumer = consumers.remove(message)) == null) {
+            releaseExclusive();
+            return false;
+        }
+
+        if (mSnapshotConsumers.isEmpty()) {
+            mSnapshotConsumers = null;
+        }
+
+        downgrade();
+
+        try {
+            try (InputStream in = new FileInputStream(mFile)) {
+                consumer.accept(in);
+            } catch (Throwable e) {
+                Utils.uncaught(e);
+            }
+        } finally {
+            releaseShared();
+        }
+
+        return true;
     }
 
     /**
