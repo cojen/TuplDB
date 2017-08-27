@@ -34,10 +34,10 @@ import org.cojen.tupl.util.WorkerGroup;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * 
+ * When database is acting as a replica, this class drives all the decoding logic.
  *
  * @author Brian S O'Neill
- * @see ReplRedoEngine
+ * @see ReplRedoController
  */
 /*P*/
 class ReplRedoEngine implements RedoVisitor, ThreadFactory {
