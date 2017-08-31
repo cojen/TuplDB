@@ -77,7 +77,7 @@ final class GroupFile extends Latch {
     private long mLocalMemberId;
     private Role mLocalMemberRole;
 
-    private Map<byte[], Consumer<InputStream>> mSnapshotConsumers;
+    private Map<byte[], Consumer<InputStream>> mJoinConsumers;
 
     /**
      * @return null if file doesn't exist and create is false
@@ -266,88 +266,106 @@ final class GroupFile extends Latch {
     }
 
     /**
-     * Create a control message for capturing a stable snapshot of the group file to another
-     * member. If the control message is accepted, apply it by calling applySnapshot. To avoid
-     * leaking memory in case the message is rejected, call discardSnapshot when timed out.
+     * Create a control message for joining the group as an observer. If the control message is
+     * accepted, apply it by calling applyJoin, and the consumer receives a copy of the group
+     * file with the new member. To avoid leaking memory in case the message is rejected, call
+     * discardJoinConsumer when timed out.
      *
-     * @param op opcode used to identify the snapshot control message
-     * @param dest callback which is registered and invoked when message is accepted
+     * @param op opcode used to identify the join control message
+     * @param address member which is joining; pass null to just capture the file
+     * @param dest optional callback which is registered and invoked when message is accepted
      * @return control message; first byte is the opcode
-     * @throws IllegalArgumentException if dest is null
      */
-    public byte[] proposeSnapshot(byte op, long term, long index, Consumer<InputStream> dest) {
-        if (dest == null) {
-            throw new IllegalArgumentException();
-        }
+    public byte[] proposeJoin(byte op, SocketAddress address, Consumer<InputStream> dest) {
+        EncodingOutputStream eout = new EncodingOutputStream();
+        eout.write(op);
+        eout.encodeLongLE(mVersion);
+        eout.encodeStr(address == null ? "" : address.toString());
 
-        byte[] message = new byte[1 + 8 + 8];
+        byte[] message = eout.toByteArray();
 
-        message[0] = op;
-        Utils.encodeLongLE(message, 1, term);
-        Utils.encodeLongLE(message, 1 + 8, index);
-
-        acquireExclusive();
-        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
-        try {
-            if (consumers == null) {
-                consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
-                mSnapshotConsumers = consumers;
+        if (dest != null) {
+            acquireExclusive();
+            Map<byte[], Consumer<InputStream>> consumers = mJoinConsumers;
+            try {
+                if (consumers == null) {
+                    consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
+                    mJoinConsumers = consumers;
+                }
+            } finally {
+                releaseExclusive();
             }
-        } finally {
-            releaseExclusive();
-        }
 
-        consumers.put(message, dest);
+            consumers.put(message, dest);
+        }
 
         return message;
     }
 
     /**
-     * Discard a proposed snapshot message, releasing the registered callback.
+     * Discard the file consumer associated with a proposed join message. This action doesn't
+     * cancel the join proposal itself -- the member might still be added to the group.
      *
-     * @param message exact message as returned by proposeSnapshot
-     * @return false if not found
+     * @param message exact message as returned by proposeJoin
      */
-    public boolean discardSnapshot(byte[] message) {
-        acquireShared();
-        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
-        releaseShared();
-
-        if (consumers == null || consumers.remove(message) == null) {
-            return false;
-        }
-
+    public void discardJoinConsumer(byte[] message) {
         acquireExclusive();
-        if (mSnapshotConsumers.isEmpty()) {
-            mSnapshotConsumers = null;
-        }
-        releaseExclusive();
 
-        return true;
+        if (mJoinConsumers != null
+            && mJoinConsumers.remove(message) != null
+            && mJoinConsumers.isEmpty())
+        {
+            mJoinConsumers = null;
+        }
+
+        releaseExclusive();
     }
 
     /**
-     * Invokes the registered callback corresponding to the given snapshot control message. The
+     * Invokes the registered callback corresponding to the given join control message. The
      * callback is invoked with a shared latch held on this GroupFile object, preventing
      * changes to the group until the callback returns. The stream is also closed automatically
      * when it returns.
      *
-     * @param message exact message as returned by proposeSnapshot
-     * @return false if not found
+     * @param message exact message as returned by proposeJoin
+     * @throws RuntimeException if message encoding is wrong
      */
-    public boolean applySnapshot(byte[] message) {
+    public void applyJoin(byte[] message) throws IOException {
+        Consumer<InputStream> consumer = null;
+
         acquireExclusive();
+        try {
+            if (mJoinConsumers != null) {
+                consumer = mJoinConsumers.remove(message);
+                if (mJoinConsumers.isEmpty()) {
+                    mJoinConsumers = null;
+                }
+            }
 
-        Map<byte[], Consumer<InputStream>> consumers = mSnapshotConsumers;
-        Consumer<InputStream> consumer;
+            DecodingInputStream din = new DecodingInputStream(message);
+            din.read(); // skip opcode
+            long version = din.decodeLongLE();
+            String addressStr = din.decodeStr();
 
-        if (consumers == null || (consumer = consumers.remove(message)) == null) {
+            if (addressStr.length() != 0) {
+                SocketAddress address = parseSocketAddress(addressStr);
+                if (address == null) {
+                    throw new IllegalArgumentException("Illegal address: " + addressStr);
+                }
+                try {
+                    doAddPeer(version, address, Role.OBSERVER);
+                } catch (IllegalStateException e) {
+                    // Assume member is already in the group.
+                }
+            }
+        } catch (Throwable e) {
             releaseExclusive();
-            return false;
+            throw e;
         }
 
-        if (mSnapshotConsumers.isEmpty()) {
-            mSnapshotConsumers = null;
+        if (consumer == null) {
+            releaseExclusive();
+            return;
         }
 
         downgrade();
@@ -361,57 +379,6 @@ final class GroupFile extends Latch {
         } finally {
             releaseShared();
         }
-
-        return true;
-    }
-
-    /**
-     * Checks if adding the peer is allowed, and returns a control message to replicate. If
-     * the control message is accepted, apply it by calling applyAddPeer.
-     *
-     * @param op opcode used to identify the addPeer control message
-     * @return control message; first byte is the opcode
-     * @throws IllegalArgumentException if address or role is null
-     * @throws IllegalStateException if address is already in use
-     */
-    public byte[] proposeAddPeer(byte op, SocketAddress address, Role role) {
-        acquireShared();
-        try {
-            checkAddPeer(address, role);
-
-            EncodingOutputStream eout = new EncodingOutputStream();
-            eout.write(op);
-            eout.encodeLongLE(mVersion);
-            eout.encodeStr(address.toString());
-            eout.write(role.mCode);
-
-            return eout.toByteArray();
-        } finally {
-            releaseShared();
-        }
-    }
-
-    /**
-     * @param message first byte is the opcode, which is not examined by this method
-     * @return peer with non-zero member id, or null if version doesn't match, or null if
-     * address matched the local member address
-     * @throws RuntimeException if message encoding is wrong
-     * @throws IllegalStateException if address is already in use
-     */
-    public Peer applyAddPeer(byte[] message) throws IOException {
-        DecodingInputStream din = new DecodingInputStream(message);
-        din.read(); // skip opcode
-        long version = din.decodeLongLE();
-        String addressStr = din.decodeStr();
-        Role role = Role.decode((byte) din.read());
-
-        SocketAddress address = parseSocketAddress(addressStr);
-
-        if (address == null) {
-            throw new IllegalArgumentException("Illegal address: " + addressStr);
-        }
-
-        return addPeer(version, address, role);
     }
 
     /**
@@ -433,47 +400,54 @@ final class GroupFile extends Latch {
     public Peer addPeer(long version, SocketAddress address, Role role) throws IOException {
         acquireExclusive();
         try {
-            if (version != mVersion) {
-                return null;
+            return doAddPeer(version, address, role);
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private Peer doAddPeer(long version, SocketAddress address, Role role) throws IOException {
+        if (version != mVersion) {
+            return null;
+        }
+
+        boolean isPeer = checkAddPeer(address, role);
+
+        if (isPeer) {
+            Peer peer = new Peer(mVersion + 1, address, role);
+
+            if (!mPeerSet.add(peer)) {
+                // 64-bit identifier wrapped around, which is unlikely.
+                throw new IllegalStateException("Identifier collision: " + peer);
             }
 
-            boolean isPeer = checkAddPeer(address, role);
-
-            if (isPeer) {
-                Peer peer = new Peer(mVersion + 1, address, role);
-
-                if (!mPeerSet.add(peer)) {
-                    // 64-bit identifier wrapped around, which is unlikely.
-                    throw new IllegalStateException("Identifier collision: " + peer);
-                }
-
-                try {
-                    persist();
-                } catch (IOException e) {
-                    // Rollback.
-                    mPeerSet.remove(peer);
-                    throw e;
-                }
-
-                return peer;
-            }
-
-            mLocalMemberId = mVersion + 1;
-            mLocalMemberRole = role;
-            
             try {
                 persist();
             } catch (IOException e) {
                 // Rollback.
-                mLocalMemberId = 0;
-                mLocalMemberRole = null;
+                mPeerSet.remove(peer);
                 throw e;
             }
 
-            return null;
-        } finally {
-            releaseExclusive();
+            return peer;
         }
+
+        mLocalMemberId = mVersion + 1;
+        mLocalMemberRole = role;
+            
+        try {
+            persist();
+        } catch (IOException e) {
+            // Rollback.
+            mLocalMemberId = 0;
+            mLocalMemberRole = null;
+            throw e;
+        }
+
+        return null;
     }
 
     /**

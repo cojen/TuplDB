@@ -178,30 +178,32 @@ public class GroupFileTest {
         File f = TestUtils.newTempBaseFile(getClass());
         GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
 
-        byte[] message = gf.proposeAddPeer
-            ((byte) 10, new InetSocketAddress("localhost", 1002), Role.OBSERVER);
+        byte[] message = gf.proposeJoin
+            ((byte) 10, new InetSocketAddress("localhost", 1002), null);
 
         assertEquals(10, message[0]);
 
-        Peer peer = gf.applyAddPeer(message);
+        gf.applyJoin(message);
 
+        Set<Peer> allPeers = gf.allPeers();
+        assertEquals(1, allPeers.size());
+        Peer peer = allPeers.iterator().next();
         assertTrue(peer.mMemberId != 0);
         assertEquals(new InetSocketAddress("localhost", 1002), peer.mAddress);
         assertEquals(Role.OBSERVER, peer.mRole);
 
-        Set<Peer> allPeers = gf.allPeers();
-        assertEquals(1, allPeers.size());
-        assertEquals(peer, allPeers.iterator().next());
-
         // Capture the version.
-        message = gf.proposeAddPeer
-            ((byte) 1, new InetSocketAddress("localhost", 1003), Role.NORMAL);
+        message = gf.proposeJoin((byte) 1, new InetSocketAddress("localhost", 1003), null);
 
         // Update version.
         gf.updateRole(peer.mMemberId, Role.NORMAL);
 
         // Version mismatch, so peer not added.
-        assertNull(gf.applyAddPeer(message));
+        gf.applyJoin(message);
+
+        allPeers = gf.allPeers();
+        assertEquals(1, allPeers.size());
+        assertEquals(peer, allPeers.iterator().next());
     }
 
     @Test
@@ -408,20 +410,25 @@ public class GroupFileTest {
 
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.STANDBY);
 
-        assertFalse(gf.discardSnapshot(new byte[1]));
-        assertFalse(gf.applySnapshot(new byte[1]));
+        gf.discardJoinConsumer(new byte[1]);
 
-        byte[] message = gf.proposeSnapshot((byte) 1, 123, 456, in -> {});
+        try {
+            gf.applyJoin(new byte[1]);
+            fail();
+        } catch (ArrayIndexOutOfBoundsException e) {
+        }
+
+        byte[] message = gf.proposeJoin((byte) 1, null, in -> {});
 
         assertEquals(1, message[0]);
 
-        assertTrue(gf.discardSnapshot(message));
-        assertFalse(gf.discardSnapshot(message));
-        assertFalse(gf.applySnapshot(message));
+        gf.discardJoinConsumer(message);
+        gf.discardJoinConsumer(message);
+        gf.applyJoin(message);
 
         File newFile = TestUtils.newTempBaseFile(getClass());
 
-        message = gf.proposeSnapshot((byte) 1, 123, 456, in -> {
+        message = gf.proposeJoin((byte) 1, null, in -> {
             try (FileOutputStream out = new FileOutputStream(newFile)) {
                 byte[] buf = new byte[1000];
                 int amt;
@@ -433,9 +440,9 @@ public class GroupFileTest {
             }
         });
 
-        assertTrue(gf.applySnapshot(message));
-        assertFalse(gf.applySnapshot(message));
-        assertFalse(gf.discardSnapshot(message));
+        gf.applyJoin(message);
+        gf.applyJoin(message);
+        gf.discardJoinConsumer(message);
 
         GroupFile gf2 = GroupFile.open(f, new InetSocketAddress("localhost", 1001), false);
 
