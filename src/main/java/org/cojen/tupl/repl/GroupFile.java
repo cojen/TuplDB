@@ -43,8 +43,9 @@ import java.util.Properties;
 
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.function.Consumer;
+import java.util.function.ObjLongConsumer;
 
 import org.cojen.tupl.io.Utils;
 
@@ -77,7 +78,7 @@ final class GroupFile extends Latch {
     private long mLocalMemberId;
     private Role mLocalMemberRole;
 
-    private Map<byte[], Consumer<InputStream>> mJoinConsumers;
+    private Map<byte[], ObjLongConsumer<InputStream>> mJoinConsumers;
 
     /**
      * @return null if file doesn't exist and create is false
@@ -276,17 +277,21 @@ final class GroupFile extends Latch {
      * @param dest optional callback which is registered and invoked when message is accepted
      * @return control message; first byte is the opcode
      */
-    public byte[] proposeJoin(byte op, SocketAddress address, Consumer<InputStream> dest) {
+    public byte[] proposeJoin(byte op, SocketAddress address, ObjLongConsumer<InputStream> dest) {
         EncodingOutputStream eout = new EncodingOutputStream();
         eout.write(op);
-        eout.encodeLongLE(mVersion);
+        eout.encodeLongLE(version());
+        // Encode a simple "unique" key to identify the request, although not strictly
+        // necessary. The risk is that a registered callback might get dropped when putting a
+        // new one in, but they could also be chained.
+        eout.encodeLongLE(ThreadLocalRandom.current().nextLong());
         eout.encodeStr(address == null ? "" : address.toString());
 
         byte[] message = eout.toByteArray();
 
         if (dest != null) {
             acquireExclusive();
-            Map<byte[], Consumer<InputStream>> consumers = mJoinConsumers;
+            Map<byte[], ObjLongConsumer<InputStream>> consumers = mJoinConsumers;
             try {
                 if (consumers == null) {
                     consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
@@ -327,11 +332,11 @@ final class GroupFile extends Latch {
      * changes to the group until the callback returns. The stream is also closed automatically
      * when it returns.
      *
+     * @param index log index just after the message
      * @param message exact message as returned by proposeJoin
-     * @throws RuntimeException if message encoding is wrong
      */
-    public void applyJoin(byte[] message) throws IOException {
-        Consumer<InputStream> consumer = null;
+    public void applyJoin(long index, byte[] message) throws IOException {
+        ObjLongConsumer<InputStream> consumer = null;
 
         acquireExclusive();
         try {
@@ -345,6 +350,7 @@ final class GroupFile extends Latch {
             DecodingInputStream din = new DecodingInputStream(message);
             din.read(); // skip opcode
             long version = din.decodeLongLE();
+            long requestId = din.decodeLongLE();
             String addressStr = din.decodeStr();
 
             if (addressStr.length() != 0) {
@@ -372,7 +378,7 @@ final class GroupFile extends Latch {
 
         try {
             try (InputStream in = new FileInputStream(mFile)) {
-                consumer.accept(in);
+                consumer.accept(in, index);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }

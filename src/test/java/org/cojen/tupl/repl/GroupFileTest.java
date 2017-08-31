@@ -183,7 +183,7 @@ public class GroupFileTest {
 
         assertEquals(10, message[0]);
 
-        gf.applyJoin(message);
+        gf.applyJoin(123, message);
 
         Set<Peer> allPeers = gf.allPeers();
         assertEquals(1, allPeers.size());
@@ -199,7 +199,7 @@ public class GroupFileTest {
         gf.updateRole(peer.mMemberId, Role.NORMAL);
 
         // Version mismatch, so peer not added.
-        gf.applyJoin(message);
+        gf.applyJoin(123, message);
 
         allPeers = gf.allPeers();
         assertEquals(1, allPeers.size());
@@ -413,22 +413,22 @@ public class GroupFileTest {
         gf.discardJoinConsumer(new byte[1]);
 
         try {
-            gf.applyJoin(new byte[1]);
+            gf.applyJoin(123, new byte[1]);
             fail();
         } catch (ArrayIndexOutOfBoundsException e) {
         }
 
-        byte[] message = gf.proposeJoin((byte) 1, null, in -> {});
+        byte[] message = gf.proposeJoin((byte) 1, null, (in, index) -> {});
 
         assertEquals(1, message[0]);
 
         gf.discardJoinConsumer(message);
         gf.discardJoinConsumer(message);
-        gf.applyJoin(message);
+        gf.applyJoin(123, message);
 
         File newFile = TestUtils.newTempBaseFile(getClass());
 
-        message = gf.proposeJoin((byte) 1, null, in -> {
+        message = gf.proposeJoin((byte) 1, null, (in, index) -> {
             try (FileOutputStream out = new FileOutputStream(newFile)) {
                 byte[] buf = new byte[1000];
                 int amt;
@@ -440,8 +440,8 @@ public class GroupFileTest {
             }
         });
 
-        gf.applyJoin(message);
-        gf.applyJoin(message);
+        gf.applyJoin(123, message);
+        gf.applyJoin(123, message);
         gf.discardJoinConsumer(message);
 
         GroupFile gf2 = GroupFile.open(f, new InetSocketAddress("localhost", 1001), false);
