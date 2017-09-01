@@ -410,7 +410,7 @@ public class GroupFileTest {
 
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.STANDBY);
 
-        gf.discardJoinConsumer(new byte[1]);
+        assertFalse(gf.discardJoinConsumer(new byte[1]));
 
         try {
             gf.applyJoin(123, new byte[1]);
@@ -422,9 +422,9 @@ public class GroupFileTest {
 
         assertEquals(1, message[0]);
 
-        gf.discardJoinConsumer(message);
-        gf.discardJoinConsumer(message);
-        gf.applyJoin(123, message);
+        assertTrue(gf.discardJoinConsumer(message));
+        assertFalse(gf.discardJoinConsumer(message));
+        assertNull(gf.applyJoin(123, message));
 
         File newFile = TestUtils.newTempBaseFile(getClass());
 
@@ -440,9 +440,9 @@ public class GroupFileTest {
             }
         });
 
-        gf.applyJoin(123, message);
-        gf.applyJoin(123, message);
-        gf.discardJoinConsumer(message);
+        assertNull(gf.applyJoin(123, message));
+        assertNull(gf.applyJoin(123, message));
+        assertFalse(gf.discardJoinConsumer(message));
 
         GroupFile gf2 = GroupFile.open(f, new InetSocketAddress("localhost", 1001), false);
 
