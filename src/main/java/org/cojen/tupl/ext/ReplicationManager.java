@@ -89,8 +89,8 @@ public interface ReplicationManager extends Closeable {
         Database database();
 
         /**
-         * Attempt to write a replicated control message, returning the log position just after
-         * the message.
+         * Attempt to write a replicated control message, returning the confirmed log position
+         * just after the message.
          */
         long control(byte[] message) throws IOException;
     }
@@ -227,8 +227,8 @@ public interface ReplicationManager extends Closeable {
     void checkpointed(long position) throws IOException;
 
     /**
-     * Called after a control operation has been received. All replication processing and
-     * checkpoints are suspended until this method returns.
+     * Called after a control operation has been received by a replica. All replication
+     * processing and checkpoints are suspended until this method returns.
      *
      * @param position log position just after the message
      */
