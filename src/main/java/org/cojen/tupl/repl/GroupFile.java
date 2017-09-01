@@ -40,9 +40,9 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Properties;
+import java.util.TreeSet;
 
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.function.ObjLongConsumer;
@@ -70,9 +70,9 @@ final class GroupFile extends Latch {
 
     private final File mFile;
     private final SocketAddress mLocalMemberAddress;
-    private final NavigableSet<Peer> mPeerSet;
     private final long mGroupId;
 
+    private NavigableSet<Peer> mPeerSet;
     private long mVersion;
 
     private long mLocalMemberId;
@@ -101,7 +101,7 @@ final class GroupFile extends Latch {
     {
         mFile = file;
         mLocalMemberAddress = localMemberAddress;
-        mPeerSet = new ConcurrentSkipListSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
+        mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
 
         if (raf == null) {
             // Create the file.
@@ -250,10 +250,17 @@ final class GroupFile extends Latch {
     }
 
     /**
+     * Returns a stable copy of all the peers, ordered by member id. When peers are added or
+     * removed from the the group, a new set is created internally. When a peer's role changes,
+     * no copy is made and the existing peer object is modified directly.
+     *
      * @return non-null set, possibly empty
      */
     public NavigableSet<Peer> allPeers() {
-        return mPeerSet;
+        acquireShared();
+        NavigableSet<Peer> set = mPeerSet;
+        releaseShared();
+        return set;
     }
 
     /**
@@ -312,18 +319,23 @@ final class GroupFile extends Latch {
      * cancel the join proposal itself -- the member might still be added to the group.
      *
      * @param message exact message as returned by proposeJoin
+     * @return false if no consumer was found
      */
-    public void discardJoinConsumer(byte[] message) {
+    public boolean discardJoinConsumer(byte[] message) {
         acquireExclusive();
 
-        if (mJoinConsumers != null
-            && mJoinConsumers.remove(message) != null
-            && mJoinConsumers.isEmpty())
-        {
-            mJoinConsumers = null;
+        boolean removed = false;
+
+        if (mJoinConsumers != null && mJoinConsumers.remove(message) != null) {
+            removed = true;
+            if (mJoinConsumers.isEmpty()) {
+                mJoinConsumers = null;
+            }
         }
 
         releaseExclusive();
+
+        return removed;
     }
 
     /**
@@ -334,9 +346,11 @@ final class GroupFile extends Latch {
      *
      * @param index log index just after the message
      * @param message exact message as returned by proposeJoin
+     * @return peer if joined, else null
      */
-    public void applyJoin(long index, byte[] message) throws IOException {
+    public Peer applyJoin(long index, byte[] message) throws IOException {
         ObjLongConsumer<InputStream> consumer = null;
+        Peer peer = null;
 
         acquireExclusive();
         try {
@@ -359,7 +373,7 @@ final class GroupFile extends Latch {
                     throw new IllegalArgumentException("Illegal address: " + addressStr);
                 }
                 try {
-                    doAddPeer(version, address, Role.OBSERVER);
+                    peer = doAddPeer(version, address, Role.OBSERVER);
                 } catch (IllegalStateException e) {
                     // Assume member is already in the group.
                 }
@@ -371,20 +385,20 @@ final class GroupFile extends Latch {
 
         if (consumer == null) {
             releaseExclusive();
-            return;
-        }
-
-        downgrade();
-
-        try {
-            try (InputStream in = new FileInputStream(mFile)) {
-                consumer.accept(in, index);
-            } catch (Throwable e) {
-                Utils.uncaught(e);
+        } else {
+            downgrade();
+            try {
+                try (InputStream in = new FileInputStream(mFile)) {
+                    consumer.accept(in, index);
+                } catch (Throwable e) {
+                    Utils.uncaught(e);
+                }
+            } finally {
+                releaseShared();
             }
-        } finally {
-            releaseShared();
         }
+
+        return peer;
     }
 
     /**
@@ -393,7 +407,12 @@ final class GroupFile extends Latch {
      * @throws IllegalStateException if address is already in use
      */
     public Peer addPeer(SocketAddress address, Role role) throws IOException {
-        return addPeer(mVersion, address, role);
+        acquireExclusive();
+        try {
+            return doAddPeer(mVersion, address, role);
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**
@@ -420,21 +439,24 @@ final class GroupFile extends Latch {
             return null;
         }
 
-        boolean isPeer = checkAddPeer(address, role);
-
-        if (isPeer) {
+        if (checkAddPeer(address, role)) {
             Peer peer = new Peer(mVersion + 1, address, role);
+            
+            NavigableSet<Peer> original = mPeerSet;
+            NavigableSet<Peer> copy = new TreeSet<>(original);
 
-            if (!mPeerSet.add(peer)) {
+            if (!copy.add(peer)) {
                 // 64-bit identifier wrapped around, which is unlikely.
                 throw new IllegalStateException("Identifier collision: " + peer);
             }
 
+            mPeerSet = copy;
+
             try {
                 persist();
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 // Rollback.
-                mPeerSet.remove(peer);
+                mPeerSet = original;
                 throw e;
             }
 
@@ -446,7 +468,7 @@ final class GroupFile extends Latch {
             
         try {
             persist();
-        } catch (IOException e) {
+        } catch (Throwable e) {
             // Rollback.
             mLocalMemberId = 0;
             mLocalMemberRole = null;
@@ -530,7 +552,12 @@ final class GroupFile extends Latch {
      * @throws IllegalStateException if member doesn't exist
      */
     public void updateRole(long memberId, Role role) throws IOException {
-        updateRole(mVersion, memberId, role);
+        acquireExclusive();
+        try {
+            doUpdateRole(mVersion, memberId, role);
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**
@@ -542,48 +569,55 @@ final class GroupFile extends Latch {
     public boolean updateRole(long version, long memberId, Role role) throws IOException {
         acquireExclusive();
         try {
-            if (version != mVersion) {
-                return false;
-            }
+            return doUpdateRole(version, memberId, role);
+        } finally {
+            releaseExclusive();
+        }
+    }
 
-            Peer existing = checkUpdateRole(memberId, role);
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private boolean doUpdateRole(long version, long memberId, Role role) throws IOException {
+        if (version != mVersion) {
+            return false;
+        }
 
-            if (memberId == mLocalMemberId) {
-                Role existingRole = mLocalMemberRole;
+        Peer existing = checkUpdateRole(memberId, role);
 
-                if (existingRole != role) {
-                    mLocalMemberRole = role;
-
-                    try {
-                        persist();
-                    } catch (IOException e) {
-                        // Rollback.
-                        mLocalMemberRole = existingRole;
-                        throw e;
-                    }
-                }
-
-                return true;
-            }
-
-            Role existingRole = existing.mRole;
+        if (memberId == mLocalMemberId) {
+            Role existingRole = mLocalMemberRole;
 
             if (existingRole != role) {
-                existing.mRole = role;
+                mLocalMemberRole = role;
 
                 try {
                     persist();
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     // Rollback.
-                    existing.mRole = existingRole;
+                    mLocalMemberRole = existingRole;
                     throw e;
                 }
             }
 
             return true;
-        } finally {
-            releaseExclusive();
         }
+
+        Role existingRole = existing.mRole;
+
+        if (existingRole != role) {
+            existing.mRole = role;
+
+            try {
+                persist();
+            } catch (Throwable e) {
+                // Rollback.
+                existing.mRole = existingRole;
+                throw e;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -655,7 +689,12 @@ final class GroupFile extends Latch {
      * @throws IllegalStateException if removing the local member
      */
     public boolean removePeer(long memberId) throws IOException {
-        return removePeer(mVersion, memberId);
+        acquireExclusive();
+        try {
+            return doRemovePeer(mVersion, memberId);
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**
@@ -666,39 +705,50 @@ final class GroupFile extends Latch {
     public boolean removePeer(long version, long memberId) throws IOException {
         acquireExclusive();
         try {
-            if (version != mVersion) {
-                return false;
-            }
-
-            checkRemovePeer(memberId);
-
-            if (memberId == 0) {
-                return false;
-            }
-
-            NavigableSet<Peer> peers = mPeerSet;
-
-            Peer existing = peers.floor(new Peer(memberId));
-            if (existing == null || existing.mMemberId != memberId) {
-                return false;
-            }
-
-            if (!peers.remove(existing)) {
-                throw new AssertionError();
-            }
-
-            try {
-                persist();
-            } catch (IOException e) {
-                // Rollback.
-                peers.add(existing);
-                throw e;
-            }
-
-            return true;
+            return doRemovePeer(version, memberId);
         } finally {
             releaseExclusive();
         }
+    }
+
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private boolean doRemovePeer(long version, long memberId) throws IOException {
+        if (version != mVersion) {
+            return false;
+        }
+
+        checkRemovePeer(memberId);
+
+        if (memberId == 0) {
+            return false;
+        }
+
+        NavigableSet<Peer> original = mPeerSet;
+
+        Peer existing = original.floor(new Peer(memberId));
+        if (existing == null || existing.mMemberId != memberId) {
+            return false;
+        }
+
+        NavigableSet<Peer> copy = new TreeSet<>(original);
+
+        if (!copy.remove(existing)) {
+            throw new AssertionError();
+        }
+
+        mPeerSet = copy;
+
+        try {
+            persist();
+        } catch (Throwable e) {
+            // Rollback.
+            mPeerSet = original;
+            throw e;
+        }
+
+        return true;
     }
 
     /**
