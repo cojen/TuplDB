@@ -40,9 +40,9 @@ import java.security.SecureRandom;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Properties;
-import java.util.TreeSet;
 
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.function.ObjLongConsumer;
@@ -101,7 +101,7 @@ final class GroupFile extends Latch {
     {
         mFile = file;
         mLocalMemberAddress = localMemberAddress;
-        mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
+        mPeerSet = new ConcurrentSkipListSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
 
         if (raf == null) {
             // Create the file.
@@ -250,17 +250,10 @@ final class GroupFile extends Latch {
     }
 
     /**
-     * Returns a stable copy of all the peers, ordered by member id. When peers are added or
-     * removed from the the group, a new set is created internally. When a peer's role changes,
-     * no copy is made and the existing peer object is modified directly.
-     *
      * @return non-null set, possibly empty
      */
     public NavigableSet<Peer> allPeers() {
-        acquireShared();
-        NavigableSet<Peer> set = mPeerSet;
-        releaseShared();
-        return set;
+        return mPeerSet;
     }
 
     /**
@@ -442,21 +435,16 @@ final class GroupFile extends Latch {
         if (checkAddPeer(address, role)) {
             Peer peer = new Peer(mVersion + 1, address, role);
             
-            NavigableSet<Peer> original = mPeerSet;
-            NavigableSet<Peer> copy = new TreeSet<>(original);
-
-            if (!copy.add(peer)) {
+            if (!mPeerSet.add(peer)) {
                 // 64-bit identifier wrapped around, which is unlikely.
                 throw new IllegalStateException("Identifier collision: " + peer);
             }
-
-            mPeerSet = copy;
 
             try {
                 persist();
             } catch (Throwable e) {
                 // Rollback.
-                mPeerSet = original;
+                mPeerSet.remove(peer);
                 throw e;
             }
 
@@ -725,26 +713,22 @@ final class GroupFile extends Latch {
             return false;
         }
 
-        NavigableSet<Peer> original = mPeerSet;
+        NavigableSet<Peer> peers = mPeerSet;
 
-        Peer existing = original.floor(new Peer(memberId));
+        Peer existing = peers.floor(new Peer(memberId));
         if (existing == null || existing.mMemberId != memberId) {
             return false;
         }
 
-        NavigableSet<Peer> copy = new TreeSet<>(original);
-
-        if (!copy.remove(existing)) {
+        if (!peers.remove(existing)) {
             throw new AssertionError();
         }
-
-        mPeerSet = copy;
 
         try {
             persist();
         } catch (Throwable e) {
             // Rollback.
-            mPeerSet = original;
+            peers.add(existing);
             throw e;
         }
 
