@@ -22,28 +22,22 @@ package org.cojen.tupl.repl;
  *
  * @author Brian S O'Neill
  */
-enum Role {
+public enum Role {
     /**
      * Normal members receive replicated data, provide consensus, cast votes, and they can
      * become the leader.
-     *
-     * receive:yes, consensus:yes, vote:yes, leadership:yes
      */
     NORMAL((byte) 1),
 
     /**
      * Standby members receive replicated data, and they provide consensus. They don't cast
      * votes, and they cannot become the leader.
-     *
-     * receive:yes, consensus:yes, vote:no, leadership:no
      */
     STANDBY((byte) 2),
 
     /**
      * Observers only receive replicated data. They don't provide consensus, they don't cast
      * votes, and they cannot become the leader.
-     *
-     * receive:yes, consensus:no, vote:no, leadership:no
      */
     OBSERVER((byte) 3);
 
