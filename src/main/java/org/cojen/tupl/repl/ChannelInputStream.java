@@ -20,6 +20,9 @@ package org.cojen.tupl.repl;
 import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+
+import java.nio.charset.StandardCharsets;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
@@ -63,6 +66,30 @@ final class ChannelInputStream extends InputStream {
         long value = Utils.decodeLongLE(mBuffer, pos);
         mPos = pos + 8;
         return value;
+    }
+
+    String readStr(int len) throws IOException {
+        if (len <= mBuffer.length) {
+            fillBuffer(len);
+            String str = new String(mBuffer, mPos, len, StandardCharsets.UTF_8);
+            mPos += len;
+            return str;
+        } else {
+            byte[] b = new byte[len];
+            readFully(b, 0, b.length);
+            return new String(b, StandardCharsets.UTF_8);
+        }
+    }
+
+    void readFully(byte[] b, int off, int len) throws IOException {
+        while (len > 0) {
+            int amt = read(b, off, len);
+            if (amt <= 0) {
+                throw new EOFException();
+            }
+            off += amt;
+            len -= amt;
+        }
     }
 
     void skipFully(long n) throws IOException {
@@ -157,6 +184,25 @@ final class ChannelInputStream extends InputStream {
         mPos = 0;
         mEnd = 0;
         mSource.close();
+    }
+
+    /**
+     * Fully transfers all data until EOF is read.
+     */
+    public void drainTo(OutputStream out) throws IOException {
+        byte[] buf = mBuffer;
+
+        int avail = mEnd - mPos;
+        if (avail > 0) {
+            out.write(buf, mPos, avail);
+            mPos = 0;
+            mEnd = 0;
+        }
+
+        int amt;
+        while ((amt = mSource.read(buf)) > 0) {
+            out.write(buf, 0, amt);
+        }
     }
 
     private void fillBuffer(int required) throws IOException {
