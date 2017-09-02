@@ -241,7 +241,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public void controlMessageReceived(byte[] message) {
+    public void controlMessageReceived(long index, byte[] message) {
         // FIXME
     }
 

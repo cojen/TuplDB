@@ -178,8 +178,10 @@ public interface StreamReplicator extends Replicator {
      * Called to pass along a control message, which was originally provided through an {@link
      * #controlMessageAcceptor acceptor}. Control messages must be passed along in the original
      * order in which they were created.
+     *
+     * @param index log index just after the message
      */
-    void controlMessageReceived(byte[] message);
+    void controlMessageReceived(long index, byte[] message);
 
     /**
      * Install a callback to be invoked when the replicator needs to send control messages,
