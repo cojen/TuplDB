@@ -19,8 +19,15 @@ package org.cojen.tupl.repl;
 
 import java.net.ServerSocket;
 
+import java.io.InterruptedIOException;
+import java.io.IOException;
+
+import java.util.function.LongConsumer;
+
 import org.junit.*;
 import static org.junit.Assert.*;
+
+import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.TestUtils;
 
@@ -63,6 +70,10 @@ public class StreamReplicatorTest {
      * @return first is the leader
      */
     private StreamReplicator[] startGroup(int members) throws Exception {
+        if (members < 1) {
+            throw new IllegalArgumentException();
+        }
+
         ServerSocket[] sockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
@@ -78,38 +89,56 @@ public class StreamReplicatorTest {
                 .groupToken(1)
                 .localSocket(sockets[i]);
 
-            for (int j=0; j<members; j++) {
-                mConfigs[i].addMember(j + 1, sockets[j].getLocalSocketAddress());
+            if (i > 0) {
+                mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
             }
 
-            mReplicators[i] = StreamReplicator.open(mConfigs[i]);
-        }
+            StreamReplicator repl = StreamReplicator.open(mConfigs[i]);
+            mReplicators[i] = repl;
 
-        final long start = 0;
-
-        for (StreamReplicator repl : mReplicators) {
-            repl.start();
-        }
-
-        // Wait for a leader.
-
-        for (int trial=0; trial<100; trial++) {
-            Thread.sleep(100);
-
-            for (int i=0; i<mReplicators.length; i++) {
-                StreamReplicator repl = mReplicators[i];
-                Reader reader = repl.newReader(start, false);
-                if (reader != null) {
-                    reader.close();
-                    continue;
+            repl.controlMessageAcceptor(message -> {
+                byte[] wrapped = wrapControlMessage(message);
+                Writer writer = repl.newWriter();
+                try {
+                    writer.write(wrapped);
+                    long index = writer.index();
+                    writer.waitForCommit(index, -1);
+                    repl.controlMessageReceived(index, message);
+                } catch (IOException e) {
+                    Utils.rethrow(e);
+                } finally {
+                    writer.close();
                 }
-                mReplicators[i] = mReplicators[0];
-                mReplicators[0] = repl;
-                return mReplicators;
+            });
+
+            repl.start();
+
+            readyCheck: {
+                for (int trial=0; trial<100; trial++) {
+                    Thread.sleep(100);
+
+                    if (i == 0) {
+                        // Wait to become leader.
+                        Reader reader = repl.newReader(0, false);
+                        if (reader == null) {
+                            break readyCheck;
+                        }
+                        reader.close();
+                    } else {
+                        // Wait to join the group.
+                        Reader reader = repl.newReader(0, true);
+                        reader.close();
+                        if (reader.term() > 0) {
+                            break readyCheck;
+                        }
+                    }
+                }
+
+                throw new AssertionError(i == 0 ? "No leader" : "Not joined");
             }
         }
 
-        throw new AssertionError("No leader");
+        return mReplicators;
     }
 
     @Test
@@ -119,10 +148,10 @@ public class StreamReplicatorTest {
 
         StreamReplicator repl = repls[0];
 
-        Reader reader = repl.newReader(0, false);
+        Reader reader = newReader(repl, 0, false);
         assertNull(reader);
 
-        reader = repl.newReader(0, true);
+        reader = newReader(repl, 0, true);
         assertNotNull(reader);
 
         Writer writer = repl.newWriter(0);
@@ -139,8 +168,9 @@ public class StreamReplicatorTest {
         assertEquals(Long.MAX_VALUE, reader.termEndIndex());
 
         byte[] message = "hello".getBytes();
-        assertEquals(message.length, writer.write(message));
-        assertEquals(message.length, writer.waitForCommit(message.length, 0));
+        byte[] wrapped = wrapMessage(message);
+        assertEquals(wrapped.length, writer.write(wrapped));
+        assertEquals(wrapped.length, writer.waitForCommit(wrapped.length, 0));
 
         byte[] buf = new byte[message.length];
         readFully(reader, buf);
@@ -154,16 +184,16 @@ public class StreamReplicatorTest {
 
         StreamReplicator repl = repls[0];
 
-        Reader reader = repl.newReader(0, false);
+        Reader reader = newReader(repl, 0, false);
         assertNull(reader);
 
-        reader = repl.newReader(0, true);
+        reader = newReader(repl, 0, true);
         assertNotNull(reader);
 
-        Writer writer = repl.newWriter(0);
+        Writer writer = repl.newWriter();
         assertNotNull(writer);
 
-        Reader replica = repls[1].newReader(0, false);
+        Reader replica = newReader(repls[1], 0, false);
         assertNotNull(replica);
 
         long term = writer.term();
@@ -180,8 +210,9 @@ public class StreamReplicatorTest {
         assertEquals(Long.MAX_VALUE, replica.termEndIndex());
 
         byte[] message = "hello".getBytes();
-        assertEquals(message.length, writer.write(message));
-        long highIndex = message.length;
+        byte[] wrapped = wrapMessage(message);
+        assertEquals(wrapped.length, writer.write(wrapped));
+        long highIndex = writer.index();
         assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
 
         byte[] buf = new byte[message.length];
@@ -192,8 +223,9 @@ public class StreamReplicatorTest {
         TestUtils.fastAssertArrayEquals(message, buf);
 
         message = "world!".getBytes();
-        assertEquals(message.length, writer.write(message));
-        highIndex += message.length;
+        wrapped = wrapMessage(message);
+        assertEquals(wrapped.length, writer.write(wrapped));
+        highIndex = writer.index();
         assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
 
         buf = new byte[message.length];
@@ -202,5 +234,107 @@ public class StreamReplicatorTest {
 
         readFully(replica, buf);
         TestUtils.fastAssertArrayEquals(message, buf);
+    }
+
+    /**
+     * Returns a reader which filters and redirect control messages.
+     */
+    private static Reader newReader(StreamReplicator repl, long start, boolean follow) {
+        Reader source = repl.newReader(start, follow);
+        return source == null ? null : new ControlReader(repl, source);
+    }
+
+    private static byte[] wrapMessage(byte[] message) {
+        return wrapMessage(message, 0);
+    }
+
+    private static byte[] wrapControlMessage(byte[] message) {
+        return wrapMessage(message, 0x80000000);
+    }
+
+    private static byte[] wrapMessage(byte[] message, int control) {
+        byte[] wrapped = new byte[4 + message.length];
+        Utils.encodeLongLE(wrapped, 0, message.length | control);
+        System.arraycopy(message, 0, wrapped, 4, message.length);
+        return wrapped;
+    }
+
+    private static abstract class ControlAccessor<A extends Accessor> implements Accessor {
+        final StreamReplicator mRepl;
+        final A mSource;
+
+        ControlAccessor(StreamReplicator repl, A source) {
+            mRepl = repl;
+            mSource = source;
+        }
+
+        @Override
+        public long term() {
+            return mSource.term();
+        }
+
+        @Override
+        public long termStartIndex() {
+            return mSource.termStartIndex();
+        }
+
+        @Override
+        public long termEndIndex() {
+            return mSource.termEndIndex();
+        }
+
+        @Override
+        public long index() {
+            return mSource.index();
+        }
+
+        @Override
+        public void close() {
+            mSource.close();
+        }
+    }
+
+    public static class ControlReader extends ControlAccessor<Reader> implements Reader {
+        private byte[] mMessage;
+        private int mMessagePos;
+
+        ControlReader(StreamReplicator repl, Reader source) {
+            super(repl, source);
+        }
+
+        @Override
+        public int read(byte[] buf, int offset, int length) throws IOException {
+            if (mMessage == null) {
+                while (true) {
+                    byte[] b = new byte[4];
+                    readFully(mSource, b);
+                    int len = Utils.decodeIntLE(b, 0);
+
+                    b = new byte[len & 0x7fffffff];
+                    readFully(mSource, b);
+
+                    if (len >= 0) {
+                        mMessage = b;
+                        mMessagePos = 0;
+                        break;
+                    }
+
+                    // Control message.
+                    mRepl.controlMessageReceived(mSource.index(), b);
+                }
+            }
+
+            int avail = mMessage.length - mMessagePos;
+
+            if (length >= avail) {
+                System.arraycopy(mMessage, mMessagePos, buf, offset, avail);
+                mMessage = null;
+                return avail;
+            } else {
+                System.arraycopy(mMessage, mMessagePos, buf, offset, length);
+                mMessagePos += length;
+                return length;
+            }
+        }
     }
 }

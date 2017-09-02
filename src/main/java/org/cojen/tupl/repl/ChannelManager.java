@@ -28,6 +28,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.nio.charset.StandardCharsets;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -60,8 +62,8 @@ final class ChannelManager {
       0:  Magic number (long)
       8:  Group token (long)
       16: Group id (long)
-      24: Member id (long)       -- 0: anonymous
-      32: Connection type (int)  -- 0: control, 1: plain  FIXME: use a bit to enable CRCs
+      24: Member id (long)
+      32: Connection type (int)  -- 0: control, 1: plain, etc. FIXME: use a bit to enable CRCs
       36: CRC32C (int)
 
       Command header structure: (little endian fields)
@@ -72,8 +74,10 @@ final class ChannelManager {
 
     */
 
-    private static final long MAGIC_NUMBER = 480921776540805866L;
-    private static final int CONNECT_CONTROL = 0, CONNECT_PLAIN = 1, CONNECT_SNAPSHOT = 2;
+    static final long MAGIC_NUMBER = 480921776540805866L;
+
+    static final int TYPE_CONTROL = 0, TYPE_PLAIN = 1, TYPE_JOIN = 2, TYPE_SNAPSHOT = 3;
+
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
@@ -94,16 +98,17 @@ final class ChannelManager {
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
 
+    private long mGroupId;
     private long mLocalMemberId;
-    private SocketAddress mLocalAddress;
     private ServerSocket mServerSocket;
 
     private Channel mLocalServer;
 
     private volatile Consumer<Socket> mSocketAcceptor;
+    private volatile Consumer<Socket> mJoinAcceptor;
     private volatile Consumer<Socket> mSnapshotRequestAcceptor;
 
-    ChannelManager(Scheduler scheduler, long groupToken) {
+    ChannelManager(Scheduler scheduler, long groupToken, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
@@ -112,15 +117,16 @@ final class ChannelManager {
         mPeerMap = new HashMap<>();
         mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
         mChannels = new HashSet<>();
+        setGroupId(groupId);
     }
 
     /**
      * Set the local member id to a non-zero value, which cannot be changed later.
      */
-    synchronized void setLocalMemberId(long localMemberId, SocketAddress localAddress)
+    synchronized void setLocalMemberId(long localMemberId, SocketAddress listenAddress)
         throws IOException
     {
-        setLocalMemberId(localMemberId, localAddress, null);
+        setLocalMemberId(localMemberId, listenAddress, null);
     }
 
     /**
@@ -136,23 +142,21 @@ final class ChannelManager {
      * Set the local member id to a non-zero value, which cannot be changed later.
      */
     private synchronized void setLocalMemberId(long localMemberId,
-                                               SocketAddress localAddress, ServerSocket ss)
+                                               SocketAddress listenAddress, ServerSocket ss)
         throws IOException
     {
-        if (localMemberId == 0 || ((localAddress == null) == (ss == null))) {
+        if (localMemberId == 0 || ((listenAddress == null) == (ss == null))) {
             throw new IllegalArgumentException();
         }
         if (mLocalMemberId != 0) {
             throw new IllegalStateException();
         }
 
-        if (localAddress == null) {
-            localAddress = ss.getLocalSocketAddress();
-        } else {
+        if (listenAddress != null) {
             try {
                 ss = new ServerSocket();
                 ss.setReuseAddress(true);
-                ss.bind(localAddress);
+                ss.bind(listenAddress);
             } catch (Throwable e) {
                 closeQuietly(null, ss);
                 throw e;
@@ -160,16 +164,23 @@ final class ChannelManager {
         }
 
         mLocalMemberId = localMemberId;
-        mLocalAddress = localAddress;
         mServerSocket = ss;
+    }
+
+    long getGroupToken() {
+        return mGroupToken;
+    }
+
+    synchronized long getGroupId() {
+        return mGroupId;
+    }
+
+    synchronized void setGroupId(long groupId) {
+        mGroupId = groupId;
     }
 
     synchronized long getLocalMemberId() {
         return mLocalMemberId;
-    }
-
-    synchronized SocketAddress getLocalAddress() {
-        return mLocalAddress;
     }
 
     synchronized boolean isStarted() {
@@ -204,6 +215,10 @@ final class ChannelManager {
 
     void socketAcceptor(Consumer<Socket> acceptor) {
         mSocketAcceptor = acceptor;
+    }
+
+    void joinAcceptor(Consumer<Socket> acceptor) {
+        mJoinAcceptor = acceptor;
     }
 
     void snapshotRequestAcceptor(Consumer<Socket> acceptor) {
@@ -252,21 +267,14 @@ final class ChannelManager {
      * @throws IllegalStateException if peer is already connected to a different address
      */
     Channel connect(Peer peer, Channel localServer) {
-        long remoteMemberId = peer.mMemberId;
-        SocketAddress remoteAddress = peer.mAddress;
-
-        if (remoteMemberId == 0 || remoteAddress == null || localServer == null) {
+        if (peer.mMemberId == 0 || peer.mAddress == null || localServer == null) {
             throw new IllegalArgumentException();
         }
 
         ClientChannel client;
 
         synchronized (this) {
-            if (mLocalMemberId == 0) {
-                throw new IllegalStateException("Local member id isn't set");
-            }
-
-            if (mLocalMemberId == remoteMemberId) {
+            if (mLocalMemberId == peer.mMemberId) {
                 throw new IllegalArgumentException("Cannot connect to self");
             }
 
@@ -294,11 +302,11 @@ final class ChannelManager {
     }
 
     Socket connectPlain(SocketAddress addr) throws IOException {
-        return connectSocket(addr, CONNECT_PLAIN);
+        return connectSocket(addr, TYPE_PLAIN);
     }
 
     Socket connectSnapshot(SocketAddress addr) throws IOException {
-        return connectSocket(addr, CONNECT_SNAPSHOT);
+        return connectSocket(addr, TYPE_SNAPSHOT);
     }
 
     private Socket connectSocket(SocketAddress addr, int connectionType) throws IOException {
@@ -324,15 +332,6 @@ final class ChannelManager {
     }
 
     /**
-     * Immediately connect to the given address and return an unregistered channel. Any failure
-     * to write over the channel triggers an automatic reconnect in the background.
-     */
-    Channel connectAnonymous(SocketAddress remoteAddress, Channel localServer) throws IOException {
-        // FIXME: connectAnonymous
-        throw null;
-    }
-
-    /**
      * @return null if peer response was malformed
      */
     Socket doConnect(Peer peer, int connectionType) throws IOException {
@@ -341,14 +340,15 @@ final class ChannelManager {
         doConnect: try {
             s.connect(peer.mAddress, CONNECT_TIMEOUT_MILLIS);
 
-            byte[] header = new byte[INIT_HEADER_SIZE];
-            encodeLongLE(header, 0, MAGIC_NUMBER);
-            encodeLongLE(header, 8, mGroupToken);
-            encodeLongLE(header, 16, 0); // FIXME: id
-            encodeLongLE(header, 24, getLocalMemberId());
-            encodeIntLE(header, 32, connectionType);
+            long groupId;
+            long localMemberId;
 
-            encodeHeaderCrc(header);
+            synchronized (this) {
+                groupId = mGroupId;
+                localMemberId = mLocalMemberId;
+            }
+
+            byte[] header = newConnectHeader(mGroupToken, groupId, localMemberId, connectionType);
 
             s.getOutputStream().write(header);
 
@@ -357,6 +357,7 @@ final class ChannelManager {
                 break doConnect;
             }
 
+            // Verify expected member id.
             if (decodeLongLE(header, 24) != peer.mMemberId) {
                 break doConnect;
             }
@@ -375,6 +376,19 @@ final class ChannelManager {
 
         closeQuietly(null, s);
         return null;
+    }
+
+    static byte[] newConnectHeader(long groupToken, long groupId, long memberId, int conType) {
+        byte[] header = new byte[INIT_HEADER_SIZE];
+        encodeLongLE(header, 0, MAGIC_NUMBER);
+        encodeLongLE(header, 8, groupToken);
+        encodeLongLE(header, 16, groupId);
+        encodeLongLE(header, 24, memberId);
+        encodeIntLE(header, 32, conType);
+
+        encodeHeaderCrc(header);
+
+        return header;
     }
 
     /**
@@ -455,25 +469,25 @@ final class ChannelManager {
             long remoteMemberId = decodeLongLE(header, 24);
             int connectionType = decodeIntLE(header, 32);
 
-            Consumer<Socket> acceptor;
+            Consumer<Socket> acceptor = null;
 
             checkType: {
                 switch (connectionType) {
-                case CONNECT_CONTROL:
-                    acceptor = null;
+                case TYPE_CONTROL:
                     break checkType;
-                case CONNECT_PLAIN:
+                case TYPE_PLAIN:
                     acceptor = mSocketAcceptor;
-                    if (acceptor != null) {
-                        break checkType;
-                    }
                     break;
-                case CONNECT_SNAPSHOT:
+                case TYPE_JOIN:
+                    acceptor = mJoinAcceptor;
+                    break;
+                case TYPE_SNAPSHOT:
                     acceptor = mSnapshotRequestAcceptor;
-                    if (acceptor != null) {
-                        break checkType;
-                    }
                     break;
+                }
+
+                if (acceptor != null) {
+                    break checkType;
                 }
 
                 closeQuietly(null, s);
@@ -483,8 +497,8 @@ final class ChannelManager {
             synchronized (this) {
                 Peer peer;
                 if (remoteMemberId == 0) {
-                    // FIXME: anonymous
-                    peer = new Peer(0);
+                    // Anonymous connection.
+                    peer = null;
                 } else {
                     peer = mPeerSet.ceiling(new Peer(remoteMemberId)); // findGe
                     if (peer == null || peer.mMemberId != remoteMemberId) {
@@ -494,7 +508,12 @@ final class ChannelManager {
                     }
                 }
 
-                if (connectionType == CONNECT_CONTROL) {
+                if (connectionType == TYPE_CONTROL) {
+                    if (peer == null) {
+                        // Reject anonymous member control connection.
+                        closeQuietly(null, s);
+                        return;
+                    }
                     acceptor = server = new ServerChannel(peer, localServer);
                     mChannels.add(server);
                 }
@@ -540,6 +559,13 @@ final class ChannelManager {
      * @return null if invalid
      */
     byte[] readHeader(Socket s) {
+        return readHeader(s, mGroupToken, getGroupId());
+    }
+
+    /**
+     * @return null if invalid
+     */
+    static byte[] readHeader(Socket s, long groupToken, long groupId) {
         check: try {
             s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
 
@@ -550,12 +576,15 @@ final class ChannelManager {
                 break check;
             }
 
-            if (decodeLongLE(header, 8) != mGroupToken) {
+            if (decodeLongLE(header, 8) != groupToken) {
                 break check;
             }
 
-            // FIXME: check the id
-            long id = decodeLongLE(header, 16);
+            int connectionType = decodeIntLE(header, 32);
+
+            if (connectionType != TYPE_JOIN && (decodeLongLE(header, 16) != groupId)) {
+                break check;
+            }
 
             Checksum crc = CRC32C.newInstance();
             crc.update(header, 0, header.length - 4);
@@ -619,7 +648,7 @@ final class ChannelManager {
             }
 
             try {
-                connected(doConnect(mPeer, CONNECT_CONTROL));
+                connected(doConnect(mPeer, TYPE_CONTROL));
             } catch (IOException e) {
                 // Ignore.
             }

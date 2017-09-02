@@ -20,13 +20,13 @@ package org.cojen.tupl.repl;
 import java.io.File;
 import java.io.Serializable;
 
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.SocketAddress;
+import java.net.UnknownHostException;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import org.cojen.tupl.io.Utils;
@@ -43,8 +43,8 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     boolean mMkdirs;
     long mGroupToken;
     SocketAddress mLocalAddress;
+    SocketAddress mListenAddress;
     ServerSocket mLocalSocket;
-    Map<Long, SocketAddress> mStaticMembers;
     Set<SocketAddress> mSeeds;
 
     public ReplicatorConfig() {
@@ -110,47 +110,59 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Set the local member socket address and port. If given a wildcard address, the local
-     * member will accept connections on any address.
+     * Set the local member socket address and port.
      *
-     * @throws IllegalArgumentException if address is null
+     * @throws IllegalArgumentException if address is null or a wildcard address
      */
     public ReplicatorConfig localAddress(SocketAddress addr) {
         if (addr == null) {
             throw new IllegalArgumentException();
         }
+        if (addr instanceof InetSocketAddress) {
+            if (((InetSocketAddress) addr).getAddress().isAnyLocalAddress()) {
+                throw new IllegalArgumentException("Wildcard address: " + addr);
+            }
+        }
         mLocalAddress = addr;
         return this;
     }
 
-    // Intended only for testing.
-    ReplicatorConfig localSocket(ServerSocket ss) {
-        mLocalAddress = ss.getLocalSocketAddress();
-        mLocalSocket = ss;
+    /**
+     * Optionally set the socket address for accepting connections, which can be a wildcard
+     * address.
+     *
+     * @throws IllegalArgumentException if address is null
+     */
+    public ReplicatorConfig listenAddress(SocketAddress addr) {
+        if (addr == null) {
+            throw new IllegalArgumentException();
+        }
+        mListenAddress = addr;
         return this;
     }
 
-    /**
-     * Add a local or remote member to the replication group, which cannot be dynamically
-     * removed.
-     *
-     * @throws IllegalArgumentException if memberId is zero or address is null
-     */
-    public ReplicatorConfig addMember(long memberId, SocketAddress addr) {
-        if (memberId == 0 || addr == null) {
-            throw new IllegalArgumentException();
+    // Intended only for testing.
+    ReplicatorConfig localSocket(ServerSocket ss) throws UnknownHostException {
+        mLocalSocket = ss;
+        mListenAddress = ss.getLocalSocketAddress();
+        mLocalAddress = mListenAddress;
+
+        if (mLocalAddress instanceof InetSocketAddress) {
+            InetSocketAddress sockAddr = (InetSocketAddress) mLocalAddress;
+            InetAddress addr = sockAddr.getAddress();
+            if (addr.isAnyLocalAddress()) {
+                mLocalAddress = new InetSocketAddress
+                    (InetAddress.getLocalHost(), sockAddr.getPort());
+            }
         }
-        if (mStaticMembers == null) {
-            mStaticMembers = new HashMap<>();
-        }
-        mStaticMembers.put(memberId, addr);
+
         return this;
     }
 
     /**
      * Add a remote member address for allowing the local member to join the group. Opening a
      * replicator for the first time without any seeds indicates that a new replication group
-     * is to be formed.
+     * is to be formed. If the local member is already in a group, the seeds are ignored.
      *
      * @throws IllegalArgumentException if address is null
      */
@@ -172,10 +184,6 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             copy = (ReplicatorConfig) super.clone();
         } catch (CloneNotSupportedException e) {
             throw Utils.rethrow(e);
-        }
-
-        if (mStaticMembers != null) {
-            copy.mStaticMembers = new HashMap<>(mStaticMembers);
         }
 
         if (mSeeds != null) {

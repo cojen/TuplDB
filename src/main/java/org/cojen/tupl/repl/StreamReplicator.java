@@ -26,6 +26,7 @@ import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -64,43 +65,24 @@ public interface StreamReplicator extends Replicator {
             throw new IllegalArgumentException("No local address configured");
         }
 
-        if (config.mSeeds != null && !config.mSeeds.isEmpty()) {
-            throw new IllegalArgumentException("Seeding isn't supported yet");
+        SocketAddress listenAddress = config.mListenAddress;
+        if (listenAddress == null) {
+            listenAddress = localAddress;
         }
 
-        Map<Long, SocketAddress> members = config.mStaticMembers;
+        Set<SocketAddress> seeds = config.mSeeds;
 
-        long localMemberId = 0;
-
-        if (members != null && !members.isEmpty()) {
-            // Check for duplicate addresses.
-            Set<SocketAddress> addresses = new HashSet<>();
-            addresses.add(localAddress);
-            for (Map.Entry<Long, SocketAddress> e : members.entrySet()) {
-                SocketAddress addr = e.getValue();
-                if (addr == null) {
-                    throw new IllegalArgumentException("Null address");
-                }
-                if (addr.equals(localAddress)) {
-                    localMemberId = e.getKey();
-                } else if (!addresses.add(addr)) {
-                    throw new IllegalArgumentException("Duplicate address: " + addr);
-                }
-            }
-        }
-
-        if (localMemberId == 0) {
-            throw new IllegalArgumentException("No local member id provided");
+        if (seeds == null) {
+            seeds = Collections.emptySet();
         }
 
         if (config.mMkdirs) {
             base.getParentFile().mkdirs();
         }
 
-        Controller con = new Controller(new FileStateLog(base), groupToken);
-        con.init(members, localMemberId, config.mLocalSocket);
-
-        return con;
+        return Controller.open(new FileStateLog(base), groupToken,
+                               new File(base.getPath() + ".group"), 
+                               localAddress, listenAddress, seeds, config.mLocalSocket);
     }
 
     /**
