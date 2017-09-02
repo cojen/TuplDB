@@ -115,11 +115,6 @@
 <dd>
 <div class="block">Adds stats into a new object.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#addMember-long-java.net.SocketAddress-">addMember(long, SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
-<dd>
-<div class="block">Add a local or remote member to the replication group, which cannot be dynamically
- removed.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#addSeed-java.net.SocketAddress-">addSeed(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
@@ -557,7 +552,7 @@
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
  which must propagate through the replication log.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-">controlMessageReceived(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-">controlMessageReceived(long, byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Called to pass along a control message, which was originally provided through an <a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
 </dd>
@@ -1711,6 +1706,11 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#link--">link()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#listenAddress-java.net.SocketAddress-">listenAddress(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Optionally set the socket address for accepting connections, which can be a wildcard
+ address.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#load--">load()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>

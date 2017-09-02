@@ -17,9 +17,12 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
+import java.io.OutputStream;
 
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
@@ -27,11 +30,13 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import java.util.function.Consumer;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
@@ -52,16 +57,27 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int MISSING_DELAY_LOW_MILLIS = 400, MISSING_DELAY_HIGH_MILLIS = 600;
     private static final int CONNECT_TIMEOUT_MILLIS = 500;
     private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 2000;
+    private static final int JOIN_TIMEOUT_MILLIS = 2000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
+
+    private static final byte CONTROL_OP_JOIN = 1;
 
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
 
+    private GroupFile mGroupFile;
+
     private int mLocalMode;
 
-    private Peer[] mPeers;
-    private Channel[] mPeerChannels;
+    // Normal and standby members are required to participate in consensus.
+    private Peer[] mConsensusPeers;
+    private Channel[] mConsensusChannels;
+    // All channels includes observers, which cannot participate in consensus.
+    private Channel[] mAllChannels;
+
+    // Reference to leader's reply channel, only used for accessing the peer object.
+    private Channel mLeaderReplyChannel;
 
     private long mCurrentTerm;
     private long mVotedFor;
@@ -79,44 +95,112 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Limit the rate at which missing terms are queried.
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
-    Controller(StateLog log, long groupToken) {
+    private volatile Consumer<byte[]> mControlMessageAcceptor;
+
+    /**
+    * @param localSocket optional; used for testing
+     */
+    static Controller open(StateLog log, long groupToken, File groupFile,
+                           SocketAddress localAddress, SocketAddress listenAddress,
+                           Set<SocketAddress> seeds, ServerSocket localSocket)
+        throws IOException
+    {
+        GroupFile gf = GroupFile.open(groupFile, localAddress, seeds.isEmpty());
+        Controller con = new Controller(log, groupToken, gf);
+        con.init(groupFile, localAddress, listenAddress, seeds, localSocket);
+        return con;
+    }
+
+    private Controller(StateLog log, long groupToken, GroupFile gf) throws IOException {
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(mScheduler, groupToken);
+        mChanMan = new ChannelManager(mScheduler, groupToken, gf == null ? 0 : gf.groupId());
+        mGroupFile = gf;
     }
 
     /**
      * @param localSocket optional; used for testing
      */
-    void init(Map<Long, SocketAddress> members, long localMemberId, ServerSocket localSocket)
+    private void init(File groupFile,
+                      SocketAddress localAddress, SocketAddress listenAddress,
+                      Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
         acquireExclusive();
         try {
-            Peer[] peers = new Peer[members.size() - 1];
-            Channel[] peerChannels = new Channel[peers.length];
+            if (mGroupFile == null) {
+                // Need to join the group.
+
+                GroupJoiner joiner = new GroupJoiner
+                    (groupFile, mChanMan.getGroupToken(), localAddress);
+
+                if (!joiner.join(seeds, JOIN_TIMEOUT_MILLIS)) {
+                    // FIXME: better exception
+                    throw new IOException("Unable to join group");
+                }
+
+                mGroupFile = joiner.mGroupFile;
+                mChanMan.setGroupId(mGroupFile.groupId());
+
+                // FIXME: Stash log index and term info from joiner.
+
+                // FIXME: Must request updated group file after receiving snapshot. For this
+                // reason, the index from the joiner isn't required.
+            }
+
+            long localMemberId = mGroupFile.localMemberId();
 
             if (localSocket == null) {
-                mChanMan.setLocalMemberId(localMemberId, members.get(localMemberId));
+                mChanMan.setLocalMemberId(localMemberId, listenAddress);
             } else {
                 mChanMan.setLocalMemberId(localMemberId, localSocket);
             }
 
-            int i = 0;
-            for (Map.Entry<Long, SocketAddress> e : members.entrySet()) {
-                long memberId = e.getKey();
-                if (memberId != localMemberId) {
-                    Peer peer = new Peer(memberId, e.getValue(), Role.NORMAL);
-                    peers[i] = peer;
-                    peerChannels[i] = mChanMan.connect(peer, this);
-                    i++;
-                }
-            }
-
-            mPeers = peers;
-            mPeerChannels = peerChannels;
+            refreshPeerSet();
         } finally {
             releaseExclusive();
+        }
+    }
+
+    // Caller must hold exclusive latch.
+    private void refreshPeerSet() {
+        Map<Peer, Channel> currentPeerChannels = new HashMap<>();
+
+        if (mAllChannels != null) {
+            for (Channel channel : mAllChannels) {
+                currentPeerChannels.put(channel.peer(), channel);
+            }
+        }
+
+        List<Peer> consensusPeers = new ArrayList<>();
+        List<Channel> consensusChannels = new ArrayList<>();
+        List<Channel> allChannels = new ArrayList<>();
+
+        for (Peer peer : mGroupFile.allPeers()) {
+            Channel channel = currentPeerChannels.remove(peer);
+
+            if (channel == null) {
+                channel = mChanMan.connect(peer, this);
+            }
+
+            allChannels.add(channel);
+
+            if (peer.mRole == Role.NORMAL || peer.mRole == Role.STANDBY) {
+                consensusPeers.add(peer);
+                consensusChannels.add(channel);
+            }
+        }
+
+        for (Peer toRemove : currentPeerChannels.keySet()) {
+            mChanMan.disconnect(toRemove.mMemberId);
+        }
+
+        mConsensusPeers = consensusPeers.toArray(new Peer[0]);
+        mConsensusChannels = consensusChannels.toArray(new Channel[0]);
+        mAllChannels = allChannels.toArray(new Channel[0]);
+
+        if (mLeaderReplWriter != null) {
+            mLeaderReplWriter.update(mLeaderLogWriter, mAllChannels, consensusChannels.isEmpty());
         }
     }
 
@@ -150,6 +234,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         scheduleElectionTask();
         scheduleMissingDataTask();
+
+        mChanMan.joinAcceptor(this::requestJoin);
 
         return true;
     }
@@ -199,7 +285,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mLeaderLogWriter == null || (index >= 0 && index != mLeaderLogWriter.index())) {
                 return null;
             }
-            ReplWriter writer = new ReplWriter(mLeaderLogWriter, mPeerChannels);
+            ReplWriter writer = new ReplWriter
+                (mLeaderLogWriter, mAllChannels, mConsensusChannels.length == 0);
             mLeaderReplWriter = writer;
             return writer;
         } finally {
@@ -227,7 +314,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public SocketAddress getLocalAddress() {
-        return mChanMan.getLocalAddress();
+        acquireShared();
+        SocketAddress addr = mGroupFile.localMemberAddress();
+        releaseShared();
+        return addr;
     }
 
     @Override
@@ -242,18 +332,35 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void controlMessageReceived(long index, byte[] message) {
-        // FIXME
+        if (message[0] == CONTROL_OP_JOIN) {
+            acquireExclusive();
+            try {
+                Peer peer;
+                try {
+                    peer = mGroupFile.applyJoin(index, message);
+                } catch (IOException e) {
+                    uncaught(e);
+                    return;
+                }
+
+                if (peer != null) {
+                    refreshPeerSet();
+                }
+            } finally {
+                releaseExclusive();
+            }
+        }
     }
 
     @Override
     public void controlMessageAcceptor(Consumer<byte[]> acceptor) {
-        // FIXME
+        mControlMessageAcceptor = acceptor;
     }
 
     @Override
     public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
         acquireShared();
-        Channel[] channels = mPeerChannels;
+        Channel[] channels = mAllChannels;
         releaseShared();
 
         // Snapshots are requested early, so wait for connections to be established.
@@ -333,10 +440,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     final class ReplWriter implements Writer {
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;
+        private boolean mSelfCommit;
 
-        ReplWriter(LogWriter writer, Channel[] peerChannels) {
+        ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
             mWriter = writer;
             mPeerChannels = peerChannels;
+            mSelfCommit = selfCommit;
         }
 
         @Override
@@ -371,6 +480,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 peerChannels = mPeerChannels;
 
                 if (peerChannels == null) {
+                    // Deactivated.
                     return -1;
                 }
 
@@ -389,9 +499,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mStateLog.captureHighest(writer);
                 highestIndex = writer.mHighestIndex;
 
-                if (peerChannels.length == 0) {
-                    // Only a group of one, so commit changes immediately.
+                if (mSelfCommit) {
+                    // Only a consensus group of one, so commit changes immediately.
                     mStateLog.commit(highestIndex);
+                }
+
+                if (peerChannels.length == 0) {
                     return amt;
                 }
 
@@ -422,12 +535,20 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         @Override
         public void close() {
-            mWriter.close();
+            mWriter.release();
             writerClosed(this);
+        }
+
+        synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
+            if (mWriter == writer && mPeerChannels != null) {
+                mPeerChannels = peerChannels;
+                mSelfCommit = selfCommit;
+            }
         }
 
         synchronized void deactivate() {
             mPeerChannels = null;
+            mSelfCommit = false;
         }
     }
 
@@ -507,7 +628,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         acquireShared();
-        Channel[] channels = mPeerChannels;
+        // Only query normal and standby members. Observers aren't first-class and might not
+        // have the data.
+        Channel[] channels = mConsensusChannels;
         releaseShared();
 
         doRequestData: while (remaining > 0) {
@@ -581,13 +704,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
 
+            mLeaderReplyChannel = null;
+
+            if (mGroupFile.localMemberRole() != Role.NORMAL) {
+                // Only NORMAL members can become candidates.
+                releaseExclusive();
+                return;
+            }
+
             // Convert to candidate.
             // FIXME: Don't permit rogue members to steal leadership if process is
             // suspended. Need to double check against local clock to detect this. Or perhaps
             // check with peers to see if leader is up.
             mLocalMode = MODE_CANDIDATE;
 
-            peerChannels = mPeerChannels;
+            peerChannels = mConsensusChannels;
 
             mStateLog.captureHighest(info);
 
@@ -623,7 +754,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Caller must acquire exclusive latch, which is released by this method.
     private void affirmLeadership() {
-        Channel[] peerChannels = mPeerChannels;
+        Channel[] peerChannels = mAllChannels;
         LogWriter writer = mLeaderLogWriter;
         releaseExclusive();
 
@@ -674,6 +805,115 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
     }
+
+    private void requestJoin(Socket s) {
+        try {
+            doRequestJoin(s);
+        } catch (IOException e) {
+            rethrow(e);
+        } finally {
+            closeQuietly(null, s);
+        }
+    }
+
+    private void doRequestJoin(Socket s) throws IOException {
+        ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
+
+        int op = in.read();
+
+        // FIXME: never close socket without sending an error code (OP_ERROR + code)
+
+        if (op != GroupJoiner.OP_ADDRESS) {
+            System.out.println("unknown op");
+            return;
+        }
+
+        SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
+
+        if (!validateJoinAddress(s, addr)) {
+            System.out.println("invalid address");
+            return;
+        }
+
+        OutputStream out = s.getOutputStream();
+
+        acquireShared();
+        boolean leader = mLocalMode == MODE_LEADER;
+        releaseShared();
+
+        if (!leader) {
+            // FIXME: reply with leader if known (OP_ADDRESS)
+            System.out.println("not leader!");
+            return;
+        }
+
+        Consumer<byte[]> acceptor = mControlMessageAcceptor;
+
+        if (acceptor == null) {
+            System.out.println("no acceptor");
+            return;
+        }
+
+        byte[] message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
+            // Join is accepted, so reply with the log index info and the group file. The index
+            // is immediately after the control message.
+
+            try {
+                TermLog termLog = mStateLog.termLogAt(index);
+
+                byte[] buf = new byte[1000];
+                int off = 0;
+                buf[off++] = GroupJoiner.OP_JOINED;
+                encodeLongLE(buf, off, termLog.prevTermAt(index)); off += 8;
+                encodeLongLE(buf, off, termLog.term()); off += 8;
+                encodeLongLE(buf, off, index); off += 8;
+
+                while (true) {
+                    int amt;
+                    try {
+                        amt = gfIn.read(buf, off, buf.length - off);
+                    } catch (IOException e) {
+                        // Report any GroupFile corruption.
+                        uncaught(e);
+                        return;
+                    }
+                    if (amt < 0) {
+                        break;
+                    }
+                    out.write(buf, 0, off + amt);
+                    off = 0;
+                }
+            } catch (IOException e) {
+                // Ignore.
+            } finally {
+                closeQuietly(null, out);
+            }
+        });
+
+        mScheduler.schedule(() -> {
+            if (mGroupFile.discardJoinConsumer(message)) {
+                closeQuietly(null, s);
+            }
+        }, JOIN_TIMEOUT_MILLIS);
+
+        acceptor.accept(message);
+    }
+
+    private boolean validateJoinAddress(Socket s, SocketAddress addr) {
+        if (!(addr instanceof InetSocketAddress)) {
+            return false;
+        }
+
+        SocketAddress socketAddr = s.getRemoteSocketAddress();
+
+        if (!(socketAddr instanceof InetSocketAddress)) {
+            return false;
+        }
+
+        return ((InetSocketAddress) addr).getAddress()
+            .equals(((InetSocketAddress) socketAddr).getAddress());
+    }
+
 
     @Override
     public boolean nop(Channel from) {
@@ -772,7 +1012,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             System.out.println("leader: " + prevTerm + " -> " + term + " @" + index);
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
             mLocalMode = MODE_LEADER;
-            for (Channel channel : mPeerChannels) {
+            for (Channel channel : mAllChannels) {
                 channel.peer().mMatchIndex = 0;
             }
         } catch (Throwable e) {
@@ -925,6 +1165,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     releaseShared();
                     break checkTerm;
                 } else if (tryUpgrade()) {
+                    mLeaderReplyChannel = from;
                     mElectionValidated = 1;
                     releaseExclusive();
                     break checkTerm;
@@ -938,19 +1179,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             try {
-                if (term == originalTerm) {
-                    mElectionValidated = 1;
-                } else {
+                if (term != originalTerm) {
                     try {
                         mCurrentTerm = mStateLog.checkCurrentTerm(term);
                     } catch (IOException e) {
                         uncaught(e);
                         return false;
                     }
-                    if (mCurrentTerm > originalTerm) {
-                        toFollower();
+                    if (mCurrentTerm <= originalTerm) {
+                        break checkTerm;
                     }
+                    toFollower();
                 }
+
+                mLeaderReplyChannel = from;
+                mElectionValidated = 1;
             } finally {
                 releaseExclusive();
             }
@@ -993,7 +1236,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
-        // TODO: can skip reply if successful and highest didn't change
+        // TODO: Can skip reply if successful and highest didn't change.
+        // TODO: Can skip reply if local role is OBSERVER.
         from.writeDataReply(null, term, highestIndex);
 
         return true;
@@ -1031,16 +1275,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             Peer peer = from.peer();
             long matchIndex = peer.mMatchIndex;
 
-            if (highestIndex <= matchIndex) {
+            if (highestIndex <= matchIndex || mConsensusPeers.length == 0) {
                 return true;
             }
 
             // Updating and sorting the peers by match index is simple, but for large groups
             // (>10?), a tree data structure should be used instead.
             peer.mMatchIndex = highestIndex;
-            Arrays.sort(mPeers);
+            Arrays.sort(mConsensusPeers);
 
-            commitIndex = mPeers[mPeers.length >> 1].mMatchIndex;
+            commitIndex = mConsensusPeers[mConsensusPeers.length >> 1].mMatchIndex;
         } finally {
             releaseExclusive();
         }
@@ -1051,8 +1295,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean snapshotScore(Channel from) {
-        System.out.println("snapshotScore: " + from);
-
         // FIXME: reply with high session count and weight if no acceptor is installed
 
         acquireShared();

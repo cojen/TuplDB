@@ -127,7 +127,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {
             try {
-                accessor.control(message);
+                control(accessor.control(message), message);
             } catch (IOException e) {
                 // Drop it.
             }

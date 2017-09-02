@@ -160,7 +160,8 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-">controlMessageReceived</a></span>(byte[]&nbsp;message)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-">controlMessageReceived</a></span>(long&nbsp;index,
+                      byte[]&nbsp;message)</code>
 <div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
 </td>
 </tr>
@@ -399,15 +400,20 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </dl>
 </li>
 </ul>
-<a name="controlMessageReceived-byte:A-">
+<a name="controlMessageReceived-long-byte:A-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>controlMessageReceived</h4>
-<pre>void&nbsp;controlMessageReceived(byte[]&nbsp;message)</pre>
+<pre>void&nbsp;controlMessageReceived(long&nbsp;index,
+                            byte[]&nbsp;message)</pre>
 <div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>. Control messages must be passed along in the original
  order in which they were created.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>index</code> - log index just after the message</dd>
+</dl>
 </li>
 </ul>
 <a name="controlMessageAcceptor-java.util.function.Consumer-">
@@ -424,7 +430,7 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
  removed.
 
  <p>Acceptor implementations are expected to wrap messages such that they can be
- propagated along with regular messages, and then later be passed to the <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-byte:A-"><code>controlMessageReceived</code></a> method. If a control message cannot be
+ propagated along with regular messages, and then later be passed to the <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-"><code>controlMessageReceived</code></a> method. If a control message cannot be
  written (possibly because the local member isn't the leader), it might be silently
  dropped. Implementations are not required to pass control messages to a remote leader.</div>
 <dl>
