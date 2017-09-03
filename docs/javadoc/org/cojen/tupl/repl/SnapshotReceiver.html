@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -154,21 +154,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i4" class="altColor">
-<td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html#prevTerm--">prevTerm</a></span>()</code>
-<div class="block">Returns the log term immediately before the start index.</div>
-</td>
-</tr>
-<tr id="i5" class="rowColor">
 <td class="colFirst"><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html#senderAddress--">senderAddress</a></span>()</code>
 <div class="block">Member address which is sending the snapshot.</div>
-</td>
-</tr>
-<tr id="i6" class="altColor">
-<td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html#term--">term</a></span>()</code>
-<div class="block">Returns the term at the start index.</div>
 </td>
 </tr>
 </table>
@@ -225,26 +213,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <h4>length</h4>
 <pre>long&nbsp;length()</pre>
 <div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
-</li>
-</ul>
-<a name="prevTerm--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>prevTerm</h4>
-<pre>long&nbsp;prevTerm()</pre>
-<div class="block">Returns the log term immediately before the start index.</div>
-</li>
-</ul>
-<a name="term--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>term</h4>
-<pre>long&nbsp;term()</pre>
-<div class="block">Returns the term at the start index.</div>
 </li>
 </ul>
 <a name="index--">
