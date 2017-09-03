@@ -250,7 +250,7 @@ final class GroupFile extends Latch {
     }
 
     /**
-     * @return non-null set, possibly empty
+     * @return non-null set ordered by member id, possibly empty
      */
     public NavigableSet<Peer> allPeers() {
         return mPeerSet;

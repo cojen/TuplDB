@@ -42,21 +42,6 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 class GroupJoiner {
-    // FIXME: testing
-    public static void main(String[] args) throws Exception {
-        GroupJoiner joiner = new GroupJoiner
-            (new File("foo"), 1, new java.net.InetSocketAddress("localhost", 1234));
-
-        Set<SocketAddress> seeds = new java.util.HashSet<>();
-        for (int i=0; i<args.length; i+=2) {
-            seeds.add(new java.net.InetSocketAddress(args[i], Integer.parseInt(args[i + 1])));
-        }
-
-        joiner.join(seeds, 0);
-
-        joiner.close();
-    }
-
     static final int OP_NOP = 0, OP_ERROR = 1, OP_ADDRESS = 2, OP_JOINED = 3;
 
     private final File mFile;
