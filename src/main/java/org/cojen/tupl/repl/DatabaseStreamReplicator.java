@@ -83,21 +83,12 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     @Override
     public InputStream restoreRequest() throws IOException {
         // FIXME: more layering required; verify length; CRC options too
-        SnapshotReceiver receiver = mRepl.requestSnapshot(null);
+        SnapshotReceiver receiver = mRepl.restore(null);
         if (receiver == null) {
             return null;
         }
 
-        InputStream in = receiver.inputStream();
-
-        try {
-            mRepl.start(receiver.prevTerm(), receiver.term(), receiver.index());
-        } catch (Throwable e) {
-            Utils.closeQuietly(null, in);
-            throw e;
-        }
-
-        return in;
+        return receiver.inputStream();
     }
 
     @Override

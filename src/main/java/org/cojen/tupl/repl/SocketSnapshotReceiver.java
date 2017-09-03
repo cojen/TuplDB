@@ -85,12 +85,10 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         return mLength;
     }
 
-    @Override
     public long prevTerm() {
         return mPrevTerm;
     }
 
-    @Override
     public long term() {
         return mTerm;
     }

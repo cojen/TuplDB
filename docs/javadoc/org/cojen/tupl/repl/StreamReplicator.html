@@ -199,24 +199,22 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </td>
 </tr>
 <tr id="i7" class="rowColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#restore-java.util.Map-">restore</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util">Map</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>,<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&gt;&nbsp;options)</code>
+<div class="block">Start by receiving a <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a> from another group member,
+ expected to be called only by newly joined members.</div>
+</td>
+</tr>
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-">snapshotRequestAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#start--">start</a></span>()</code>
 <div class="block">Start accepting replication data, to be called for new or existing replicators.</div>
-</td>
-</tr>
-<tr id="i9" class="rowColor">
-<td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#start-long-long-long-">start</a></span>(long&nbsp;prevTerm,
-     long&nbsp;term,
-     long&nbsp;index)</code>
-<div class="block">Start accepting replication data starting from the given index, which is assumed to be a
- valid commit index.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
@@ -287,26 +285,24 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </dl>
 </li>
 </ul>
-<a name="start-long-long-long-">
+<a name="restore-java.util.Map-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>start</h4>
-<pre>boolean&nbsp;start(long&nbsp;prevTerm,
-              long&nbsp;term,
-              long&nbsp;index)
-       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Start accepting replication data starting from the given index, which is assumed to be a
- valid commit index. This start variant can be used to restore from a <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a>.</div>
+<h4>restore</h4>
+<pre><a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a>&nbsp;restore(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util">Map</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>,<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&gt;&nbsp;options)
+                  throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Start by receiving a <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a> from another group member,
+ expected to be called only by newly joined members.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>prevTerm</code> - the log term immediately before the start index</dd>
-<dd><code>term</code> - the log term at the start index</dd>
-<dd><code>index</code> - index to start reading from</dd>
+<dd><code>options</code> - requested options; can pass null if none</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>false if already started</dd>
+<dd>null if no snapshot could be found and replicator hasn't started</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/ConnectException.html?is-external=true" title="class or interface in java.net">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if already started</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>

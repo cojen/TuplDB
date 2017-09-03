@@ -93,16 +93,15 @@ public interface StreamReplicator extends Replicator {
     boolean start() throws IOException;
 
     /**
-     * Start accepting replication data starting from the given index, which is assumed to be a
-     * valid commit index. This start variant can be used to restore from a {@link
-     * #requestSnapshot snapshot}.
+     * Start by receiving a {@link #requestSnapshot snapshot} from another group member,
+     * expected to be called only by newly joined members.
      *
-     * @param prevTerm the log term immediately before the start index
-     * @param term the log term at the start index
-     * @param index index to start reading from
-     * @return false if already started
+     * @param options requested options; can pass null if none
+     * @return null if no snapshot could be found and replicator hasn't started
+     * @throws ConnectException if a snapshot was found, but requesting it failed
+     * @throws IllegalStateException if already started
      */
-    boolean start(long prevTerm, long term, long index) throws IOException;
+    SnapshotReceiver restore(Map<String, String> options) throws IOException;
 
     /**
      * Returns a new reader which accesses data starting from the given index. The reader

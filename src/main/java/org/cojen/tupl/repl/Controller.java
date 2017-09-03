@@ -206,28 +206,42 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean start() throws IOException {
-        return start(0, 0, 0, false);
+        return start(null);
     }
 
     @Override
-    public boolean start(long prevTerm, long term, long index) throws IOException {
-        return start(prevTerm, term, index, true);
-    }
-
-    private boolean start(long prevTerm, long term, long index, boolean truncateStart)
-        throws IOException
-    {
-        if (index < 0) {
-            throw new IllegalArgumentException("Start index: " + index);
+    public SnapshotReceiver restore(Map<String, String> options) throws IOException {
+        if (mChanMan.isStarted()) {
+            throw new IllegalStateException("Already started");
         }
 
+        SocketSnapshotReceiver receiver = requestSnapshot(options);
+
+        if (receiver == null) {
+            return null;
+        }
+
+        try {
+            start(receiver);
+        } catch (Throwable e) {
+            closeQuietly(null, receiver);
+            throw e;
+        }
+
+        return receiver;
+    }
+
+    private boolean start(SocketSnapshotReceiver receiver) throws IOException {
         if (mChanMan.isStarted()) {
+            if (receiver != null) {
+                throw new IllegalStateException("Already started");
+            }
             return false;
         }
 
-        if (truncateStart) {
-            mStateLog.truncateStart(index);
-            mStateLog.defineTerm(prevTerm, term, index);
+        if (receiver != null) {
+            mStateLog.truncateStart(receiver.index());
+            mStateLog.defineTerm(receiver.prevTerm(), receiver.term(), receiver.index());
         }
 
         mChanMan.start(this);
@@ -358,7 +372,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public SnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
+    public SocketSnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
         acquireShared();
         Channel[] channels = mAllChannels;
         releaseShared();
