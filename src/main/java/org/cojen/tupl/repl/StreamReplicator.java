@@ -82,7 +82,8 @@ public interface StreamReplicator extends Replicator {
 
         return Controller.open(new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
-                               localAddress, listenAddress, seeds, config.mLocalSocket);
+                               localAddress, listenAddress, config.mLocalRole,
+                               seeds, config.mLocalSocket);
     }
 
     /**

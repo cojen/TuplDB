@@ -23,6 +23,7 @@ import java.util.Objects;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -31,6 +32,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * @author Brian S O'Neill
  */
 final class Peer implements Comparable<Peer> {
+    private static final AtomicLongFieldUpdater<Peer> cGroupVersionUpdater =
+        AtomicLongFieldUpdater.newUpdater(Peer.class, "mGroupVersion");
+
     private static final AtomicReferenceFieldUpdater<Peer, SnapshotScore> cSnapshotScoreUpdater =
         AtomicReferenceFieldUpdater.newUpdater(Peer.class, SnapshotScore.class, "mSnapshotScore");
 
@@ -40,6 +44,8 @@ final class Peer implements Comparable<Peer> {
     Role mRole;
 
     long mMatchIndex;
+
+    volatile long mGroupVersion;
 
     private volatile SnapshotScore mSnapshotScore;
 
@@ -58,6 +64,17 @@ final class Peer implements Comparable<Peer> {
         mMemberId = memberId;
         mAddress = addr;
         mRole = role;
+    }
+
+    long updateGroupVersion(final long groupVersion) {
+        while (true) {
+            long currentVersion = mGroupVersion;
+            if (groupVersion <= currentVersion ||
+                cGroupVersionUpdater.compareAndSet(this, currentVersion, groupVersion))
+            {
+                return currentVersion;
+            }
+        }
     }
 
     void resetSnapshotScore(SnapshotScore score) {

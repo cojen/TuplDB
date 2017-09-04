@@ -91,6 +91,7 @@ public class StreamReplicatorTest {
 
             if (i > 0) {
                 mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
+                mConfigs[i].localRole(Role.OBSERVER);
             }
 
             StreamReplicator repl = StreamReplicator.open(mConfigs[i]);
