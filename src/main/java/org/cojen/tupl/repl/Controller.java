@@ -60,7 +60,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int JOIN_TIMEOUT_MILLIS = 2000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
 
-    private static final byte CONTROL_OP_JOIN = 1;
+    private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2;
 
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
@@ -68,7 +68,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private GroupFile mGroupFile;
 
-    private int mLocalMode;
+    // Local role as desired, which might not initially match what the GroupFile says.
+    private Role mLocalRole;
 
     // Normal and standby members are required to participate in consensus.
     private Peer[] mConsensusPeers;
@@ -78,6 +79,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Reference to leader's reply channel, only used for accessing the peer object.
     private Channel mLeaderReplyChannel;
+    private Channel mLeaderRequestChannel;
+
+    private int mLocalMode;
 
     private long mCurrentTerm;
     private long mVotedFor;
@@ -102,12 +106,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     static Controller open(StateLog log, long groupToken, File groupFile,
                            SocketAddress localAddress, SocketAddress listenAddress,
-                           Set<SocketAddress> seeds, ServerSocket localSocket)
+                           Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
         GroupFile gf = GroupFile.open(groupFile, localAddress, seeds.isEmpty());
         Controller con = new Controller(log, groupToken, gf);
-        con.init(groupFile, localAddress, listenAddress, seeds, localSocket);
+        con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         return con;
     }
 
@@ -123,11 +127,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     private void init(File groupFile,
                       SocketAddress localAddress, SocketAddress listenAddress,
-                      Set<SocketAddress> seeds, ServerSocket localSocket)
+                      Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
         acquireExclusive();
         try {
+            mLocalRole = localRole;
+
             if (mGroupFile == null) {
                 // Need to join the group.
 
@@ -141,11 +147,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 mGroupFile = joiner.mGroupFile;
                 mChanMan.setGroupId(mGroupFile.groupId());
-
-                // FIXME: Stash log index and term info from joiner.
-
-                // FIXME: Must request updated group file after receiving snapshot. For this
-                // reason, the index from the joiner isn't required.
             }
 
             long localMemberId = mGroupFile.localMemberId();
@@ -202,6 +203,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (mLeaderReplWriter != null) {
             mLeaderReplWriter.update(mLeaderLogWriter, mAllChannels, consensusChannels.isEmpty());
         }
+
+        if (mLocalMode != MODE_FOLLOWER && mGroupFile.localMemberRole() != Role.NORMAL) {
+            // Step down as leader or candidate.
+            toFollower();
+        }
     }
 
     @Override
@@ -250,6 +256,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         scheduleMissingDataTask();
 
         mChanMan.joinAcceptor(this::requestJoin);
+
+        // If a receiver was provided or if the local role should change, schedule a task to
+        // perform the work. If just a receiver was provided, the task must run to at least
+        // verify that the group file version is up-to-date. This is necessary because the
+        // snapshot start index might be too high and can cause membership control messages to
+        // get skipped.
+
+        if (receiver != null) {
+            // FIXME: Break into separate tasks. If a receiver was provided, first sync the
+            // group. When finished, check the role and update it.
+        }
+
+        acquireShared();
+        boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
+        releaseShared();
+
+        if (roleChange) {
+            mScheduler.execute(this::roleChangeTask);
+        }
 
         return true;
     }
@@ -300,7 +325,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return null;
             }
             ReplWriter writer = new ReplWriter
-                (mLeaderLogWriter, mAllChannels, mConsensusChannels.length == 0);
+                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0);
             mLeaderReplWriter = writer;
             return writer;
         } finally {
@@ -346,7 +371,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void controlMessageReceived(long index, byte[] message) {
-        if (message[0] == CONTROL_OP_JOIN) {
+        switch (message[0]) {
+        case CONTROL_OP_JOIN:
             acquireExclusive();
             try {
                 Peer peer;
@@ -363,6 +389,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } finally {
                 releaseExclusive();
             }
+            break;
+        case CONTROL_OP_UPDATE_ROLE:
+            acquireExclusive();
+            try {
+                boolean success;
+                try {
+                    success = mGroupFile.applyUpdateRole(message);
+                } catch (IOException e) {
+                    uncaught(e);
+                    return;
+                }
+
+                if (success) {
+                    refreshPeerSet();
+                }
+            } finally {
+                releaseExclusive();
+            }
+            break;
         }
     }
 
@@ -719,6 +764,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             mLeaderReplyChannel = null;
+            mLeaderRequestChannel = null;
 
             if (mGroupFile.localMemberRole() != Role.NORMAL) {
                 // Only NORMAL members can become candidates.
@@ -928,6 +974,74 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             .equals(((InetSocketAddress) socketAddr).getAddress());
     }
 
+    private void roleChangeTask() {
+        System.out.println("roleChangeTask");
+
+        acquireShared();
+        Role desiredRole = mLocalRole;
+        if (desiredRole == mGroupFile.localMemberRole()) {
+            releaseShared();
+            return;
+        }
+        System.out.println("desiredRole: " + desiredRole + ", " + mGroupFile.localMemberRole());
+        long groupVersion = mGroupFile.version();
+        long localMemberId = mGroupFile.localMemberId();
+        releaseShared();
+
+        Channel requestChannel = leaderRequestChannel();
+
+        if (requestChannel != null) {
+            requestChannel.updateRole(this, groupVersion, localMemberId, desiredRole);
+        }
+
+        // Check again later.
+        mScheduler.schedule(this::roleChangeTask, ELECTION_DELAY_LOW_MILLIS);
+    }
+
+    /**
+     * @return this Controller instance if local member is the leader, or non-null if the
+     * leader is remote, or null if the group has no leader
+     */
+    private Channel leaderRequestChannel() {
+        Channel requestChannel;
+        Channel replyChannel;
+
+        acquireShared();
+        boolean exclusive = false;
+
+        while (true) {
+            if (mLocalMode == MODE_LEADER) {
+                release(exclusive);
+                return this;
+            }
+            requestChannel = mLeaderRequestChannel;
+            if (requestChannel != null || (replyChannel = mLeaderReplyChannel) == null) {
+                release(exclusive);
+                return requestChannel;
+            }
+            if (tryUpgrade()) {
+                break;
+            }
+            releaseShared();
+            acquireExclusive();
+            exclusive = true;
+        }
+
+        // Find the request channel to the leader.
+
+        Peer leader = replyChannel.peer();
+
+        for (Channel channel : mAllChannels) {
+            if (leader.equals(channel.peer())) {
+                mLeaderRequestChannel = requestChannel = channel;
+                break;
+            }
+        }
+
+        releaseExclusive();
+
+        return requestChannel;
+    }
 
     @Override
     public boolean nop(Channel from) {
@@ -1326,6 +1440,126 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         synchronized (from) {
             from.peer().snapshotScoreReply(activeSessions, weight);
         }
+        return true;
+    }
+
+    @Override
+    public boolean updateRole(Channel from, long groupVersion, long memberId, Role role) {
+        Consumer<byte[]> acceptor;
+        byte[] message = null;
+        byte result;
+
+        acquireShared();
+        tryUpdateRole: try {
+            final long givenVersion = groupVersion;
+            groupVersion = mGroupFile.version();
+
+            acceptor = mControlMessageAcceptor;
+
+            if (acceptor == null) {
+                result = ErrorCodes.NO_ACCEPTOR;
+                break tryUpdateRole;
+            }
+
+            if (mLocalMode != MODE_LEADER) {
+                // Only the leader can update the role.
+                result = ErrorCodes.NOT_LEADER;
+                break tryUpdateRole;
+            }
+
+            if (givenVersion != groupVersion) {
+                result = ErrorCodes.VERSION_MISMATCH;
+                break tryUpdateRole;
+            }
+
+            Peer key = new Peer(memberId);
+            Peer peer = mGroupFile.allPeers().ceiling(key); // findGe
+
+            if (peer == null || peer.mMemberId != memberId) {
+                // Member doesn't exist.
+                // FIXME: Permit leader to change itself.
+                result = ErrorCodes.UNKNOWN_MEMBER;
+                break tryUpdateRole;
+            }
+
+            if (peer.mRole == role) {
+                // Role already matches.
+                result = ErrorCodes.SUCCESS;
+                break tryUpdateRole;
+            }
+
+            message = mGroupFile.proposeUpdateRole(CONTROL_OP_UPDATE_ROLE, memberId, role);
+
+            if (peer.mRole == Role.OBSERVER || role == Role.OBSERVER) {
+                // When changing the consensus, restrict to one change at a time (by the
+                // majority). Ensure that all consensus peers are caught up.
+
+                int count = 0;
+                for (Peer cp : mConsensusPeers) {
+                    if (cp.mGroupVersion == groupVersion) {
+                        count++;
+                    }
+                }
+
+                if (count < ((mConsensusPeers.length + 1) >> 1)) {
+                    // Majority of versions don't match.
+                    message = null;
+                    result = ErrorCodes.NO_CONSENSUS;
+
+                    // FIXME: Can speed things up if followers inform the leader very early of
+                    // their current group version, and if they inform the leader again
+                    // whenever it changes.
+
+                    // Request updated versions. Caller must retry.
+                    for (Channel channel : mConsensusChannels) {
+                        channel.groupVersion(this, groupVersion);
+                    }
+
+                    break tryUpdateRole;
+                }
+            }
+
+            result = 0;
+        } finally {
+            releaseShared();
+        }
+
+        if (message != null) {
+            acceptor.accept(message);
+        }
+
+        from.updateRoleReply(null, groupVersion, memberId, result);
+
+        return true;
+    }
+
+    @Override
+    public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
+        System.out.println("updateRoleReply: " + from + ", " + groupVersion + ", " +
+                           memberId + ", " + result);
+
+        // FIXME: Log error if UNKNOWN_OPERATION, NO_ACCEPTOR, UNKNOWN_OPERATION, or
+        // UNCONNECTED_MEMBER. Log warning if VERSION_MISMATCH, NO_CONSENSUS, NO_LEADER or
+        // NOT_LEADER.
+
+        // FIXME: If version mismatch schedule a task to sync the group file, but only if the
+        // version truly doesn't match.
+
+        return true;
+    }
+
+    @Override
+    public boolean groupVersion(Channel from, long groupVersion) {
+        // Note: If peer group version is higher than local version, can probably resync local
+        // group file right away.
+        from.peer().updateGroupVersion(groupVersion);
+        from.groupVersionReply(null, mGroupFile.version());
+        return true;
+    }
+
+    @Override
+    public boolean groupVersionReply(Channel from, long groupVersion) {
+        from.peer().updateGroupVersion(groupVersion);
         return true;
     }
 }

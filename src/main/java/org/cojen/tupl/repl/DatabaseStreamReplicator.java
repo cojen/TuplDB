@@ -118,6 +118,9 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {
             try {
+                // FIXME: Revise this. Accessor holds commit lock and then calls controlReceived
+                // itself. Update javadocs for ReplicationManager. The Accessor.control method
+                // returns void, to prevent misuse.
                 control(accessor.control(message), message);
             } catch (IOException e) {
                 // Drop it.

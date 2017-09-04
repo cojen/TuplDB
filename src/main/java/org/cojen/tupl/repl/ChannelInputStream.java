@@ -52,6 +52,14 @@ final class ChannelInputStream extends InputStream {
         return cReadAmountUpdater.getAndSet(this, 0);
     }
 
+    byte readByte() throws IOException {
+        int b = read();
+        if (b < 0) {
+            throw new EOFException();
+        }
+        return (byte) b;
+    }
+
     int readIntLE() throws IOException {
         fillBuffer(4);
         int pos = mPos;

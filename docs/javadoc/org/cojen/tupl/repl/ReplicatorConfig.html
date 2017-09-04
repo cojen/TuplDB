@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -212,6 +212,13 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <div class="block">Set the local member socket port, for accepting connections on any address.</div>
 </td>
 </tr>
+<tr id="i9" class="rowColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html#localRole-org.cojen.tupl.repl.Role-">localRole</a></span>(<a href="../../../../org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a>&nbsp;role)</code>
+<div class="block">Set the desired local member role, which is <a href="../../../../org/cojen/tupl/repl/Role.html#NORMAL"><code>normal</code></a> by default, and
+ for the primoridal group member.</div>
+</td>
+</tr>
 </table>
 <ul class="blockList">
 <li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
@@ -343,6 +350,23 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if address is null</dd>
+</dl>
+</li>
+</ul>
+<a name="localRole-org.cojen.tupl.repl.Role-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>localRole</h4>
+<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;localRole(<a href="../../../../org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a>&nbsp;role)</pre>
+<div class="block">Set the desired local member role, which is <a href="../../../../org/cojen/tupl/repl/Role.html#NORMAL"><code>normal</code></a> by default, and
+ for the primoridal group member. Members can join an existing group only by consensus,
+ which implies that the group has a leader. All joining members start out as <a href="../../../../org/cojen/tupl/repl/Role.html#OBSERVER"><code>observers</code></a>, and then the role is updated after the replicator has
+ started. Role changes also require consensus.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if role is null</dd>
 </dl>
 </li>
 </ul>

@@ -90,7 +90,9 @@ final class ChannelManager {
         OP_QUERY_TERMS    = 4,  OP_QUERY_TERMS_REPLY    = 5,
         OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
         OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
-        OP_SNAPSHOT_SCORE = 10, OP_SNAPSHOT_SCORE_REPLY = 11;
+        OP_SNAPSHOT_SCORE = 10, OP_SNAPSHOT_SCORE_REPLY = 11,
+        OP_UPDATE_ROLE    = 12, OP_UPDATE_ROLE_REPLY    = 13,
+        OP_GROUP_VERSION  = 14, OP_GROUP_VERSION_REPLY  = 15;
 
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -826,6 +828,24 @@ final class ChannelManager {
                                                        Float.intBitsToFloat(in.readIntLE()));
                         commandLength -= (4 * 2);
                         break;
+                    case OP_UPDATE_ROLE:
+                        localServer.updateRole(this, in.readLongLE(), in.readLongLE(),
+                                               Role.decode(in.readByte()));
+                        commandLength -= (8 * 2 + 1);
+                        break;
+                    case OP_UPDATE_ROLE_REPLY:
+                        localServer.updateRoleReply(this, in.readLongLE(), in.readLongLE(),
+                                                    in.readByte());
+                        commandLength -= (8 * 2 + 1);
+                        break;
+                    case OP_GROUP_VERSION:
+                        localServer.groupVersion(this, in.readLongLE());
+                        commandLength -= (8 * 1);
+                        break;
+                    case OP_GROUP_VERSION_REPLY:
+                        localServer.groupVersionReply(this, in.readLongLE());
+                        commandLength -= (8 * 1);
+                        break;
                     default:
                         System.out.println("unknown op: " + op);
                         break;
@@ -996,6 +1016,28 @@ final class ChannelManager {
             }
         }
 
+        @Override
+        public boolean updateRole(Channel from, long groupVersion, long memberId, Role role) {
+            return writeCommand(OP_UPDATE_ROLE, groupVersion, memberId, role.mCode);
+        }
+
+        @Override
+        public boolean updateRoleReply(Channel from,
+                                       long groupVersion, long memberId, byte result)
+        {
+            return writeCommand(OP_UPDATE_ROLE_REPLY, groupVersion, memberId, result);
+        }
+
+        @Override
+        public boolean groupVersion(Channel from, long groupVersion) {
+            return writeCommand(OP_GROUP_VERSION, groupVersion);
+        }
+
+        @Override
+        public boolean groupVersionReply(Channel from, long groupVersion) {
+            return writeCommand(OP_GROUP_VERSION_REPLY, groupVersion);
+        }
+
         private boolean writeCommand(int op) {
             acquireExclusive();
             try {
@@ -1035,6 +1077,23 @@ final class ChannelManager {
                 prepareCommand(command, op, 0, 8 * 2);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
+                return writeCommand(command, 0, command.length);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a, long b, byte c) {
+            acquireExclusive();
+            try {
+                if (mOut == null) {
+                    return false;
+                }
+                byte[] command = new byte[8 + 8 * 2 + 1];
+                prepareCommand(command, op, 0, 8 * 2 + 1);
+                encodeLongLE(command, 8, a);
+                encodeLongLE(command, 16, b);
+                command[24] = c;
                 return writeCommand(command, 0, command.length);
             } finally {
                 releaseExclusive();

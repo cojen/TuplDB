@@ -45,10 +45,12 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     SocketAddress mLocalAddress;
     SocketAddress mListenAddress;
     ServerSocket mLocalSocket;
+    Role mLocalRole;
     Set<SocketAddress> mSeeds;
 
     public ReplicatorConfig() {
         createFilePath(true);
+        localRole(Role.NORMAL);
     }
 
     /**
@@ -156,6 +158,23 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             }
         }
 
+        return this;
+    }
+
+    /**
+     * Set the desired local member role, which is {@link Role#NORMAL normal} by default, and
+     * for the primoridal group member. Members can join an existing group only by consensus,
+     * which implies that the group has a leader. All joining members start out as {@link
+     * Role#OBSERVER observers}, and then the role is updated after the replicator has
+     * started. Role changes also require consensus.
+     *
+     * @throws IllegalArgumentException if role is null
+     */
+    public ReplicatorConfig localRole(Role role) {
+        if (role == null) {
+            throw new IllegalArgumentException();
+        }
+        mLocalRole = role;
         return this;
     }
 

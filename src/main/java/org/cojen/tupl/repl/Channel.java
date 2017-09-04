@@ -124,4 +124,30 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean snapshotScoreReply(Channel from, int activeSessions, float weight);
+
+    /**
+     * Only the leader can update the member role.
+     *
+     * @return false if not sent or processed
+     */
+    boolean updateRole(Channel from, long groupVersion, long memberId, Role role);
+
+    /**
+     * @param result see ErrorCodes
+     * @return false if not sent or processed
+     */
+    boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result);
+
+    /**
+     * Request the current group file version.
+     *
+     * @param groupVersion requestor group version, which can be ignored
+     * @return false if not sent or processed
+     */
+    boolean groupVersion(Channel from, long groupVersion);
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean groupVersionReply(Channel from, long groupVersion);
 }
