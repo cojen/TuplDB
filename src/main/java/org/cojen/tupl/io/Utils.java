@@ -614,6 +614,25 @@ public class Utils {
     }
 
     /**
+     * Closes a resource without throwing another exception.
+     *
+     * @param resource can be null
+     */
+    public static void closeQuietly(Closeable resource) {
+        closeQuietly(null, resource);
+    }
+
+    /**
+     * Closes a resource without throwing another exception.
+     *
+     * @param resource can be null
+     * @param cause passed to resource if it implements {@link CauseCloseable}
+     */
+    public static void closeQuietly(Closeable resource, Throwable cause) {
+        closeQuietly(null, resource, cause);
+    }
+
+    /**
      * Closes a resource without throwing another exception. If closing a chain of resources,
      * pass in the first caught exception, and all others are discarded.
      *

@@ -173,7 +173,7 @@ final class _DurablePageDb extends _PageDb {
             return new StripedPageArray(arrays);
         } catch (Throwable e) {
             for (PageArray pa : arrays) {
-                closeQuietly(null, pa);
+                closeQuietly(pa);
             }
             throw e;
         }
@@ -316,7 +316,7 @@ final class _DurablePageDb extends _PageDb {
             }
         } catch (WrongPageSize e) {
             delete();
-            closeQuietly(null, this);
+            closeQuietly(this);
             throw e;
         } catch (Throwable e) {
             delete();
@@ -742,13 +742,13 @@ final class _DurablePageDb extends _PageDb {
             PageArray pa = openPageArray(pageSize, files, factory, options);
 
             if (!pa.isEmpty()) {
-                closeQuietly(null, pa);
+                closeQuietly(pa);
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
 
             if (pageSize != buffer.length) {
                 if (crypto != null) {
-                    closeQuietly(null, pa);
+                    closeQuietly(pa);
                     throw new CorruptDatabaseException
                         ("Mismatched page size: " + pageSize + " != " + buffer.length);
                 } else {
@@ -761,7 +761,7 @@ final class _DurablePageDb extends _PageDb {
 
             return restoreFromSnapshot(cache, crypto, in, buffer, pa);
         } finally {
-            closeQuietly(null, in);
+            closeQuietly(in);
         }
     }
 
@@ -775,7 +775,7 @@ final class _DurablePageDb extends _PageDb {
     {
         try {
             if (!pa.isEmpty()) {
-                closeQuietly(null, pa);
+                closeQuietly(pa);
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
 
@@ -792,14 +792,14 @@ final class _DurablePageDb extends _PageDb {
             int pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
 
             if (pageSize != buffer.length) {
-                closeQuietly(null, pa);
+                closeQuietly(pa);
                 throw new CorruptDatabaseException
                     ("Mismatched page size: " + pageSize + " != " + buffer.length);
             }
 
             return restoreFromSnapshot(cache, crypto, in, buffer, pa);
         } finally {
-            closeQuietly(null, in);
+            closeQuietly(in);
         }
     }
 
@@ -818,7 +818,7 @@ final class _DurablePageDb extends _PageDb {
             try {
                 crypto.encryptPage(0, pa.pageSize(), buffer, 0);
             } catch (GeneralSecurityException e) {
-                closeQuietly(null, pa);
+                closeQuietly(pa);
                 throw new DatabaseException(e);
             }
         }
@@ -867,7 +867,7 @@ final class _DurablePageDb extends _PageDb {
             // MappedPageArray) no longer considers itself to be empty.
             pa.sync(true);
         } catch (Throwable e) {
-            closeQuietly(null, pa);
+            closeQuietly(pa);
             throw e;
         } finally {
             p_delete(bufferPage);
