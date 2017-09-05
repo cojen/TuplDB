@@ -237,7 +237,7 @@ final class LocalDatabase extends AbstractDatabase {
             db.finishInit(config);
             return db;
         } catch (Throwable e) {
-            closeQuietly(null, db);
+            closeQuietly(db);
             throw e;
         }
     }
@@ -257,7 +257,7 @@ final class LocalDatabase extends AbstractDatabase {
             db.finishInit(config);
             return db;
         } catch (Throwable e) {
-            closeQuietly(null, db);
+            closeQuietly(db);
             throw e;
         }
     }
@@ -848,7 +848,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
-            closeQuietly(null, this);
+            closeQuietly(this);
             throw e;
         }
     }
@@ -1434,7 +1434,7 @@ final class LocalDatabase extends AbstractDatabase {
                          "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
                          mTrashed.getId(), mTrashed.getNameString(), rootCause(e));
                 }
-                closeQuietly(null, mTrashed);
+                closeQuietly(mTrashed);
                 return;
             }
 
@@ -1638,7 +1638,7 @@ final class LocalDatabase extends AbstractDatabase {
                         checkpoint(true, 0, 0);
                     } catch (Throwable e) {
                         DatabaseException.rethrowIfRecoverable(e);
-                        closeQuietly(null, this, e);
+                        closeQuietly(this, e);
                         throw e;
                     }
                 }
@@ -1905,7 +1905,7 @@ final class LocalDatabase extends AbstractDatabase {
         // shutdown sequence.
 
         if (op == RedoOps.OP_CLOSE) {
-            Utils.closeQuietly(null, redo);
+            Utils.closeQuietly(redo);
         }
     }
 
@@ -1942,7 +1942,7 @@ final class LocalDatabase extends AbstractDatabase {
                 Thread.yield();
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
-                closeQuietly(null, this, e);
+                closeQuietly(this, e);
                 throw e;
             }
         }

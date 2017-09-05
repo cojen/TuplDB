@@ -989,7 +989,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // Should already be receiving again due to this exception.
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
-            closeQuietly(null, mDatabase, e);
+            closeQuietly(mDatabase, e);
         }
     }
 
@@ -1022,7 +1022,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         }
         // Panic.
-        closeQuietly(null, mDatabase, e);
+        closeQuietly(mDatabase, e);
     }
 
     UnmodifiableReplicaException unmodifiable() throws DatabaseException {
