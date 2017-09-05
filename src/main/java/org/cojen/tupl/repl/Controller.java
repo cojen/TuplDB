@@ -756,16 +756,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
 
-            if (mLocalMode == MODE_CANDIDATE) {
-                // Abort current election and start a new one.
-                toFollower();
-            }
-
             if (mElectionValidated >= 0) {
-                // Current leader is still active, so don't start an election yet.
+                // Current leader or candidate is still active, so don't start an election yet.
                 mElectionValidated--;
                 releaseExclusive();
                 return;
+            }
+
+            if (mLocalMode == MODE_CANDIDATE) {
+                // Abort current election and start a new one.
+                toFollower();
             }
 
             mLeaderReplyChannel = null;
@@ -800,6 +800,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             // Only need a majority of vote grants (already voted for self).
             mGrantsRemaining = (peerChannels.length + 1) / 2;
+
+            // Don't give up candidacy too soon.
+            mElectionValidated = 1;
         } catch (Throwable e) {
             releaseExclusive();
             throw e;
@@ -1080,6 +1083,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mVotedFor = candidateId;
                 // Set voteGranted result bit to true.
                 currentTerm |= 1L << 63;
+                // Treat new candidate as active, so don't start a new election too soon.
                 mElectionValidated = 1;
             }
         } finally {
@@ -1300,6 +1304,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 } else if (tryUpgrade()) {
                     mLeaderReplyChannel = from;
                     mElectionValidated = 1;
+                    mVotedFor = 0; // election is over
                     releaseExclusive();
                     break checkTerm;
                 }
@@ -1327,6 +1332,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 mLeaderReplyChannel = from;
                 mElectionValidated = 1;
+                mVotedFor = 0; // election is over
             } finally {
                 releaseExclusive();
             }
