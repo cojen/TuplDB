@@ -571,7 +571,7 @@ final class SnapshotPageArray extends PageArray {
             }
 
             unregister(this);
-            closeQuietly(null, mPageCopyIndex.mDatabase);
+            closeQuietly(mPageCopyIndex.mDatabase);
             mTempFileManager.deleteTempFile(mTempFile);
         }
 
