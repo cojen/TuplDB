@@ -1681,7 +1681,7 @@ final class FileTermLog extends Latch implements TermLog {
                 try {
                     io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
-                    Utils.closeQuietly(null, io);
+                    Utils.closeQuietly(io);
                     throw e;
                 }
                 mFileIO = io;

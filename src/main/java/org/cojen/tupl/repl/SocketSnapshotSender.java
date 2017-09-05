@@ -51,13 +51,13 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         try {
             dec = new OptionsDecoder(socket.getInputStream());
         } catch (EOFException e) {
-            Utils.closeQuietly(e, socket);
+            Utils.closeQuietly(socket);
             throw new IOException("Disconnected");
         }
 
         int encoding = dec.decodeIntLE();
         if (encoding != 0) {
-            Utils.closeQuietly(null, socket);
+            Utils.closeQuietly(socket);
             throw new IOException("Unknown encoding: " + encoding);
         }
 
@@ -102,7 +102,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
 
             return this;
         } catch (Throwable e) {
-            Utils.closeQuietly(null, this);
+            Utils.closeQuietly(this);
             throw e;
         }
     }

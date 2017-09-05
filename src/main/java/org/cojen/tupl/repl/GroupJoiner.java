@@ -154,7 +154,7 @@ class GroupJoiner {
                         }
                     }
                 } catch (IOException e) {
-                    Utils.closeQuietly(e, channel);
+                    Utils.closeQuietly(channel);
                     expected--;
                 }
             }
@@ -211,23 +211,23 @@ class GroupJoiner {
             }
         }
 
-        Utils.closeQuietly(null, s);
+        Utils.closeQuietly(s);
 
         return addr;
     }
 
     private void close() {
-        Utils.closeQuietly(null, mSelector);
+        Utils.closeQuietly(mSelector);
         mSelector = null;
 
         if (mSeedChannels != null) {
             for (SocketChannel channel : mSeedChannels) {
-                Utils.closeQuietly(null, channel);
+                Utils.closeQuietly(channel);
             }
             mSeedChannels = null;
         }
 
-        Utils.closeQuietly(null, mLeaderChannel);
+        Utils.closeQuietly(mLeaderChannel);
         mLeaderChannel = null;
     }
 }

@@ -160,7 +160,7 @@ final class ChannelManager {
                 ss.setReuseAddress(true);
                 ss.bind(listenAddress);
             } catch (Throwable e) {
-                closeQuietly(null, ss);
+                closeQuietly(ss);
                 throw e;
             }
         }
@@ -236,7 +236,7 @@ final class ChannelManager {
             return false;
         }
 
-        closeQuietly(null, mServerSocket);
+        closeQuietly(mServerSocket);
         mServerSocket = null;
 
         mLocalServer = null;
@@ -372,11 +372,11 @@ final class ChannelManager {
 
             return s;
         } catch (IOException e) {
-            closeQuietly(null, s);
+            closeQuietly(s);
             throw e;
         }
 
-        closeQuietly(null, s);
+        closeQuietly(s);
         return null;
     }
 
@@ -492,7 +492,7 @@ final class ChannelManager {
                     break checkType;
                 }
 
-                closeQuietly(null, s);
+                closeQuietly(s);
                 return;
             }
 
@@ -505,7 +505,7 @@ final class ChannelManager {
                     peer = mPeerSet.ceiling(new Peer(remoteMemberId)); // findGe
                     if (peer == null || peer.mMemberId != remoteMemberId) {
                         // Unknown member.
-                        closeQuietly(null, s);
+                        closeQuietly(s);
                         return;
                     }
                 }
@@ -513,7 +513,7 @@ final class ChannelManager {
                 if (connectionType == TYPE_CONTROL) {
                     if (peer == null) {
                         // Reject anonymous member control connection.
-                        closeQuietly(null, s);
+                        closeQuietly(s);
                         return;
                     }
                     acceptor = server = new ServerChannel(peer, localServer);
@@ -542,11 +542,11 @@ final class ChannelManager {
                     // Closing the ServerChannel also unregisters it.
                     c = (ServerChannel) facceptor;
                 }
-                closeQuietly(null, c);
+                closeQuietly(c);
             });
         } catch (Throwable e) {
-            closeQuietly(null, s);
-            closeQuietly(null, server);
+            closeQuietly(s);
+            closeQuietly(server);
             throw e;
         }
     }
@@ -602,7 +602,7 @@ final class ChannelManager {
             // Ignore and close socket.
         }
 
-        closeQuietly(null, s);
+        closeQuietly(s);
         return null;
     }
 
@@ -673,7 +673,7 @@ final class ChannelManager {
                 mIn = null;
             }
             
-            closeQuietly(null, s);
+            closeQuietly(s);
 
             if (localServer != null) {
                 schedule(this::connect, RECONNECT_DELAY_MILLIS);
@@ -702,14 +702,14 @@ final class ChannelManager {
                 mIn = null;
             }
 
-            closeQuietly(null, s);
+            closeQuietly(s);
         }
 
         /**
          * Close the socket and reconnect if possible. Reconnect will be attempted by inputLoop.
          */
         void closeSocket() {
-            closeQuietly(null, mSocket);
+            closeQuietly(mSocket);
         }
 
         @Override
@@ -724,11 +724,11 @@ final class ChannelManager {
                 out = s.getOutputStream();
                 in = new ChannelInputStream(s.getInputStream(), 8192);
             } catch (Throwable e) {
-                closeQuietly(null, s);
+                closeQuietly(s);
                 return false;
             }
 
-            closeQuietly(null, mSocket);
+            closeQuietly(mSocket);
 
             acquireExclusive();
             mSocket = s;
