@@ -22,6 +22,7 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -422,6 +423,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         Channel[] channels = mAllChannels;
         releaseShared();
 
+        if (channels.length == 0) {
+            // No peers.
+            return null;
+        }
+
         // Snapshots are requested early, so wait for connections to be established.
         waitForConnections(channels);
 
@@ -452,7 +458,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         if (results.isEmpty()) {
-            return null;
+            throw new ConnectException("Unable to obtain a snapshot from a peer (timed out)");
         }
 
         Collections.shuffle(results); // random selection in case of ties
