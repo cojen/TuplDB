@@ -174,7 +174,7 @@ final class _RedoLog extends _RedoWriter {
                     finished = replay(din, visitor, listener);
                     mPosition = din.mPos;
                 } finally {
-                    Utils.closeQuietly(null, in);
+                    Utils.closeQuietly(in);
                 }
 
                 mLogId++;
@@ -245,7 +245,7 @@ final class _RedoLog extends _RedoWriter {
             // Make sure that parent directory durably records the new log file.
             FileIO.dirSync(file);
         } catch (IOException e) {
-            Utils.closeQuietly(null, fout);
+            Utils.closeQuietly(fout);
             file.delete();
             throw new WriteFailureException(e);
         }
@@ -299,7 +299,7 @@ final class _RedoLog extends _RedoWriter {
         }
 
         // Close old file if previous checkpoint aborted.
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
 
         mOldOut = oldOut;
         mOldChannel = oldChannel;
@@ -383,7 +383,7 @@ final class _RedoLog extends _RedoWriter {
     @Override
     void checkpointAborted() {
         if (mNextOut != null) {
-            Utils.closeQuietly(null, mNextOut);
+            Utils.closeQuietly(mNextOut);
             mNextOut = null;
         }
     }
@@ -405,7 +405,7 @@ final class _RedoLog extends _RedoWriter {
             mOldChannel = null;
         }
 
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
         */
     }
 
@@ -417,7 +417,7 @@ final class _RedoLog extends _RedoWriter {
     @Override
     void checkpointFinished() throws IOException {
         mOldChannel = null;
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
         long id = mDeleteLogId;
         for (; id < mNextLogId; id++) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
@@ -536,7 +536,7 @@ final class _RedoLog extends _RedoWriter {
 
     @Override
     public void close() throws IOException {
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
 
         FileChannel channel = mChannel;
         if (channel != null) {
@@ -547,7 +547,7 @@ final class _RedoLog extends _RedoWriter {
             }
         }
 
-        Utils.closeQuietly(null, mOut);
+        Utils.closeQuietly(mOut);
     }
 
     // Caller must hold exclusive latch (replay is exempt)

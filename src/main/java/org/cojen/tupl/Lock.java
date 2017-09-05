@@ -734,7 +734,7 @@ final class Lock {
                 latch.releaseExclusive();
             }
             try {
-                Utils.closeQuietly(null, mOwner.getDatabase(), e);
+                Utils.closeQuietly(mOwner.getDatabase(), e);
             } finally {
                 latch.acquireExclusive();
             }

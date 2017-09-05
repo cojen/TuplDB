@@ -135,7 +135,7 @@ final class Checkpointer implements Runnable {
             if (mState != STATE_CLOSED) {
                 AbstractDatabase db = mDatabaseRef.get();
                 if (db != null) {
-                    Utils.closeQuietly(null, db, e);
+                    Utils.closeQuietly(db, e);
                 }
             }
             close(e);
