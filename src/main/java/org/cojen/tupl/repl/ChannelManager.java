@@ -79,7 +79,8 @@ final class ChannelManager {
     static final int TYPE_CONTROL = 0, TYPE_PLAIN = 1, TYPE_JOIN = 2, TYPE_SNAPSHOT = 3;
 
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
-    private static final int RECONNECT_DELAY_MILLIS = 1000;
+    private static final int MIN_RECONNECT_DELAY_MILLIS = 10;
+    private static final int MAX_RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
     private static final int INIT_HEADER_SIZE = 40;
@@ -634,6 +635,7 @@ final class ChannelManager {
         private Socket mSocket;
         private OutputStream mOut;
         private ChannelInputStream mIn;
+        private int mReconnectDelay;
 
         // 0: not writing;  1: writing;  2+: tagged to be closed due to timeout
         volatile int mWriteState;
@@ -661,6 +663,7 @@ final class ChannelManager {
         void reconnect(InputStream existing) {
             Channel localServer;
             Socket s;
+            int delay;
             synchronized (this) {
                 if (existing != mIn) {
                     // Already reconnected or in progress.
@@ -671,12 +674,14 @@ final class ChannelManager {
                 mSocket = null;
                 mOut = null;
                 mIn = null;
+                delay = Math.max(mReconnectDelay, MIN_RECONNECT_DELAY_MILLIS);
+                mReconnectDelay = Math.min(delay << 1, MAX_RECONNECT_DELAY_MILLIS);
             }
             
             closeQuietly(s);
 
             if (localServer != null) {
-                schedule(this::connect, RECONNECT_DELAY_MILLIS);
+                schedule(this::connect, delay);
             }
         }
 
@@ -734,6 +739,7 @@ final class ChannelManager {
             mSocket = s;
             mOut = out;
             mIn = in;
+            mReconnectDelay = 0;
             releaseExclusive();
 
             execute(this::inputLoop);
