@@ -230,7 +230,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             start(receiver);
         } catch (Throwable e) {
-            closeQuietly(null, receiver);
+            closeQuietly(receiver);
             throw e;
         }
 
@@ -463,7 +463,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             return new SocketSnapshotReceiver(sock, options);
         } catch (IOException e) {
-            closeQuietly(e, sock);
+            closeQuietly(sock);
             throw e;
         }
     }
@@ -486,7 +486,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             try {
                 sender = new Sender(sock);
             } catch (IOException e) {
-                closeQuietly(e, sock);
+                closeQuietly(sock);
                 return;
             }
 
@@ -872,7 +872,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } catch (IOException e) {
             rethrow(e);
         } finally {
-            closeQuietly(null, s);
+            closeQuietly(s);
         }
     }
 
@@ -946,13 +946,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } catch (IOException e) {
                 // Ignore.
             } finally {
-                closeQuietly(null, out);
+                closeQuietly(out);
             }
         });
 
         mScheduler.schedule(() -> {
             if (mGroupFile.discardJoinConsumer(message)) {
-                closeQuietly(null, s);
+                closeQuietly(s);
             }
         }, JOIN_TIMEOUT_MILLIS);
 

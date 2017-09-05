@@ -52,13 +52,13 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         try {
             dec = new OptionsDecoder(socket.getInputStream());
         } catch (EOFException e) {
-            Utils.closeQuietly(e, socket);
+            Utils.closeQuietly(socket);
             throw new IOException("Disconnected");
         }
 
         int encoding = dec.decodeIntLE();
         if (encoding != 0) {
-            Utils.closeQuietly(null, socket);
+            Utils.closeQuietly(socket);
             throw new IOException("Unknown encoding: " + encoding);
         }
 

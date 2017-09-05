@@ -134,7 +134,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             try {
                 sendSnapshot(db, sender);
             } catch (IOException e) {
-                Utils.closeQuietly(e, sender);
+                Utils.closeQuietly(sender);
             }
         });
 
