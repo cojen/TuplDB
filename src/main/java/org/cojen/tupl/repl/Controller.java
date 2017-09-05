@@ -372,43 +372,42 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void controlMessageReceived(long index, byte[] message) {
-        switch (message[0]) {
-        case CONTROL_OP_JOIN:
-            acquireExclusive();
-            try {
-                Peer peer;
-                try {
-                    peer = mGroupFile.applyJoin(index, message);
-                } catch (IOException e) {
-                    uncaught(e);
-                    return;
-                }
+        boolean quickCommit = false;
 
-                if (peer != null) {
-                    refreshPeerSet();
-                }
-            } finally {
-                releaseExclusive();
-            }
-            break;
-        case CONTROL_OP_UPDATE_ROLE:
-            acquireExclusive();
-            try {
-                boolean success;
-                try {
-                    success = mGroupFile.applyUpdateRole(message);
-                } catch (IOException e) {
-                    uncaught(e);
-                    return;
-                }
+        acquireExclusive();
+        try {
+            boolean refresh;
 
-                if (success) {
-                    refreshPeerSet();
-                }
-            } finally {
-                releaseExclusive();
+            switch (message[0]) {
+            default:
+                // Unknown message type.
+                return;
+            case CONTROL_OP_JOIN:
+                refresh = mGroupFile.applyJoin(index, message) != null;
+                break;
+            case CONTROL_OP_UPDATE_ROLE:
+                refresh = mGroupFile.applyUpdateRole(message);
+                break;
             }
-            break;
+
+            if (refresh) {
+                refreshPeerSet();
+
+                if (mLocalMode == MODE_LEADER) {
+                    // Ensure that all replicas see the commit index, allowing them to receive
+                    // and process the control message as soon as possible.
+                    // TODO: Not required when quick commit reply is implemented for everything.
+                    quickCommit = true;
+                }
+            }
+        } catch (IOException e) {
+            uncaught(e);
+        } finally {
+            releaseExclusive();
+        }
+
+        if (quickCommit) {
+            mScheduler.execute(this::affirmLeadership);
         }
     }
 
