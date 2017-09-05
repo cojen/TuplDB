@@ -1437,9 +1437,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean snapshotScoreReply(Channel from, int activeSessions, float weight) {
-        synchronized (from) {
-            from.peer().snapshotScoreReply(activeSessions, weight);
-        }
+        from.peer().snapshotScoreReply(activeSessions, weight);
         return true;
     }
 
