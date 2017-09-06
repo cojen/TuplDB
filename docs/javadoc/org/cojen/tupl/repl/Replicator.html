@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -143,6 +143,12 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.html#getLocalMemberId--">getLocalMemberId</a></span>()</code>&nbsp;</td>
 </tr>
 <tr id="i3" class="rowColor">
+<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.html#getLocalRole--">getLocalRole</a></span>()</code>
+<div class="block">Returns the effective local role, as known by the group.</div>
+</td>
+</tr>
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
@@ -187,6 +193,17 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <li class="blockList">
 <h4>getLocalAddress</h4>
 <pre><a href="http://docs.oracle.com/javase/8/docs/api/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net">SocketAddress</a>&nbsp;getLocalAddress()</pre>
+</li>
+</ul>
+<a name="getLocalRole--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>getLocalRole</h4>
+<pre><a href="../../../../org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a>&nbsp;getLocalRole()</pre>
+<div class="block">Returns the effective local role, as known by the group. Changes to the role don't
+ become effective until proposed by the leader, committed, and then applied.</div>
 </li>
 </ul>
 <a name="connect-java.net.SocketAddress-">

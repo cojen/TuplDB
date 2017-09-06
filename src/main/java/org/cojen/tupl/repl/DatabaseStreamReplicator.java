@@ -66,6 +66,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
+    public Role getLocalRole() {
+        return mRepl.getLocalRole();
+    }
+
+    @Override
     public Socket connect(SocketAddress addr) throws IOException {
         return mRepl.connect(addr);
     }

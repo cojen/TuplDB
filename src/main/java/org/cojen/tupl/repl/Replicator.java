@@ -37,6 +37,12 @@ public interface Replicator extends Closeable {
     SocketAddress getLocalAddress();
 
     /**
+     * Returns the effective local role, as known by the group. Changes to the role don't
+     * become effective until proposed by the leader, committed, and then applied.
+     */
+    Role getLocalRole();
+
+    /**
      * Connect to any replication group member, for any particular use. An {@link
      * #socketAcceptor acceptor} must be installed on the group member being connected to for
      * the connect to succeed.

@@ -361,6 +361,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public Role getLocalRole() {
+        acquireShared();
+        Role role = mGroupFile.localMemberRole();
+        releaseShared();
+        return role;
+    }
+
+    @Override
     public Socket connect(SocketAddress addr) throws IOException {
         return mChanMan.connectPlain(addr);
     }
