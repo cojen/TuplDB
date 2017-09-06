@@ -35,7 +35,17 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
- * 
+ * Low-level replication interface, which recives messages in an uninterrupted stream.
+ * Applications using this interfaces are responsible for encoding messages such that they can
+ * be properly separated. Consider an application which writes these two messages (inside the
+ * quotes): {@code ["hello", "world"]}. The messages might be read back as {@code ["hello",
+ * "world"]}, {@code ["helloworld"]}, {@code ["he", "llowor", "ld"]}, etc.
+ *
+ * <p>For ensuring that messages aren't torn in the middle when a new leader is elected,
+ * messages must be written into the replicator with properly defined boundaries. When writing
+ * {@code ["hello", "world"]}, a leader election can cause the second message to be dropped,
+ * and then only {@code ["hello"]} is read. If {@code ["helloworld"]} was written, no tearing
+ * of the two words can occur. They might both be read or both be dropped, atomically.
  *
  * @author Brian S O'Neill
  */
