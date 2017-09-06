@@ -32,9 +32,11 @@ import java.util.Set;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Configuration options used when {@link StreamReplicator#open opening} a replicator.
+ * Configuration options used when opening a replicator.
  *
  * @author Brian S O'Neill
+ * @see StreamReplicator#open StreamReplicator.open
+ * @see DatabaseReplicator#open DatabaseReplicator.open
  */
 public class ReplicatorConfig implements Cloneable, Serializable {
     private static final long serialVersionUID = 1L;

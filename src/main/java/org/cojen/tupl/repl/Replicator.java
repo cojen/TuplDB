@@ -27,7 +27,7 @@ import java.net.SocketAddress;
 import java.util.function.Consumer;
 
 /**
- * 
+ * Defines common features available to all types of replicators.
  *
  * @author Brian S O'Neill
  */
