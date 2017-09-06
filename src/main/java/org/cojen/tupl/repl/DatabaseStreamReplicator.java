@@ -201,7 +201,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public Writer writer() throws IOException {
+    public ReplicationManager.Writer writer() throws IOException {
         return mDbWriter;
     }
 
@@ -249,7 +249,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         }
     }
 
-    private final class DbWriter implements DatabaseReplicator.Writer {
+    private final class DbWriter implements ReplicationManager.Writer {
         final StreamReplicator.Writer mWriter;
 
         DbWriter(StreamReplicator.Writer writer) {

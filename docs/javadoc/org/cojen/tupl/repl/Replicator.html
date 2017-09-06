@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -48,8 +48,8 @@ var activeTableTab = "activeTableTab";
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/Replicator.html" target="_top">Frames</a></li>
@@ -73,7 +73,7 @@ var activeTableTab = "activeTableTab";
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
@@ -104,7 +104,7 @@ var activeTableTab = "activeTableTab";
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
-<dd><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a>, <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dd>
+<dd><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a>, <a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a>, <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dd>
 </dl>
 <hr>
 <br>
@@ -117,6 +117,39 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<ul class="blockList">
+<li class="blockList"><a name="nested.class.summary">
+<!--   -->
+</a>
+<h3>Nested Class Summary</h3>
+<table class="memberSummary" border="0" cellpadding="3" cellspacing="0" summary="Nested Class Summary table, listing nested classes, and an explanation">
+<caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Interface and Description</th>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></span></code>
+<div class="block">Common interface for accessing replication data, for a given term.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></span></code>
+<div class="block">Common interface for reading from a replicator, for a given term.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></span></code>
+<div class="block">Common interface for writing to a replicator, for a given term.</div>
+</td>
+</tr>
+</table>
+</li>
+</ul>
 <!-- ========== METHOD SUMMARY =========== -->
 <ul class="blockList">
 <li class="blockList"><a name="method.summary">
@@ -154,6 +187,12 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member.</div>
+</td>
+</tr>
+<tr id="i5" class="rowColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/Replicator.html#sync--">sync</a></span>()</code>
+<div class="block">Durably persist all data up to the highest index.</div>
 </td>
 </tr>
 </table>
@@ -228,7 +267,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <a name="socketAcceptor-java.util.function.Consumer-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>socketAcceptor</h4>
 <pre>void&nbsp;socketAcceptor(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="http://docs.oracle.com/javase/8/docs/api/java/net/Socket.html?is-external=true" title="class or interface in java.net">Socket</a>&gt;&nbsp;acceptor)</pre>
@@ -237,6 +276,23 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>acceptor</code> - acceptor to use, or pass null to disable</dd>
+</dl>
+</li>
+</ul>
+<a name="sync--">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>sync</h4>
+<pre>void&nbsp;sync()
+   throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Durably persist all data up to the highest index. The highest term, the highest index,
+ and the commit index are all recovered when reopening the replicator. Incomplete data
+ beyond this is discarded.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -267,8 +323,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/repl/Replicator.html" target="_top">Frames</a></li>
@@ -292,7 +348,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
