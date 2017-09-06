@@ -19,7 +19,6 @@ package org.cojen.tupl.repl;
 
 import java.io.Closeable;
 import java.io.File;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.net.ConnectException;
@@ -32,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 
 import java.util.function.Consumer;
-import java.util.function.LongConsumer;
 
 /**
  * Low-level replication interface, which recives messages in a non-delineated stream.
@@ -47,7 +45,14 @@ import java.util.function.LongConsumer;
  * and then only {@code ["hello"]} is read. If {@code ["helloworld"]} was written, no tearing
  * of the two words can occur. They might both be read or both be dropped, atomically.
  *
+ * <p>StreamReplicators require that a control message {@link #controlMessageAcceptor acceptor}
+ * be installed for supporting group membership changes. Consider using {@link
+ * MessageReplicator} instead, although it has slightly higher overhead. In order for control
+ * messages to be processed, replicas must be actively reading and calling {@link
+ * #controlMessageReceived controlMessageReceived} as necessary.
+ *
  * @author Brian S O'Neill
+ * @see MessageReplicator
  */
 public interface StreamReplicator extends Replicator {
     /**
@@ -160,16 +165,10 @@ public interface StreamReplicator extends Replicator {
     Writer newWriter(long index);
 
     /**
-     * Durably persist all data up to the highest index. The highest term, the highest index,
-     * and the commit index are all recovered when reopening the replicator. Incomplete data
-     * beyond this is discarded.
-     */
-    void sync() throws IOException;
-
-    /**
      * Called to pass along a control message, which was originally provided through an {@link
      * #controlMessageAcceptor acceptor}. Control messages must be passed along in the original
-     * order in which they were created.
+     * order in which they were created. A control message cannot be treated as applied until
+     * after this method returns.
      *
      * @param index log index just after the message
      */
@@ -214,33 +213,7 @@ public interface StreamReplicator extends Replicator {
      */
     void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
 
-    public static interface Accessor extends Closeable {
-        /**
-         * Returns the fixed term being accessed.
-         */
-        long term();
-
-        /**
-         * Returns the fixed index at the start of the term.
-         */
-        long termStartIndex();
-
-        /**
-         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
-         * index is always permitted to retreat, but never lower than the commit index.
-         */
-        long termEndIndex();
-
-        /**
-         * Returns the next log index which will be accessed.
-         */
-        long index();
-
-        @Override
-        void close();
-    }
-
-    public static interface Reader extends Accessor {
+    public static interface Reader extends Replicator.Reader {
         /**
          * Blocks until log messages are available, never reading past a commit index or term.
          *
@@ -260,7 +233,7 @@ public interface StreamReplicator extends Replicator {
         int read(byte[] buf, int offset, int length) throws IOException;
     }
 
-    public static interface Writer extends Accessor {
+    public static interface Writer extends Replicator.Writer {
         /**
          * Write complete messages to the log.
          *
@@ -289,77 +262,5 @@ public interface StreamReplicator extends Replicator {
          * writer is deactivated
          */
         int write(byte[] messages, int offset, int length, long highestIndex) throws IOException;
-
-        /**
-         * Blocks until the commit index reaches the given index.
-         *
-         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-         * @return current commit index, or -1 if deactivated before the index could be
-         * reached, or -2 if timed out
-         */
-        long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
-
-        /**
-         * Blocks until the commit index reaches the end of the term.
-         *
-         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-         * @return current commit index, or -1 if closed before the index could be
-         * reached, or -2 if timed out
-         */
-        default long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
-            long endNanos = nanosTimeout > 0 ? (System.nanoTime() + nanosTimeout) : 0;
-
-            long endIndex = termEndIndex();
-
-            while (true) {
-                long index = waitForCommit(endIndex, nanosTimeout);
-                if (index == -2) {
-                    // Timed out.
-                    return -2;
-                }
-                endIndex = termEndIndex();
-                if (endIndex == Long.MAX_VALUE) {
-                    // Assume closed.
-                    return -1;
-                }
-                if (index == endIndex) {
-                    // End reached.
-                    return index;
-                }
-                // Term ended even lower, so try again.
-                if (nanosTimeout > 0) {
-                    nanosTimeout = Math.max(0, endNanos - System.nanoTime());
-                }
-            }
-        }
-
-        /**
-         * Invokes the given task when the commit index reaches the requested index. The
-         * current commit index is passed to the task, or -1 if the term ended before the index
-         * could be reached. If the task can be run when this method is called, then the
-         * current thread invokes it immediately.
-         */
-        void uponCommit(long index, LongConsumer task);
-
-        /**
-         * Invokes the given task when the commit index reaches the end of the term. The
-         * current commit index is passed to the task, or -1 if if closed. If the task can be
-         * run when this method is called, then the current thread invokes it immediately.
-         */
-        default void uponEndCommit(LongConsumer task) {
-            uponCommit(termEndIndex(), index -> {
-                long endIndex = termEndIndex();
-                if (endIndex == Long.MAX_VALUE) {
-                    // Assume closed.
-                    task.accept(-1);
-                } else if (index == endIndex) {
-                    // End reached.
-                    task.accept(index);
-                } else {
-                    // Term ended even lower, so try again.                        
-                    uponEndCommit(task);
-                }
-            });
-        }
     }
 }
