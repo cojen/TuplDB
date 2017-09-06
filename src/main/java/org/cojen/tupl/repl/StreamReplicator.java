@@ -35,7 +35,7 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 /**
- * Low-level replication interface, which recives messages in an uninterrupted stream.
+ * Low-level replication interface, which recives messages in a non-delineated stream.
  * Applications using this interfaces are responsible for encoding messages such that they can
  * be properly separated. Consider an application which writes these two messages (inside the
  * quotes): {@code ["hello", "world"]}. The messages might be read back as {@code ["hello",
