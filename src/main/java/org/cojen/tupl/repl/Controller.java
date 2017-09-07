@@ -884,15 +884,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestJoin(Socket s) {
         try {
-            doRequestJoin(s);
-        } catch (IOException e) {
-            rethrow(e);
-        } finally {
+            if (doRequestJoin(s)) {
+                return;
+            }
+        } catch (Throwable e) {
             closeQuietly(s);
+            rethrow(e);
         }
+
+        closeQuietly(s);
     }
 
-    private void doRequestJoin(Socket s) throws IOException {
+    private boolean doRequestJoin(Socket s) throws IOException {
         ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
 
         int op = in.read();
@@ -901,14 +904,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (op != GroupJoiner.OP_ADDRESS) {
             System.out.println("unknown op");
-            return;
+            return false;
         }
 
         SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
 
         if (!validateJoinAddress(s, addr)) {
             System.out.println("invalid address");
-            return;
+            return false;
         }
 
         OutputStream out = s.getOutputStream();
@@ -920,14 +923,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (!leader) {
             // FIXME: reply with leader if known (OP_ADDRESS)
             System.out.println("not leader!");
-            return;
+            return false;
         }
 
         Consumer<byte[]> acceptor = mControlMessageAcceptor;
 
         if (acceptor == null) {
             System.out.println("no acceptor");
-            return;
+            return false;
         }
 
         byte[] message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
@@ -973,6 +976,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }, JOIN_TIMEOUT_MILLIS);
 
         acceptor.accept(message);
+        return true;
     }
 
     private boolean validateJoinAddress(Socket s, SocketAddress addr) {

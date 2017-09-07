@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
@@ -162,6 +163,26 @@ public interface StreamReplicator extends DirectReplicator {
          * @throws IllegalStateException if log was deleted (index is too low)
          */
         int read(byte[] buf, int offset, int length) throws IOException;
+
+        /**
+         * Blocks until the buffer is fully read with messages, never reading past a commit
+         * index or term.
+         *
+         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws EOFException if the term end has been reached too soon
+         */
+        default void readFully(byte[] buf, int offset, int length) throws IOException {
+            while (true) {
+                int amt = read(buf, offset, length);
+                if (amt <= 0) {
+                    throw new EOFException();
+                }
+                if ((length -= amt) <= 0) {
+                    break;
+                }
+                offset += amt;
+            }
+        }
     }
 
     public static interface Writer extends DirectReplicator.Writer {

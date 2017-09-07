@@ -35,8 +35,7 @@ public interface MessageReplicator extends DirectReplicator {
      * @throws IllegalArgumentException if misconfigured
      */
     public static MessageReplicator open(ReplicatorConfig config) throws IOException {
-        // FIXME
-        throw null;
+        return new MessageStreamReplicator(StreamReplicator.open(config));
     }
 
     /**
