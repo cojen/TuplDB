@@ -18,8 +18,8 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6};
-var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
+var methods = {"i0":18,"i1":18,"i2":6};
+var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
@@ -123,19 +123,19 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 </a>
 <h3>Method Summary</h3>
 <table class="memberSummary" border="0" cellpadding="3" cellspacing="0" summary="Method Summary table, listing methods, and an explanation">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html#writeMessage-byte:A-">writeMessage</a></span>(byte[]&nbsp;message)</code>
 <div class="block">Write a single message to the log.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html#writeMessage-byte:A-int-int-">writeMessage</a></span>(byte[]&nbsp;message,
             int&nbsp;offset,
             int&nbsp;length)</code>
@@ -186,8 +186,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <ul class="blockList">
 <li class="blockList">
 <h4>writeMessage</h4>
-<pre>boolean&nbsp;writeMessage(byte[]&nbsp;message)
-              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;boolean&nbsp;writeMessage(byte[]&nbsp;message)
+                      throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Write a single message to the log.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -203,10 +203,10 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <ul class="blockList">
 <li class="blockList">
 <h4>writeMessage</h4>
-<pre>boolean&nbsp;writeMessage(byte[]&nbsp;message,
-                     int&nbsp;offset,
-                     int&nbsp;length)
-              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;boolean&nbsp;writeMessage(byte[]&nbsp;message,
+                             int&nbsp;offset,
+                             int&nbsp;length)
+                      throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Write a single message to the log.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -227,7 +227,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
                      int&nbsp;length,
                      boolean&nbsp;finished)
               throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write a single message to the log, as part of an atomic batch.</div>
+<div class="block">Write a single message to the log, as part of an atomic batch. When read back, all
+ messages in the batch are separate from each other.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>finished</code> - pass true for the last message in the batch</dd>

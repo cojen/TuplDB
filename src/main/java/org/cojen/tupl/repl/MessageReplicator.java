@@ -41,18 +41,21 @@ public interface MessageReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if index is lower than the start index
      */
     @Override
     Reader newReader(long index, boolean follow);
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
     Writer newWriter();
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
     Writer newWriter(long index);
@@ -84,17 +87,22 @@ public interface MessageReplicator extends DirectReplicator {
          *
          * @return false only if the writer is deactivated
          */
-        boolean writeMessage(byte[] message) throws IOException;
+        default boolean writeMessage(byte[] message) throws IOException {
+            return writeMessage(message, 0, message.length, true);
+        }
 
         /**
          * Write a single message to the log.
          *
          * @return false only if the writer is deactivated
          */
-        boolean writeMessage(byte[] message, int offset, int length) throws IOException;
+        default boolean writeMessage(byte[] message, int offset, int length) throws IOException {
+            return writeMessage(message, offset, length, true);
+        }
 
         /**
-         * Write a single message to the log, as part of an atomic batch.
+         * Write a single message to the log, as part of an atomic batch. When read back, all
+         * messages in the batch are separate from each other.
          *
          * @param finished pass true for the last message in the batch
          * @return false only if the writer is deactivated

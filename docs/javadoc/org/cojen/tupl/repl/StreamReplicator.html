@@ -291,6 +291,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dd><code>follow</code> - pass true to obtain an active reader, even if local member is the leader</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>reader or possibly null when follow is false</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if index is lower than the start index</dd>
 </dl>
 </li>
 </ul>
@@ -311,6 +313,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dd><code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#newWriter--">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>
 </ul>
@@ -334,6 +338,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  index doesn't match</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>
 </ul>
