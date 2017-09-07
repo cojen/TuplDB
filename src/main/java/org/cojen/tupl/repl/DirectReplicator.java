@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.Closeable;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.net.ConnectException;
@@ -24,6 +26,7 @@ import java.net.ConnectException;
 import java.util.Map;
 
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 /**
  * Replicator interface for applications which directly control the replication data, and are
@@ -116,4 +119,116 @@ public interface DirectReplicator extends Replicator {
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
     Writer newWriter(long index);
+
+    /**
+     * Direct interface for accessing replication data, for a given term.
+     */
+    public static interface Accessor extends Closeable {
+        /**
+         * Returns the fixed term being accessed.
+         */
+        long term();
+
+        /**
+         * Returns the fixed index at the start of the term.
+         */
+        long termStartIndex();
+
+        /**
+         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
+         * index is always permitted to retreat, but never lower than the commit index.
+         */
+        long termEndIndex();
+
+        /**
+         * Returns the next log index which will be accessed.
+         */
+        long index();
+
+        @Override
+        void close();
+    }
+
+    /**
+     * Direct interface for reading from a replicator, for a given term.
+     */
+    public static interface Reader extends Accessor {
+    }
+
+    /**
+     * Direct interface for writing to a replicator, for a given term.
+     */
+    public static interface Writer extends Accessor {
+        /**
+         * Blocks until the commit index reaches the given index.
+         *
+         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @return current commit index, or -1 if deactivated before the index could be
+         * reached, or -2 if timed out
+         */
+        long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
+
+        /**
+         * Blocks until the commit index reaches the end of the term.
+         *
+         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @return current commit index, or -1 if closed before the index could be
+         * reached, or -2 if timed out
+         */
+        default long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
+            long endNanos = nanosTimeout > 0 ? (System.nanoTime() + nanosTimeout) : 0;
+
+            long endIndex = termEndIndex();
+
+            while (true) {
+                long index = waitForCommit(endIndex, nanosTimeout);
+                if (index == -2) {
+                    // Timed out.
+                    return -2;
+                }
+                endIndex = termEndIndex();
+                if (endIndex == Long.MAX_VALUE) {
+                    // Assume closed.
+                    return -1;
+                }
+                if (index == endIndex) {
+                    // End reached.
+                    return index;
+                }
+                // Term ended even lower, so try again.
+                if (nanosTimeout > 0) {
+                    nanosTimeout = Math.max(0, endNanos - System.nanoTime());
+                }
+            }
+        }
+
+        /**
+         * Invokes the given task when the commit index reaches the requested index. The
+         * current commit index is passed to the task, or -1 if the term ended before the index
+         * could be reached. If the task can be run when this method is called, then the
+         * current thread invokes it immediately.
+         */
+        void uponCommit(long index, LongConsumer task);
+
+        /**
+         * Invokes the given task when the commit index reaches the end of the term. The
+         * current commit index is passed to the task, or -1 if if closed. If the task can be
+         * run when this method is called, then the current thread invokes it immediately.
+         */
+        default void uponEndCommit(LongConsumer task) {
+            uponCommit(termEndIndex(), index -> {
+                long endIndex = termEndIndex();
+                if (endIndex == Long.MAX_VALUE) {
+                    // Assume closed.
+                    task.accept(-1);
+                } else if (index == endIndex) {
+                    // End reached.
+                    task.accept(index);
+                } else {
+                    // Term ended even lower, so try again.                        
+                    uponEndCommit(task);
+                }
+            });
+        }
+    }
 }
