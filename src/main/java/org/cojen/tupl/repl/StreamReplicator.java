@@ -141,7 +141,7 @@ public interface StreamReplicator extends DirectReplicator {
      */
     void controlMessageAcceptor(Consumer<byte[]> acceptor);
 
-    public static interface Reader extends Replicator.Reader {
+    public static interface Reader extends DirectReplicator.Reader {
         /**
          * Blocks until log messages are available, never reading past a commit index or term.
          *
@@ -161,7 +161,7 @@ public interface StreamReplicator extends DirectReplicator {
         int read(byte[] buf, int offset, int length) throws IOException;
     }
 
-    public static interface Writer extends Replicator.Writer {
+    public static interface Writer extends DirectReplicator.Writer {
         /**
          * Write complete messages to the log.
          *

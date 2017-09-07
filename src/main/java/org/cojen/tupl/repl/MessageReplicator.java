@@ -57,7 +57,7 @@ public interface MessageReplicator extends DirectReplicator {
     @Override
     Writer newWriter(long index);
 
-    public static interface Reader extends Replicator.Reader {
+    public static interface Reader extends DirectReplicator.Reader {
         /**
          * Blocks until a log message is available, never reading past a commit index or term.
          *
@@ -78,7 +78,7 @@ public interface MessageReplicator extends DirectReplicator {
         int readMessage(byte[] buf, int offset, int length) throws IOException;
     }
 
-    public static interface Writer extends Replicator.Writer {
+    public static interface Writer extends DirectReplicator.Writer {
         /**
          * Write a single message to the log.
          *

@@ -386,7 +386,7 @@
 <dd>
 <div class="block">Closes a resource, which may throw a new exception.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Accessor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>&nbsp;</dd>
@@ -842,6 +842,18 @@
 <dd>
 <div class="block">Replicator interface for applications which directly control the replication data, and are
  also responsible for processing snapshots.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Accessor</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for accessing replication data, for a given term.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for reading from a replicator, for a given term.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for writing to a replicator, for a given term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#dirSync-java.io.File-">dirSync(File)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
@@ -1415,7 +1427,7 @@
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Accessor.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the next log index which will be accessed.</div>
 </dd>
@@ -2404,18 +2416,6 @@
 <dd>
 <div class="block">Defines common features available to all types of replicators.</div>
 </dd>
-<dt><a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator.Accessor</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>
-<div class="block">Common interface for accessing replication data, for a given term.</div>
-</dd>
-<dt><a href="org/cojen/tupl/repl/Replicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>
-<div class="block">Common interface for reading from a replicator, for a given term.</div>
-</dd>
-<dt><a href="org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>
-<div class="block">Common interface for writing to a replicator, for a given term.</div>
-</dd>
 <dt><a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">ReplicatorConfig</span></a> - Class in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
 <div class="block">Configuration options used when opening a replicator.</div>
@@ -2759,15 +2759,15 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Worker.Task.html#Task--">Task()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Accessor.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the fixed term being accessed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Accessor.html#termEndIndex--">termEndIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Accessor.html#termStartIndex--">termStartIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the fixed index at the start of the term.</div>
 </dd>
@@ -3027,11 +3027,11 @@
 <dd>
 <div class="block">Scans through all entries in a view, updating them along the way.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit index reaches the requested index.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
 </dd>
@@ -3250,11 +3250,11 @@ the order they are declared.</div>
 </a>
 <h2 class="title">W</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Writer.html#waitForCommit-long-long-">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForCommit-long-long-">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.Writer.html#waitForEndCommit-long-">waitForEndCommit(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForEndCommit-long-">waitForEndCommit(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
 <div class="block">Blocks until the commit index reaches the end of the term.</div>
 </dd>
