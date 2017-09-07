@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":6};
+var methods = {"i0":18,"i1":6,"i2":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -142,6 +142,15 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
 </td>
 </tr>
+<tr id="i2" class="altColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html#readFully-byte:A-int-int-">readFully</a></span>(byte[]&nbsp;buf,
+         int&nbsp;offset,
+         int&nbsp;length)</code>
+<div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
+ index or term.</div>
+</td>
+</tr>
 </table>
 <ul class="blockList">
 <li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Accessor">
@@ -185,7 +194,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <a name="read-byte:A-int-int-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>read</h4>
 <pre>int&nbsp;read(byte[]&nbsp;buf,
@@ -198,6 +207,26 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="readFully-byte:A-int-int-">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>readFully</h4>
+<pre>default&nbsp;void&nbsp;readFully(byte[]&nbsp;buf,
+                       int&nbsp;offset,
+                       int&nbsp;length)
+                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
+ index or term.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/EOFException.html?is-external=true" title="class or interface in java.io">EOFException</a></code> - if the term end has been reached too soon</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>

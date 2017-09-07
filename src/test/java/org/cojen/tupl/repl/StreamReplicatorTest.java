@@ -308,11 +308,11 @@ public class StreamReplicatorTest {
             if (mMessage == null) {
                 while (true) {
                     byte[] b = new byte[4];
-                    readFully(mSource, b);
+                    FileStateLogTest.readFully(mSource, b);
                     int len = Utils.decodeIntLE(b, 0);
 
                     b = new byte[len & 0x7fffffff];
-                    readFully(mSource, b);
+                    FileStateLogTest.readFully(mSource, b);
 
                     if (len >= 0) {
                         mMessage = b;
