@@ -98,18 +98,21 @@ public interface StreamReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if index is lower than the start index
      */
     @Override
     Reader newReader(long index, boolean follow);
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
     Writer newWriter();
 
     /**
      * {@inheritDoc}
+     * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
     Writer newWriter(long index);
