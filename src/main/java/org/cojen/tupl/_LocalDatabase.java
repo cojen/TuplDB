@@ -910,11 +910,11 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     @Override
                     public long control(byte[] message) throws IOException {
-                        return anyTransactionContext().redoControl(txnRedoWriter(), message);
+                        return writeControlMessage(message);
                     }
                 });
             } catch (Throwable e) {
-                closeQuietly(null, this, e);
+                closeQuietly(this, e);
                 throw e;
             }
 
@@ -923,6 +923,35 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         c.start(initialCheckpoint);
+    }
+
+    private long writeControlMessage(byte[] message) throws IOException {
+        // Commit lock must be held to prevent a checkpoint from starting. If the control
+        // message fails to be applied, panic the database. If the database is kept open after
+        // a failure and then a checkpoint completes, the control message would be dropped.
+        // Normal transactional operations aren't so sensitive, because they have an undo log.
+        CommitLock.Shared shared = mCommitLock.acquireShared();
+        try {
+            _RedoWriter redo = txnRedoWriter();
+            _TransactionContext context = anyTransactionContext();
+            long commitPos = context.redoControl(redo, message);
+
+            // Waiting for confirmation with the shared lock held isn't ideal, but control
+            // messages aren't that frequent.
+            redo.commitSync(context, commitPos);
+
+            try {
+                ((_ReplRedoController) mRedoWriter).mManager.control(commitPos, message);
+            } catch (Throwable e) {
+                // Panic.
+                closeQuietly(this, e);
+                throw e;
+            }
+
+            return commitPos;
+        } finally {
+            shared.release();
+        }
     }
 
     private void applyCachePrimer(DatabaseConfig config) {

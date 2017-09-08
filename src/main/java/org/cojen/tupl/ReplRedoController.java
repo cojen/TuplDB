@@ -29,7 +29,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  */
 /*P*/
 final class ReplRedoController extends ReplRedoWriter {
-    private final ReplicationManager mManager;
+    final ReplicationManager mManager;
 
     private volatile ReplRedoWriter mTxnRedoWriter;
 
