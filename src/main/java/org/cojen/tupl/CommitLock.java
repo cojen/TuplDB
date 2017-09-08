@@ -33,7 +33,9 @@ import org.cojen.tupl.util.Latch;
 
 /**
  * Lock implementation which supports highly concurrent shared requests, but exclusive requests
- * are a little more expensive. Shared lock acquisition is reentrant, but exclusive is not.
+ * are a little more expensive. Shared lock acquisition is reentrant, but exclusive is
+ * not. Shared locks can be upgraded to exclusive, with the shared lock still held. After
+ * releasing an upgrade (releaseExclusive), releaseShared must still be called afterwards.
  *
  * @author Brian S O'Neill
  */
@@ -64,6 +66,12 @@ final class CommitLock implements Lock {
                 lock.releaseShared();
             }
             count--;
+        }
+
+        void addCountTo(LongAdder adder) {
+            if (count > 0) {
+                adder.add(count);
+            }
         }
     }
 
@@ -231,37 +239,49 @@ final class CommitLock implements Lock {
         mExclusiveThread = Thread.currentThread();
 
         try {
-            if (hasSharedLockers()) {
-                // Wait for shared locks to be released.
+            final Shared shared = mShared.get();
 
-                long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
+            // Permit a thread which holds shared locks to acquire the exclusive lock without
+            // deadlock. This works because the full latch is held exclusively.
+            shared.addCountTo(mSharedRelease);
 
-                while (true) {
-                    if (nanosTimeout < 0) {
-                        LockSupport.park(this);
-                    } else {
-                        LockSupport.parkNanos(this, nanosTimeout);
-                    }
+            try {
+                if (hasSharedLockers()) {
+                    // Wait for shared locks to be released.
 
-                    if (Thread.interrupted()) {
-                        throw new InterruptedIOException();
-                    }
+                    long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
 
-                    if (!hasSharedLockers()) {
-                        break;
-                    }
+                    while (true) {
+                        if (nanosTimeout < 0) {
+                            LockSupport.park(this);
+                        } else {
+                            LockSupport.parkNanos(this, nanosTimeout);
+                        }
 
-                    if (nanosTimeout >= 0 &&
-                        (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
-                    {
-                        mExclusiveThread = null;
-                        mFullLatch.releaseExclusive();
-                        return false;
+                        if (Thread.interrupted()) {
+                            throw new InterruptedIOException();
+                        }
+
+                        if (!hasSharedLockers()) {
+                            break;
+                        }
+
+                        if (nanosTimeout >= 0 &&
+                            (nanosTimeout == 0
+                             || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0))
+                        {
+                            mExclusiveThread = null;
+                            mFullLatch.releaseExclusive();
+                            return false;
+                        }
                     }
                 }
+            } finally {
+                // Re-acquire shared locks which were released.
+                shared.addCountTo(mSharedAcquire);
             }
 
-            mShared.get().count++;
+            shared.count++;
             return true;
         } catch (Throwable e) {
             mExclusiveThread = null;
