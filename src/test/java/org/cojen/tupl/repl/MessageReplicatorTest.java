@@ -118,7 +118,7 @@ public class MessageReplicatorTest {
         return mReplicators;
     }
 
-    //@Test
+    @Test
     public void oneMember() throws Exception {
         MessageReplicator[] repls = startGroup(1);
         assertTrue(repls.length == 1);
@@ -198,5 +198,28 @@ public class MessageReplicatorTest {
 
         TestUtils.fastAssertArrayEquals(message, reader.readMessage());
         TestUtils.fastAssertArrayEquals(message, replica.readMessage());
+    }
+
+    @Test
+    public void threeMembers() throws Exception {
+        MessageReplicator[] repls = startGroup(3);
+        assertTrue(repls.length == 3);
+
+        Writer writer = repls[0].newWriter();
+        Reader r0 = repls[0].newReader(0, true);
+        Reader r1 = repls[1].newReader(0, true);
+        Reader r2 = repls[2].newReader(0, true);
+
+        byte[][] messages = {"hello".getBytes(), "world!".getBytes()};
+
+        for (byte[] message : messages) {
+            assertTrue(writer.writeMessage(message));
+            long highIndex = writer.index();
+            assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+
+            TestUtils.fastAssertArrayEquals(message, r0.readMessage());
+            TestUtils.fastAssertArrayEquals(message, r1.readMessage());
+            TestUtils.fastAssertArrayEquals(message, r2.readMessage());
+        }
     }
 }
