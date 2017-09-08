@@ -548,12 +548,12 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#control-byte:A-">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
 <dd>
-<div class="block">Attempt to write a replicated control message, returning the confirmed log position
- just after the message.</div>
+<div class="block">Attempt to write a replicated control message, and then calls <a href="org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-"><code>control</code></a> when confirmed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control(long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
-<div class="block">Called after a control operation has been received by a replica.</div>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>

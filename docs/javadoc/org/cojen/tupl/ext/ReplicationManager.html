@@ -169,7 +169,8 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control</a></span>(long&nbsp;position,
        byte[]&nbsp;message)</code>
-<div class="block">Called after a control operation has been received by a replica.</div>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
@@ -480,8 +481,9 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <pre>default&nbsp;void&nbsp;control(long&nbsp;position,
                      byte[]&nbsp;message)
               throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Called after a control operation has been received by a replica. All replication
- processing and checkpoints are suspended until this method returns.</div>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica. All replication processing and checkpoints are suspended until this method
+ returns. Any exception thrown by this method causes the database to panic and close.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - log position just after the message</dd>

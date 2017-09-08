@@ -876,6 +876,18 @@ final class _TransactionContext extends Latch implements Flushable {
         return redo;
     }
 
+    /**
+     * Only to be called when commit position which was confirmed doesn't have an associated
+     * transaction. Expected to only be used for replication control operations, so it doesn't
+     * need an optimized implementation.
+     */
+    void confirmed(long commitPos) {
+        if (commitPos == -1) {
+            throw new IllegalArgumentException();
+        }
+        mConfirmedPos = Math.max(latchConfirmed(), commitPos);
+    }
+
     void confirmed(long commitPos, long txnId) {
         if (commitPos == -1) {
             throw new IllegalArgumentException();

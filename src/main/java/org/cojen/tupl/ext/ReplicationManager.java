@@ -89,8 +89,12 @@ public interface ReplicationManager extends Closeable {
         Database database();
 
         /**
-         * Attempt to write a replicated control message, returning the confirmed log position
-         * just after the message.
+         * Attempt to write a replicated control message, and then calls {@link
+         * ReplicationManager#control control} when confirmed. Control messages might get
+         * replayed, and so they must be idempotent.
+         *
+         * @return confirmed log position just after the message
+         * @throws UnmodifiableReplicaException if not the leader
          */
         long control(byte[] message) throws IOException;
     }
@@ -227,8 +231,9 @@ public interface ReplicationManager extends Closeable {
     void checkpointed(long position) throws IOException;
 
     /**
-     * Called after a control operation has been received by a replica. All replication
-     * processing and checkpoints are suspended until this method returns.
+     * Called after a control operation has been confirmed by a leader or received by a
+     * replica. All replication processing and checkpoints are suspended until this method
+     * returns. Any exception thrown by this method causes the database to panic and close.
      *
      * @param position log position just after the message
      */
