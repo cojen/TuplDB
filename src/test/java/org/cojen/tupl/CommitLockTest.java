@@ -43,14 +43,9 @@ public class CommitLockTest {
         lock.lock();
         assertTrue(lock.tryLock());
 
-        // Cannot upgrade shared lock to exclusive.
-        LockTest.selfInterrupt(1000);
-        try {
-            lock.acquireExclusive();
-            fail();
-        } catch (InterruptedIOException e) {
-            // Good.
-        }
+        // Shared lock can be upgraded to exclusive.
+        lock.acquireExclusive();
+        lock.releaseExclusive();
 
         // Release all the shared locks.
         lock.unlock();
@@ -59,7 +54,7 @@ public class CommitLockTest {
 
         lock.acquireExclusive();
 
-        // Now can acquire shared.
+        // Can still acquire shared.
         assertTrue(lock.tryLock());
 
         // Exclusive isn't reentrant.
@@ -72,6 +67,38 @@ public class CommitLockTest {
         }
 
         // Release all the locks.
+        lock.releaseExclusive();
+        lock.unlock();
+
+        // Lock shared locally.
+        lock.lock();
+
+        // Upgrade isn't possible when held by another thread.
+        Thread holder = new Thread(() -> {
+            lock.lock();
+            try {
+                while (true) {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                lock.unlock();
+            }
+        });
+
+        TestUtils.startAndWaitUntilBlocked(holder);
+
+        LockTest.selfInterrupt(1000);
+        try {
+            lock.acquireExclusive();
+            fail();
+        } catch (InterruptedIOException e) {
+            // Good.
+        }
+
+        holder.interrupt();
+
+        // Can lock now.
+        lock.acquireExclusive();
         lock.releaseExclusive();
         lock.unlock();
     }
