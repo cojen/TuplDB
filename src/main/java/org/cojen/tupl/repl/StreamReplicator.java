@@ -145,6 +145,14 @@ public interface StreamReplicator extends DirectReplicator {
      */
     void controlMessageAcceptor(Consumer<byte[]> acceptor);
 
+    /**
+     * Interface called by any group member for reading committed messages. Readers don't track
+     * which messages are applied &mdash; applications are responsible for tracking the highest
+     * applied index. When an application restarts, it must open the reader at an appropriate
+     * index.
+     *
+     * @see StreamReplicator#newReader newReader
+     */
     public static interface Reader extends DirectReplicator.Reader {
         /**
          * Blocks until log messages are available, never reading past a commit index or term.
@@ -185,6 +193,12 @@ public interface StreamReplicator extends DirectReplicator {
         }
     }
 
+    /**
+     * Interface called by the group leader for proposing messages. When consensus has been
+     * reached, the messages are committed and become available for all members to read.
+     *
+     * @see StreamReplicator#newWriter newWriter
+     */
     public static interface Writer extends DirectReplicator.Writer {
         /**
          * Write complete messages to the log.

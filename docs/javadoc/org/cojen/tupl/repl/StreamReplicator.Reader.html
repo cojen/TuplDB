@@ -110,6 +110,14 @@ var activeTableTab = "activeTableTab";
 <br>
 <pre>public static interface <span class="typeNameLabel">StreamReplicator.Reader</span>
 extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></pre>
+<div class="block">Interface called by any group member for reading committed messages. Readers don't track
+ which messages are applied &mdash; applications are responsible for tracking the highest
+ applied index. When an application restarts, it must open the reader at an appropriate
+ index.</div>
+<dl>
+<dt><span class="seeLabel">See Also:</span></dt>
+<dd><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-boolean-"><code>newReader</code></a></dd>
+</dl>
 </li>
 </ul>
 </div>

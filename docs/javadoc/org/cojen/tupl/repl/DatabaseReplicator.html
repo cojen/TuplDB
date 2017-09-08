@@ -106,6 +106,9 @@ var activeTableTab = "activeTableTab";
 <br>
 <pre>public interface <span class="typeNameLabel">DatabaseReplicator</span>
 extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>, <a href="../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></pre>
+<div class="block">Implementation of a <a href="../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> for supporting full <a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>Database</code></a>
+ replication. Applications shouldn't interact with a <code>DatabaseReplicator</code> instance
+ directly &mdash; only the database instance is permitted to interact with it.</div>
 </li>
 </ul>
 </div>
@@ -189,7 +192,7 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 <h4>open</h4>
 <pre>static&nbsp;<a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a>&nbsp;open(<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)
                         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Open a replicator instance, creating it if necessary.</div>
+<div class="block">Open a replicator instance, creating it if necessary. Pass the instance to the <a href="../../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.ext.ReplicationManager-"><code>DatabaseConfig</code></a> object before opening the database.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if misconfigured</dd>

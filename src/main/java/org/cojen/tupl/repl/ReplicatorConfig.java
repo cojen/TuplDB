@@ -36,6 +36,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  * @see StreamReplicator#open StreamReplicator.open
+ * @see MessageReplicator#open MessageReplicator.open
  * @see DatabaseReplicator#open DatabaseReplicator.open
  */
 public class ReplicatorConfig implements Cloneable, Serializable {

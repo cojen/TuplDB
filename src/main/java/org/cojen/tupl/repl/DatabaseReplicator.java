@@ -19,16 +19,22 @@ package org.cojen.tupl.repl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.Database;
+import org.cojen.tupl.DatabaseConfig;
+
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
- * 
+ * Implementation of a {@link ReplicationManager} for supporting full {@link Database}
+ * replication. Applications shouldn't interact with a {@code DatabaseReplicator} instance
+ * directly &mdash; only the database instance is permitted to interact with it.
  *
  * @author Brian S O'Neill
  */
 public interface DatabaseReplicator extends Replicator, ReplicationManager {
     /**
-     * Open a replicator instance, creating it if necessary.
+     * Open a replicator instance, creating it if necessary. Pass the instance to the {@link
+     * DatabaseConfig#replicate DatabaseConfig} object before opening the database.
      *
      * @throws IllegalArgumentException if misconfigured
      */
