@@ -583,9 +583,12 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long finishTerm(long endIndex) throws IOException {
+        long commitIndex;
+        List<Delayed> removedTasks;
+
         acquireExclusive();
         try {
-            long commitIndex = actualCommitIndex();
+            commitIndex = actualCommitIndex();
             if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
                 throw new IllegalArgumentException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
@@ -630,19 +633,24 @@ final class FileTermLog extends Latch implements TermLog {
                 }
             }
 
+            removedTasks = new ArrayList<>();
+
             mCommitTasks.removeIf(task -> {
                 if (task.mCounter > endIndex) {
-                    // FIXME: run without exclusive latch held
-                    task.run(WAIT_TERM_END);
+                    removedTasks.add(task);
                     return true;
                 }
                 return false;
             });
-
-            return commitIndex;
         } finally {
             releaseExclusive();
         }
+
+        for (Delayed task : removedTasks) {
+            task.run(WAIT_TERM_END);
+        }
+
+        return commitIndex;
     }
 
     @Override
