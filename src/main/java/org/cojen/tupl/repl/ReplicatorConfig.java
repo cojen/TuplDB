@@ -108,10 +108,16 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Set the local member socket port, for accepting connections on any address.
+     * Set the local member socket port, for accepting connections on any address. Calling this
+     * overrides any explicitly set local address or listen address.
      */
-    public ReplicatorConfig localPort(int port) {
-        return localAddress(new InetSocketAddress(port));
+    public ReplicatorConfig localPort(int port) throws UnknownHostException {
+        if (port <= 0) {
+            throw new IllegalArgumentException();
+        }
+        mLocalAddress = new InetSocketAddress(InetAddress.getLocalHost(), port);
+        mListenAddress = new InetSocketAddress(port);
+        return this;
     }
 
     /**

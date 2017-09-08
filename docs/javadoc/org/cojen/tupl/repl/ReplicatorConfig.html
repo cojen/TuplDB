@@ -323,8 +323,14 @@ implements <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable
 <ul class="blockList">
 <li class="blockList">
 <h4>localPort</h4>
-<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;localPort(int&nbsp;port)</pre>
-<div class="block">Set the local member socket port, for accepting connections on any address.</div>
+<pre>public&nbsp;<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;localPort(int&nbsp;port)
+                           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net">UnknownHostException</a></pre>
+<div class="block">Set the local member socket port, for accepting connections on any address. Calling this
+ overrides any explicitly set local address or listen address.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net">UnknownHostException</a></code></dd>
+</dl>
 </li>
 </ul>
 <a name="localAddress-java.net.SocketAddress-">
