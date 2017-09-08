@@ -25,9 +25,9 @@ import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
- * Implementation of a {@link ReplicationManager} for supporting full {@link Database}
- * replication. Applications shouldn't interact with a {@code DatabaseReplicator} instance
- * directly &mdash; only the database instance is permitted to interact with it.
+ * Implementation of a {@link ReplicationManager} for supporting full {@linkplain Database
+ * database} replication. Applications shouldn't interact with a {@code DatabaseReplicator}
+ * instance directly &mdash; only the database instance is permitted to interact with it.
  *
  * @author Brian S O'Neill
  */
