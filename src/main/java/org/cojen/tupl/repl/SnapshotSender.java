@@ -26,10 +26,12 @@ import java.net.SocketAddress;
 import java.util.Map;
 
 /**
- * 
+ * Sender-side object for controlling the transmission of a database snapshot to a new group
+ * member. A {@code SnapshotSender} is paired with a {@link SnapshotReceiver} on the remote
+ * member which is joining the group.
  *
  * @author Brian S O'Neill
- * @see StreamReplicator#snapshotRequestAcceptor StreamReplicator.snapshotRequestAcceptor
+ * @see DirectReplicator#snapshotRequestAcceptor DirectReplicator.snapshotRequestAcceptor
  * @see SnapshotReceiver
  */
 public interface SnapshotSender extends Closeable {

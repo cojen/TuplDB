@@ -59,6 +59,14 @@ public interface MessageReplicator extends DirectReplicator {
     @Override
     Writer newWriter(long index);
 
+    /**
+     * Interface called by any group member for reading committed messages. Readers don't track
+     * which messages are applied &mdash; applications are responsible for tracking the highest
+     * applied index. When an application restarts, it must open the reader at an appropriate
+     * index.
+     *
+     * @see MessageReplicator#newReader newReader
+     */
     public static interface Reader extends DirectReplicator.Reader {
         /**
          * Blocks until a log message is available, never reading past a commit index or term.
@@ -80,6 +88,12 @@ public interface MessageReplicator extends DirectReplicator {
         int readMessage(byte[] buf, int offset, int length) throws IOException;
     }
 
+    /**
+     * Interface called by the group leader for proposing messages. When consensus has been
+     * reached, the messages are committed and become available for all members to read.
+     *
+     * @see MessageReplicator#newWriter newWriter
+     */
     public static interface Writer extends DirectReplicator.Writer {
         /**
          * Write a single message to the log.

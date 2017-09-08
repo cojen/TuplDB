@@ -106,9 +106,12 @@ var activeTableTab = "activeTableTab";
 <br>
 <pre>public interface <span class="typeNameLabel">SnapshotSender</span>
 extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
+<div class="block">Sender-side object for controlling the transmission of a database snapshot to a new group
+ member. A <code>SnapshotSender</code> is paired with a <a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><code>SnapshotReceiver</code></a> on the remote
+ member which is joining the group.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-"><code>StreamReplicator.snapshotRequestAcceptor</code></a>, 
+<dd><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-"><code>DirectReplicator.snapshotRequestAcceptor</code></a>, 
 <a href="../../../../org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><code>SnapshotReceiver</code></a></dd>
 </dl>
 </li>
