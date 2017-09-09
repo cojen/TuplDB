@@ -354,13 +354,16 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <li class="blockList">
 <h4>controlMessageReceived</h4>
 <pre>void&nbsp;controlMessageReceived(long&nbsp;index,
-                            byte[]&nbsp;message)</pre>
+                            byte[]&nbsp;message)
+                     throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>. Control messages must be passed along in the original
  order in which they were created. A control message cannot be treated as applied until
  after this method returns.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - log index just after the message</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
