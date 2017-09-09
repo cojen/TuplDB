@@ -139,7 +139,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Need to join the group.
 
                 GroupJoiner joiner = new GroupJoiner
-                    (groupFile, mChanMan.getGroupToken(), localAddress);
+                    (groupFile, mChanMan.getGroupToken(), localAddress, listenAddress);
 
                 joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
 
