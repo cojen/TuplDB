@@ -79,10 +79,14 @@ public interface MessageReplicator extends DirectReplicator {
         /**
          * Blocks until a message is available, and then fully or partially copies it into the
          * given buffer. Messages are partially copied only when the given buffer length is too
-         * small. When a message has been fully copied, 0 is returned.
+         * small. When a message has been fully copied, a positive length is returned. A
+         * negative return value indicates the amount of bytes remaining in the message.
+         * Compute the ones' complement (~) to determine the actual amount remaining. If the
+         * amount remaining is 0 (or -1 when not complemented), then the term end has been
+         * reached.
          *
-         * @return the amount of bytes remaining in the message, or EOF (-1) if the term end
-         * has been reached
+         * @return message length if positive, or the amount of bytes remaining in the message
+         * (ones' complement), or EOF (-1) if the term end has been reached
          * @throws IllegalStateException if log was deleted (index is too low)
          */
         int readMessage(byte[] buf, int offset, int length) throws IOException;
