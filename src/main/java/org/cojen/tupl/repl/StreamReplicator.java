@@ -21,6 +21,7 @@ import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
 import java.util.Collections;
@@ -79,6 +80,10 @@ public interface StreamReplicator extends DirectReplicator {
         SocketAddress listenAddress = config.mListenAddress;
         if (listenAddress == null) {
             listenAddress = localAddress;
+            if (listenAddress instanceof InetSocketAddress) {
+                int port = ((InetSocketAddress) listenAddress).getPort();
+                listenAddress = new InetSocketAddress(port);
+            }
         }
 
         Set<SocketAddress> seeds = config.mSeeds;

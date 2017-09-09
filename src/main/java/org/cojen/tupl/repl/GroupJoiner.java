@@ -66,16 +66,19 @@ class GroupJoiner {
 
     /**
      * @param groupFile file to store GroupFile contents
+     * @param listenAddress optional
      */
-    GroupJoiner(File groupFile, long groupToken, SocketAddress localAddress) {
+    GroupJoiner(File groupFile, long groupToken,
+                SocketAddress localAddress, SocketAddress listenAddress)
+    {
         mFile = groupFile;
         mGroupToken = groupToken;
         mLocalAddress = localAddress;
 
         SocketAddress bindAddr = null;
 
-        if (localAddress instanceof InetSocketAddress) {
-            bindAddr = new InetSocketAddress(((InetSocketAddress) localAddress).getAddress(), 0);
+        if (listenAddress instanceof InetSocketAddress) {
+            bindAddr = new InetSocketAddress(((InetSocketAddress) listenAddress).getAddress(), 0);
         }
 
         mBindAddress = bindAddr;

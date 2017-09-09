@@ -139,8 +139,8 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Optionally set the socket address for accepting connections, which can be a wildcard
-     * address.
+     * Optionally restrict the socket address for accepting connections, which can be a
+     * wildcard address.
      *
      * @throws IllegalArgumentException if address is null
      */
