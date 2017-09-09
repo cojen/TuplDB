@@ -141,10 +141,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 GroupJoiner joiner = new GroupJoiner
                     (groupFile, mChanMan.getGroupToken(), localAddress);
 
-                if (!joiner.join(seeds, JOIN_TIMEOUT_MILLIS)) {
-                    // FIXME: better exception
-                    throw new IOException("Unable to join group");
-                }
+                joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
 
                 mGroupFile = joiner.mGroupFile;
                 mChanMan.setGroupId(mGroupFile.groupId());
@@ -893,42 +890,47 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         closeQuietly(s);
     }
 
+    /**
+     * @return false if socket should be closed
+     */
     private boolean doRequestJoin(Socket s) throws IOException {
         ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
 
         int op = in.read();
 
-        // FIXME: never close socket without sending an error code (OP_ERROR + code)
-
         if (op != GroupJoiner.OP_ADDRESS) {
-            System.out.println("unknown op");
-            return false;
+            return joinFailure(s, ErrorCodes.UNKNOWN_OPERATION);
         }
 
         SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
 
         if (!validateJoinAddress(s, addr)) {
-            System.out.println("invalid address");
-            return false;
+            return joinFailure(s, ErrorCodes.INVALID_ADDRESS);
         }
 
         OutputStream out = s.getOutputStream();
 
         acquireShared();
-        boolean leader = mLocalMode == MODE_LEADER;
+        boolean isLeader = mLocalMode == MODE_LEADER;
+        Channel leaderReplyChannel = mLeaderReplyChannel;
         releaseShared();
 
-        if (!leader) {
-            // FIXME: reply with leader if known (OP_ADDRESS)
-            System.out.println("not leader!");
+        if (!isLeader) {
+            Peer leaderPeer;
+            if (leaderReplyChannel == null || (leaderPeer = leaderReplyChannel.peer()) == null) {
+                return joinFailure(s, ErrorCodes.NO_LEADER);
+            }
+            EncodingOutputStream eout = new EncodingOutputStream();
+            eout.write(GroupJoiner.OP_ADDRESS);
+            eout.encodeStr(leaderPeer.mAddress.toString());
+            out.write(eout.toByteArray());
             return false;
         }
 
         Consumer<byte[]> acceptor = mControlMessageAcceptor;
 
         if (acceptor == null) {
-            System.out.println("no acceptor");
-            return false;
+            return joinFailure(s, ErrorCodes.NO_ACCEPTOR);
         }
 
         byte[] message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
@@ -977,7 +979,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    private boolean validateJoinAddress(Socket s, SocketAddress addr) {
+    private static boolean joinFailure(Socket s, byte errorCode) throws IOException {
+        s.getOutputStream().write(new byte[] {GroupJoiner.OP_ERROR, errorCode});
+        return false;
+    }
+
+    private static boolean validateJoinAddress(Socket s, SocketAddress addr) {
         if (!(addr instanceof InetSocketAddress)) {
             return false;
         }
@@ -1555,11 +1562,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
         System.out.println("updateRoleReply: " + from + ", " + groupVersion + ", " +
-                           memberId + ", " + result);
+                           memberId + ", " + ErrorCodes.toString(result));
 
-        // FIXME: Log error if UNKNOWN_OPERATION, NO_ACCEPTOR, UNKNOWN_OPERATION, or
-        // UNCONNECTED_MEMBER. Log warning if VERSION_MISMATCH, NO_CONSENSUS, NO_LEADER or
-        // NOT_LEADER.
+        // FIXME: log or report an event
+        System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
 
         // FIXME: If version mismatch schedule a task to sync the group file, but only if the
         // version truly doesn't match.

@@ -31,7 +31,10 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.cojen.tupl.io.Utils;
 
@@ -81,15 +84,15 @@ class GroupJoiner {
     /**
      * @throws IllegalStateException if already called
      */
-    boolean join(Set<SocketAddress> seeds, int timeoutMillis) throws IOException {
+    void join(Set<SocketAddress> seeds, int timeoutMillis) throws IOException {
         try {
-            return doJoin(seeds, timeoutMillis);
+            doJoin(seeds, timeoutMillis);
         } finally {
             close();
         }
     }
 
-    private boolean doJoin(Set<SocketAddress> seeds, long timeoutMillis) throws IOException {
+    private void doJoin(Set<SocketAddress> seeds, long timeoutMillis) throws IOException {
         if (seeds == null) {
             throw new IllegalArgumentException();
         }
@@ -120,6 +123,9 @@ class GroupJoiner {
         }
 
         int expected = seeds.size();
+
+        Set<String> joinFailureMessages = new TreeSet<>();
+        Set<String> connectFailureMessages = new TreeSet<>();
 
         long end = System.currentTimeMillis() + timeoutMillis;
 
@@ -153,22 +159,58 @@ class GroupJoiner {
                             mLeaderChannel = channel;
                         }
                     }
+                } catch (JoinException e) {
+                    Utils.closeQuietly(channel);
+                    expected--;
+                    joinFailureMessages.add(e.getMessage());
                 } catch (IOException e) {
                     Utils.closeQuietly(channel);
                     expected--;
+                    connectFailureMessages.add(e.toString());
                 }
             }
 
             keys.clear();
 
             if (mGroupFile != null) {
-                return true;
+                return;
             }
 
             timeoutMillis = end - System.currentTimeMillis();
         }
 
-        return false;
+        String fullMessage;
+
+        Set<String> failureMessages = new LinkedHashSet<>();
+        failureMessages.addAll(joinFailureMessages);
+        failureMessages.addAll(connectFailureMessages);
+
+        if (failureMessages.isEmpty()) {
+            fullMessage = "timed out";
+        } else {
+            StringBuilder b = null;
+            Iterator<String> it = failureMessages.iterator();
+
+            while (true) {
+                String message = it.next();
+                if (b == null) {
+                    if (!it.hasNext()) {
+                        fullMessage = message;
+                        break;
+                    }
+                    b = new StringBuilder();
+                } else {
+                    b.append("; ");
+                }
+                b.append(message);
+                if (!it.hasNext()) {
+                    fullMessage = b.toString();
+                    break;
+                }
+            }
+        }
+
+        throw new JoinException(fullMessage);
     }
 
     private void prepareChannel(SocketChannel channel, SocketAddress addr) throws IOException {
@@ -208,6 +250,8 @@ class GroupJoiner {
                     in.drainTo(out);
                 }
                 mGroupFile = GroupFile.open(mFile, mLocalAddress, false);
+            } else if (op == OP_ERROR) {
+                throw new JoinException(ErrorCodes.toString(in.readByte()));
             }
         }
 
