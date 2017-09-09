@@ -204,7 +204,12 @@ final class MessageStreamReplicator implements MessageReplicator {
                 // If the application is also reading, then the message might be observed
                 // twice. This is harmless because control messages are versioned (by the
                 // GroupFile class), and are therefore idempotent.
-                mRepl.controlMessageReceived(ix, message);
+                try {
+                    mRepl.controlMessageReceived(ix, message);
+                } catch (Throwable e) {
+                    Utils.closeQuietly(this);
+                    Utils.uncaught(e);
+                }
             }
         });
     }

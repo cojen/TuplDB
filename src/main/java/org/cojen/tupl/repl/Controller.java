@@ -379,7 +379,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public void controlMessageReceived(long index, byte[] message) {
+    public void controlMessageReceived(long index, byte[] message) throws IOException {
         boolean quickCommit = false;
 
         acquireExclusive();
@@ -408,8 +408,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     quickCommit = true;
                 }
             }
-        } catch (IOException e) {
-            uncaught(e);
         } finally {
             releaseExclusive();
         }

@@ -126,7 +126,7 @@ public interface StreamReplicator extends DirectReplicator {
      *
      * @param index log index just after the message
      */
-    void controlMessageReceived(long index, byte[] message);
+    void controlMessageReceived(long index, byte[] message) throws IOException;
 
     /**
      * Install a callback to be invoked when the replicator needs to send control messages,

@@ -222,7 +222,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public void control(long position, byte[] message) {
+    public void control(long position, byte[] message) throws IOException {
         mRepl.controlMessageReceived(position, message);
     }
 
