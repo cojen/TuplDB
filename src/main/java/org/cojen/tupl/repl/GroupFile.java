@@ -49,6 +49,9 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.function.ObjLongConsumer;
 
+import java.util.zip.Checksum;
+
+import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
@@ -291,10 +294,12 @@ final class GroupFile extends Latch {
     }
 
     /**
-     * Writes the version, the file length, and the file contents to the given stream.
+     * Writes the version, the file length, the file contents, and then a CRC32C to the given
+     * stream.
      */
     public void writeTo(OutputStream out) throws IOException {
         byte[] buf = new byte[1000];
+        Checksum checksum = CRC32C.newInstance();
 
         acquireShared();
         try {
@@ -317,6 +322,7 @@ final class GroupFile extends Latch {
                         throw new IOException("File length changed");
                     }
                     out.write(buf, 0, amt + offset);
+                    checksum.update(buf, 0, amt + offset);
                     length -= amt;
                     if (length <= 0) {
                         if (length < 0) {
@@ -329,17 +335,22 @@ final class GroupFile extends Latch {
             } finally {
                 Utils.closeQuietly(raf);
             }
+
+            Utils.encodeIntLE(buf, 0, (int) checksum.getValue());
+            out.write(buf, 0, 4);
         } finally {
             releaseShared();
         }
     }
 
     /**
-     * Reads the version, the file length, and then the file contents from the given stream. If
-     * the version isn't higher than the current one, no changes are made and false is returned.
+     * Reads the version, the file length, and the file contents, and then a CRC32C from the
+     * given stream. If the version isn't higher than the current one, no changes are made and
+     * false is returned.
      */
     public boolean readFrom(InputStream in) throws IOException {
         byte[] buf = new byte[1000];
+        Checksum checksum = CRC32C.newInstance();
 
         long version, length;
 
@@ -348,6 +359,7 @@ final class GroupFile extends Latch {
             in.read(buf, 0, 16);
             version = Utils.decodeLongLE(buf, 0);
             length = Utils.decodeLongLE(buf, 8);
+            checksum.update(buf, 0, 16);
         } catch (Throwable e) {
             releaseExclusive();
             throw e;
@@ -356,13 +368,15 @@ final class GroupFile extends Latch {
         if (version <= mVersion) {
             releaseExclusive();
 
-            while (length > 0) {
+            length += 4; // skip checksum too
+
+            do {
                 long amt = in.skip(length);
                 if (amt <= 0) {
                     throw new EOFException();
                 }
                 length -= amt;
-            }
+            } while (length > 0);
 
             return false;
         }
@@ -381,10 +395,22 @@ final class GroupFile extends Latch {
                         throw new EOFException();
                     }
                     out.write(buf, 0, amt);
+                    checksum.update(buf, 0, amt);
                     length -= amt;
                 }
 
+                // Read the checksum.
+                int expect = (int) checksum.getValue();
+                in.read(buf, 0, 4);
+                int actual = Utils.decodeIntLE(buf, 0);
+                if (expect != actual) {
+                    throw new IOException("Checksum mismatch: " + expect + " != " + actual);
+                }
+
                 out.getFD().sync();
+            } catch (Throwable e) {
+                newFile.delete();
+                throw e;
             }
 
             swapFiles(oldFile, newFile);
