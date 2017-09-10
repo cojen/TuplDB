@@ -227,6 +227,8 @@ final class MessageStreamReplicator implements MessageReplicator {
         private int mPos;
         private int mEnd;
 
+        private int mRemaining;
+
         MsgReader(StreamReplicator.Reader source) {
             mSource = source;
             mBuffer = new byte[8192];
@@ -259,6 +261,10 @@ final class MessageStreamReplicator implements MessageReplicator {
 
         @Override
         public byte[] readMessage() throws IOException {
+            if (mRemaining != 0) {
+                throw new IllegalStateException("Partial message remains: " + mRemaining);
+            }
+
             try {
                 while (true) {
                     int avail = mEnd - mPos;
@@ -273,25 +279,7 @@ final class MessageStreamReplicator implements MessageReplicator {
 
                     int length = readLength(avail);
                     byte[] message = new byte[length & ~(1 << 31)];
-
-                    avail = mEnd - mPos;
-                    int rem = message.length - avail;
-
-                    if (rem <= 0) {
-                        System.arraycopy(mBuffer, mPos, message, 0, message.length);
-                        mPos += message.length;
-                    } else {
-                        System.arraycopy(mBuffer, mPos, message, 0, avail);
-                        mPos = 0;
-                        mEnd = 0;
-                        if (rem >= mBuffer.length) {
-                            mSource.readFully(message, avail, rem);
-                        } else {
-                            fillBuffer(rem, 0);
-                            System.arraycopy(mBuffer, mPos, message, avail, rem);
-                            mPos += rem;
-                        }
-                    }
+                    decodeMessage(message);
 
                     if (length >= 0) {
                         return message;
@@ -305,10 +293,72 @@ final class MessageStreamReplicator implements MessageReplicator {
             }
         }
 
+        private void decodeMessage(byte[] message) throws IOException {
+            decodeMessage(message, 0, message.length);
+        }
+
+        private void decodeMessage(byte[] message, int offset, int length) throws IOException {
+            int avail = mEnd - mPos;
+            int rem = length - avail;
+
+            if (rem <= 0) {
+                System.arraycopy(mBuffer, mPos, message, offset, length);
+                mPos += length;
+            } else {
+                System.arraycopy(mBuffer, mPos, message, offset, avail);
+                offset += avail;
+                mPos = 0;
+                mEnd = 0;
+                if (rem >= mBuffer.length) {
+                    mSource.readFully(message, offset, rem);
+                } else {
+                    fillBuffer(rem, 0);
+                    System.arraycopy(mBuffer, mPos, message, offset, rem);
+                    mPos += rem;
+                }
+            }
+        }
+
         @Override
         public int readMessage(byte[] buf, int offset, int length) throws IOException {
-            // FIXME
-            throw null;
+            try {
+                int rem = mRemaining;
+
+                if (rem == 0) {
+                    while (true) {
+                        int avail = mEnd - mPos;
+                        if (avail <= 0) {
+                            avail = mSource.read(mBuffer);
+                            if (avail <= 0) {
+                                return -1;
+                            }
+                            mPos = 0;
+                            mEnd = avail;
+                        }
+                        rem = readLength(avail);
+                        if (rem >= 0) {
+                            break;
+                        }
+                        byte[] message = new byte[rem & ~(1 << 31)];
+                        decodeMessage(message);
+                        mRepl.controlMessageReceived(index() - (mEnd - mPos), message);
+                    }
+                }
+
+                if (rem <= length) {
+                    decodeMessage(buf, offset, rem);
+                    mRemaining = 0;
+                    return rem;
+                } else {
+                    decodeMessage(buf, offset, length);
+                    rem -= length;
+                    mRemaining = rem;
+                    return ~rem;
+                }
+            } catch (Throwable e) {
+                Utils.closeQuietly(this);
+                throw e;
+            }
         }
 
         /**
@@ -325,7 +375,7 @@ final class MessageStreamReplicator implements MessageReplicator {
 
             avail--;
 
-            if ((b & ~0x3f) == 0x80) {
+            if ((b & 0xc0) == 0x80) {
                 // Medium-length normal message.
                 if (avail <= 0) {
                     fillBuffer(1, 0);
@@ -454,6 +504,7 @@ final class MessageStreamReplicator implements MessageReplicator {
             } else {
                 buffer[pos++] = (byte) 0xe0;
                 Utils.encodeIntLE(buffer, pos, length);
+                pos += 4;
             }
 
             // Stash this to prevent control messages from finishing batches too soon.
@@ -495,9 +546,8 @@ final class MessageStreamReplicator implements MessageReplicator {
                     offset += avail;
                     length -= avail;
                     mSource.write(buffer, 0, buffer.length, 0);
-                    pos = buffer.length + length;
                     return mSource.write(message, offset, length,
-                                         mFinished ? (index() + pos) : 0) >= pos;
+                                         mFinished ? (index() + length) : 0) >= length;
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);

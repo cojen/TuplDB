@@ -72,6 +72,7 @@ public interface MessageReplicator extends DirectReplicator {
          * Blocks until a log message is available, never reading past a commit index or term.
          *
          * @return complete message or null if the term end has been reached
+         * @throws IllegalStateException if a partially read message remains
          * @throws IllegalStateException if log was deleted (index is too low)
          */
         byte[] readMessage() throws IOException;

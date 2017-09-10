@@ -19,6 +19,9 @@ package org.cojen.tupl.repl;
 
 import java.net.ServerSocket;
 
+import java.util.Arrays;
+import java.util.Random;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -220,6 +223,77 @@ public class MessageReplicatorTest {
             TestUtils.fastAssertArrayEquals(message, r0.readMessage());
             TestUtils.fastAssertArrayEquals(message, r1.readMessage());
             TestUtils.fastAssertArrayEquals(message, r2.readMessage());
+        }
+    }
+
+    @Test
+    public void variableMessageSizes() throws Exception {
+        variableMessageSizes(false);
+    }
+
+    @Test
+    public void variableMessageSizesPartial() throws Exception {
+        variableMessageSizes(true);
+    }
+
+    private void variableMessageSizes(boolean partial) throws Exception {
+        MessageReplicator[] repls = startGroup(3);
+
+        int[] sizes = {
+            0, 1, 10, 100, 127,
+            128, 129, 1000, 8190, 8191, 8192, 8193, 10000, 16383, 16384, 16385, 16510, 16511,
+            16512, 16513, 20000, 100_000
+        };
+
+        final long seed = 9823745;
+        Random rnd = new Random(seed);
+
+        Writer writer = repls[0].newWriter();
+
+        for (int size : sizes) {
+            byte[] message = TestUtils.randomStr(rnd, size);
+            assertTrue(writer.writeMessage(message));
+        }
+
+        long highIndex = writer.index();
+        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+
+        byte[] buf = new byte[1001];
+
+        for (MessageReplicator repl : repls) {
+            rnd = new Random(seed);
+
+            Reader reader = repl.newReader(0, true);
+
+            for (int size : sizes) {
+                byte[] expected = TestUtils.randomStr(rnd, size);
+
+                byte[] actual;
+                if (!partial) {
+                    actual = reader.readMessage();
+                } else {
+                    int result = reader.readMessage(buf, 1, 1000);
+
+                    if (result >= 0) {
+                        actual = Arrays.copyOfRange(buf, 1, 1 + result);
+                    } else {
+                        try {
+                            reader.readMessage();
+                            fail();
+                        } catch (IllegalStateException e) {
+                            // Cannot read next message when partial exists.
+                        }
+                        assertNotEquals(-1, result);
+                        actual = new byte[1000 + ~result];
+                        System.arraycopy(buf, 1, actual, 0, 1000);
+                        reader.readMessage(actual, 1000, ~result);
+                    }
+                }
+
+                TestUtils.fastAssertArrayEquals(expected, actual);
+            }
+
+            reader.close();
         }
     }
 }
