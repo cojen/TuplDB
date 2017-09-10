@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -454,5 +456,70 @@ public class GroupFileTest {
         Set<Peer> allPeers = gf2.allPeers();
         assertEquals(1, allPeers.size());
         assertTrue(allPeers.contains(peer));
+    }
+
+    @Test
+    public void copyFullFileSmall() throws Exception {
+        copyFullFile(false);
+    }
+
+    @Test
+    public void copyFullFileLarge() throws Exception {
+        copyFullFile(true);
+    }
+
+    private void copyFullFile(boolean large) throws Exception {
+        File f = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf = GroupFile.open(f, new InetSocketAddress("localhost", 1001), true);
+        Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
+        Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
+
+        if (large) {
+            for (int i=0; i<200; i++) {
+                gf.addPeer(new InetSocketAddress("localhost", 2000 + i), Role.OBSERVER);
+            }
+        }
+
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        gf.writeTo(bout);
+        byte[] copy = bout.toByteArray();
+
+        if (large) {
+            assertTrue(copy.length > 2000);
+        }
+
+        // Version unchanged.
+        ByteArrayInputStream bin = new ByteArrayInputStream(copy);
+        assertFalse(gf.readFrom(bin));
+        assertTrue(bin.read() < 0);
+
+        // Copy into a new group file object.
+        File f2 = TestUtils.newTempBaseFile(getClass());
+        try (FileOutputStream fout = new FileOutputStream(f2)) {
+            fout.write(copy);
+        }
+
+        GroupFile gf2 = GroupFile.open(f2, new InetSocketAddress("localhost", 1001), false);
+
+        assertEquals(gf.version(), gf2.version());
+
+        // Update the first group file.
+        gf.updateRole(peer2.mMemberId, Role.NORMAL);
+        assertEquals(gf2.version() + 1, gf.version());
+
+        // Write a new copy into the second group file.
+        bout = new ByteArrayOutputStream();
+        gf.writeTo(bout);
+        // Write a bit more which should be ignored.
+        bout.write(99);
+        copy = bout.toByteArray();
+
+        bin = new ByteArrayInputStream(copy);
+        assertTrue(gf2.readFrom(bin));
+        assertEquals(99, bin.read());
+        assertTrue(bin.read() < 0);
+        assertEquals(gf.version(), gf2.version());
+
+        assertEquals(gf.allPeers(), gf2.allPeers());
     }
 }

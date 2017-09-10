@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -26,6 +27,7 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
 import java.io.Reader;
@@ -103,7 +105,14 @@ final class GroupFile extends Latch {
         mLocalMemberAddress = localMemberAddress;
         mPeerSet = new ConcurrentSkipListSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
 
-        if (raf == null) {
+        if (raf != null) {
+            acquireExclusive();
+            try {
+                mGroupId = parseFile(raf);
+            } finally {
+                releaseExclusive();
+            }
+        } else {
             // Create the file.
 
             long groupId;
@@ -118,20 +127,27 @@ final class GroupFile extends Latch {
 
             // Version is bumped to 1 as a side-effect.
             persist();
-
-            return;
         }
+    }
 
-        // Parse the file.
-
+    /**
+     * Caller must hold exclusive latch.
+     *
+     * @return groupId
+     */
+    private long parseFile(RandomAccessFile raf) throws IOException {
         Properties props = new Properties();
         try (Reader r = new BufferedReader(new FileReader(raf.getFD()))) {
             props.load(r);
         }
 
+        NavigableSet<Peer> peerSet =
+            new ConcurrentSkipListSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
+
         long version = 0;
         long groupId = 0;
         long localMemberId = 0;
+        Role localMemberRole = null;
 
         for (Map.Entry e : props.entrySet()) {
             String key = (String) e.getKey();
@@ -182,12 +198,12 @@ final class GroupFile extends Latch {
                 continue;
             }
 
-            if (addr.equals(localMemberAddress)) {
-                if (mLocalMemberRole != null) {
+            if (addr.equals(mLocalMemberAddress)) {
+                if (localMemberRole != null) {
                     throw new IllegalStateException("Duplicate address: " + addr);
                 }
                 localMemberId = memberId;
-                mLocalMemberRole = role;
+                localMemberRole = role;
                 continue;
             }
 
@@ -197,7 +213,7 @@ final class GroupFile extends Latch {
 
             Peer peer = new Peer(memberId, addr, role);
 
-            if (!mPeerSet.add(peer)) {
+            if (!peerSet.add(peer)) {
                 throw new IllegalStateException("Duplicate member identifier: " + memberId);
             }
         }
@@ -210,9 +226,17 @@ final class GroupFile extends Latch {
             throw new IllegalStateException("Group identifier not found");
         }
 
+        if (mGroupId != 0 && groupId != mGroupId) {
+            throw new IllegalStateException
+                ("Group identifier changed: " + mGroupId + " -> " + groupId);
+        }
+
+        mPeerSet = peerSet;
         mVersion = version;
-        mGroupId = groupId;
         mLocalMemberId = localMemberId;
+        mLocalMemberRole = localMemberRole;
+
+        return groupId;
     }
 
     /**
@@ -264,6 +288,124 @@ final class GroupFile extends Latch {
         long version = mVersion;
         releaseShared();
         return version;
+    }
+
+    /**
+     * Writes the version, the file length, and the file contents to the given stream.
+     */
+    public void writeTo(OutputStream out) throws IOException {
+        byte[] buf = new byte[1000];
+
+        acquireShared();
+        try {
+            RandomAccessFile raf = openFile(mFile);
+
+            if (raf == null) {
+                throw new FileNotFoundException(mFile.toString());
+            }
+
+            try {
+                long length = raf.length();
+
+                Utils.encodeLongLE(buf, 0, mVersion);
+                Utils.encodeLongLE(buf, 8, length);
+                int offset = 16;
+
+                while (true) {
+                    int amt = raf.read(buf, offset, buf.length - offset);
+                    if (amt <= 0) {
+                        throw new IOException("File length changed");
+                    }
+                    out.write(buf, 0, amt + offset);
+                    length -= amt;
+                    if (length <= 0) {
+                        if (length < 0) {
+                            throw new IOException("File length changed");
+                        }
+                        break;
+                    }
+                    offset = 0;
+                }
+            } finally {
+                Utils.closeQuietly(raf);
+            }
+        } finally {
+            releaseShared();
+        }
+    }
+
+    /**
+     * Reads the version, the file length, and then the file contents from the given stream. If
+     * the version isn't higher than the current one, no changes are made and false is returned.
+     */
+    public boolean readFrom(InputStream in) throws IOException {
+        byte[] buf = new byte[1000];
+
+        long version, length;
+
+        acquireExclusive();
+        try {
+            in.read(buf, 0, 16);
+            version = Utils.decodeLongLE(buf, 0);
+            length = Utils.decodeLongLE(buf, 8);
+        } catch (Throwable e) {
+            releaseExclusive();
+            throw e;
+        }
+
+        if (version <= mVersion) {
+            releaseExclusive();
+
+            while (length > 0) {
+                long amt = in.skip(length);
+                if (amt <= 0) {
+                    throw new EOFException();
+                }
+                length -= amt;
+            }
+
+            return false;
+        }
+
+        File oldFile;
+
+        try {
+            String path = mFile.getPath();
+            oldFile = new File(path + ".old");
+            File newFile = new File(path + ".new");
+
+            try (FileOutputStream out = new FileOutputStream(newFile)) {
+                while (length > 0) {
+                    int amt = in.read(buf, 0, length < buf.length ? (int) length : buf.length);
+                    if (amt <= 0) {
+                        throw new EOFException();
+                    }
+                    out.write(buf, 0, amt);
+                    length -= amt;
+                }
+
+                out.getFD().sync();
+            }
+
+            swapFiles(oldFile, newFile);
+
+            try {
+                parseFile(new RandomAccessFile(mFile, "r"));
+            } catch (Throwable e) {
+                // No changes have been made. Delete the current file and then attempt to
+                // rename the old file to the current file.
+                mFile.delete();
+                oldFile.renameTo(mFile);
+                throw e;
+            }
+        } finally {
+            releaseExclusive();
+        }
+
+        // No need to check if delete failed.
+        oldFile.delete();
+
+        return true;
     }
 
     /**
@@ -793,6 +935,16 @@ final class GroupFile extends Latch {
             out.getFD().sync();
         }
 
+        swapFiles(oldFile, newFile);
+
+        // No need to check if delete failed.
+        oldFile.delete();
+    }
+
+    /**
+     * Renames current file to the old file, and then renames the new file to the current file.
+     */
+    private void swapFiles(File oldFile, File newFile) throws IOException {
         if (!mFile.renameTo(oldFile) && mFile.exists()) {
             throw new IOException("Unable to rename: " + mFile + " to " + oldFile);
         }
@@ -800,9 +952,6 @@ final class GroupFile extends Latch {
         if (!newFile.renameTo(mFile)) {
             throw new IOException("Unable to rename: " + newFile + " to " + mFile);
         }
-
-        // No need to check if delete failed.
-        oldFile.delete();
     }
 
     private static void writeMember(BufferedWriter w, long memberId, SocketAddress addr, Role role)
