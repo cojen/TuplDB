@@ -48,7 +48,7 @@ public interface Replicator extends Closeable {
      * the connect to succeed.
      *
      * @throws IllegalArgumentException if address is null
-     * @throws ConnectException if not given a member address or of the connect fails
+     * @throws ConnectException if not given a member address or if the connect fails
      */
     Socket connect(SocketAddress addr) throws IOException;
 
