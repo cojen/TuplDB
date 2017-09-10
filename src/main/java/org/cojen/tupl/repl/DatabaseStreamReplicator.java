@@ -25,7 +25,12 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.util.Collections;
+import java.util.Map;
+
 import java.util.function.Consumer;
+
+import java.util.zip.Checksum;
 
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationInterruptedException;
@@ -35,6 +40,7 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.ext.ReplicationManager;
@@ -88,13 +94,33 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public InputStream restoreRequest() throws IOException {
-        // FIXME: more layering required; verify length; CRC options too
-        SnapshotReceiver receiver = mRepl.restore(null);
+        Map<String, String> options = Collections.singletonMap("checksum", "CRC32C");
+        SnapshotReceiver receiver = mRepl.restore(options);
+
         if (receiver == null) {
             return null;
         }
 
-        return receiver.inputStream();
+        InputStream in;
+
+        try {
+            in = receiver.inputStream();
+
+            String checksumOption = receiver.options().get("checksum");
+
+            if (checksumOption != null) {
+                if (checksumOption.equals("CRC32C")) {
+                    in = new CheckedInputStream(in, CRC32C.newInstance(), receiver.length());
+                } else {
+                    throw new IOException("Unknown checksum option: " + checksumOption);
+                }
+            }
+        } catch (Throwable e) {
+            Utils.closeQuietly(receiver);
+            throw e;
+        }
+
+        return in;
     }
 
     @Override
@@ -147,10 +173,23 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
-        try (Snapshot snapshot = db.beginSnapshot()) {
-            // FIXME: options
-            try (OutputStream out = sender.begin(snapshot.length(), snapshot.position(), null)) {
+        Map<String, String> options = null;
+        Checksum checksum = null;
+
+        if ("CRC32C".equals(sender.options().get("checksum"))) {
+            options = Collections.singletonMap("checksum", "CRC32C");
+            checksum = CRC32C.newInstance();
+        }
+
+        try (Snapshot snapshot = db.beginSnapshot();
+             OutputStream out = sender.begin(snapshot.length(), snapshot.position(), options))
+        {
+            if (checksum == null) {
                 snapshot.writeTo(out);
+            } else {
+                CheckedOutputStream cout = new CheckedOutputStream(out, checksum);
+                snapshot.writeTo(cout);
+                cout.writeChecksum();
             }
         }
     }
