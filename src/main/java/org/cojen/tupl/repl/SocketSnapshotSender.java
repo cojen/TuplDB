@@ -37,6 +37,7 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 abstract class SocketSnapshotSender extends OutputStream implements SnapshotSender {
+    private final GroupFile mGroupFile;
     private final Socket mSocket;
     private final OutputStream mOut;
     private final Map<String, String> mOptions;
@@ -46,7 +47,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
 
     private volatile int mSending;
 
-    SocketSnapshotSender(Socket socket) throws IOException {
+    SocketSnapshotSender(GroupFile groupFile, Socket socket) throws IOException {
         OptionsDecoder dec;
         try {
             dec = new OptionsDecoder(socket.getInputStream());
@@ -61,6 +62,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
             throw new IOException("Unknown encoding: " + encoding);
         }
 
+        mGroupFile = groupFile;
         mSocket = socket;
         mOut = socket.getOutputStream();
         mOptions = dec.decodeMap();
@@ -99,6 +101,13 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
             enc.encodeLongLE(index);
             enc.encodeMap(options == null ? Collections.emptyMap() : options);
             enc.writeTo(this);
+
+            // Write the current group file, which should be up-to-date, for the given log
+            // index. The receiver accepts the group file if it's newer than what it already
+            // has, bypassing the normal sequence of control messages. This is fine because a
+            // new leader isn't expected to generate new data (and perform consensus checks)
+            // until all outstanding control messages have been applied.
+            mGroupFile.writeTo(this);
 
             return this;
         } catch (Throwable e) {

@@ -42,7 +42,9 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     private final long mIndex;
     private final Map<String, String> mOptions;
 
-    SocketSnapshotReceiver(Socket socket, Map<String, String> requestOptions) throws IOException {
+    SocketSnapshotReceiver(GroupFile groupFile, Socket socket, Map<String, String> requestOptions)
+        throws IOException
+    {
         OptionsEncoder enc = new OptionsEncoder();
         enc.encodeIntLE(0); // encoding format
         enc.encodeMap(requestOptions == null ? Collections.emptyMap() : requestOptions);
@@ -68,6 +70,8 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         mTerm = dec.decodeLongLE();
         mIndex = dec.decodeLongLE();
         mOptions = dec.decodeMap();
+
+        groupFile.readFrom(socket.getInputStream());
     }
 
     @Override

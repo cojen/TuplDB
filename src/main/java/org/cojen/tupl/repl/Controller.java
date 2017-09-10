@@ -255,17 +255,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         mChanMan.joinAcceptor(this::requestJoin);
 
-        // If a receiver was provided or if the local role should change, schedule a task to
-        // perform the work. If just a receiver was provided, the task must run to at least
-        // verify that the group file version is up-to-date. This is necessary because the
-        // snapshot start index might be too high and can cause membership control messages to
-        // get skipped.
-
-        if (receiver != null) {
-            // FIXME: Break into separate tasks. If a receiver was provided, first sync the
-            // group. When finished, check the role and update it.
-        }
-
         acquireShared();
         boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
         releaseShared();
@@ -469,7 +458,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         Socket sock = mChanMan.connectSnapshot(results.get(0).mChannel.peer().mAddress);
 
         try {
-            return new SocketSnapshotReceiver(sock, options);
+            return new SocketSnapshotReceiver(mGroupFile, sock, options);
         } catch (IOException e) {
             closeQuietly(sock);
             throw e;
@@ -480,7 +469,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
         final class Sender extends SocketSnapshotSender {
             Sender(Socket socket) throws IOException {
-                super(socket);
+                super(mGroupFile, socket);
             }
 
             @Override
