@@ -65,6 +65,15 @@ public class MessageReplicatorTest {
      * @return first is the leader
      */
     private MessageReplicator[] startGroup(int members) throws Exception {
+        return startGroup(members, Role.OBSERVER, true);
+    }
+
+    /**
+     * @return first is the leader
+     */
+    private MessageReplicator[] startGroup(int members, Role replicaRole, boolean waitToJoin)
+        throws Exception
+    {
         if (members < 1) {
             throw new IllegalArgumentException();
         }
@@ -86,7 +95,7 @@ public class MessageReplicatorTest {
 
             if (i > 0) {
                 mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
-                mConfigs[i].localRole(Role.OBSERVER);
+                mConfigs[i].localRole(replicaRole);
             }
 
             MessageReplicator repl = MessageReplicator.open(mConfigs[i]);
@@ -104,13 +113,15 @@ public class MessageReplicatorTest {
                             break readyCheck;
                         }
                         reader.close();
-                    } else {
+                    } else if (waitToJoin) {
                         // Wait to join the group.
                         Reader reader = repl.newReader(0, true);
                         reader.close();
                         if (reader.term() > 0) {
                             break readyCheck;
                         }
+                    } else {
+                        break readyCheck;
                     }
                 }
 
@@ -294,6 +305,42 @@ public class MessageReplicatorTest {
             }
 
             reader.close();
+        }
+    }
+
+    @Test
+    public void largeGroupNoWaitToJoin() throws Exception {
+        final int count = 30;
+
+        MessageReplicator[] repls = startGroup(count, Role.STANDBY, false);
+
+        Writer writer = repls[0].newWriter();
+
+        Reader[] readers = new Reader[count];
+        for (int i=0; i<count; i++) {
+            readers[i] = repls[i].newReader(0, true);
+        }
+
+        for (int q=0; q<20; q++) {
+            byte[] message = ("hello-" + q).getBytes();
+
+            assertTrue(writer.writeMessage(message));
+            long highIndex = writer.index();
+            assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+
+            for (int j=0; j<readers.length; j++) {
+                Reader reader = readers[j];
+
+                byte[] actual;
+                while ((actual = reader.readMessage()) == null) {
+                    // Reader was created at false term of 0. Move to the correct one.
+                    reader.close();
+                    reader = repls[j].newReader(reader.index(), true);
+                    readers[j] = reader;
+                }
+
+                TestUtils.fastAssertArrayEquals(message, actual);
+            }
         }
     }
 }
