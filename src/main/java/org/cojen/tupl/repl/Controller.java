@@ -163,11 +163,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Caller must hold exclusive latch.
     private void refreshPeerSet() {
-        Map<Peer, Channel> currentPeerChannels = new HashMap<>();
+        Map<Long, Channel> currentPeerChannels = new HashMap<>();
 
         if (mAllChannels != null) {
             for (Channel channel : mAllChannels) {
-                currentPeerChannels.put(channel.peer(), channel);
+                currentPeerChannels.put(channel.peer().mMemberId, channel);
             }
         }
 
@@ -176,7 +176,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         List<Channel> allChannels = new ArrayList<>();
 
         for (Peer peer : mGroupFile.allPeers()) {
-            Channel channel = currentPeerChannels.remove(peer);
+            Channel channel = currentPeerChannels.remove(peer.mMemberId);
 
             if (channel == null) {
                 channel = mChanMan.connect(peer, this);
@@ -190,8 +190,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        for (Peer toRemove : currentPeerChannels.keySet()) {
-            mChanMan.disconnect(toRemove.mMemberId);
+        for (long toRemove : currentPeerChannels.keySet()) {
+            mChanMan.disconnect(toRemove);
         }
 
         mConsensusPeers = consensusPeers.toArray(new Peer[0]);
