@@ -744,7 +744,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mLocalMode == MODE_LEADER) {
                 // FIXME: If commit index is lagging behind and not moving, switch to follower.
                 // This isn't in the Raft algorithm, but it really should be.
-                affirmLeadership();
+                doAffirmLeadership();
                 return;
             }
 
@@ -812,8 +812,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
-    // Caller must acquire exclusive latch, which is released by this method.
     private void affirmLeadership() {
+        acquireExclusive();
+        doAffirmLeadership();
+    }
+
+    // Caller must acquire exclusive latch, which is released by this method.
+    private void doAffirmLeadership() {
         Channel[] peerChannels = mAllChannels;
         LogWriter writer = mLeaderLogWriter;
         releaseExclusive();
@@ -1163,7 +1168,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
-        affirmLeadership();
+        doAffirmLeadership();
     }
 
     @Override
@@ -1551,10 +1556,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
         System.out.println("updateRoleReply: " + from + ", " + groupVersion + ", " +
-                           memberId + ", " + ErrorCodes.toString(result));
+                           memberId + ", " + ErrorCodes.toString(result) + ", " +
+                           mGroupFile.version());
 
         // FIXME: log or report an event
-        System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
+        //System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
 
         // FIXME: If version mismatch schedule a task to sync the group file, but only if the
         // version truly doesn't match.
