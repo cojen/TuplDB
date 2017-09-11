@@ -994,15 +994,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void roleChangeTask() {
-        System.out.println("roleChangeTask");
-
         acquireShared();
         Role desiredRole = mLocalRole;
         if (desiredRole == mGroupFile.localMemberRole()) {
             releaseShared();
             return;
         }
-        System.out.println("desiredRole: " + desiredRole + ", " + mGroupFile.localMemberRole());
         long groupVersion = mGroupFile.version();
         long localMemberId = mGroupFile.localMemberId();
         releaseShared();
@@ -1555,9 +1552,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
+        /*
         System.out.println("updateRoleReply: " + from + ", " + groupVersion + ", " +
                            memberId + ", " + ErrorCodes.toString(result) + ", " +
                            mGroupFile.version());
+        */
 
         // FIXME: log or report an event
         //System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
