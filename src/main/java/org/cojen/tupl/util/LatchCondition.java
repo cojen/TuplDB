@@ -56,7 +56,7 @@ public class LatchCondition {
      * by the caller, which is released and then re-acquired by this method.
      *
      * @param latch latch being used by this condition
-     * @param timeout relative time to wait; infinite if &lt;0
+     * @param timeout relative time to wait; infinite if {@literal <0}
      * @param unit timeout unit
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
@@ -77,7 +77,7 @@ public class LatchCondition {
      * by the caller, which is released and then re-acquired by this method.
      *
      * @param latch latch being used by this condition
-     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public final int await(Latch latch, long nanosTimeout) {
@@ -90,8 +90,8 @@ public class LatchCondition {
      * by the caller, which is released and then re-acquired by this method.
      *
      * @param latch latch being used by this condition
-     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-     * @param nanosEnd absolute nanosecond time to wait until; used only with &gt;0 timeout
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public final int await(Latch latch, long nanosTimeout, long nanosEnd) {
@@ -113,8 +113,8 @@ public class LatchCondition {
      * shared waiter.
      *
      * @param latch latch being used by this condition
-     * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
-     * @param nanosEnd absolute nanosecond time to wait until; used only with &gt;0 timeout
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public final int awaitShared(Latch latch, long nanosTimeout, long nanosEnd) {
