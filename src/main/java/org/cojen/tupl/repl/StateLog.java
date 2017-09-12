@@ -131,4 +131,12 @@ interface StateLog extends Closeable {
      * beyond this is discarded.
      */
     void sync() throws IOException;
+
+    /**
+     * Returns immediately if all data up to the given committed index is durable, or else
+     * durably persists all data up to the highest index.
+     *
+     * @param index committed index required to be durable
+     */
+    void syncCommit(long index) throws IOException;
 }
