@@ -171,7 +171,7 @@ public interface DirectReplicator extends Replicator {
         /**
          * Blocks until the commit index reaches the given index.
          *
-         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
          * @return current commit index, or -1 if deactivated before the index could be
          * reached, or -2 if timed out
          */
@@ -180,7 +180,7 @@ public interface DirectReplicator extends Replicator {
         /**
          * Blocks until the commit index reaches the end of the term.
          *
-         * @param nanosTimeout relative nanosecond time to wait; infinite if &lt;0
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
          * @return current commit index, or -1 if closed before the index could be
          * reached, or -2 if timed out
          */
