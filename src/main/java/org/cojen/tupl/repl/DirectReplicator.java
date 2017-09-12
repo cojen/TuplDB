@@ -121,6 +121,14 @@ public interface DirectReplicator extends Replicator {
     Writer newWriter(long index);
 
     /**
+     * Returns immediately if all data up to the given committed index is durable, or else
+     * durably persists all data up to the highest index.
+     *
+     * @param index committed index required to be durable
+     */
+    void syncCommit(long index) throws IOException;
+
+    /**
      * Direct interface for accessing replication data, for a given term.
      */
     public static interface Accessor extends Closeable {
@@ -153,6 +161,7 @@ public interface DirectReplicator extends Replicator {
      * Direct interface for reading from a replicator, for a given term.
      */
     public static interface Reader extends Accessor {
+        // This interface is intentionally empty, as a placeholder.
     }
 
     /**

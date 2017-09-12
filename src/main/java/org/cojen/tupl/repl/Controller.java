@@ -334,6 +334,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public void syncCommit(long index) throws IOException {
+        mStateLog.syncCommit(index);
+    }
+
+    @Override
     public long getLocalMemberId() {
         return mChanMan.getLocalMemberId();
     }

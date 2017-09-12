@@ -87,6 +87,11 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public void syncCommit(long index) throws IOException {
+        mRepl.syncCommit(index);
+    }
+
+    @Override
     public boolean start() throws IOException {
         return mRepl.start();
     }

@@ -105,6 +105,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
     private int mMetadataCounter;
+    private long mMetadataCommitIndex;
 
     private long mStartPrevTerm;
     private long mStartTerm;
@@ -197,6 +198,8 @@ final class FileStateLog extends Latch implements StateLog {
         if (startIndex > commitIndex) {
             throw new IOException("Start index is higher than commit index");
         }
+
+        mMetadataCommitIndex = commitIndex;
 
         mStartPrevTerm = startPrevTerm;
         mStartTerm = startTerm;
@@ -768,6 +771,15 @@ final class FileStateLog extends Latch implements StateLog {
         }
     }
 
+    @Override
+    public void syncCommit(long index) throws IOException {
+        synchronized (mMetadataInfo) {
+            if (index > mMetadataCommitIndex) {
+                doSync();
+            }
+        }
+    }
+
     // Caller must be synchronized on mMetadataInfo.
     private void doSync() throws IOException {
         if (mClosed) {
@@ -835,6 +847,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.force();
 
         mMetadataCounter = counter;
+        mMetadataCommitIndex = mMetadataInfo.mCommitIndex;
     }
 
     @Override
