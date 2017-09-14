@@ -327,6 +327,22 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
+    public long prevTermAt(long index) {
+        acquireShared();
+        try {
+            if (index < mLogStartIndex) {
+                throw new IllegalStateException
+                    ("Index is lower than start: " + index + " < " + mLogStartIndex);
+            }
+            // FIXME: This logic is broken when the start index changes. Need to have a
+            // distinct termStartIndex and logStartIndex.
+            return index == mLogStartIndex ? mLogPrevTerm : mLogTerm;
+        } finally {
+            releaseShared();
+        }
+    }
+
+    @Override
     public void truncateStart(long startIndex) throws IOException {
         if (mSegments.isEmpty()) {
             acquireExclusive();
