@@ -47,14 +47,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      */
     long startIndex();
 
-    default long prevTermAt(long index) {
-        long startIndex = startIndex();
-        if (index < startIndex) {
-            throw new IllegalStateException
-                ("Index is lower than start: " + index + " < " + startIndex);
-        }
-        return index == startIndex ? prevTerm() : term();
-    }
+    long prevTermAt(long index);
 
     /**
      * Attempt to increase the term start index, assumed to be a valid commit index, and
