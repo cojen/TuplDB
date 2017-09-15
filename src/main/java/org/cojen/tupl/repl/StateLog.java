@@ -127,16 +127,20 @@ interface StateLog extends Closeable {
 
     /**
      * Durably persist all data up to the highest index. The highest term, the highest index,
-     * and the commit index are all recovered when reopening the state log. Incomplete data
-     * beyond this is discarded.
+     * and the durable commit index are all recovered when reopening the state log. Incomplete
+     * data beyond this is discarded.
      */
     void sync() throws IOException;
 
     /**
-     * Returns immediately if all data up to the given committed index is durable, or else
-     * durably persists all data up to the highest index.
+     * Durably persist all data up to the given index, unless the term doesn't match. If the
+     * given index is lower than the highest index already known to be persisted, then the log
+     * data doesn't need to be sync'd at all. If the given durable index is higher than what's
+     * known, the metadata file must be updated regardless.
      *
-     * @param index committed index required to be durable
+     * @param index minimum highest committed index to become durable
+     * @param durableIndex highest index (exclusive) which is durable; pass zero if unknown
+     * @return current durable index, or -1 due to term mismatch
      */
-    void syncCommit(long index) throws IOException;
+    long syncCommit(long prevTerm, long term, long index, long durableIndex) throws IOException;
 }
