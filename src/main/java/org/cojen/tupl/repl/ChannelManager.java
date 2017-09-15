@@ -111,6 +111,8 @@ final class ChannelManager {
     private volatile Consumer<Socket> mJoinAcceptor;
     private volatile Consumer<Socket> mSnapshotRequestAcceptor;
 
+    volatile boolean mPartitioned;
+
     ChannelManager(Scheduler scheduler, long groupToken, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
@@ -251,6 +253,20 @@ final class ChannelManager {
         return true;
     }
 
+    /**
+     * Enable or disable partitioned mode, which simulates a network partition. New connections
+     * are rejected and existing connections are closed.
+     */
+    synchronized void partitioned(boolean enable) {
+        mPartitioned = enable;
+
+        if (enable) {
+            for (SocketChannel channel : mChannels) {
+                channel.closeSocket();
+            }
+        }
+    }
+
     private void execute(Runnable task) {
         if (!mScheduler.execute(task)) {
             stop();
@@ -338,6 +354,10 @@ final class ChannelManager {
      * @return null if peer response was malformed
      */
     Socket doConnect(Peer peer, int connectionType) throws IOException {
+        if (mPartitioned) {
+            return null;
+        }
+
         Socket s = new Socket();
 
         doConnect: try {
@@ -460,6 +480,11 @@ final class ChannelManager {
 
     private void doAccept(final ServerSocket ss, final Channel localServer) throws IOException {
         Socket s = ss.accept();
+
+        if (mPartitioned) {
+            closeQuietly(s);
+            return;
+        }
 
         ServerChannel server = null;
 
@@ -632,7 +657,7 @@ final class ChannelManager {
     abstract class SocketChannel extends Latch implements Channel, Closeable, Consumer<Socket> {
         final Peer mPeer;
         private Channel mLocalServer;
-        private Socket mSocket;
+        private volatile Socket mSocket;
         private OutputStream mOut;
         private ChannelInputStream mIn;
         private int mReconnectDelay;
@@ -723,6 +748,11 @@ final class ChannelManager {
         }
 
         synchronized boolean connected(Socket s) {
+            if (mPartitioned) {
+                closeQuietly(s);
+                return false;
+            }
+
             OutputStream out;
             ChannelInputStream in;
             try {

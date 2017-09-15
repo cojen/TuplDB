@@ -270,6 +270,14 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         mRepl.close();
     }
 
+    /**
+     * Enable or disable partitioned mode, which simulates a network partition. New connections
+     * are rejected and existing connections are closed.
+     */
+    void partitioned(boolean enable) {
+        ((Controller) mRepl).partitioned(enable);
+    }
+
     void toReplica(DbWriter expect, long index) {
         if (mDbWriter != expect) {
             throw new IllegalStateException("Mismatched writer: " + mDbWriter + " != " + expect);

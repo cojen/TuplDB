@@ -333,9 +333,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog.sync();
     }
 
+    // FIXME: This method needs revision: https://github.com/cojen/Tupl/issues/78
     @Override
     public void syncCommit(long index) throws IOException {
-        mStateLog.syncCommit(index);
+        mStateLog.sync();
     }
 
     @Override
@@ -618,6 +619,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan.stop();
         mScheduler.shutdown();
         mStateLog.close();
+    }
+
+    /**
+     * Enable or disable partitioned mode, which simulates a network partition. New connections
+     * are rejected and existing connections are closed.
+     */
+    void partitioned(boolean enable) {
+        mChanMan.partitioned(enable);
     }
 
     private static void waitForConnections(Channel[] channels) throws InterruptedIOException {

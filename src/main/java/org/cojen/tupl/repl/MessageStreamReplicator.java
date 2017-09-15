@@ -116,6 +116,14 @@ final class MessageStreamReplicator implements MessageReplicator {
         mRepl.close();
     }
 
+    /**
+     * Enable or disable partitioned mode, which simulates a network partition. New connections
+     * are rejected and existing connections are closed.
+     */
+    void partitioned(boolean enable) {
+        ((Controller) mRepl).partitioned(enable);
+    }
+
     @Override
     public Reader newReader(long index, boolean follow) {
         StreamReplicator.Reader source = mRepl.newReader(index, follow);
