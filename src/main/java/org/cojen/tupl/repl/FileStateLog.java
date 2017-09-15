@@ -71,7 +71,7 @@ final class FileStateLog extends Latch implements StateLog {
       40: Current term (long)
       48: Highest log term (long)
       56: Highest contiguous log index (exclusive) (long)
-      64: Commit log index (exclusive) (long)
+      64: Durable commit log index (exclusive) (long)
       72: CRC32C (int)
 
       Example files with base of "mydata.repl":
@@ -105,7 +105,8 @@ final class FileStateLog extends Latch implements StateLog {
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
     private int mMetadataCounter;
-    private long mMetadataCommitIndex;
+    private long mMetadataHighestIndex;
+    private long mMetadataDurableIndex;
 
     private long mStartPrevTerm;
     private long mStartTerm;
@@ -187,19 +188,27 @@ final class FileStateLog extends Latch implements StateLog {
         long currentTerm = mMetadataBuffer.getLong();
         long highestTerm = mMetadataBuffer.getLong();
         long highestIndex = mMetadataBuffer.getLong();
-        long commitIndex = mMetadataBuffer.getLong();
+        long durableIndex = mMetadataBuffer.getLong();
 
         if (currentTerm < highestTerm) {
             throw new IOException("Current term is lower than highest term");
         }
-        if (highestIndex < commitIndex) {
-            throw new IOException("Highest index is lower than commit index");
+        if (highestIndex < durableIndex) {
+            throw new IOException("Highest index is lower than durable index");
         }
-        if (startIndex > commitIndex) {
-            throw new IOException("Start index is higher than commit index");
+        if (startIndex > durableIndex) {
+            throw new IOException("Start index is higher than durable index");
         }
 
-        mMetadataCommitIndex = commitIndex;
+        // Initialize mMetadataInfo with valid state. Note that the mCommitIndex field isn't
+        // actually used at all when persisting metadata, but initialize it anyhow.
+        mMetadataInfo.mTerm = highestTerm;
+        mMetadataInfo.mHighestIndex = highestIndex;
+        mMetadataInfo.mCommitIndex = durableIndex;
+
+        // Seemingly redundant, these fields are updated after the metadata file is written.
+        mMetadataHighestIndex = highestIndex;
+        mMetadataDurableIndex = durableIndex;
 
         mStartPrevTerm = startPrevTerm;
         mStartTerm = startTerm;
@@ -289,8 +298,8 @@ final class FileStateLog extends Latch implements StateLog {
             truncateStart(mStartIndex);
         }
 
-        if (commitIndex > 0) {
-            commit(commitIndex);
+        if (durableIndex > 0) {
+            commit(durableIndex);
         }
     }
 
@@ -772,11 +781,53 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public void syncCommit(long index) throws IOException {
+    public long syncCommit(long prevTerm, long term, long index, long durableIndex)
+        throws IOException
+    {
         synchronized (mMetadataInfo) {
-            if (index > mMetadataCommitIndex) {
-                doSync();
+            if (mClosed) {
+                return mMetadataDurableIndex;
             }
+
+            long startPrevTerm, startTerm, startIndex;
+
+            acquireShared();
+            try {
+                TermLog highestLog = mHighestTermLog;
+                if (highestLog != null && highestLog == mTermLogs.last()) {
+                    highestLog.captureHighest(mMetadataInfo);
+                } else {
+                    highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
+                }
+
+                if (highestLog == null || term != highestLog.term()
+                    || prevTerm != highestLog.prevTermAt(index))
+                {
+                    return -1;
+                }
+
+                if (index > mMetadataHighestIndex) {
+                    if (index > mMetadataInfo.mHighestIndex) {
+                        throw new IllegalStateException("Sync commit index is too high: " + index
+                                                        + " > " + mMetadataInfo.mHighestIndex);
+                    }
+                    highestLog.sync();
+                }
+
+                startPrevTerm = mStartPrevTerm;
+                startTerm = mStartTerm;
+                startIndex = mStartIndex;
+            } finally {
+                releaseShared();
+            }
+
+            durableIndex = Math.max(durableIndex, mMetadataDurableIndex);
+
+            if (index > mMetadataHighestIndex || durableIndex > mMetadataDurableIndex) {
+                syncMetadata(startPrevTerm, startTerm, startIndex, durableIndex);
+            }
+
+            return durableIndex;
         }
     }
 
@@ -815,6 +866,14 @@ final class FileStateLog extends Latch implements StateLog {
     private void syncMetadata(long startPrevTerm, long startTerm, long startIndex)
         throws IOException
     {
+        syncMetadata(startPrevTerm, startTerm, startIndex, mMetadataDurableIndex);
+    }
+
+    // Caller must be synchronized on mMetadataInfo.
+    private void syncMetadata(long startPrevTerm, long startTerm, long startIndex,
+                              long durableIndex)
+        throws IOException
+    {
         if (mClosed) {
             return;
         }
@@ -835,7 +894,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putLong(mCurrentTerm);
         bb.putLong(mMetadataInfo.mTerm);
         bb.putLong(mMetadataInfo.mHighestIndex);
-        bb.putLong(mMetadataInfo.mCommitIndex);
+        bb.putLong(durableIndex);
 
         bb.position(offset);
         mMetadataCrc.reset();
@@ -846,8 +905,10 @@ final class FileStateLog extends Latch implements StateLog {
 
         bb.force();
 
+        // Update field values only after successful file I/O.
         mMetadataCounter = counter;
-        mMetadataCommitIndex = mMetadataInfo.mCommitIndex;
+        mMetadataHighestIndex = mMetadataInfo.mHighestIndex;
+        mMetadataDurableIndex = durableIndex;
     }
 
     @Override

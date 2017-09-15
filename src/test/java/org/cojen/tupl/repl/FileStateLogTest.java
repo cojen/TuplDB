@@ -551,8 +551,8 @@ public class FileStateLogTest {
 
         // Partially commit and reopen.
         mLog.commit(4000);
-        mLog.sync();
-        mLog.sync();
+        assertEquals(0, mLog.syncCommit(term, term, 4000, 0));
+        assertEquals(4000, mLog.syncCommit(term, term, 4000, 4000));
         mLog.close();
         mLog = new FileStateLog(mBase);
 
@@ -657,7 +657,10 @@ public class FileStateLogTest {
         mLog.captureHighest(info);
         assertEquals(prevTerm, info.mTerm);
         assertEquals(highestIndex, info.mHighestIndex);
-        assertEquals(highestIndex, info.mCommitIndex);
+        // Didn't call syncCommit.
+        assertEquals(0, info.mCommitIndex);
+
+        mLog.commit(highestIndex);
 
         // Verify data.
 

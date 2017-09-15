@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.File;
+
 import java.net.ServerSocket;
 
 import java.util.Arrays;
@@ -58,6 +60,8 @@ public class MessageReplicatorTest {
         TestUtils.deleteTempFiles(getClass());
     }
 
+    private File[] mReplBaseFiles;
+    private int[] mReplPorts;
     private ReplicatorConfig[] mConfigs;
     private MessageReplicator[] mReplicators;
 
@@ -84,12 +88,17 @@ public class MessageReplicatorTest {
             sockets[i] = new ServerSocket(0);
         }
 
+        mReplBaseFiles = new File[members];
+        mReplPorts = new int[members];
         mConfigs = new ReplicatorConfig[members];
         mReplicators = new MessageReplicator[members];
 
         for (int i=0; i<members; i++) {
+            mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
+            mReplPorts[i] = sockets[i].getLocalPort();
+
             mConfigs[i] = new ReplicatorConfig()
-                .baseFile(TestUtils.newTempBaseFile(getClass()))
+                .baseFile(mReplBaseFiles[i])
                 .groupToken(1)
                 .localSocket(sockets[i]);
 
@@ -229,7 +238,7 @@ public class MessageReplicatorTest {
         for (byte[] message : messages) {
             assertTrue(writer.writeMessage(message));
             long highIndex = writer.index();
-            assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+            assertTrue(highIndex <= writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
 
             TestUtils.fastAssertArrayEquals(message, r0.readMessage());
             TestUtils.fastAssertArrayEquals(message, r1.readMessage());
