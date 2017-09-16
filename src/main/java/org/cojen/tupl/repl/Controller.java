@@ -1406,7 +1406,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean writeDataReply(Channel from, long term, long highestIndex) {
-        LogWriter writer;
         long commitIndex;
 
         acquireExclusive();
