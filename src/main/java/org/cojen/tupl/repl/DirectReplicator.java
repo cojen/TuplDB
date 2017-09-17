@@ -125,8 +125,11 @@ public interface DirectReplicator extends Replicator {
      * durably persists all data up to the highest index.
      *
      * @param index committed index required to be durable
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @return false if timed out
+     * @throws IllegalStateException if index is too high
      */
-    void syncCommit(long index) throws IOException;
+    boolean syncCommit(long index, long nanosTimeout) throws IOException;
 
     /**
      * Direct interface for accessing replication data, for a given term.

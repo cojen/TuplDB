@@ -114,6 +114,20 @@ interface Channel {
     boolean writeDataReply(Channel from, long term, long highestIndex);
 
     /**
+     * @param prevTerm expected term at previous index
+     * @param term term at given index
+     * @param index minimum highest commit index to persist
+     * @return false if not sent or processed
+     */
+    boolean syncCommit(Channel from, long prevTerm, long term, long index);
+
+    /**
+     * @param index highest sync'd index
+     * @return false if not sent or processed
+     */
+    boolean syncCommitReply(Channel from, long groupVersion, long term, long index);
+
+    /**
      * @return false if not sent or processed
      */
     boolean snapshotScore(Channel from);

@@ -133,14 +133,28 @@ interface StateLog extends Closeable {
     void sync() throws IOException;
 
     /**
-     * Durably persist all data up to the given index, unless the term doesn't match. If the
-     * given index is lower than the highest index already known to be persisted, then the log
-     * data doesn't need to be sync'd at all. If the given durable index is higher than what's
-     * known, the metadata file must be updated regardless.
+     * Durably persist all data up to the given committed index. The highest term, the highest
+     * index, and the durable commit index are all recovered when reopening the state log.
+     * Incomplete data beyond this is discarded.
      *
-     * @param index minimum highest committed index to become durable
-     * @param durableIndex highest index (exclusive) which is durable; pass zero if unknown
-     * @return current durable index, or -1 due to term mismatch
+     * <p>If the given index is greater than the highest index, then no sync is actually
+     * performed and -1 is returned. This case occurs when this method is called by a remote
+     * member which is at a higher position in the log.
+     *
+     * @return current commit index, or -1 due to term mismatch or if index is too high
      */
-    long syncCommit(long prevTerm, long term, long index, long durableIndex) throws IOException;
+    long syncCommit(long prevTerm, long term, long index) throws IOException;
+
+    /**
+     * @return true if given index is less than or equal to current durable commit index
+     */
+    boolean isDurable(long index);
+
+    /**
+     * Durably persist the commit index, as agreed by consensus.
+     *
+     * @return false if given index is already durable
+     * @throws IllegalStateException if index is too high
+     */
+    boolean commitDurable(long index) throws IOException;
 }

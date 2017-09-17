@@ -210,8 +210,9 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </td>
 </tr>
 <tr id="i7" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#syncCommit-long-">syncCommit</a></span>(long&nbsp;index)</code>
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#syncCommit-long-long-">syncCommit</a></span>(long&nbsp;index,
+          long&nbsp;nanosTimeout)</code>
 <div class="block">Returns immediately if all data up to the given committed index is durable, or else
  durably persists all data up to the highest index.</div>
 </td>
@@ -396,20 +397,25 @@ extends <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interfa
 </dl>
 </li>
 </ul>
-<a name="syncCommit-long-">
+<a name="syncCommit-long-long-">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>syncCommit</h4>
-<pre>void&nbsp;syncCommit(long&nbsp;index)
-         throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>boolean&nbsp;syncCommit(long&nbsp;index,
+                   long&nbsp;nanosTimeout)
+            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns immediately if all data up to the given committed index is durable, or else
  durably persists all data up to the highest index.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - committed index required to be durable</dd>
+<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>false if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if index is too high</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
