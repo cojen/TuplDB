@@ -98,8 +98,7 @@ public class LatchCondition {
         try {
             return await(latch, localNode(Node.WAITING), nanosTimeout, nanosEnd);
         } catch (Throwable e) {
-            // Possibly an OutOfMemoryError.
-            latch.releaseExclusive();
+            // Possibly an OutOfMemoryError. Latch must still be held.
             return -1;
         }
     }
@@ -121,8 +120,7 @@ public class LatchCondition {
         try {
             return await(latch, localNode(Node.WAITING_SHARED), nanosTimeout, nanosEnd);
         } catch (Throwable e) {
-            // Possibly an OutOfMemoryError.
-            latch.releaseExclusive();
+            // Possibly an OutOfMemoryError. Latch must still be held.
             return -1;
         }
     }
