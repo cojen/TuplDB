@@ -138,7 +138,7 @@ final class ReplRedoController extends ReplRedoWriter {
         LocalDatabase db = redo.mEngine.mDatabase;
 
         if (writer != null) {
-            if (writer.confirm(mCheckpointPos, -1)) {
+            if (writer.confirm(mCheckpointPos)) {
                 // Update confirmed state, to prevent false undo if leadership is lost.
                 db.anyTransactionContext().confirmed(mCheckpointPos, mCheckpointTxnId);
             } else {
@@ -160,7 +160,7 @@ final class ReplRedoController extends ReplRedoWriter {
 
         // Make sure that durable replication data is caught up to the local database.
 
-        mManager.syncConfirm(mCheckpointPos, -1);
+        mManager.syncConfirm(mCheckpointPos);
     }
 
     @Override
@@ -186,19 +186,22 @@ final class ReplRedoController extends ReplRedoWriter {
         // Interpret metadata option as a durability confirmation request.
 
         if (metadata) {
-            long pos;
-            {
-                ReplRedoWriter redo = mTxnRedoWriter;
-                if (redo.mReplWriter == null) {
-                    pos = mEngine.decodePosition();
-                } else {
-                    redo.acquireShared();
-                    pos = redo.mLastCommitPos;
-                    redo.releaseShared();
-                }
-            }
-
             try {
+                long pos;
+                {
+                    ReplRedoWriter redo = mTxnRedoWriter;
+                    ReplicationManager.Writer writer = redo.mReplWriter;
+
+                    if (writer == null) {
+                        pos = mEngine.decodePosition();
+                    } else {
+                        redo.acquireShared();
+                        pos = redo.mLastCommitPos;
+                        redo.releaseShared();
+                        writer.confirm(pos);
+                    }
+                }
+
                 mEngine.mManager.syncConfirm(pos);
                 return;
             } catch (IOException e) {
