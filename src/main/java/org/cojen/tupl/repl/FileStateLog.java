@@ -781,18 +781,24 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public long syncCommit(long prevTerm, long term, long index, long durableIndex)
-        throws IOException
-    {
+    public long syncCommit(long prevTerm, long term, long index) throws IOException {
         synchronized (mMetadataInfo) {
             if (mClosed) {
-                return mMetadataDurableIndex;
+                throw new IOException("Closed");
             }
 
             long startPrevTerm, startTerm, startIndex;
 
             acquireShared();
             try {
+                TermLog termLog = termLogAt(index);
+
+                if (termLog == null || term != termLog.term()
+                    || prevTerm != termLog.prevTermAt(index))
+                {
+                    return -1;
+                }
+
                 TermLog highestLog = mHighestTermLog;
                 if (highestLog != null && highestLog == mTermLogs.last()) {
                     highestLog.captureHighest(mMetadataInfo);
@@ -800,19 +806,16 @@ final class FileStateLog extends Latch implements StateLog {
                     highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
                 }
 
-                if (highestLog == null || term != highestLog.term()
-                    || prevTerm != highestLog.prevTermAt(index))
-                {
+                if (index > mMetadataInfo.mHighestIndex) {
                     return -1;
                 }
 
-                if (index > mMetadataHighestIndex) {
-                    if (index > mMetadataInfo.mHighestIndex) {
-                        throw new IllegalStateException("Sync commit index is too high: " + index
-                                                        + " > " + mMetadataInfo.mHighestIndex);
-                    }
-                    highestLog.sync();
+                if (index <= mMetadataHighestIndex) {
+                    // Nothing to do.
+                    return mMetadataInfo.mCommitIndex;
                 }
+
+                highestLog.sync();
 
                 startPrevTerm = mStartPrevTerm;
                 startTerm = mStartTerm;
@@ -821,13 +824,57 @@ final class FileStateLog extends Latch implements StateLog {
                 releaseShared();
             }
 
-            durableIndex = Math.max(durableIndex, mMetadataDurableIndex);
+            syncMetadata(startPrevTerm, startTerm, startIndex);
 
-            if (index > mMetadataHighestIndex || durableIndex > mMetadataDurableIndex) {
-                syncMetadata(startPrevTerm, startTerm, startIndex, durableIndex);
+            return mMetadataInfo.mCommitIndex;
+        }
+    }
+
+    @Override
+    public boolean isDurable(long index) {
+        synchronized (mMetadataInfo) {
+            return index <= mMetadataDurableIndex;
+        }
+    }
+
+    @Override
+    public boolean commitDurable(long index) throws IOException {
+        synchronized (mMetadataInfo) {
+            if (mClosed) {
+                throw new IOException("Closed");
             }
 
-            return durableIndex;
+            if (index <= mMetadataDurableIndex) {
+                return false;
+            }
+
+            // FIXME: check the commit index to be extra sure
+            if (index > mMetadataHighestIndex) {
+                throw new IllegalStateException("Commit index is too high: " + index
+                                                + " > " + mMetadataHighestIndex);
+            }
+
+            long startPrevTerm, startTerm, startIndex;
+
+            acquireShared();
+            try {
+                startPrevTerm = mStartPrevTerm;
+                startTerm = mStartTerm;
+                startIndex = mStartIndex;
+
+                TermLog highestLog = mHighestTermLog;
+                if (highestLog != null && highestLog == mTermLogs.last()) {
+                    highestLog.captureHighest(mMetadataInfo);
+                } else {
+                    highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
+                }
+            } finally {
+                releaseShared();
+            }
+
+            syncMetadata(startPrevTerm, startTerm, startIndex, index);
+
+            return true;
         }
     }
 

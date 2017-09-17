@@ -91,9 +91,10 @@ final class ChannelManager {
         OP_QUERY_TERMS    = 4,  OP_QUERY_TERMS_REPLY    = 5,
         OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
         OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
-        OP_SNAPSHOT_SCORE = 10, OP_SNAPSHOT_SCORE_REPLY = 11,
-        OP_UPDATE_ROLE    = 12, OP_UPDATE_ROLE_REPLY    = 13,
-        OP_GROUP_VERSION  = 14, OP_GROUP_VERSION_REPLY  = 15;
+        OP_SYNC_COMMIT    = 10, OP_SYNC_COMMIT_REPLY    = 11,
+        OP_SNAPSHOT_SCORE = 12, OP_SNAPSHOT_SCORE_REPLY = 13,
+        OP_UPDATE_ROLE    = 14, OP_UPDATE_ROLE_REPLY    = 15,
+        OP_GROUP_VERSION  = 16, OP_GROUP_VERSION_REPLY  = 17;
 
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -856,6 +857,16 @@ final class ChannelManager {
                         localServer.writeDataReply(this, in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 2);
                         break;
+                    case OP_SYNC_COMMIT:
+                        localServer.syncCommit(this, in.readLongLE(),
+                                               in.readLongLE(), in.readLongLE());
+                        commandLength -= (8 * 3);
+                        break;
+                    case OP_SYNC_COMMIT_REPLY:
+                        localServer.syncCommitReply(this, in.readLongLE(),
+                                                    in.readLongLE(), in.readLongLE());
+                        commandLength -= (8 * 3);
+                        break;
                     case OP_SNAPSHOT_SCORE:
                         localServer.snapshotScore(this);
                         break;
@@ -1028,6 +1039,16 @@ final class ChannelManager {
         @Override
         public boolean writeDataReply(Channel from, long term, long highestIndex) {
             return writeCommand(OP_WRITE_DATA_REPLY, term, highestIndex);
+        }
+
+        @Override
+        public boolean syncCommit(Channel from, long prevTerm, long term, long index) {
+            return writeCommand(OP_SYNC_COMMIT, prevTerm, term, index);
+        }
+
+        @Override
+        public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
+            return writeCommand(OP_SYNC_COMMIT_REPLY, groupVersion, term, index);
         }
 
         @Override

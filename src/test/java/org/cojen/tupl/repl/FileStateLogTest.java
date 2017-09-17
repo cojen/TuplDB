@@ -551,8 +551,8 @@ public class FileStateLogTest {
 
         // Partially commit and reopen.
         mLog.commit(4000);
-        assertEquals(0, mLog.syncCommit(term, term, 4000, 0));
-        assertEquals(4000, mLog.syncCommit(term, term, 4000, 4000));
+        assertEquals(4000, mLog.syncCommit(term, term, 4000));
+        mLog.commitDurable(4000);
         mLog.close();
         mLog = new FileStateLog(mBase);
 

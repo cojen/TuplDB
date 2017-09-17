@@ -43,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 
 import static org.cojen.tupl.io.Utils.*;
 
@@ -56,6 +57,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int ELECTION_DELAY_LOW_MILLIS = 200, ELECTION_DELAY_HIGH_MILLIS = 300;
     private static final int QUERY_TERMS_RATE_MILLIS = 1;
     private static final int MISSING_DELAY_LOW_MILLIS = 400, MISSING_DELAY_HIGH_MILLIS = 600;
+    private static final int SYNC_COMMIT_RETRY_MILLIS = 100;
     private static final int CONNECT_TIMEOUT_MILLIS = 500;
     private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 2000;
     private static final int JOIN_TIMEOUT_MILLIS = 2000;
@@ -66,6 +68,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
+
+    private final LatchCondition mSyncCommitCondition;
 
     private GroupFile mGroupFile;
 
@@ -121,6 +125,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mScheduler = new Scheduler();
         mChanMan = new ChannelManager(mScheduler, groupToken, gf == null ? 0 : gf.groupId());
         mGroupFile = gf;
+        mSyncCommitCondition = new LatchCondition();
     }
 
     /**
@@ -206,6 +211,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Step down as leader or candidate.
             toFollower();
         }
+
+        // Wake up syncCommit waiters which are stuck because removed peers aren't responding.
+        mSyncCommitCondition.signalAll();
     }
 
     @Override
@@ -335,8 +343,69 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // FIXME: This method needs revision: https://github.com/cojen/Tupl/issues/78
     @Override
-    public void syncCommit(long index) throws IOException {
-        mStateLog.sync();
+    public boolean syncCommit(long index, long nanosTimeout) throws IOException {
+        long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
+
+        while (true) {
+            if (mStateLog.isDurable(index)) {
+                return true;
+            }
+
+            if (nanosTimeout == 0) {
+                return false;
+            }
+
+            TermLog termLog = mStateLog.termLogAt(index);
+            long prevTerm = termLog.prevTermAt(index);
+            long term = termLog.term();
+
+            acquireShared();
+            Channel[] channels = mConsensusChannels;
+            releaseShared();
+
+            for (Channel channel : channels) {
+                channel.syncCommit(this, prevTerm, term, index);
+            }
+
+            long commitIndex = mStateLog.syncCommit(prevTerm, term, index);
+
+            if (index > commitIndex) {
+                // If syncCommit returns -1, assume that the leadership changed and try again.
+                if (commitIndex >= 0) {
+                    throw new IllegalStateException
+                        ("Invalid commit index: " + index + " > " + commitIndex);
+                }
+            } else {
+                if (channels.length == 0) {
+                    // Already have consensus.
+                    mStateLog.commitDurable(index);
+                    return true;
+                }
+
+                // Don't wait on the condition for too long. The remote calls to the peers
+                // might have failed, and so retries are necessary.
+                long actualTimeout = SYNC_COMMIT_RETRY_MILLIS * 1_000_000L;
+                if (nanosTimeout >= 0) {
+                    actualTimeout = Math.min(nanosTimeout, actualTimeout);
+                }
+
+                acquireExclusive();
+                if (mStateLog.isDurable(index)) {
+                    releaseExclusive();
+                    return true;
+                }
+                int result = mSyncCommitCondition.await(this, actualTimeout, nanosEnd);
+                releaseExclusive();
+
+                if (result < 0) {
+                    throw new InterruptedIOException();
+                }
+            }
+
+            if (nanosTimeout > 0 && (nanosTimeout -= nanosEnd - System.nanoTime()) < 0) {
+                nanosTimeout = 0;
+            }
+        }
     }
 
     @Override
@@ -1315,49 +1384,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean writeData(Channel from, long prevTerm, long term, long index,
                              long highestIndex, long commitIndex, byte[] data)
     {
-        checkTerm: {
-            acquireShared();
-            long originalTerm = mCurrentTerm;
-
-            if (term == originalTerm) {
-                if (mElectionValidated > 0) {
-                    releaseShared();
-                    break checkTerm;
-                } else if (tryUpgrade()) {
-                    mLeaderReplyChannel = from;
-                    mElectionValidated = 1;
-                    mVotedFor = 0; // election is over
-                    releaseExclusive();
-                    break checkTerm;
-                }
-            }
-
-            if (!tryUpgrade()) {
-                releaseShared();
-                acquireExclusive();
-                originalTerm = mCurrentTerm;
-            }
-
-            try {
-                if (term != originalTerm) {
-                    try {
-                        mCurrentTerm = mStateLog.checkCurrentTerm(term);
-                    } catch (IOException e) {
-                        uncaught(e);
-                        return false;
-                    }
-                    if (mCurrentTerm <= originalTerm) {
-                        break checkTerm;
-                    }
-                    toFollower();
-                }
-
-                mLeaderReplyChannel = from;
-                mElectionValidated = 1;
-                mVotedFor = 0; // election is over
-            } finally {
-                releaseExclusive();
-            }
+        try {
+            validateLeaderTerm(from, term);
+        } catch (IOException e) {
+            uncaught(e);
+            return false;
         }
 
         try {
@@ -1402,6 +1433,51 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         from.writeDataReply(null, term, highestIndex);
 
         return true;
+    }
+
+    /**
+     * Called when receiving data from the leader.
+     *
+     * @throws IOException if check failed and caller should abort
+     */
+    private void validateLeaderTerm(Channel from, long term) throws IOException {
+        acquireShared();
+        long originalTerm = mCurrentTerm;
+
+        if (term == originalTerm) {
+            if (mElectionValidated > 0) {
+                releaseShared();
+                return;
+            } else if (tryUpgrade()) {
+                mLeaderReplyChannel = from;
+                mElectionValidated = 1;
+                mVotedFor = 0; // election is over
+                releaseExclusive();
+                return;
+            }
+        }
+
+        if (!tryUpgrade()) {
+            releaseShared();
+            acquireExclusive();
+            originalTerm = mCurrentTerm;
+        }
+
+        try {
+            if (term != originalTerm) {
+                mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                if (mCurrentTerm <= originalTerm) {
+                    return;
+                }
+                toFollower();
+            }
+
+            mLeaderReplyChannel = from;
+            mElectionValidated = 1;
+            mVotedFor = 0; // election is over
+        } finally {
+            releaseExclusive();
+        }
     }
 
     @Override
@@ -1450,6 +1526,69 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         mStateLog.commit(commitIndex);
+        return true;
+    }
+
+    @Override
+    public boolean syncCommit(Channel from, long prevTerm, long term, long index) {
+        try {
+            if (mStateLog.syncCommit(prevTerm, term, index) >= index) {
+                from.syncCommitReply(null, mGroupFile.version(), term, index);
+            }
+            return true;
+        } catch (IOException e) {
+            uncaught(e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
+        if (groupVersion > mGroupFile.version()) {
+            // FIXME: exec task to sync the group
+            System.out.println("group mismatch");
+        }
+
+        long durableIndex;
+
+        acquireExclusive();
+        try {
+            if (mConsensusPeers.length == 0 || term != mStateLog.termLogAt(index).term()) {
+                // Received a stale reply.
+                System.out.println("stale reply");
+                return true;
+            }
+
+            Peer peer = from.peer();
+            long syncMatchIndex = peer.mSyncMatchIndex;
+
+            if (index > syncMatchIndex) {
+                peer.mSyncMatchIndex = index;
+            }
+
+            // Updating and sorting the peers by match index is simple, but for large groups
+            // (>10?), a tree data structure should be used instead.
+            Arrays.sort(mConsensusPeers, (a, b) ->
+                        Long.compare(a.mSyncMatchIndex, b.mSyncMatchIndex));
+            
+            durableIndex = mConsensusPeers[mConsensusPeers.length >> 1].mSyncMatchIndex;
+        } finally {
+            releaseExclusive();
+        }
+
+        try {
+            if (mStateLog.commitDurable(durableIndex)) {
+                acquireExclusive();
+                try {
+                    mSyncCommitCondition.signalAll();
+                } finally {
+                    releaseExclusive();
+                }
+            }
+        } catch (IOException e) {
+            uncaught(e);
+        }
+
         return true;
     }
 

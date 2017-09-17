@@ -251,8 +251,9 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void syncConfirm(long position, long timeoutNanos) throws IOException {
-        mRepl.sync();
-        // FIXME: Require that a majority have also persisted up to the given position.
+        if (!mRepl.syncCommit(position, timeoutNanos)) {
+            throw new ConfirmationTimeoutException(timeoutNanos);
+        }
     }
 
     @Override
