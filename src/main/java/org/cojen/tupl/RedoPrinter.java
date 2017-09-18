@@ -71,8 +71,8 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean fence() {
-        mOut.println("fence");
+    public boolean control(byte[] message) {
+        mOut.println("control: message=" + toHex(message));
         return true;
     }
 

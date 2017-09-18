@@ -621,6 +621,13 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     @Override
+    public void flush() throws IOException {
+        if (mTxnId != 0) {
+            mContext.flush();
+        }
+    }
+
+    @Override
     public String toString() {
         StringBuilder b = new StringBuilder(Transaction.class.getName());
 

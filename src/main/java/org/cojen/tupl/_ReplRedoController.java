@@ -29,7 +29,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  */
 /*P*/
 final class _ReplRedoController extends _ReplRedoWriter {
-    private final ReplicationManager mManager;
+    final ReplicationManager mManager;
 
     private volatile _ReplRedoWriter mTxnRedoWriter;
 
@@ -53,9 +53,9 @@ final class _ReplRedoController extends _ReplRedoWriter {
         releaseExclusive();
     }
 
-    public void recover(long initialTxnId, EventListener listener) throws IOException {
+    public void ready(long initialTxnId, ReplicationManager.Accessor accessor) throws IOException {
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
-        mManager.recover(listener);
+        mManager.ready(accessor);
     }
 
     @Override
@@ -69,7 +69,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         try {
             ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
             long pos = writer == null ? mEngine.decodePosition() : writer.position();
-            return (pos - mCheckpointPos) >= sizeThreshold;
+            return (pos - (mCheckpointPos & ~(1L << 63))) >= sizeThreshold;
         } finally {
             releaseShared();
         }
@@ -86,7 +86,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         mCheckpointNum++;
 
         // Only capture new checkpoint state if previous attempt succeeded.
-        if (mCheckpointPos == 0 && mCheckpointTxnId == 0) {
+        if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
             _ReplRedoWriter redo = mTxnRedoWriter;
             mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
@@ -137,7 +137,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         _LocalDatabase db = redo.mEngine.mDatabase;
 
         if (writer != null) {
-            if (writer.confirm(mCheckpointPos, -1)) {
+            if (writer.confirm(mCheckpointPos)) {
                 // Update confirmed state, to prevent false undo if leadership is lost.
                 db.anyTransactionContext().confirmed(mCheckpointPos, mCheckpointTxnId);
             } else {
@@ -159,14 +159,16 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
         // Make sure that durable replication data is caught up to the local database.
 
-        mManager.syncConfirm(mCheckpointPos, -1);
+        mManager.syncConfirm(mCheckpointPos);
     }
 
     @Override
     void checkpointFinished() throws IOException {
         mManager.checkpointed(mCheckpointPos);
         mCheckpointRedoWriter = null;
-        mCheckpointPos = 0;
+        // Keep checkpoint position for the benefit of the shouldCheckpoint method, but flip
+        // the bit for the checkpointSwitch method to detect successful completion.
+        mCheckpointPos |= 1L << 63;
         mCheckpointTxnId = 0;
     }
 
@@ -185,19 +187,22 @@ final class _ReplRedoController extends _ReplRedoWriter {
         // Interpret metadata option as a durability confirmation request.
 
         if (metadata) {
-            long pos;
-            {
-                _ReplRedoWriter redo = mTxnRedoWriter;
-                if (redo.mReplWriter == null) {
-                    pos = mEngine.decodePosition();
-                } else {
-                    redo.acquireShared();
-                    pos = redo.mLastCommitPos;
-                    redo.releaseShared();
-                }
-            }
-
             try {
+                long pos;
+                {
+                    _ReplRedoWriter redo = mTxnRedoWriter;
+                    ReplicationManager.Writer writer = redo.mReplWriter;
+
+                    if (writer == null) {
+                        pos = mEngine.decodePosition();
+                    } else {
+                        redo.acquireShared();
+                        pos = redo.mLastCommitPos;
+                        redo.releaseShared();
+                        writer.confirm(pos);
+                    }
+                }
+
                 mEngine.mManager.syncConfirm(pos);
                 return;
             } catch (IOException e) {
@@ -219,11 +224,11 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 return;
             }
 
-            mManager.flip();
             ReplicationManager.Writer writer = mManager.writer();
 
             if (writer == null) {
-                // False alarm?
+                // Panic.
+                mEngine.fail(new IllegalStateException("No writer for the leader"));
                 return;
             }
 
@@ -242,7 +247,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 // last transaction id to 0. Delta encoding will continue to work correctly.
                 context.confirmed(redo.mLastCommitPos = writer.position(), 0);
 
-                if (!writer.leaderNotify(() -> switchToReplica(writer, false))) {
+                if (!writer.leaderNotify(() -> switchToReplica(writer))) {
                     throw nowUnmodifiable(writer);
                 }
 
@@ -250,12 +255,11 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 context.doRedoReset(redo);
 
                 // Record leader transition epoch.
-                context.doRedoTimestamp(redo, RedoOps.OP_TIMESTAMP);
+                context.doRedoTimestamp(redo, RedoOps.OP_TIMESTAMP, DurabilityMode.NO_FLUSH);
 
-                // Don't trust timestamp alone to help detect divergent logs.
-                context.doRedoNopRandom(redo);
-
-                context.doFlush();
+                // Don't trust timestamp alone to help detect divergent logs. Use NO_SYNC mode
+                // to flush everything out, but no need to wait for confirmation.
+                context.doRedoNopRandom(redo, DurabilityMode.NO_SYNC);
             } finally {
                 context.releaseRedoLatch();
             }
@@ -268,52 +272,67 @@ final class _ReplRedoController extends _ReplRedoWriter {
     UnmodifiableReplicaException nowUnmodifiable(ReplicationManager.Writer expect)
         throws DatabaseException
     {
-        switchToReplica(expect, false);
+        switchToReplica(expect);
         return mEngine.unmodifiable();
     }
 
-    boolean switchToReplica(final ReplicationManager.Writer expect, final boolean syncd) {
-        if (mEngine.mDatabase.isClosed()) {
-            // Don't bother switching modes, since it won't work properly anyhow.
-            return false;
+    // Must be called without latch held.
+    void switchToReplica(ReplicationManager.Writer expect) {
+        if (shouldSwitchToReplica(expect) != null) {
+            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
+            // _ReplRedoWriter while latched, which is an inconsistent order.
+            new Thread(() -> doSwitchToReplica(expect)).start();
+        }
+    }
+
+    private void doSwitchToReplica(ReplicationManager.Writer expect) {
+        _ReplRedoWriter redo;
+
+        _ReplRedoController.this.acquireExclusive();
+        try {
+            redo = shouldSwitchToReplica(expect);
+            if (redo == null) {
+                return;
+            }
+            // Use this instance for replica mode.
+            mTxnRedoWriter = this;
+        } finally {
+            _ReplRedoController.this.releaseExclusive();
         }
 
-        final _ReplRedoWriter redo = mTxnRedoWriter;
+        long pos;
+        try {
+            pos = redo.mReplWriter.confirmEnd();
+        } catch (ConfirmationFailureException e) {
+            // Position is required, so panic.
+            mEngine.fail(e);
+            return;
+        }
+
+        redo.flipped(pos);
+
+        // Start receiving if not, but does nothing if already receiving. A reset op is
+        // expected, and so the initial transaction id can be zero.
+        mEngine.startReceiving(pos, 0);
+    }
+
+    /**
+     * @return null if shouldn't switch; mTxnRedoWriter otherwise
+     */
+    private _ReplRedoWriter shouldSwitchToReplica(ReplicationManager.Writer expect) {
+        if (mEngine.mDatabase.isClosed()) {
+            // Don't bother switching modes, since it won't work properly anyhow.
+            return null;
+        }
+
+        _ReplRedoWriter redo = mTxnRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer == null || writer != expect) {
             // Must be in leader mode.
-            return false;
+            return null;
         }
 
-        if (syncd) {
-            mManager.flip();
-
-            // Use this instance for replica mode.
-            mTxnRedoWriter = this;
-        } else {
-            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
-            // _ReplRedoWriter while latched, which is an inconsistent order.
-            new Thread(() -> {
-                _ReplRedoController.this.acquireExclusive();
-                try {
-                    if (!switchToReplica(expect, true)) {
-                        return;
-                    }
-                } finally {
-                    _ReplRedoController.this.releaseExclusive();
-                }
-
-                long pos = mManager.readPosition();
-
-                redo.flipped(pos);
-
-                // Start receiving if not, but does nothing if already receiving. A reset
-                // op is expected, and so the initial transaction id can be zero.
-                mEngine.startReceiving(pos, 0);
-            }).start();
-        }
-
-        return true;
+        return redo;
     }
 }

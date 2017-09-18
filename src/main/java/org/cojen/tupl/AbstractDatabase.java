@@ -31,13 +31,6 @@ abstract class AbstractDatabase implements Database {
     abstract EventListener eventListener();
 
     /**
-     * Writes a redo fence operation.
-     *
-     * @return highest log position afterwards
-     */
-    abstract long redoFence() throws IOException;
-
-    /**
      * Called by Checkpointer task.
      */
     abstract void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)

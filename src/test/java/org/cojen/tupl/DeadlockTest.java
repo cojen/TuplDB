@@ -68,6 +68,14 @@ public class DeadlockTest {
                         sleep(1000);
                         try {
                             locker.lockExclusive(1, keys[0], timeout / 2);
+                            /* FIXME
+[ERROR] test_1(org.cojen.tupl.DeadlockTest)  Time elapsed: 1.424 s  <<< FAILURE!
+java.lang.AssertionError
+        at org.junit.Assert.fail(Assert.java:86)
+        at org.junit.Assert.fail(Assert.java:95)
+        at org.cojen.tupl.DeadlockTest$1.doRun(DeadlockTest.java:71)
+        at org.cojen.tupl.DeadlockTest$Task.run(DeadlockTest.java:462)
+        */
                             fail();
                         } catch (DeadlockException e) {
                             // Deadlock observed, but this thread didn't create it.

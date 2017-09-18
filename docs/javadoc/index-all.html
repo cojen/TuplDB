@@ -119,6 +119,10 @@
 <dd>
 <div class="block">Add an entry into the sorter.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#addSeed-java.net.SocketAddress-">addSeed(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Add a remote member address for allowing the local member to join the group.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#algorithm--">algorithm()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Returns "AES" by default; override to change the algorithm.</div>
@@ -204,10 +208,24 @@
 <div class="block">Set the base file name for the database, which must reside in an
  ordinary file directory.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#baseFile-java.io.File-">baseFile(File)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set the base file name for the replicator, which must reside in an ordinary file
+ directory.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#baseFilePath-java.lang.String-">baseFilePath(String)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the base file name for the database, which must reside in an
  ordinary file directory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#baseFilePath-java.lang.String-">baseFilePath(String)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set the base file name for the replicator, which must reside in an ordinary file
+ directory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#begin-long-long-java.util.Map-">begin(long, long, Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Begin writing the snapshot to the receiver.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#beginSnapshot--">beginSnapshot()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -340,6 +358,8 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#clone--">clone()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#clone--">clone()</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Closes the database, ensuring durability of committed transactions.</div>
@@ -370,6 +390,8 @@
 <dd>
 <div class="block">Closes a resource, which may throw a new exception.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Scanner.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
@@ -387,6 +409,14 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#closeOnFailure-java.io.Closeable-java.lang.Throwable-">closeOnFailure(Closeable, Throwable)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Closes the given resource, passing the cause if the resource implements <a href="org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io"><code>CauseCloseable</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#closeQuietly-java.io.Closeable-">closeQuietly(Closeable)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
+<dd>
+<div class="block">Closes a resource without throwing another exception.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#closeQuietly-java.io.Closeable-java.lang.Throwable-">closeQuietly(Closeable, Throwable)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
+<dd>
+<div class="block">Closes a resource without throwing another exception.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#closeQuietly-java.io.IOException-java.io.Closeable-">closeQuietly(IOException, Closeable)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
@@ -508,6 +538,36 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ConfirmationTimeoutException.html#ConfirmationTimeoutException-long-">ConfirmationTimeoutException(long)</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd--">confirmEnd()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd-long-">confirmEnd(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#connect-java.net.SocketAddress-">connect(SocketAddress)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Connect to any replication group member, for any particular use.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#control-byte:A-">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
+<dd>
+<div class="block">Attempt to write a replicated control message, and then calls <a href="org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-"><code>control</code></a> when confirmed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control(long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dd>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Install a callback to be invoked when the replicator needs to send control messages,
+ which must propagate through the replication log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-">controlMessageReceived(long, byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#copy--">copy()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Returns a new independent Cursor, positioned where this one is, and
@@ -574,6 +634,11 @@
 <div class="block">Set true to create directories for the base and data file, if they don't
  already exist.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#createFilePath-boolean-">createFilePath(boolean)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set true to create the directory for the replication files, if it doesn't already
+ exist.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Crypto</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Support for encrypting an entire database.</div>
@@ -610,6 +675,10 @@
 <dd>
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#database--">database()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
+<dd>
+<div class="block">Access the database which is being replicated.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Database.Stats</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Collection of database <a href="org/cojen/tupl/Database.html#stats--"><code>statistics</code></a>.</div>
@@ -645,6 +714,10 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseFullException.html#DatabaseFullException-java.lang.String-">DatabaseFullException(String)</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Implementation of a <a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> for supporting full <a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">database</a> replication.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#dataFile-java.io.File-">dataFile(File)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the data file for the database, which by default resides in the same
@@ -771,6 +844,23 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#directPagePointer-long-">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Replicator interface for applications which directly control the replication data, and are
+ also responsible for processing snapshots.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Accessor</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for accessing replication data, for a given term.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for reading from a replicator, for a given term.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Direct interface for writing to a replicator, for a given term.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#dirSync-java.io.File-">dirSync(File)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
 <div class="block">Durably flushes the given directory, if required.</div>
@@ -999,10 +1089,6 @@
 </a>
 <h2 class="title">F</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#fenced-long-">fenced(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called after a fence operation has been received and processed.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#fileFactory-org.cojen.tupl.io.FileFactory-">fileFactory(FileFactory)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Optionally define a custom factory for every file and directory created by the
@@ -1152,13 +1238,9 @@
 <dd>
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#flip--">flip()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called to acknowledge mode change from replica to leader, or vice versa.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Flushes, but does not sync, all non-flushed transactions.</div>
+<div class="block">Flushes all committed transactions, but not durably.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Updater.html#flush--">flush()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
 <dd>
@@ -1224,6 +1306,14 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/LargeValueException.html#getLength--">getLength()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/LargeValueException.html" title="class in org.cojen.tupl">LargeValueException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#getLocalAddress--">getLocalAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#getLocalMemberId--">getLocalMemberId()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#getLocalRole--">getLocalRole()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Returns the effective local role, as known by the group.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ConfirmationTimeoutException.html#getMessage--">getMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DeadlockException.html#getMessage--">getMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
@@ -1288,6 +1378,11 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/LockTimeoutException.html#getUnit--">getUnit()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#groupToken-long-">groupToken(long)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set a unique group identifier, which acts as a simple security measure to prevent
+ different replication groups from communicating with each other.</div>
+</dd>
 </dl>
 <a name="I:H">
 <!--   -->
@@ -1341,6 +1436,14 @@
 <dd>
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the next log index which will be accessed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#index--">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns the log index to start reading from.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/VerificationObserver.html#index">index</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
 <dd>
@@ -1411,6 +1514,10 @@
 <dd>
 <div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, using the given initialization
  vector.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#inputStream--">inputStream()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns a stream to read the snapshot from.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#insert-org.cojen.tupl.Transaction-byte:A-byte:A-">insert(Transaction, byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -1520,6 +1627,14 @@
 <dd>
 <div class="block">Waits until all the worker queues are drained.</div>
 </dd>
+<dt><a href="org/cojen/tupl/repl/JoinException.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">JoinException</span></a> - Exception in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Thrown when unable to join a replication group.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/JoinException.html#JoinException--">JoinException()</a></span> - Constructor for exception org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/JoinException.html" title="class in org.cojen.tupl.repl">JoinException</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/JoinException.html#JoinException-java.lang.String-">JoinException(String)</a></span> - Constructor for exception org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/JoinException.html" title="class in org.cojen.tupl.repl">JoinException</a></dt>
+<dd>&nbsp;</dd>
 </dl>
 <a name="I:K">
 <!--   -->
@@ -1608,6 +1723,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#length--">length()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#length--">length()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#length--">length()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Returns total amount of bytes expected to be written to the snapshot
@@ -1635,6 +1754,11 @@
 <dd>
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#listenAddress-java.net.SocketAddress-">listenAddress(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Optionally restrict the socket address for accepting connections, which can be a
+ wildcard address.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#load--">load()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
@@ -1646,6 +1770,19 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#load--">load()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#localAddress-java.net.SocketAddress-">localAddress(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set the local member socket address and port.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#localPort-int-">localPort(int)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set the local member socket port, for accepting connections on any address.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#localRole-org.cojen.tupl.repl.Role-">localRole(Role)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set the desired local member role, which is <a href="org/cojen/tupl/repl/Role.html#NORMAL"><code>normal</code></a> by default, and
+ for the primoridal group member.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#lock--">lock()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -1817,6 +1954,18 @@
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes.</div>
 </dd>
+<dt><a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Message-oriented replication interface, which is a bit easier to use than <a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a>.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Interface called by any group member for reading committed messages.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Interface called by the group leader for proposing messages.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#minCacheSize-long-">minCacheSize(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the minimum cache size, overriding the default.</div>
@@ -1856,6 +2005,18 @@
 <div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
  using the fixed instance <a href="org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newReader-long-boolean-">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#newReader-long-boolean-">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
+<dd>
+<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newReader-long-boolean-">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newScanner-org.cojen.tupl.Transaction-">newScanner(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a new scanner over this view.</div>
@@ -1890,6 +2051,36 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newUpdater-org.cojen.tupl.Transaction-">newUpdater(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a new updater over this view.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newWriter-long-">newWriter(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#newWriter-long-">newWriter(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newWriter-long-">newWriter(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#next--">next()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -1935,10 +2126,6 @@
 <dd>
 <div class="block">Notification to replica after an index is renamed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#notifyStore-org.cojen.tupl.Index-byte:A-byte:A-">notifyStore(Index, byte[], byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Notification to replica when an entry is stored into an index.</div>
-</dd>
 </dl>
 <a name="I:O">
 <!--   -->
@@ -1965,6 +2152,18 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#open--">open()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DatabaseReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a></dt>
+<dd>
+<div class="block">Open a replicator instance, creating it if necessary.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
+<dd>
+<div class="block">Open a replicator instance, creating it if necessary.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
+<dd>
+<div class="block">Open a replicator instance, creating it if necessary.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#openIndex-byte:A-">openIndex(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Returns the given named index, creating it if necessary.</div>
@@ -1983,6 +2182,14 @@
 <dd>
 <div class="block">Open options for <a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io"><code>FilePageArray</code></a>.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#options--">options()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Options granted by the sender.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#options--">options()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Options requested by the receiver.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl"><span class="typeNameLink">Ordering</span></a> - Enum in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Describes entry ordering in <a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>views</code></a> and <a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursors</code></a>.</div>
@@ -1998,6 +2205,11 @@
 <dt><a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a> - package org.cojen.tupl.io</dt>
 <dd>
 <div class="block">Low-level I/O abstraction layer.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a> - package org.cojen.tupl.repl</dt>
+<dd>
+<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
+ intended for supporting fully replicated <a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
 </dd>
 <dt><a href="org/cojen/tupl/tools/package-summary.html">org.cojen.tupl.tools</a> - package org.cojen.tupl.tools</dt>
 <dd>&nbsp;</dd>
@@ -2104,10 +2316,32 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#read-long-long-int-int-">read(long, long, int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read-byte:A-">read(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
+<dd>
+<div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read-byte:A-int-int-">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
+<dd>
+<div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#readFully-java.io.InputStream-byte:A-int-int-">readFully(InputStream, byte[], int, int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Fully reads the required length of bytes, throwing an EOFException if the end of stream
  is reached too soon.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#readFully-byte:A-int-int-">readFully(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
+<dd>
+<div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
+ index or term.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage--">readMessage()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Reader</a></dt>
+<dd>
+<div class="block">Blocks until a log message is available, never reading past a commit index or term.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage-byte:A-int-int-">readMessage(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Reader</a></dt>
+<dd>
+<div class="block">Blocks until a message is available, and then fully or partially copies it into the
+ given buffer.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#readPage-long-byte:A-int-int-">readPage(long, byte[], int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
@@ -2133,10 +2367,14 @@
 <dd>
 <div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.EventListener-">recover(EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#ready-org.cojen.tupl.ext.ReplicationManager.Accessor-">ready(ReplicationManager.Accessor)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
  replication has sufficiently "caught up".</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#receiverAddress--">receiverAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
+<dd>
+<div class="block">Member address which is receiving the snapshot.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo(Database, Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
@@ -2205,11 +2443,27 @@
 <dd>
 <div class="block">Interface which replaces the redo log, for replicating transactional operations.</div>
 </dd>
+<dt><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Accessor</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Writer</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Defines common features available to all types of replicators.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">ReplicatorConfig</span></a> - Class in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Configuration options used when opening a replicator.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#ReplicatorConfig--">ReplicatorConfig()</a></span> - Constructor for class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/VerificationObserver.html#reportFailure-java.lang.String-">reportFailure(String)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
 <dd>
 <div class="block">Invoked by default implementation of <a href="org/cojen/tupl/VerificationObserver.html#indexNodeFailed-long-int-java.lang.String-"><code>indexNodeFailed</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#requestSnapshot-java.util.Map-">requestSnapshot(Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transformer.html#requireValue--">requireValue()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl">Transformer</a></dt>
 <dd>
@@ -2241,10 +2495,20 @@
 <dd>
 <div class="block">Resets Cursor and moves it to an undefined position.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#restore-java.util.Map-">restore(Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Start by receiving a <a href="org/cojen/tupl/repl/DirectReplicator.html#requestSnapshot-java.util.Map-"><code>snapshot</code></a> from another group member,
+ expected to be called only by newly joined members.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#restoreFromSnapshot-org.cojen.tupl.DatabaseConfig-java.io.InputStream-">restoreFromSnapshot(DatabaseConfig, InputStream)</a></span> - Static method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Restore from a <a href="org/cojen/tupl/Database.html#beginSnapshot--"><code>snapshot</code></a>, into the data files defined by the given
  configuration.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#restoreRequest--">restoreRequest()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dd>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#resumeCheckpoints--">resumeCheckpoints()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2262,6 +2526,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Ordering.html#reverse--">reverse()</a></span> - Method in enum org.cojen.tupl.<a href="org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl"><span class="typeNameLink">Role</span></a> - Enum in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Supported membership roles.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#rootCause-java.lang.Throwable-">rootCause(Throwable)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Returns the root cause of the given exception.</div>
@@ -2300,6 +2568,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#secretKey--">secretKey()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#senderAddress--">senderAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Member address which is sending the snapshot.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#separate-byte:A-byte:A-">separate(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
 <div class="block">Separates a combined result, for use when storing a value into a view which uses this
@@ -2388,6 +2660,25 @@
 <dd>
 <div class="block">Control object used to capture a database snapshot.</div>
 </dd>
+<dt><a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotReceiver</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Receiver-side object for controlling the transmission of a database snapshot to a new group
+ member.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-">snapshotRequestAcceptor(Consumer&lt;SnapshotSender&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotSender</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Sender-side object for controlling the transmission of a database snapshot to a new group
+ member.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor(Consumer&lt;Socket&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Install a callback to be invoked when plain connections are established to the local
+ group member.</div>
+</dd>
 <dt><a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Sorter</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Utility for sorting and filling up new indexes.</div>
@@ -2397,6 +2688,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#start-long-">start(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Start the replication manager in replica mode.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#start--">start()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Start accepting replication data, to be called for new or existing replicators.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#stats--">stats()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2427,6 +2722,18 @@
 <dd>
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Low-level replication interface, which recives messages in a non-delineated stream.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Interface called by any group member for reading committed messages.</div>
+</dd>
+<dt><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
+<dd>
+<div class="block">Interface called by the group leader for proposing messages.</div>
+</dd>
 <dt><a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">StripedPageArray</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block"><a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which stripes pages in a <a
@@ -2450,7 +2757,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#sync--">sync()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Persists all non-flushed and non-sync'd transactions.</div>
+<div class="block">Durably flushes all committed transactions.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#sync--">sync()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
@@ -2470,6 +2777,15 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#sync-boolean-">sync(boolean)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#sync--">sync()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Durably persist all data up to the highest index.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#syncCommit-long-long-">syncCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Returns immediately if all data up to the given committed index is durable, or else
+ durably persists all data up to the highest index.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#syncConfirm-long-">syncConfirm(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
@@ -2501,6 +2817,18 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Worker.Task.html#Task--">Task()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the fixed term being accessed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the fixed index at the start of the term.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#toString-javax.crypto.SecretKey-">toString(SecretKey)</a></span> - Static method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
@@ -2757,6 +3085,14 @@
 <dd>
 <div class="block">Scans through all entries in a view, updating them along the way.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dd>
+<div class="block">Invokes the given task when the commit index reaches the requested index.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dd>
+<div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
+</dd>
 <dt><a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">Utils</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block">Generic data and I/O utility methods.</div>
@@ -2825,6 +3161,10 @@
 <dd>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Role.html#valueOf-java.lang.String-">valueOf(String)</a></span> - Static method in enum org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a></dt>
+<dd>
+<div class="block">Returns the enum constant of this type with the specified name.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DurabilityMode.html#values--">values()</a></span> - Static method in enum org.cojen.tupl.<a href="org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a></dt>
 <dd>
 <div class="block">Returns an array containing the constants of this enum type, in
@@ -2866,6 +3206,11 @@ the order they are declared.</div>
 the order they are declared.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Ordering.html#values--">values()</a></span> - Static method in enum org.cojen.tupl.<a href="org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a></dt>
+<dd>
+<div class="block">Returns an array containing the constants of this enum type, in
+the order they are declared.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Role.html#values--">values()</a></span> - Static method in enum org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a></dt>
 <dd>
 <div class="block">Returns an array containing the constants of this enum type, in
 the order they are declared.</div>
@@ -2963,6 +3308,14 @@ the order they are declared.</div>
 </a>
 <h2 class="title">W</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForCommit-long-long-">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the commit index reaches the given index.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForEndCommit-long-">waitForEndCommit(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dd>
+<div class="block">Blocks until the commit index reaches the end of the term.</div>
+</dd>
 <dt><a href="org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Worker</span></a> - Class in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
 <div class="block">Simple task worker which has at most one background thread, and is expected to have only one
@@ -2994,6 +3347,18 @@ the order they are declared.</div>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#write-long-long-int-int-">write(long, long, int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-">write(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write complete messages to the log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-">write(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write complete messages to the log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Writer.html#write-byte:A-int-int-long-">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write complete or partial messages to the log.</div>
+</dd>
 <dt><a href="org/cojen/tupl/WriteFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">WriteFailureException</span></a> - Exception in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Thrown when writing to the underlying storage device failed.</div>
@@ -3002,6 +3367,18 @@ the order they are declared.</div>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WriteFailureException.html#WriteFailureException-java.lang.Throwable-">WriteFailureException(Throwable)</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/WriteFailureException.html" title="class in org.cojen.tupl">WriteFailureException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Writer.html#writeMessage-byte:A-">writeMessage(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write a single message to the log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Writer.html#writeMessage-byte:A-int-int-">writeMessage(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write a single message to the log.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Writer.html#writeMessage-byte:A-int-int-boolean-">writeMessage(byte[], int, int, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Writer</a></dt>
+<dd>
+<div class="block">Write a single message to the log, as part of an atomic batch.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#writePage-long-byte:A-int-">writePage(long, byte[], int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#writePage-long-long-int-">writePage(long, long, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>

@@ -174,7 +174,7 @@ final class RedoLog extends RedoWriter {
                     finished = replay(din, visitor, listener);
                     mPosition = din.mPos;
                 } finally {
-                    Utils.closeQuietly(null, in);
+                    Utils.closeQuietly(in);
                 }
 
                 mLogId++;
@@ -245,7 +245,7 @@ final class RedoLog extends RedoWriter {
             // Make sure that parent directory durably records the new log file.
             FileIO.dirSync(file);
         } catch (IOException e) {
-            Utils.closeQuietly(null, fout);
+            Utils.closeQuietly(fout);
             file.delete();
             throw new WriteFailureException(e);
         }
@@ -271,7 +271,7 @@ final class RedoLog extends RedoWriter {
             oldChannel = mChannel;
 
             if (oldOut != null) {
-                context.doRedoTimestamp(this, RedoOps.OP_END_FILE);
+                context.doRedoTimestamp(this, RedoOps.OP_END_FILE, DurabilityMode.NO_FLUSH);
                 context.doFlush();
                 doFlush();
             }
@@ -290,7 +290,7 @@ final class RedoLog extends RedoWriter {
             // RedoLogDecoder always starts with an initial transaction id of 0.
             mLastTxnId = 0;
 
-            context.doRedoTimestamp(this, RedoOps.OP_TIMESTAMP);
+            context.doRedoTimestamp(this, RedoOps.OP_TIMESTAMP, DurabilityMode.NO_FLUSH);
             context.doRedoReset(this);
 
             context.doFlush();
@@ -299,7 +299,7 @@ final class RedoLog extends RedoWriter {
         }
 
         // Close old file if previous checkpoint aborted.
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
 
         mOldOut = oldOut;
         mOldChannel = oldChannel;
@@ -310,6 +310,11 @@ final class RedoLog extends RedoWriter {
      */
     private static File fileFor(File base, long logId) {
         return base == null ? null : new File(base.getPath() + ".redo." + logId);
+    }
+
+    @Override
+    void commitSync(TransactionContext context, long commitPos) throws IOException {
+        txnCommitSync((LocalTransaction) null, commitPos);
     }
 
     @Override
@@ -383,7 +388,7 @@ final class RedoLog extends RedoWriter {
     @Override
     void checkpointAborted() {
         if (mNextOut != null) {
-            Utils.closeQuietly(null, mNextOut);
+            Utils.closeQuietly(mNextOut);
             mNextOut = null;
         }
     }
@@ -405,7 +410,7 @@ final class RedoLog extends RedoWriter {
             mOldChannel = null;
         }
 
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
         */
     }
 
@@ -417,7 +422,7 @@ final class RedoLog extends RedoWriter {
     @Override
     void checkpointFinished() throws IOException {
         mOldChannel = null;
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
         long id = mDeleteLogId;
         for (; id < mNextLogId; id++) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
@@ -490,6 +495,16 @@ final class RedoLog extends RedoWriter {
         }
     }
 
+    @Override
+    public void flush() throws IOException {
+        acquireExclusive();
+        try {
+            doFlush();
+        } finally {
+            releaseExclusive();
+        }
+    }
+
     private void doFlush() throws IOException {
         try {
             if (mBufferPos > 0) {
@@ -526,7 +541,7 @@ final class RedoLog extends RedoWriter {
 
     @Override
     public void close() throws IOException {
-        Utils.closeQuietly(null, mOldOut);
+        Utils.closeQuietly(mOldOut);
 
         FileChannel channel = mChannel;
         if (channel != null) {
@@ -537,7 +552,7 @@ final class RedoLog extends RedoWriter {
             }
         }
 
-        Utils.closeQuietly(null, mOut);
+        Utils.closeQuietly(mOut);
     }
 
     // Caller must hold exclusive latch (replay is exempt)

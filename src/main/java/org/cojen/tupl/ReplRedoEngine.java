@@ -34,10 +34,10 @@ import org.cojen.tupl.util.WorkerGroup;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * 
+ * When database is acting as a replica, this class drives all the decoding logic.
  *
  * @author Brian S O'Neill
- * @see ReplRedoEngine
+ * @see ReplRedoController
  */
 /*P*/
 class ReplRedoEngine implements RedoVisitor, ThreadFactory {
@@ -204,14 +204,14 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean fence() throws IOException {
+    public boolean control(byte[] message) throws IOException {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
             mWorkerGroup.join(false);
         }
 
         // Call with decode latch held, suspending checkpoints.
-        mManager.fenced(mDecoder.mIn.mPos);
+        mManager.control(mDecoder.mIn.mPos, message);
 
         return true;
     }
@@ -248,8 +248,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 } finally {
                     locker.scopeUnlockAll();
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -509,8 +507,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -550,8 +546,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -593,8 +587,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         });
 
@@ -643,8 +635,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     fail(e);
                     return;
                 }
-
-                notifyStore(ix, key, value);
             }
         };
 
@@ -989,7 +979,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // Should already be receiving again due to this exception.
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
-            closeQuietly(null, mDatabase, e);
+            closeQuietly(mDatabase, e);
         }
     }
 
@@ -1001,17 +991,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return handler;
     }
 
-    private void notifyStore(Index ix, byte[] key, byte[] value) {
-        if (ix != null && !Tree.isInternal(ix.getId())) {
-            try {
-                mManager.notifyStore(ix, key, value);
-            } catch (Throwable e) {
-                uncaught(e);
-            }
-        }
-    }
-
-    private void fail(Throwable e) {
+    void fail(Throwable e) {
         if (!mDatabase.isClosed()) {
             EventListener listener = mDatabase.eventListener();
             if (listener != null) {
@@ -1022,7 +1002,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         }
         // Panic.
-        closeQuietly(null, mDatabase, e);
+        closeQuietly(mDatabase, e);
     }
 
     UnmodifiableReplicaException unmodifiable() throws DatabaseException {
