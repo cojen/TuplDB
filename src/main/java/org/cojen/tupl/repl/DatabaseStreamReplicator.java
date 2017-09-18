@@ -101,6 +101,9 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             return null;
         }
 
+        // FIXME: Try to switch local role to OBSERVER, in case member was already in the group
+        // as NORMAL or STANDBY, but it shouldn't become the leader during the restore.
+
         InputStream in;
 
         try {
