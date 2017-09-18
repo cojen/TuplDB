@@ -848,7 +848,8 @@ final class FileStateLog extends Latch implements StateLog {
                 return false;
             }
 
-            // FIXME: check the commit index to be extra sure
+            // FIXME: also check the commit index to be extra sure
+
             if (index > mMetadataHighestIndex) {
                 throw new IllegalStateException("Commit index is too high: " + index
                                                 + " > " + mMetadataHighestIndex);
