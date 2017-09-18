@@ -69,8 +69,7 @@ final class ReplRedoController extends ReplRedoWriter {
         try {
             ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
             long pos = writer == null ? mEngine.decodePosition() : writer.position();
-            // FIXME: Always returns true becauase mCheckpointPos is always zero.
-            return (pos - mCheckpointPos) >= sizeThreshold;
+            return (pos - (mCheckpointPos & ~(1L << 63))) >= sizeThreshold;
         } finally {
             releaseShared();
         }
@@ -87,7 +86,7 @@ final class ReplRedoController extends ReplRedoWriter {
         mCheckpointNum++;
 
         // Only capture new checkpoint state if previous attempt succeeded.
-        if (mCheckpointPos == 0 && mCheckpointTxnId == 0) {
+        if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
             ReplRedoWriter redo = mTxnRedoWriter;
             mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
@@ -167,7 +166,9 @@ final class ReplRedoController extends ReplRedoWriter {
     void checkpointFinished() throws IOException {
         mManager.checkpointed(mCheckpointPos);
         mCheckpointRedoWriter = null;
-        mCheckpointPos = 0;
+        // Keep checkpoint position for the benefit of the shouldCheckpoint method, but flip
+        // the bit for the checkpointSwitch method to detect successful completion.
+        mCheckpointPos |= 1L << 63;
         mCheckpointTxnId = 0;
     }
 
