@@ -341,7 +341,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog.sync();
     }
 
-    // FIXME: This method needs revision: https://github.com/cojen/Tupl/issues/78
     @Override
     public boolean syncCommit(long index, long nanosTimeout) throws IOException {
         long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
@@ -359,14 +358,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             long prevTerm = termLog.prevTermAt(index);
             long term = termLog.term();
 
-            acquireShared();
-            Channel[] channels = mConsensusChannels;
-            releaseShared();
-
-            for (Channel channel : channels) {
-                channel.syncCommit(this, prevTerm, term, index);
-            }
-
+            // Sync locally before remotely, avoiding race conditions when the peers reply back
+            // quickly. The syncCommitReply method would end up calling commitDurable too soon.
             long commitIndex = mStateLog.syncCommit(prevTerm, term, index);
 
             if (index > commitIndex) {
@@ -376,10 +369,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         ("Invalid commit index: " + index + " > " + commitIndex);
                 }
             } else {
+                acquireShared();
+                Channel[] channels = mConsensusChannels;
+                releaseShared();
+
                 if (channels.length == 0) {
                     // Already have consensus.
                     mStateLog.commitDurable(index);
                     return true;
+                }
+
+                for (Channel channel : channels) {
+                    channel.syncCommit(this, prevTerm, term, index);
                 }
 
                 // Don't wait on the condition for too long. The remote calls to the peers
