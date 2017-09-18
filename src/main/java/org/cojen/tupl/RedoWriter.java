@@ -18,6 +18,7 @@
 package org.cojen.tupl;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 
 import org.cojen.tupl.util.Latch;
@@ -30,7 +31,7 @@ import org.cojen.tupl.util.Latch;
  * @see RedoDecoder
  */
 /*P*/
-abstract class RedoWriter extends Latch implements Closeable {
+abstract class RedoWriter extends Latch implements Closeable, Flushable {
     // Only access while latched. Is accessed by TransactionContext and ReplRedoWriter.
     long mLastTxnId;
 
@@ -48,6 +49,13 @@ abstract class RedoWriter extends Latch implements Closeable {
             releaseExclusive();
         }
     }
+
+    /**
+     * Called to sync a redo operation which has no associated transaction.
+     *
+     * @param commitPos highest position to sync (exclusive)
+     */
+    abstract void commitSync(TransactionContext context, long commitPos) throws IOException;
 
     /**
      * Called after redoCommitFinal.
@@ -70,21 +78,6 @@ abstract class RedoWriter extends Latch implements Closeable {
      * Return a new or existing RedoWriter for a new transaction.
      */
     abstract RedoWriter txnRedoWriter();
-
-    /**
-     * Writes a fence operation into this RedoWriter.
-     *
-     * @return highest log position afterwards
-     */
-    final long writeFence() throws IOException {
-        byte[] op = {RedoOps.OP_FENCE};
-        acquireExclusive();
-        try {
-            return write(true, op, 0, 1);
-        } finally {
-            releaseExclusive();
-        }
-    }
 
     /**
      * Returns true if uncheckpointed redo size is at least the given threshold

@@ -49,6 +49,7 @@ class ReplRedoWriter extends RedoWriter {
     private final Latch mBufferLatch;
     private Thread mProducer;
     private Thread mConsumer;
+    private boolean mConsumerParked;
     // Circular buffer; empty when mBufferTail < 0, full when mBufferHead == mBufferTail.
     private byte[] mBuffer;
     // If mBufferTail is in the range of [0, buffer.length] then this is the first used byte in
@@ -73,6 +74,10 @@ class ReplRedoWriter extends RedoWriter {
     void start() {
         mBufferLatch.acquireExclusive();
         try {
+            if (mEngine.mDatabase.isClosed()) {
+                return;
+            }
+
             mWritePos = mReplWriter.position();
             mBuffer = new byte[65536];
 
@@ -82,6 +87,19 @@ class ReplRedoWriter extends RedoWriter {
             mConsumer.start();
         } finally {
             mBufferLatch.releaseExclusive();
+        }
+    }
+
+    @Override
+    public final void commitSync(TransactionContext context, long commitPos) throws IOException {
+        ReplicationManager.Writer writer = mReplWriter;
+        if (writer == null) {
+            throw mEngine.unmodifiable();
+        }
+        if (writer.confirm(commitPos)) {
+            context.confirmed(commitPos);
+        } else {
+            throw nowUnmodifiable();
         }
     }
 
@@ -174,7 +192,7 @@ class ReplRedoWriter extends RedoWriter {
             // Treat as leader switch.
         }
 
-        mEngine.mController.switchToReplica(mReplWriter, false);
+        mEngine.mController.switchToReplica(mReplWriter);
 
         return false;
     }
@@ -272,8 +290,14 @@ class ReplRedoWriter extends RedoWriter {
                     try {
                         Thread consumer = mConsumer;
                         do {
+                            boolean parked = mConsumerParked;
+                            if (parked) {
+                                mConsumerParked = false;
+                            }
                             mBufferLatch.releaseExclusive();
-                            LockSupport.unpark(consumer);
+                            if (parked) {
+                                LockSupport.unpark(consumer);
+                            }
                             LockSupport.park(mBufferLatch);
                             mBufferLatch.acquireExclusive();
                             buffer = mBuffer;
@@ -329,7 +353,14 @@ class ReplRedoWriter extends RedoWriter {
                         mLastCommitTxnId = mLastTxnId;
                     }
 
-                    LockSupport.unpark(mConsumer);
+                    // FIXME: If consumer is parked, attempt to do the write immediately.
+                    // Still do the arraycopy, to support auto-tuning. Release the latch and
+                    // then do the write. This creates a race condition with the consumer
+                    // thread, and so somethig extra is needed.
+                    if (mConsumerParked) {
+                        mConsumerParked = false;
+                        LockSupport.unpark(mConsumer);
+                    }
                     return pos;
                 }
 
@@ -357,8 +388,13 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    void alwaysFlush(boolean enable) throws IOException {
+    final void alwaysFlush(boolean enable) {
         // Always flushes already.
+    }
+
+    @Override
+    public final void flush() {
+        // Nothing to flush.
     }
 
     @Override
@@ -381,6 +417,7 @@ class ReplRedoWriter extends RedoWriter {
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;
         mConsumer = null;
+        mConsumerParked = false;
         mBufferLatch.releaseExclusive();
 
         if (consumer != null) {
@@ -472,11 +509,14 @@ class ReplRedoWriter extends RedoWriter {
                     Utils.uncaught(e);
                 }
                 // Keep consuming until an official leadership change is observed.
+                mBufferLatch.releaseExclusive();
                 Thread.yield();
+                mBufferLatch.acquireExclusive();
                 continue;
             }
 
             // Wait for producer and loop back.
+            mConsumerParked = true;
             Thread producer = mProducer;
             mBufferLatch.releaseExclusive();
             LockSupport.unpark(producer);
@@ -489,6 +529,6 @@ class ReplRedoWriter extends RedoWriter {
         LockSupport.unpark(mProducer);
         mBufferLatch.releaseExclusive();
 
-        mEngine.mController.switchToReplica(mReplWriter, false);
+        mEngine.mController.switchToReplica(mReplWriter);
     }
 }

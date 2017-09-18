@@ -183,11 +183,14 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_FENCE:
-                if (!verifyTerminator(in)) {
-                    return false;
+            case OP_CONTROL:
+                byte[] message;
+                try {
+                    message = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
                 }
-                if (!visitor.fence()) {
+                if (!verifyTerminator(in) || !visitor.control(message)) {
                     return false;
                 }
                 break;
@@ -477,7 +480,6 @@ abstract class RedoDecoder {
                 break;
 
             case (OP_TXN_CUSTOM & 0xff):
-                byte[] message;
                 try {
                     txnId = readTxnId(in);
                     message = in.readBytes();

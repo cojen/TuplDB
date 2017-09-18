@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":6,"i2":6,"i3":6,"i4":6};
+var methods = {"i0":18,"i1":6,"i2":18,"i3":6,"i4":6,"i5":6,"i6":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -48,7 +48,7 @@ var activeTableTab = "activeTableTab";
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
 <li><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
@@ -137,18 +137,30 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i2" class="altColor">
+<td class="colFirst"><code>default long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd--">confirmEnd</a></span>()</code>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</td>
+</tr>
+<tr id="i3" class="rowColor">
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd-long-">confirmEnd</a></span>(long&nbsp;timeoutNanos)</code>
+<div class="block">Blocks until the leadership end is confirmed.</div>
+</td>
+</tr>
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#leaderNotify-java.lang.Runnable-">leaderNotify</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;callback)</code>
 <div class="block">Invokes the given callback upon a leadership change.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#position--">position</a></span>()</code>
 <div class="block">Returns the next position a leader will write to.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#write-byte:A-int-int-long-">write</a></span>(byte[]&nbsp;b,
      int&nbsp;off,
@@ -255,7 +267,7 @@ var activeTableTab = "activeTableTab";
 <a name="confirm-long-long-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>confirm</h4>
 <pre>boolean&nbsp;confirm(long&nbsp;commitPos,
@@ -271,6 +283,42 @@ var activeTableTab = "activeTableTab";
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="confirmEnd--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>confirmEnd</h4>
+<pre>default&nbsp;long&nbsp;confirmEnd()
+                 throws <a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></pre>
+<div class="block">Blocks until the leadership end is confirmed. This method must be called before
+ switching to replica mode.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>the end commit position; same as next read position</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code> - if end position cannot be determined</dd>
+</dl>
+</li>
+</ul>
+<a name="confirmEnd-long-">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>confirmEnd</h4>
+<pre>long&nbsp;confirmEnd(long&nbsp;timeoutNanos)
+         throws <a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></pre>
+<div class="block">Blocks until the leadership end is confirmed. This method must be called before
+ switching to replica mode.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>the end commit position; same as next read position</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code> - if end position cannot be determined</dd>
 </dl>
 </li>
 </ul>
@@ -301,7 +349,7 @@ var activeTableTab = "activeTableTab";
 </div>
 <div class="subNav">
 <ul class="navList">
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
 <li><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">

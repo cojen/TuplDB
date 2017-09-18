@@ -66,8 +66,8 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean fence() {
-        mListener.notify(mType, "Redo fence");
+    public boolean control(byte[] message) {
+        mListener.notify(mType, "Redo %1$s: %2$s", "control", valueStr(message));
         return true;
     }
 
@@ -180,14 +180,14 @@ class RedoEventPrinter implements RedoVisitor {
 
     @Override
     public boolean txnCustom(long txnId, byte[] message) {
-        mListener.notify(mType, "Redo %1$s: message=%2$s",
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, message=%3$s",
                          "txnCustom", txnId, valueStr(message));
         return true;
     }
 
     @Override
     public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key) {
-        mListener.notify(mType, "Redo %1$s: message=%2$s, key=%3$s",
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, message=%3$s, key=%4$s",
                          "txnCustomLock", txnId, valueStr(message), keyStr(key));
         return true;
     }

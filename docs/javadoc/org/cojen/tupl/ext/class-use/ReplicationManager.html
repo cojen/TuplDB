@@ -87,6 +87,13 @@
 <div class="block">See <a href="../../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
 </td>
 </tr>
+<tr class="rowColor">
+<td class="colFirst"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></td>
+<td class="colLast">
+<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
+ intended for supporting fully replicated <a href="../../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </li>
@@ -107,6 +114,26 @@
 <td class="colFirst"><code><a href="../../../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <td class="colLast"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.ext.ReplicationManager-">replicate</a></span>(<a href="../../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>&nbsp;manager)</code>
 <div class="block">Enable replication by providing a <a href="../../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</li>
+<li class="blockList"><a name="org.cojen.tupl.repl">
+<!--   -->
+</a>
+<h3>Uses of <a href="../../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a> in <a href="../../../../../org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></h3>
+<table class="useSummary" border="0" cellpadding="3" cellspacing="0" summary="Use table, listing subinterfaces, and an explanation">
+<caption><span>Subinterfaces of <a href="../../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a> in <a href="../../../../../org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Interface and Description</th>
+</tr>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a></span></code>
+<div class="block">Implementation of a <a href="../../../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> for supporting full <a href="../../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">database</a> replication.</div>
 </td>
 </tr>
 </tbody>

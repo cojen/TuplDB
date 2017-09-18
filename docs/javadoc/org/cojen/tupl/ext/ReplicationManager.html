@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18,"i5":18,"i6":18,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":18,"i13":6,"i14":6};
+var methods = {"i0":6,"i1":18,"i2":6,"i3":18,"i4":18,"i5":6,"i6":6,"i7":18,"i8":18,"i9":6,"i10":6,"i11":18,"i12":6,"i13":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -49,7 +49,7 @@ var activeTableTab = "activeTableTab";
 <div class="subNav">
 <ul class="navList">
 <li>Prev&nbsp;Class</li>
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/ext/ReplicationManager.html" target="_top">Frames</a></li>
@@ -102,6 +102,10 @@ var activeTableTab = "activeTableTab";
 <dt>All Superinterfaces:</dt>
 <dd><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></dd>
 </dl>
+<dl>
+<dt>All Known Subinterfaces:</dt>
+<dd><a href="../../../../org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl">DatabaseReplicator</a></dd>
+</dl>
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">ReplicationManager</span>
@@ -133,6 +137,10 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static interface&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></span></code>&nbsp;</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></span></code>&nbsp;</td>
 </tr>
 </table>
@@ -158,31 +166,27 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </td>
 </tr>
 <tr id="i1" class="rowColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-">control</a></span>(long&nbsp;position,
+       byte[]&nbsp;message)</code>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#encoding--">encoding</a></span>()</code>
 <div class="block">Return a fixed non-zero value which identifies the replication manager implementation
  and its encoding format.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
-<td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#fenced-long-">fenced</a></span>(long&nbsp;position)</code>
-<div class="block">Called after a fence operation has been received and processed.</div>
-</td>
-</tr>
 <tr id="i3" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#flip--">flip</a></span>()</code>
-<div class="block">Called to acknowledge mode change from replica to leader, or vice versa.</div>
-</td>
-</tr>
-<tr id="i4" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#notifyDrop-org.cojen.tupl.Index-">notifyDrop</a></span>(<a href="../../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code>
 <div class="block">Notification to replica after an index is dropped.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#notifyRename-org.cojen.tupl.Index-byte:A-byte:A-">notifyRename</a></span>(<a href="../../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
             byte[]&nbsp;oldName,
@@ -190,15 +194,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="block">Notification to replica after an index is renamed.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
-<td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#notifyStore-org.cojen.tupl.Index-byte:A-byte:A-">notifyStore</a></span>(<a href="../../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-           byte[]&nbsp;key,
-           byte[]&nbsp;value)</code>
-<div class="block">Notification to replica when an entry is stored into an index.</div>
-</td>
-</tr>
-<tr id="i7" class="rowColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#read-byte:A-int-int-">read</a></span>(byte[]&nbsp;b,
     int&nbsp;off,
@@ -206,39 +202,46 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="block">Blocks at most once, reading as much replication input as possible.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#readPosition--">readPosition</a></span>()</code>
 <div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#recover-org.cojen.tupl.EventListener-">recover</a></span>(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code>
+<tr id="i7" class="rowColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#ready-org.cojen.tupl.ext.ReplicationManager.Accessor-">ready</a></span>(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)</code>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
  replication has sufficiently "caught up".</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i8" class="altColor">
+<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest--">restoreRequest</a></span>()</code>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer.</div>
+</td>
+</tr>
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#start-long-">start</a></span>(long&nbsp;position)</code>
 <div class="block">Start the replication manager in replica mode.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i10" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#sync--">sync</a></span>()</code>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the current position.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#syncConfirm-long-">syncConfirm</a></span>(long&nbsp;position)</code>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#syncConfirm-long-long-">syncConfirm</a></span>(long&nbsp;position,
            long&nbsp;timeoutNanos)</code>
@@ -246,7 +249,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#writer--">writer</a></span>()</code>
 <div class="block">Returns an object which allows the leader to write changes.</div>
@@ -286,6 +289,25 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
  other implementations.</div>
 </li>
 </ul>
+<a name="restoreRequest--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>restoreRequest</h4>
+<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest()
+                            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer. If null is returned, the database will try to start
+ reading replication data at the lowest position.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>null if no snapshot could be found</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if a snapshot was found, but requesting it failed</dd>
+</dl>
+</li>
+</ul>
 <a name="start-long-">
 <!--   -->
 </a>
@@ -311,20 +333,21 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </dl>
 </li>
 </ul>
-<a name="recover-org.cojen.tupl.EventListener-">
+<a name="ready-org.cojen.tupl.ext.ReplicationManager.Accessor-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>recover</h4>
-<pre>void&nbsp;recover(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)
-      throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>ready</h4>
+<pre>default&nbsp;void&nbsp;ready(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)
+            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
  replication has sufficiently "caught up". The thread which is opening the database
- invokes this method, and so it blocks until recovery completes.</div>
+ invokes this method, and so it blocks until recovery completes. Default implementation
+ does nothing.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>listener</code> - optional listener for posting recovery events to</dd>
+<dd><code>accessor</code> - provides access to the database</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
@@ -352,7 +375,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
          int&nbsp;len)
   throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks at most once, reading as much replication input as possible. Returns -1 if local
- instance has become the leader.</div>
+ instance has become the leader, and a writer instance now exists.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount read, or -1 if leader</dd>
@@ -360,19 +383,6 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if not started</dd>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
-</li>
-</ul>
-<a name="flip--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>flip</h4>
-<pre>void&nbsp;flip()</pre>
-<div class="block">Called to acknowledge mode change from replica to leader, or vice versa. Until flip is
- called, all read and write operations fail as if the leadership mode is indeterminate.
- Reads fail as if the local instance is the leader, and writes fail as if the local
- instance is a replica.</div>
 </li>
 </ul>
 <a name="writer--">
@@ -462,42 +472,23 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </dl>
 </li>
 </ul>
-<a name="fenced-long-">
+<a name="control-long-byte:A-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>fenced</h4>
-<pre>default&nbsp;void&nbsp;fenced(long&nbsp;position)
-             throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Called after a fence operation has been received and processed. All replication
- processing and checkpoints are suspended until this method returns.</div>
+<h4>control</h4>
+<pre>default&nbsp;void&nbsp;control(long&nbsp;position,
+                     byte[]&nbsp;message)
+              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Called after a control operation has been confirmed by a leader or received by a
+ replica. All replication processing and checkpoints are suspended until this method
+ returns. Any exception thrown by this method causes the database to panic and close.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - log position immediately after the fence operation</dd>
+<dd><code>position</code> - log position just after the message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
-</dl>
-</li>
-</ul>
-<a name="notifyStore-org.cojen.tupl.Index-byte:A-byte:A-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>notifyStore</h4>
-<pre>default&nbsp;void&nbsp;notifyStore(<a href="../../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-                         byte[]&nbsp;key,
-                         byte[]&nbsp;value)</pre>
-<div class="block">Notification to replica when an entry is stored into an index. All notifications are
- <a href="../../../../org/cojen/tupl/LockMode.html#READ_UNCOMMITTED"><code>uncommitted</code></a>, and so loading with an appropriate lock
- mode is required for confirmation. The current thread is free to perform any blocking
- operations &mdash; it will not suspend replication processing unless <a href="../../../../org/cojen/tupl/DatabaseConfig.html#maxReplicaThreads-int-"><code>all</code></a> replication threads are consumed.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - non-null index reference</dd>
-<dd><code>key</code> - non-null key; contents must not be modified</dd>
-<dd><code>value</code> - null if entry is deleted; contents can be modified</dd>
 </dl>
 </li>
 </ul>
@@ -563,7 +554,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 <div class="subNav">
 <ul class="navList">
 <li>Prev&nbsp;Class</li>
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../../index.html?org/cojen/tupl/ext/ReplicationManager.html" target="_top">Frames</a></li>

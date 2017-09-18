@@ -24,6 +24,8 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.ServerSocket;
 
+import java.util.Arrays;
+
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
@@ -39,9 +41,12 @@ class SocketReplicationManager implements ReplicationManager {
     private volatile InputStream mReader;
     private volatile StreamWriter mWriter;
 
+    private volatile Accessor mAccessor;
+
     private volatile long mPos;
 
-    private long mFencedPos;
+    private byte[] mControlMessage;
+    private long mControlPos;
 
     /**
      * @param replicaHost replica to connect to; pass null if local host is the replica
@@ -83,7 +88,8 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public void recover(EventListener listener) throws IOException {
+    public void ready(Accessor accessor) throws IOException {
+        mAccessor = accessor;
     }
 
     @Override
@@ -100,12 +106,12 @@ class SocketReplicationManager implements ReplicationManager {
         int amt = in.read(b, off, len);
         if (amt > 0) {
             mPos += amt;
+        } else {
+            // Socket closed, but a leader writer is required. Write to dev/null.
+            mWriter = new StreamWriter(null);
+            mWriter.mDisabled = true;
         }
         return amt;
-    }
-
-    @Override
-    public void flip() {
     }
 
     @Override
@@ -126,8 +132,9 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public synchronized void fenced(long position) throws IOException {
-        mFencedPos = position;
+    public synchronized void control(long position, byte[] message) throws IOException {
+        mControlMessage = message;
+        mControlPos = position;
         notifyAll();
     }
 
@@ -136,7 +143,7 @@ class SocketReplicationManager implements ReplicationManager {
         if (mReader != null) {
             mReader.close();
         }
-        if (mWriter != null) {
+        if (mWriter != null && mWriter.mOut != null) {
             mWriter.mOut.close();
         }
     }
@@ -155,10 +162,19 @@ class SocketReplicationManager implements ReplicationManager {
         mWriter.mDisabled = true;
     }
 
-    public synchronized long waitForFence(long position) throws InterruptedException {
+    public long writeControl(byte[] message) throws IOException {
+        return mAccessor.control(message);
+    }
+
+    public synchronized long waitForControl(long position, byte[] message)
+        throws InterruptedException
+    {
         while (true) {
-            long current = mFencedPos;
+            long current = mControlPos;
             if (current >= position) {
+                if (current == position && !Arrays.equals(mControlMessage, message)) {
+                    throw new IllegalStateException("Wrong message");
+                }
                 return current;
             }
             wait();
@@ -210,6 +226,14 @@ class SocketReplicationManager implements ReplicationManager {
                 throw new ConfirmationFailureException();
             }
             return true;
+        }
+
+        @Override
+        public long confirmEnd(long timeoutNanos) throws ConfirmationFailureException {
+            if (!mDisabled) {
+                throw new ConfirmationFailureException("Not disabled");
+            }
+            return mPos;
         }
     }
 }

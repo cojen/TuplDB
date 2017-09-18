@@ -48,8 +48,8 @@ class RedoOps {
         /** txnId: long */
         OP_TXN_ID_RESET = 7,
 
-        /** no operands */
-        OP_FENCE = 8,
+        /** messageLength: varInt, message: bytes */
+        OP_CONTROL = 8,
 
         /** indexId: long, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
         OP_STORE = 16,

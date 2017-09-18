@@ -511,7 +511,7 @@ final class _TransactionContext extends Latch implements Flushable {
     void redoTimestamp(_RedoWriter redo, byte op) throws IOException {
         acquireRedoLatch();
         try {
-            doRedoTimestamp(redo, op);
+            doRedoTimestamp(redo, op, DurabilityMode.NO_FLUSH);
         } finally {
             releaseRedoLatch();
         }
@@ -521,20 +521,40 @@ final class _TransactionContext extends Latch implements Flushable {
      * @param op OP_TIMESTAMP, OP_SHUTDOWN, OP_CLOSE, or OP_END_FILE
      */
     // Caller must hold redo latch.
-    void doRedoTimestamp(_RedoWriter redo, byte op) throws IOException {
-        doRedoOp(redo, op, System.currentTimeMillis());
+    void doRedoTimestamp(_RedoWriter redo, byte op, DurabilityMode mode) throws IOException {
+        doRedoOp(redo, op, System.currentTimeMillis(), mode);
     }
 
     // Caller must hold redo latch.
-    void doRedoNopRandom(_RedoWriter redo) throws IOException {
-        doRedoOp(redo, OP_NOP_RANDOM, ThreadLocalRandom.current().nextLong());
+    void doRedoNopRandom(_RedoWriter redo, DurabilityMode mode) throws IOException {
+        doRedoOp(redo, OP_NOP_RANDOM, ThreadLocalRandom.current().nextLong(), mode);
     }
 
     // Caller must hold redo latch.
-    private void doRedoOp(_RedoWriter redo, byte op, long operand) throws IOException {
+    private void doRedoOp(_RedoWriter redo, byte op, long operand, DurabilityMode mode)
+        throws IOException
+    {
         redo.opWriteCheck(null);
         redoWriteOp(redo, op, operand);
-        redoNonTxnTerminateCommit(redo, DurabilityMode.NO_FLUSH);
+        redoNonTxnTerminateCommit(redo, mode);
+    }
+
+    long redoControl(_RedoWriter redo, byte[] message) throws IOException {
+        if (message == null) {
+            throw new NullPointerException("Message is null");
+        }
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteOp(redo, OP_CONTROL);
+            redoWriteUnsignedVarInt(message.length);
+            redoWriteBytes(message, true);
+            // Must use SYNC to obtain the log position.
+            return redoNonTxnTerminateCommit(redo, DurabilityMode.SYNC);
+        } finally {
+            releaseRedoLatch();
+        }
     }
 
     /**
@@ -854,6 +874,18 @@ final class _TransactionContext extends Latch implements Flushable {
             mRedoWriterLatched = true;
         }
         return redo;
+    }
+
+    /**
+     * Only to be called when commit position which was confirmed doesn't have an associated
+     * transaction. Expected to only be used for replication control operations, so it doesn't
+     * need an optimized implementation.
+     */
+    void confirmed(long commitPos) {
+        if (commitPos == -1) {
+            throw new IllegalArgumentException();
+        }
+        mConfirmedPos = Math.max(latchConfirmed(), commitPos);
     }
 
     void confirmed(long commitPos, long txnId) {

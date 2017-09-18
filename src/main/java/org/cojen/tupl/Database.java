@@ -484,18 +484,17 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Flushes, but does not sync, all non-flushed transactions. Transactions
-     * committed with {@link DurabilityMode#NO_FLUSH no-flush} effectively
-     * become {@link DurabilityMode#NO_SYNC no-sync} durable.
+     * Flushes all committed transactions, but not durably. Transactions committed with {@link
+     * DurabilityMode#NO_FLUSH no-flush} effectively become {@link DurabilityMode#NO_SYNC
+     * no-sync} durable.
      */
     @Override
     public abstract void flush() throws IOException;
 
     /**
-     * Persists all non-flushed and non-sync'd transactions. Transactions
-     * committed with {@link DurabilityMode#NO_FLUSH no-flush} and {@link
-     * DurabilityMode#NO_SYNC no-sync} effectively become {@link
-     * DurabilityMode#SYNC sync} durable.
+     * Durably flushes all committed transactions. Transactions committed with {@link
+     * DurabilityMode#NO_FLUSH no-flush} and {@link DurabilityMode#NO_SYNC no-sync} effectively
+     * become {@link DurabilityMode#SYNC sync} durable.
      */
     public abstract void sync() throws IOException;
 

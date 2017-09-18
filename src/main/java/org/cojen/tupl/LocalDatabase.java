@@ -242,7 +242,7 @@ final class LocalDatabase extends AbstractDatabase {
             db.finishInit(config);
             return db;
         } catch (Throwable e) {
-            closeQuietly(null, db);
+            closeQuietly(db);
             throw e;
         }
     }
@@ -262,7 +262,7 @@ final class LocalDatabase extends AbstractDatabase {
             db.finishInit(config);
             return db;
         } catch (Throwable e) {
-            closeQuietly(null, db);
+            closeQuietly(db);
             throw e;
         }
     }
@@ -853,7 +853,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
-            closeQuietly(null, this);
+            closeQuietly(this);
             throw e;
         }
     }
@@ -900,18 +900,63 @@ final class LocalDatabase extends AbstractDatabase {
         if (mRedoWriter instanceof ReplRedoController) {
             // Start replication and recovery.
             ReplRedoController controller = (ReplRedoController) mRedoWriter;
+
             try {
-                // Pass the original listener, in case it has been specialized.
-                controller.recover(config.mReplInitialTxnId, config.mEventListener);
+                controller.ready(config.mReplInitialTxnId, new ReplicationManager.Accessor() {
+                    @Override
+                    public void notify(EventType type, String message, Object... args) {
+                        mEventListener.notify(type, message, args);
+                    }
+
+                    @Override
+                    public Database database() {
+                        return LocalDatabase.this;
+                    }
+
+                    @Override
+                    public long control(byte[] message) throws IOException {
+                        return writeControlMessage(message);
+                    }
+                });
             } catch (Throwable e) {
-                closeQuietly(null, this, e);
+                closeQuietly(this, e);
                 throw e;
             }
+
             recoveryComplete(config.mReplRecoveryStartNanos);
             initialCheckpoint = true;
         }
 
         c.start(initialCheckpoint);
+    }
+
+    private long writeControlMessage(byte[] message) throws IOException {
+        // Commit lock must be held to prevent a checkpoint from starting. If the control
+        // message fails to be applied, panic the database. If the database is kept open after
+        // a failure and then a checkpoint completes, the control message would be dropped.
+        // Normal transactional operations aren't so sensitive, because they have an undo log.
+        CommitLock.Shared shared = mCommitLock.acquireShared();
+        try {
+            RedoWriter redo = txnRedoWriter();
+            TransactionContext context = anyTransactionContext();
+            long commitPos = context.redoControl(redo, message);
+
+            // Waiting for confirmation with the shared lock held isn't ideal, but control
+            // messages aren't that frequent.
+            redo.commitSync(context, commitPos);
+
+            try {
+                ((ReplRedoController) mRedoWriter).mManager.control(commitPos, message);
+            } catch (Throwable e) {
+                // Panic.
+                closeQuietly(this, e);
+                throw e;
+            }
+
+            return commitPos;
+        } finally {
+            shared.release();
+        }
     }
 
     private void applyCachePrimer(DatabaseConfig config) {
@@ -1478,7 +1523,7 @@ final class LocalDatabase extends AbstractDatabase {
                          "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
                          mTrashed.getId(), mTrashed.getNameString(), rootCause(e));
                 }
-                closeQuietly(null, mTrashed);
+                closeQuietly(mTrashed);
                 return;
             }
 
@@ -1682,7 +1727,7 @@ final class LocalDatabase extends AbstractDatabase {
                         checkpoint(true, 0, 0);
                     } catch (Throwable e) {
                         DatabaseException.rethrowIfRecoverable(e);
-                        closeQuietly(null, this, e);
+                        closeQuietly(this, e);
                         throw e;
                     }
                 }
@@ -1959,17 +2004,6 @@ final class LocalDatabase extends AbstractDatabase {
             // Ignore.
         }
 
-        if (mTxnContexts != null) {
-            // Flush out any lingering NO_FLUSH commits.
-            for (TransactionContext context : mTxnContexts) {
-                try {
-                    context.flush();
-                } catch (IOException e) {
-                    // Ignore for now and discover again later.
-                }
-            }
-        }
-
         try {
             TransactionContext context = anyTransactionContext();
             context.redoTimestamp(redo, op); 
@@ -1985,7 +2019,7 @@ final class LocalDatabase extends AbstractDatabase {
         // shutdown sequence.
 
         if (op == RedoOps.OP_CLOSE) {
-            Utils.closeQuietly(null, redo);
+            Utils.closeQuietly(redo);
         }
     }
 
@@ -2003,27 +2037,11 @@ final class LocalDatabase extends AbstractDatabase {
      * @param level 0: flush only, 1: flush and sync, 2: flush and sync metadata
      */
     private void flush(int level) throws IOException {
-        UnmodifiableReplicaException ure = null;
-
         if (!isClosed() && mRedoWriter != null) {
-            for (TransactionContext context : mTxnContexts) {
-                try {
-                    context.flush();
-                } catch (UnmodifiableReplicaException e) {
-                    // Discard all transaction contexts if no longer the leader.
-                    if (ure == null) {
-                        ure = e;
-                    }
-                }
-            }
-
+            mRedoWriter.flush();
             if (level > 0) {
                 mRedoWriter.force(level > 1);
             }
-        }
-
-        if (ure != null) {
-            throw ure;
         }
     }
 
@@ -2038,7 +2056,7 @@ final class LocalDatabase extends AbstractDatabase {
                 Thread.yield();
             } catch (Throwable e) {
                 DatabaseException.rethrowIfRecoverable(e);
-                closeQuietly(null, this, e);
+                closeQuietly(this, e);
                 throw e;
             }
         }
@@ -4633,12 +4651,6 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     @Override
-    long redoFence() throws IOException {
-        RedoWriter redo = txnRedoWriter();
-        return redo == null ? 0 : redo.writeFence();
-    }
-
-    @Override
     void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
@@ -4674,11 +4686,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                     // Thresholds not met for a full checkpoint, but fully sync the redo log
                     // for durability.
-                    try {
-                        flush(2); // flush and sync metadata
-                    } catch (UnmodifiableReplicaException e) {
-                        // Ignore.
-                    }
+                    flush(2); // flush and sync metadata
 
                     return;
                 }
@@ -4697,11 +4705,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                     // Root is clean, so no need for full checkpoint, but fully sync the redo
                     // log for durability.
-                    try {
-                        flush(2); // flush and sync metadata
-                    } catch (UnmodifiableReplicaException e) {
-                        // Ignore.
-                    }
+                    flush(2); // flush and sync metadata
 
                     return;
                 }

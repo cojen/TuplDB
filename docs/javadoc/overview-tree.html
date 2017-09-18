@@ -75,6 +75,7 @@
 <li><a href="org/cojen/tupl/package-tree.html">org.cojen.tupl</a>, </li>
 <li><a href="org/cojen/tupl/ext/package-tree.html">org.cojen.tupl.ext</a>, </li>
 <li><a href="org/cojen/tupl/io/package-tree.html">org.cojen.tupl.io</a>, </li>
+<li><a href="org/cojen/tupl/repl/package-tree.html">org.cojen.tupl.repl</a>, </li>
 <li><a href="org/cojen/tupl/tools/package-tree.html">org.cojen.tupl.tools</a>, </li>
 <li><a href="org/cojen/tupl/util/package-tree.html">org.cojen.tupl.util</a></li>
 </ul>
@@ -114,6 +115,7 @@
 <li type="circle">org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">StripedPageArray</span></a></li>
 </ul>
 </li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">ReplicatorConfig</span></a> (implements java.lang.<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang">Cloneable</a>, java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io">Serializable</a>)</li>
 <li type="circle">java.lang.<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang"><span class="typeNameLink">Throwable</span></a> (implements java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io">Serializable</a>)
 <ul>
 <li type="circle">java.lang.<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Exception.html?is-external=true" title="class or interface in java.lang"><span class="typeNameLink">Exception</span></a>
@@ -162,6 +164,7 @@
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ViewConstraintException</span></a></li>
 </ul>
 </li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/JoinException.html" title="class in org.cojen.tupl.repl"><span class="typeNameLink">JoinException</span></a></li>
 </ul>
 </li>
 <li type="circle">java.lang.<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang"><span class="typeNameLink">RuntimeException</span></a>
@@ -208,20 +211,148 @@
 </ul>
 </li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends org.cojen.tupl.io.<a href="org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>, org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Accessor</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>)</li>
-<li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>)</li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Snapshot</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotReceiver</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotSender</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
 </ul>
 </li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends org.cojen.tupl.io.<a href="org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>, org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Accessor</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Reader</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator.Writer</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
+</ul>
+</li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>)</li>
-<li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator.Writer</span></a></li>
+<li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>)</li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DatabaseReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DatabaseReplicator</span></a> (also extends org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>)</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">MessageReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+</ul>
+</li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Scanner</span></a>
 <ul>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>)</li>
 </ul>
 </li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Snapshot</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotReceiver</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">SnapshotSender</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Reader</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">StreamReplicator.Writer</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>, org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>)</li>
 </ul>
 </li>
@@ -230,17 +361,21 @@
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Cursor</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryConsumer</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryFunction</span></a></li>
-<li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EventListener</span></a></li>
+<li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EventListener</span></a>
+<ul>
+<li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Accessor</span></a></li>
+</ul>
+</li>
 <li type="circle">org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io"><span class="typeNameLink">FileFactory</span></a></li>
 <li type="circle">java.io.<a href="http://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io"><span class="typeNameLink">Flushable</span></a>
 <ul>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends org.cojen.tupl.io.<a href="org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>)</li>
+<li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transaction</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends org.cojen.tupl.<a href="org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>)</li>
 </ul>
 </li>
 <li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Writer</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Sorter</span></a></li>
-<li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transaction</span></a></li>
 <li type="circle">org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">TransactionHandler</span></a></li>
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transformer</span></a>
 <ul>
@@ -268,6 +403,7 @@
 <li type="circle">org.cojen.tupl.<a href="org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl"><span class="typeNameLink">DurabilityMode</span></a></li>
 <li type="circle">org.cojen.tupl.io.<a href="org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io"><span class="typeNameLink">OpenOption</span></a></li>
 <li type="circle">org.cojen.tupl.io.<a href="org/cojen/tupl/io/LengthOption.html" title="enum in org.cojen.tupl.io"><span class="typeNameLink">LengthOption</span></a></li>
+<li type="circle">org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl"><span class="typeNameLink">Role</span></a></li>
 </ul>
 </li>
 </ul>
