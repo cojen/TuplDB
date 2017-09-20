@@ -443,6 +443,52 @@ public class FileTermLogTest {
     }
 
     @Test
+    public void truncateStartPrevTerm() throws Exception {
+        // Verify that truncating the start updates the previous term.
+
+        final long seed = 8675309;
+
+        final byte[] buf = new byte[10000];
+        Random rnd = new Random(seed);
+        LogWriter writer = mLog.openWriter(0);
+        long index = 0;
+
+        for (int i=0; i<10000; i++) {
+            int len = rnd.nextInt(buf.length);
+            for (int j=0; j<len; j++) {
+                buf[j] = (byte) rnd.nextInt();
+            }
+            assertEquals(len, writer.write(buf, 0, len, index + len));
+            index += len;
+        }
+
+        writer.release();
+
+        assertEquals(0, mLog.prevTermAt(0));
+        assertEquals(1, mLog.prevTermAt(1));
+
+        for (int newStart = 0; newStart <= index; newStart += 1000) {
+            mLog.truncateStart(newStart);
+            if (mLog.startIndex() <= 1) {
+                assertEquals(0, mLog.prevTermAt(0));
+                assertEquals(1, mLog.prevTermAt(1));
+            } else {
+                try {
+                    mLog.prevTermAt(0);
+                    fail();
+                } catch (IllegalStateException e) {
+                    // Index is too low.
+                }
+
+                assertEquals(1, mLog.prevTermAt(newStart));
+                assertEquals(1, mLog.prevTermAt(mLog.startIndex()));
+            }
+
+            assertEquals(1, mLog.prevTermAt(index));
+        }
+    }
+
+    @Test
     public void waitForCommit() throws Exception {
         commitWait(false);
     }

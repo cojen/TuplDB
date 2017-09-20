@@ -33,7 +33,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
     }
 
     /**
-     * Returns the fixed previous term of this log.
+     * Returns the previous term of this log, relative to the start index.
      */
     long prevTerm();
 
@@ -52,7 +52,8 @@ interface TermLog extends LKey<TermLog>, Closeable {
     /**
      * Attempt to increase the term start index, assumed to be a valid commit index, and
      * truncate as much data as possible lower than it. The effective start index applied might
-     * be lower than what was requested, dependent on how much data could be truncated.
+     * be lower than what was requested, dependent on how much data could be truncated. As a
+     * side-effect of calling this method, the previous term might be updated.
      */
     void truncateStart(long startIndex) throws IOException;
 
