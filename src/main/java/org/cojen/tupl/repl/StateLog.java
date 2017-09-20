@@ -151,7 +151,9 @@ interface StateLog extends Closeable {
     boolean isDurable(long index);
 
     /**
-     * Durably persist the commit index, as agreed by consensus.
+     * Durably persist the commit index, as agreed by consensus. Only metadata is persisted by
+     * this method -- sync or syncCommit must have been called earlier, ensuring that all data
+     * up to the given index is durable.
      *
      * @return false if given index is already durable
      * @throws IllegalStateException if index is too high

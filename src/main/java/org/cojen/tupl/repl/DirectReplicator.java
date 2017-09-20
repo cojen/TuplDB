@@ -141,7 +141,7 @@ public interface DirectReplicator extends Replicator {
         long term();
 
         /**
-         * Returns the fixed index at the start of the term.
+         * Returns the index at the start of the term.
          */
         long termStartIndex();
 
