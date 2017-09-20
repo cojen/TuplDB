@@ -66,7 +66,6 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final Worker mWorker;
     private final File mBase;
-    private final long mLogPrevTerm;
     private final long mLogTerm;
 
     /*
@@ -78,6 +77,7 @@ final class FileTermLog extends Latch implements TermLog {
         min(commit, highest).
     */
 
+    private long mLogPrevTerm;
     private long mLogStartIndex;
     private long mLogCommitIndex;
     private long mLogHighestIndex;
@@ -181,7 +181,6 @@ final class FileTermLog extends Latch implements TermLog {
 
         mWorker = worker;
         mBase = base;
-        mLogPrevTerm = prevTerm;
         mLogTerm = term;
 
         mSegments = new ConcurrentSkipListSet<>();
@@ -249,6 +248,7 @@ final class FileTermLog extends Latch implements TermLog {
             return true;
         });
 
+        mLogPrevTerm = prevTerm;
         mLogStartIndex = startIndex;
         mLogCommitIndex = commitIndex;
         mLogHighestIndex = highestIndex;
@@ -310,7 +310,10 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long prevTerm() {
-        return mLogPrevTerm;
+        acquireShared();
+        long prevTerm = mLogPrevTerm;
+        releaseShared();
+        return prevTerm;
     }
 
     @Override
@@ -334,8 +337,6 @@ final class FileTermLog extends Latch implements TermLog {
                 throw new IllegalStateException
                     ("Index is lower than start: " + index + " < " + mLogStartIndex);
             }
-            // FIXME: This logic is broken when the start index changes. Need to have a
-            // distinct termStartIndex and logStartIndex.
             return index == mLogStartIndex ? mLogPrevTerm : mLogTerm;
         } finally {
             releaseShared();
@@ -397,6 +398,7 @@ final class FileTermLog extends Latch implements TermLog {
         if (startIndex <= mLogStartIndex) {
             return false;
         }
+        mLogPrevTerm = mLogTerm;
         mLogStartIndex = startIndex = Math.min(startIndex, mLogEndIndex);
         mLogCommitIndex = Math.max(startIndex, mLogCommitIndex);
         mLogHighestIndex = Math.max(startIndex, mLogHighestIndex);
