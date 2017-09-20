@@ -191,13 +191,16 @@ final class FileStateLog extends Latch implements StateLog {
         long durableIndex = mMetadataBuffer.getLong();
 
         if (currentTerm < highestTerm) {
-            throw new IOException("Current term is lower than highest term");
+            throw new IOException("Current term is lower than highest term: " +
+                                  currentTerm + " < " + highestTerm);
         }
         if (highestIndex < durableIndex) {
-            throw new IOException("Highest index is lower than durable index");
+            throw new IOException("Highest index is lower than durable index: " +
+                                  highestIndex + " < " + durableIndex);
         }
         if (startIndex > durableIndex) {
-            throw new IOException("Start index is higher than durable index");
+            throw new IOException("Start index is higher than durable index: " +
+                                  startIndex + " > " + durableIndex);
         }
 
         // Initialize mMetadataInfo with valid state. Note that the mCommitIndex field isn't
