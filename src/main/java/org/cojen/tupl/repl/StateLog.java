@@ -68,10 +68,13 @@ interface StateLog extends Closeable {
      * Set the log start index higher, assumed to be a valid commit index, and potentially
      * truncate any lower data. Method does nothing if given start index is lower than the
      * current start.
-     *
-     * @throws IllegalStateException if term is unknown at given index
      */
     void truncateStart(long index) throws IOException;
+
+    /**
+     * Truncate the entire log, and create a primordial term.
+     */
+    void truncateAll(long prevTerm, long term, long index) throws IOException;
 
     /**
      * Ensures that a term is defined at the given index.

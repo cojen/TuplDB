@@ -57,41 +57,40 @@ final class FileStateLog extends Latch implements StateLog {
     /*
       File naming:
 
-      <base>.md                    (metadata file)
-      <base>.<term>.<start index>  (log files)
+      <base>.md                                 (metadata file)
+      <base>[.<prevTerm>].<term>.<start index>  (log files)
 
       Metadata file stores little-endian fields at offset 0 and 4096, alternating.
 
       0:  Magic number (long)
       8:  Encoding version (int)
       12: Metadata counter (int)
-      16: Start previous term (long)
-      24: Start term (long)
-      32: Start index (long)
-      40: Current term (long)
-      48: Highest log term (long)
-      56: Highest contiguous log index (exclusive) (long)
-      64: Durable commit log index (exclusive) (long)
-      72: CRC32C (int)
+      16: Current term (long)
+      24: Highest log term (long)
+      32: Highest contiguous log index (exclusive) (long)
+      40: Durable commit log index (exclusive) (long)
+      48: CRC32C (int)
 
-      Example files with base of "mydata.repl":
+      Example segment files with base of "mydata.repl":
 
       mydata.repl
-      mydata.repl.0.0
-      mydata.repl.1.1000
-      mydata.repl.1.2000
-      mydata.repl.2.2500
+      mydata.repl.0.1.0
+      mydata.repl.1.4000
+      mydata.repl.1.8000
+      mydata.repl.1.2.9000
+
+      The prevTerm field is not required if it matches the term.
 
     */
 
     private static final long MAGIC_NUMBER = 5267718596810043313L;
-    private static final int ENCODING_VERSION = 20170817;
+    private static final int ENCODING_VERSION = 20170922;
     private static final int SECTION_POW = 12;
     private static final int SECTION_SIZE = 1 << SECTION_POW;
-    private static final int METADATA_SIZE = 76;
+    private static final int METADATA_SIZE = 52;
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
     private static final int COUNTER_OFFSET = 12;
-    private static final int START_PREV_TERM_OFFSET = 16;
+    private static final int CURRENT_TERM_OFFSET = 16;
     private static final int CRC_OFFSET = METADATA_SIZE - 4;
 
     private final File mBase;
@@ -107,10 +106,6 @@ final class FileStateLog extends Latch implements StateLog {
     private int mMetadataCounter;
     private long mMetadataHighestIndex;
     private long mMetadataDurableIndex;
-
-    private long mStartPrevTerm;
-    private long mStartTerm;
-    private long mStartIndex;
 
     private long mCurrentTerm;
 
@@ -181,10 +176,7 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataCounter = counter;
 
         mMetadataBuffer.clear();
-        mMetadataBuffer.position(offset + START_PREV_TERM_OFFSET);
-        long startPrevTerm = mMetadataBuffer.getLong();
-        long startTerm = mMetadataBuffer.getLong();
-        long startIndex = mMetadataBuffer.getLong();
+        mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
         long currentTerm = mMetadataBuffer.getLong();
         long highestTerm = mMetadataBuffer.getLong();
         long highestIndex = mMetadataBuffer.getLong();
@@ -198,10 +190,6 @@ final class FileStateLog extends Latch implements StateLog {
             throw new IOException("Highest index is lower than durable index: " +
                                   highestIndex + " < " + durableIndex);
         }
-        if (startIndex > durableIndex) {
-            throw new IOException("Start index is higher than durable index: " +
-                                  startIndex + " > " + durableIndex);
-        }
 
         // Initialize mMetadataInfo with valid state. Note that the mCommitIndex field isn't
         // actually used at all when persisting metadata, but initialize it anyhow.
@@ -213,9 +201,6 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataHighestIndex = highestIndex;
         mMetadataDurableIndex = durableIndex;
 
-        mStartPrevTerm = startPrevTerm;
-        mStartTerm = startTerm;
-        mStartIndex = startIndex;
         mCurrentTerm = currentTerm;
 
         // Open all the existing terms.
@@ -223,7 +208,9 @@ final class FileStateLog extends Latch implements StateLog {
         String[] fileNames = mBase.getParentFile().list();
 
         if (fileNames != null && fileNames.length != 0) {
-            Pattern p = Pattern.compile(base.getName() + "\\.(\\d*)\\.\\d*");
+            // This pattern captures the term, but it discards the optional prevTerm.
+            Pattern p = Pattern.compile(base.getName() + "(?:\\.\\d+)?\\.(\\d+)\\.\\d+");
+
             for (String name : fileNames) {
                 Matcher m = p.matcher(name);
                 if (m.matches()) {
@@ -241,11 +228,11 @@ final class FileStateLog extends Latch implements StateLog {
             }
         }
 
-        long prevTerm = mStartPrevTerm;
+        long prevTerm = -1;
         for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
             long term = e.getKey();
             TermLog termLog = FileTermLog.openTerm
-                (mWorker, mBase, prevTerm, term, -1, mStartIndex, highestIndex, e.getValue());
+                (mWorker, mBase, prevTerm, term, -1, 0, highestIndex, e.getValue());
             mTermLogs.add(termLog);
             prevTerm = term;
         }
@@ -293,12 +280,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (mTermLogs.isEmpty()) {
             // Create a primordial term.
-            TermLog termLog = FileTermLog.newTerm
-                (mWorker, mBase, mStartPrevTerm, mStartTerm, mStartIndex, mStartIndex);
-            mTermLogs.add(termLog);
-        } else {
-            // Complete any unfinished truncation.
-            truncateStart(mStartIndex);
+            mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, 0, 0, 0, 0));
         }
 
         if (durableIndex > 0) {
@@ -317,12 +299,11 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(ENCODING_VERSION);
         bb.putInt(counter);
 
-        // Initialize start previous term, start term, start index, current term, highest log
-        // term, highest log index, commit log index.
-        if (bb.position() != (offset + START_PREV_TERM_OFFSET)) {
+        // Initialize current term, highest log term, highest log index, commit log index.
+        if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
             throw new AssertionError();
         }
-        for (int i=0; i<7; i++) {
+        for (int i=0; i<4; i++) {
             bb.putLong(0);
         }
 
@@ -509,41 +490,41 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void truncateStart(long index) throws IOException {
-        long prevTerm, term;
-
-        acquireExclusive();
-        try {
-            if (index <= mStartIndex) {
-                return;
-            }
-            TermLog termLog = (TermLog) mTermLogs.floor(new LKey.Finder<>(index)); // findLe
-            if (termLog == null) {
-                throw new IllegalStateException("Term is unknown at index: " + index);
-            }
-            mStartPrevTerm = prevTerm = termLog.prevTerm();
-            mStartTerm = term = termLog.term();
-            mStartIndex = index;
-        } finally {
-            releaseExclusive();
-        }
-
-        // TODO: Can return immediately if first term log won't actually truncate anything.
-
-        // Start metadata must be persisted before truncating any terms. Otherwise it's
-        // possible for terms to get lost when recovering the log, and they can't be fully
-        // deduced from the term log files.
-        synchronized (mMetadataInfo) {
-            syncMetadata(prevTerm, term, index);
-        }
-
         Iterator<LKey<TermLog>> it = mTermLogs.iterator();
         while (it.hasNext()) {
             TermLog termLog = (TermLog) it.next();
-            termLog.truncateStart(index);
-            if (termLog.startIndex() < termLog.endIndex()) {
+            if (termLog.truncateStart(index)) {
+                it.remove();
+            } else {
                 break;
             }
-            it.remove();
+        }
+    }
+
+    @Override
+    public void truncateAll(long prevTerm, long term, long index) throws IOException {
+        synchronized (mMetadataInfo) {
+            if (mClosed) {
+                throw new IOException("Closed");
+            }
+
+            acquireExclusive();
+            try {
+                truncateStart(Long.MAX_VALUE);
+
+                // Create a new primordial term.
+                mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index));
+            } finally {
+                releaseExclusive();
+            }
+
+            mMetadataInfo.mTerm = term;
+            mMetadataInfo.mHighestIndex = index;
+            mMetadataInfo.mCommitIndex = index;
+            mMetadataHighestIndex = index;
+            mMetadataDurableIndex = index;
+
+            syncMetadata();
         }
     }
 
@@ -663,46 +644,8 @@ final class FileStateLog extends Latch implements StateLog {
                 long actualPrevTerm = termLog.prevTermAt(index);
 
                 if (prevTerm != actualPrevTerm) {
-                    if (index != mStartIndex) {
-                        termLog = null;
-                        break defineTermLog;
-                    }
-
-                    // Replace the primordial term, but only if the new term is higher than any
-                    // existing term.
-
-                    for (Object t : mTermLogs) {
-                        if (term <= ((TermLog) t).term()) {
-                            // Found a conflict.
-                            termLog = null;
-                            break defineTermLog;
-                        }
-                    }
-
-                    if (!exclusive) {
-                        if (tryUpgrade()) {
-                            exclusive = true;
-                        } else {
-                            releaseShared();
-                            acquireExclusive();
-                            exclusive = true;
-                            continue;
-                        }
-                    }
-
-                    if (mStartPrevTerm != prevTerm && mStartTerm != term) {
-                        mStartPrevTerm = prevTerm;
-                        mStartTerm = term;
-
-                        // Must persist metadata. See truncateStart method for details.
-                        releaseExclusive(); // release to avoid deadlock
-                        synchronized (mMetadataInfo) {
-                            syncMetadata(prevTerm, term, index);
-                        }
-                        acquireExclusive();
-                        // Must start over because latch was released.
-                        continue;
-                    }
+                    termLog = null;
+                    break defineTermLog;
                 }
 
                 long actualTerm = termLog.term();
@@ -765,11 +708,15 @@ final class FileStateLog extends Latch implements StateLog {
         acquireShared();
         try {
             TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
-            if (termLog == null) {
-                throw new IllegalStateException
-                    ("Index is lower than start index: " + key.key() + " < " + mStartIndex);
+
+            if (termLog != null) {
+                return termLog.openReader(index);
             }
-            return termLog.openReader(index);
+
+            termLog = (TermLog) mTermLogs.first();
+
+            throw new IllegalStateException
+                ("Index is lower than start index: " + index + " < " + termLog.startIndex());
         } finally {
             releaseShared();
         }
@@ -789,8 +736,6 @@ final class FileStateLog extends Latch implements StateLog {
             if (mClosed) {
                 throw new IOException("Closed");
             }
-
-            long startPrevTerm, startTerm, startIndex;
 
             acquireShared();
             try {
@@ -819,15 +764,11 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 highestLog.sync();
-
-                startPrevTerm = mStartPrevTerm;
-                startTerm = mStartTerm;
-                startIndex = mStartIndex;
             } finally {
                 releaseShared();
             }
 
-            syncMetadata(startPrevTerm, startTerm, startIndex);
+            syncMetadata();
 
             return mMetadataInfo.mCommitIndex;
         }
@@ -858,14 +799,8 @@ final class FileStateLog extends Latch implements StateLog {
                                                 + " > " + mMetadataHighestIndex);
             }
 
-            long startPrevTerm, startTerm, startIndex;
-
             acquireShared();
             try {
-                startPrevTerm = mStartPrevTerm;
-                startTerm = mStartTerm;
-                startIndex = mStartIndex;
-
                 TermLog highestLog = mHighestTermLog;
                 if (highestLog != null && highestLog == mTermLogs.last()) {
                     highestLog.captureHighest(mMetadataInfo);
@@ -876,7 +811,7 @@ final class FileStateLog extends Latch implements StateLog {
                 releaseShared();
             }
 
-            syncMetadata(startPrevTerm, startTerm, startIndex, index);
+            syncMetadata(index);
 
             return true;
         }
@@ -888,14 +823,8 @@ final class FileStateLog extends Latch implements StateLog {
             return;
         }
 
-        long startPrevTerm, startTerm, startIndex;
-
         acquireShared();
         try {
-            startPrevTerm = mStartPrevTerm;
-            startTerm = mStartTerm;
-            startIndex = mStartIndex;
-
             TermLog highestLog = mHighestTermLog;
             if (highestLog != null && highestLog == mTermLogs.last()) {
                 highestLog.captureHighest(mMetadataInfo);
@@ -910,27 +839,22 @@ final class FileStateLog extends Latch implements StateLog {
             releaseShared();
         }
 
-        syncMetadata(startPrevTerm, startTerm, startIndex);
+        syncMetadata();
     }
 
     // Caller must be synchronized on mMetadataInfo.
-    private void syncMetadata(long startPrevTerm, long startTerm, long startIndex)
-        throws IOException
-    {
-        syncMetadata(startPrevTerm, startTerm, startIndex, mMetadataDurableIndex);
+    private void syncMetadata() throws IOException {
+        syncMetadata(mMetadataDurableIndex);
     }
 
     // Caller must be synchronized on mMetadataInfo.
-    private void syncMetadata(long startPrevTerm, long startTerm, long startIndex,
-                              long durableIndex)
-        throws IOException
-    {
+    private void syncMetadata(long durableIndex) throws IOException {
         if (mClosed) {
             return;
         }
 
         int counter = mMetadataCounter + 1;
-        int offset = (counter & 1) << SECTION_POW; 
+        int offset = (counter & 1) << SECTION_POW;
 
         MappedByteBuffer bb = mMetadataBuffer;
 
@@ -939,9 +863,6 @@ final class FileStateLog extends Latch implements StateLog {
         bb.limit(offset + CRC_OFFSET);
 
         bb.putInt(counter);
-        bb.putLong(startPrevTerm);
-        bb.putLong(startTerm);
-        bb.putLong(startIndex);
         bb.putLong(mCurrentTerm);
         bb.putLong(mMetadataInfo.mTerm);
         bb.putLong(mMetadataInfo.mHighestIndex);

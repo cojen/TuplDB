@@ -83,7 +83,7 @@ public class FileStateLogTest {
         assertFalse(mLog.defineTerm(10, 11, 1000));
 
         // Allow term definition with no previous term at the start.
-        mLog.truncateStart(1000);
+        mLog.truncateAll(0, 0, 1000);
         assertTrue(mLog.defineTerm(0, 10, 1000));
         assertTrue(mLog.defineTerm(0, 10, 1000));
 
@@ -286,7 +286,7 @@ public class FileStateLogTest {
         // Verify missing ranges when log starts higher than index zero.
 
         // Start at index 1000.
-        mLog.truncateStart(1000);
+        mLog.truncateAll(0, 0, 1000);
         mLog.defineTerm(0, 10, 1000);
 
         RangeResult result = new RangeResult();
@@ -690,6 +690,42 @@ public class FileStateLogTest {
 
         reader.interrupt();
         reader.join();
+    }
+
+    @Test
+    public void recoverState3() throws Exception {
+        // Test recovery of the start index and term, after truncating the log.
+
+        Random rnd = new Random(64926492);
+
+        long prevTerm = mLog.checkCurrentTerm(0);
+        long term = mLog.incrementCurrentTerm(1);
+        LogWriter writer = mLog.openWriter(prevTerm, term, 0);
+        byte[] msg1 = new byte[1000];
+        rnd.nextBytes(msg1);
+        write(writer, msg1);
+        writer.release();
+
+        prevTerm = mLog.checkCurrentTerm(0);
+        term = mLog.incrementCurrentTerm(1);
+        writer = mLog.openWriter(prevTerm, term, 1000);
+        byte[] msg2 = new byte[2_000_000];
+        rnd.nextBytes(msg2);
+        write(writer, msg2);
+        writer.release();
+
+        mLog.commit(writer.index());
+        mLog.sync();
+        mLog.commitDurable(writer.index());
+        mLog.truncateStart(1_500_000);
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        TermLog termLog = mLog.termLogAt(1_500_000);
+        assertEquals(1000 + 1024 * 1024, termLog.startIndex());
+        assertEquals(2, termLog.prevTermAt(termLog.startIndex()));
+        assertEquals(2, termLog.term());
     }
 
     @Test
