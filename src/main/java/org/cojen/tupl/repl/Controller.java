@@ -252,8 +252,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         if (receiver != null) {
-            mStateLog.truncateStart(receiver.index());
-            mStateLog.defineTerm(receiver.prevTerm(), receiver.term(), receiver.index());
+            mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.index());
         }
 
         mChanMan.start(this);

@@ -202,10 +202,11 @@ public class FileTermLogTest {
 
     private void reopenCleanup(boolean discoverStart) throws Exception {
         mLog.close();
+        final long prevTerm = 0;
         final long term = 1;
         final long startIndex = 1000;
         mLog = FileTermLog.openTerm
-            (mWorker, mBase, 0, term, startIndex, startIndex, startIndex, null);
+            (mWorker, mBase, prevTerm, term, startIndex, startIndex, startIndex, null);
 
         final byte[] buf = new byte[1000];
         Random rnd = new Random(62723);
@@ -224,26 +225,31 @@ public class FileTermLogTest {
 
         writer.release();
 
-        final String basePath = mBase.getPath() + '.' + term;
+        final String basePath = mBase.getPath() + '.';
 
         // Create some files that should be ignored.
         new File(basePath).createNewFile();
+        new File(basePath + term).createNewFile();
         TestUtils.newTempBaseFile(getClass()).createNewFile();
         new File(basePath + "foo").createNewFile();
         new File(basePath + ".foo").createNewFile();
         new File(basePath + ".123foo").createNewFile();
-        new File(basePath + ".123.foo").createNewFile();
+        new File(basePath + "..123.foo").createNewFile();
+        new File(basePath + term + "foo").createNewFile();
+        new File(basePath + term + ".foo").createNewFile();
+        new File(basePath + term + ".123foo").createNewFile();
+        new File(basePath + '.' + term + ".foo").createNewFile();
 
         // Create some out-of-bounds segments that should be deleted.
-        File low = new File(basePath + ".123");
+        File low = new File(basePath + prevTerm + '.' + term + ".123");
         low.createNewFile();
         assertTrue(low.exists());
-        File high = new File(basePath + ".999999999999");
+        File high = new File(basePath + term + ".999999999999");
         high.createNewFile();
         assertTrue(high.exists());
-       
+
         // Expand a segment that should be truncated.
-        File first = new File(basePath + ".1000");
+        File first = new File(basePath + prevTerm + '.' + term + ".1000");
         assertTrue(first.exists());
         long firstLen = first.length();
         assertTrue(firstLen > 1_000_000);
@@ -263,7 +269,7 @@ public class FileTermLogTest {
         } else {
             try {
                 FileTermLog.openTerm
-                    (mWorker, mBase, 0, term, -1, startIndex, info.mHighestIndex, null);
+                    (mWorker, mBase, -1, term, -1, startIndex, info.mHighestIndex, null);
                 fail();
             } catch (Exception e) {
                 assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
@@ -275,8 +281,16 @@ public class FileTermLogTest {
             startWith = -1;
         }
 
+        try {
+            mLog = FileTermLog.openTerm
+                (mWorker, mBase, 12, term, startWith, startIndex, info.mHighestIndex, null);
+            fail();
+        } catch (IllegalStateException e) {
+            // Mismatched previous term.
+        }
+
         mLog = FileTermLog.openTerm
-            (mWorker, mBase, 0, term, startWith, startIndex, info.mHighestIndex, null);
+            (mWorker, mBase, -1, term, startWith, startIndex, info.mHighestIndex, null);
 
         if (low != null) {
             assertTrue(!low.exists());
@@ -320,7 +334,7 @@ public class FileTermLogTest {
 
         try {
             FileTermLog.openTerm
-                (mWorker, mBase, 0, term, startWith, startIndex, info.mHighestIndex, null);
+                (mWorker, mBase, prevTerm, term, startWith, startIndex, info.mHighestIndex, null);
             fail();
         } catch (Exception e) {
             String msg = e.getMessage();
@@ -360,9 +374,6 @@ public class FileTermLogTest {
                     Random rnd2 = new Random(seed + 1);
                     LogReader reader = mLog.openReader(0);
 
-                    int truncateAdvance = 0;
-                    int truncateNotAdvance = 0;
-
                     while (true) {
                         int amt = reader.read(buf, 0, buf.length);
                         if (amt <= 0) {
@@ -374,20 +385,10 @@ public class FileTermLogTest {
                         }
                         if (truncate) {
                             mLog.truncateStart(reader.index());
-                            if (mLog.startIndex() != reader.index()) {
-                                truncateAdvance++;
-                            } else {
-                                truncateNotAdvance++;
-                            }
                         }
                     }
 
                     mTotal = reader.index();
-
-                    if (truncate) {
-                        assertNotEquals(0, truncateAdvance);
-                        assertNotEquals(0, truncateNotAdvance);
-                    }
                 } catch (Throwable e) {
                     mEx = e;
                 }
@@ -439,52 +440,6 @@ public class FileTermLogTest {
         Throwable ex = r.mEx;
         if (ex != null) {
             throw ex;
-        }
-    }
-
-    @Test
-    public void truncateStartPrevTerm() throws Exception {
-        // Verify that truncating the start updates the previous term.
-
-        final long seed = 8675309;
-
-        final byte[] buf = new byte[10000];
-        Random rnd = new Random(seed);
-        LogWriter writer = mLog.openWriter(0);
-        long index = 0;
-
-        for (int i=0; i<10000; i++) {
-            int len = rnd.nextInt(buf.length);
-            for (int j=0; j<len; j++) {
-                buf[j] = (byte) rnd.nextInt();
-            }
-            assertEquals(len, writer.write(buf, 0, len, index + len));
-            index += len;
-        }
-
-        writer.release();
-
-        assertEquals(0, mLog.prevTermAt(0));
-        assertEquals(1, mLog.prevTermAt(1));
-
-        for (int newStart = 0; newStart <= index; newStart += 1000) {
-            mLog.truncateStart(newStart);
-            if (mLog.startIndex() <= 1) {
-                assertEquals(0, mLog.prevTermAt(0));
-                assertEquals(1, mLog.prevTermAt(1));
-            } else {
-                try {
-                    mLog.prevTermAt(0);
-                    fail();
-                } catch (IllegalStateException e) {
-                    // Index is too low.
-                }
-
-                assertEquals(1, mLog.prevTermAt(newStart));
-                assertEquals(1, mLog.prevTermAt(mLog.startIndex()));
-            }
-
-            assertEquals(1, mLog.prevTermAt(index));
         }
     }
 

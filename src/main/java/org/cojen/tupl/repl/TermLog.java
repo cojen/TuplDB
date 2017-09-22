@@ -54,8 +54,10 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * truncate as much data as possible lower than it. The effective start index applied might
      * be lower than what was requested, dependent on how much data could be truncated. As a
      * side-effect of calling this method, the previous term might be updated.
+     *
+     * @return true if log is empty
      */
-    void truncateStart(long startIndex) throws IOException;
+    boolean truncateStart(long startIndex) throws IOException;
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.

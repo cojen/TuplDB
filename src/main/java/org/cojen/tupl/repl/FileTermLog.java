@@ -38,6 +38,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import java.util.function.BiFunction;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.cojen.tupl.io.FileIO;
@@ -66,7 +67,9 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final Worker mWorker;
     private final File mBase;
+    private final long mLogPrevTerm;
     private final long mLogTerm;
+    private final long mLogStartIndex;
 
     /*
       In general, legal index values are bounded as follows:
@@ -77,8 +80,6 @@ final class FileTermLog extends Latch implements TermLog {
         min(commit, highest).
     */
 
-    private long mLogPrevTerm;
-    private long mLogStartIndex;
     private long mLogCommitIndex;
     private long mLogHighestIndex;
     private long mLogContigIndex;
@@ -119,6 +120,7 @@ final class FileTermLog extends Latch implements TermLog {
     /**
      * Create or open an existing term.
      *
+     * @param prevTerm pass -1 to discover the prev term
      * @param startIndex pass -1 to discover the start index
      * @param segmentFileNames pass null to discover segment files
      */
@@ -130,8 +132,11 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (segmentFileNames == null) {
             String[] namesArray = base.getParentFile().list();
+
             if (namesArray != null && namesArray.length != 0) {
-                Pattern p = Pattern.compile(base.getName() + "\\." + term + "\\.\\d*");
+                // This pattern matches the term, and it discards the optional prevTerm.
+                Pattern p = Pattern.compile(base.getName() + "(?:\\.\\d+)?\\." + term + "\\.\\d+");
+
                 segmentFileNames = new ArrayList<>();
                 for (String name : namesArray) {
                     if (p.matcher(name).matches()) {
@@ -163,6 +168,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     /**
+     * @param prevTerm pass -1 to discover the prev term
      * @param startIndex pass -1 to discover the start index
      * @param segmentFileNames pass null when creating a term
      */
@@ -190,14 +196,47 @@ final class FileTermLog extends Latch implements TermLog {
 
             File parent = base.getParentFile();
 
+            // This pattern captures the optional prevTerm and required start index.
+            Pattern p = Pattern.compile(base.getName() + "(?:\\.(\\d+))?\\." + term + "\\.(\\d+)");
+
+            boolean anyMatches = false;
+
             for (String name : segmentFileNames) {
-                long start = Long.parseLong(name.substring(name.lastIndexOf('.') + 1));
+                Matcher m = p.matcher(name);
+
+                if (!m.matches()) {
+                    continue;
+                }
+
+                anyMatches = true;
+
+                String prevTermStr = m.group(1);
+
+                if (prevTermStr != null) {
+                    long parsedPrevTerm = Long.parseLong(prevTermStr);
+                    if (prevTerm < 0) {
+                        prevTerm = parsedPrevTerm;
+                    } else if (prevTerm != parsedPrevTerm) {
+                        throw new IllegalStateException
+                            ("Mismatched previous term: " + prevTerm + " != " + prevTermStr);
+                    }
+                }
+
+                long start = Long.parseLong(m.group(2));
 
                 // Start with the desired max length, and then truncate on the second pass.
                 long maxLength = Math.max(maxSegmentLength(), new File(parent, name).length());
 
                 mSegments.add(new Segment(start, maxLength));
             }
+
+            if (prevTerm < 0 && anyMatches) {
+                prevTerm = term;
+            }
+        }
+
+        if (prevTerm < 0) {
+            throw new IllegalStateException("Unable to determine previous term");
         }
 
         if (startIndex == -1) {
@@ -214,6 +253,13 @@ final class FileTermLog extends Latch implements TermLog {
                     ("Missing start segment: " + startIndex + ", term=" + term);
             }
         }
+
+        mLogPrevTerm = prevTerm;
+        mLogStartIndex = startIndex;
+        mLogCommitIndex = commitIndex;
+        mLogHighestIndex = highestIndex;
+        mLogContigIndex = highestIndex;
+        mLogEndIndex = Long.MAX_VALUE;
 
         // Contiguous segments must exist from start to highest.
 
@@ -247,13 +293,6 @@ final class FileTermLog extends Latch implements TermLog {
             }
             return true;
         });
-
-        mLogPrevTerm = prevTerm;
-        mLogStartIndex = startIndex;
-        mLogCommitIndex = commitIndex;
-        mLogHighestIndex = highestIndex;
-        mLogContigIndex = highestIndex;
-        mLogEndIndex = Long.MAX_VALUE;
 
         // Delete segments which are out of bounds.
         
@@ -310,10 +349,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long prevTerm() {
-        acquireShared();
-        long prevTerm = mLogPrevTerm;
-        releaseShared();
-        return prevTerm;
+        return mLogPrevTerm;
     }
 
     @Override
@@ -323,87 +359,36 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public long startIndex() {
-        acquireShared();
-        long index = mLogStartIndex;
-        releaseShared();
-        return index;
+        return mLogStartIndex;
     }
 
     @Override
     public long prevTermAt(long index) {
-        acquireShared();
-        try {
-            if (index < mLogStartIndex) {
-                throw new IllegalStateException
-                    ("Index is lower than start: " + index + " < " + mLogStartIndex);
-            }
-            return index == mLogStartIndex ? mLogPrevTerm : mLogTerm;
-        } finally {
-            releaseShared();
-        }
+        return index <= mLogStartIndex ? mLogPrevTerm : mLogTerm;
     }
 
     @Override
-    public void truncateStart(long startIndex) throws IOException {
-        if (mSegments.isEmpty()) {
-            acquireExclusive();
-            if (mSegments.isEmpty()) {
-                increaseStartIndex(startIndex);
-            }
-            releaseExclusive();
-        }
-
+    public boolean truncateStart(long startIndex) throws IOException {
         // Delete all lower segments.
 
-        long appliedStartIndex = 0;
-        IOException ex = null;
-        
         Iterator<LKey<Segment>> it = mSegments.iterator();
         while (it.hasNext()) {
             Segment seg = (Segment) it.next();
 
             long endIndex = seg.endIndex();
             if (endIndex > startIndex) {
-                appliedStartIndex = Math.min(startIndex, seg.mStartIndex);
                 break;
             }
 
-            try {
-                seg.close(true);
-                seg.file().delete();
-            } catch (IOException e) {
-                ex = e;
-                break;
-            }
+            seg.close(true);
+            seg.file().delete();
 
-            appliedStartIndex = endIndex;
             it.remove();
 
             mSegmentCache.remove(seg.cacheKey());
         }
 
-        if (appliedStartIndex > 0) {
-            acquireExclusive();
-            increaseStartIndex(appliedStartIndex);
-            releaseExclusive();
-        }
-
-        if (ex != null) {
-            throw ex;
-        }
-    }
-
-    // Caller must hold exclusive latch.
-    private boolean increaseStartIndex(long startIndex) {
-        if (startIndex <= mLogStartIndex) {
-            return false;
-        }
-        mLogPrevTerm = mLogTerm;
-        mLogStartIndex = startIndex = Math.min(startIndex, mLogEndIndex);
-        mLogCommitIndex = Math.max(startIndex, mLogCommitIndex);
-        mLogHighestIndex = Math.max(startIndex, mLogHighestIndex);
-        mLogContigIndex = Math.max(startIndex, mLogContigIndex);
-        return true;
+        return mSegments.isEmpty();
     }
 
     @Override
@@ -1550,7 +1535,19 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         File file() {
-            return new File(mBase.getPath() + '.' + term() + '.' + mStartIndex);
+            long prevTerm = prevTermAt(mStartIndex);
+            long term = term();
+
+            StringBuilder b = new StringBuilder();
+            b.append(mBase.getPath()).append('.');
+
+            if (prevTerm != term) {
+                b.append(prevTerm).append('.');
+            }
+
+            b.append(term).append('.').append(mStartIndex);
+
+            return new File(b.toString());
         }
 
         @Override
