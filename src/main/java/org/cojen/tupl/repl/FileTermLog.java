@@ -1786,7 +1786,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 try {
-                    if (mMaxLength == 0) {
+                    if (mMaxLength == 0 || mClosed) {
                         return;
                     }
                     io = openForWriting();

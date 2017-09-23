@@ -128,6 +128,12 @@ interface Channel {
     boolean syncCommitReply(Channel from, long groupVersion, long term, long index);
 
     /**
+     * @param index lowest index which must be retained
+     * @return false if not sent or processed
+     */
+    boolean compact(Channel from, long index);
+
+    /**
      * @return false if not sent or processed
      */
     boolean snapshotScore(Channel from);

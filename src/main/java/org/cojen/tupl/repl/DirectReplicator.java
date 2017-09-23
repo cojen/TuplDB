@@ -132,6 +132,13 @@ public interface DirectReplicator extends Replicator {
     boolean syncCommit(long index, long nanosTimeout) throws IOException;
 
     /**
+     * Permit all data lower than the given index to be deleted, freeing up space in the log.
+     *
+     * @param index lowest index which must be retained
+     */
+    void compact(long index) throws IOException;
+
+    /**
      * Direct interface for accessing replication data, for a given term.
      */
     public static interface Accessor extends Closeable {

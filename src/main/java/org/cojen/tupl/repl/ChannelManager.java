@@ -92,9 +92,10 @@ final class ChannelManager {
         OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
         OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
         OP_SYNC_COMMIT    = 10, OP_SYNC_COMMIT_REPLY    = 11,
-        OP_SNAPSHOT_SCORE = 12, OP_SNAPSHOT_SCORE_REPLY = 13,
-        OP_UPDATE_ROLE    = 14, OP_UPDATE_ROLE_REPLY    = 15,
-        OP_GROUP_VERSION  = 16, OP_GROUP_VERSION_REPLY  = 17;
+        OP_COMPACT        = 12, //OP_COMPACT_REPLY = 13,
+        OP_SNAPSHOT_SCORE = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
+        OP_UPDATE_ROLE    = 16, OP_UPDATE_ROLE_REPLY    = 17,
+        OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19;
 
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -867,6 +868,10 @@ final class ChannelManager {
                                                     in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 3);
                         break;
+                    case OP_COMPACT:
+                        localServer.compact(this, in.readLongLE());
+                        commandLength -= (8 * 1);
+                        break;
                     case OP_SNAPSHOT_SCORE:
                         localServer.snapshotScore(this);
                         break;
@@ -1049,6 +1054,11 @@ final class ChannelManager {
         @Override
         public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
             return writeCommand(OP_SYNC_COMMIT_REPLY, groupVersion, term, index);
+        }
+
+        @Override
+        public boolean compact(Channel from, long index) {
+            return writeCommand(OP_COMPACT, index);
         }
 
         @Override
