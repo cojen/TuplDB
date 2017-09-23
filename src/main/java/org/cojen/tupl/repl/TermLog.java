@@ -57,7 +57,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      *
      * @return true if log is empty
      */
-    boolean truncateStart(long startIndex) throws IOException;
+    boolean compact(long startIndex) throws IOException;
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.

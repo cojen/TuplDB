@@ -368,7 +368,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public boolean truncateStart(long startIndex) throws IOException {
+    public boolean compact(long startIndex) throws IOException {
         // Delete all lower segments.
 
         Iterator<LKey<Segment>> it = mSegments.iterator();

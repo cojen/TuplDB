@@ -354,11 +354,11 @@ public class FileTermLogTest {
     }
 
     @Test
-    public void tailAndTruncate() throws Throwable {
+    public void tailAndCompact() throws Throwable {
         tail(true);
     }
 
-    private void tail(boolean truncate) throws Throwable {
+    private void tail(boolean compact) throws Throwable {
         // Write and commit a bunch of data, while concurrently reading it.
 
         final int seed = 762390;
@@ -383,8 +383,8 @@ public class FileTermLogTest {
                         for (int j=0; j<amt; j++) {
                             assertEquals((byte) rnd2.nextInt(), buf[j]);
                         }
-                        if (truncate) {
-                            mLog.truncateStart(reader.index());
+                        if (compact) {
+                            mLog.compact(reader.index());
                         }
                     }
 
