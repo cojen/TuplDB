@@ -1243,6 +1243,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             for (Channel channel : mAllChannels) {
                 channel.peer().mMatchIndex = 0;
             }
+
+            if (mConsensusPeers.length == 0) {
+                // Only a consensus group of one, so commit changes immediately.
+                mStateLog.captureHighest(mLeaderLogWriter);
+                mStateLog.commit(mLeaderLogWriter.mHighestIndex);
+            }
         } catch (Throwable e) {
             releaseExclusive();
             uncaught(e);
