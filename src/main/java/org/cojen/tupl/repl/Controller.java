@@ -1418,12 +1418,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
 
             if (writer == null) {
-                // FIXME: stash the write for later
+                // FIXME: stash the write for later (unless it's a stale write)
                 // Cannot write because terms are missing, so request them.
                 long now = System.currentTimeMillis();
                 if (now >= mNextQueryTermTime) {
                     LogInfo info = mStateLog.captureHighest();
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
+                        // FIXME: "from" peer might not have all the terms
                         from.queryTerms(null, info.mCommitIndex, index);
                     }
                     mNextQueryTermTime = now + QUERY_TERMS_RATE_MILLIS;
