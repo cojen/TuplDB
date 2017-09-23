@@ -69,7 +69,7 @@ interface StateLog extends Closeable {
      * truncate any lower data. Method does nothing if given start index is lower than the
      * current start.
      */
-    void truncateStart(long index) throws IOException;
+    void compact(long index) throws IOException;
 
     /**
      * Truncate the entire log, and create a primordial term.

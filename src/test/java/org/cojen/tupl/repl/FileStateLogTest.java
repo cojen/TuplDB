@@ -717,7 +717,7 @@ public class FileStateLogTest {
         mLog.commit(writer.index());
         mLog.sync();
         mLog.commitDurable(writer.index());
-        mLog.truncateStart(1_500_000);
+        mLog.compact(1_500_000);
 
         mLog.close();
         mLog = new FileStateLog(mBase);

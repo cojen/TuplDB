@@ -489,11 +489,11 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public void truncateStart(long index) throws IOException {
+    public void compact(long index) throws IOException {
         Iterator<LKey<TermLog>> it = mTermLogs.iterator();
         while (it.hasNext()) {
             TermLog termLog = (TermLog) it.next();
-            if (termLog.truncateStart(index)) {
+            if (termLog.compact(index)) {
                 it.remove();
             } else {
                 break;
@@ -510,7 +510,7 @@ final class FileStateLog extends Latch implements StateLog {
 
             acquireExclusive();
             try {
-                truncateStart(Long.MAX_VALUE);
+                compact(Long.MAX_VALUE);
 
                 // Create a new primordial term.
                 mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index));
