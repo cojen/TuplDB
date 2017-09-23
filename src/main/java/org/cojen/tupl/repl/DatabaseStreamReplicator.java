@@ -261,7 +261,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void checkpointed(long position) throws IOException {
-        // FIXME: Can perform log compaction.
+        mRepl.compact(position);
     }
 
     @Override

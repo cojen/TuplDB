@@ -409,6 +409,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public void compact(long index) throws IOException {
+        acquireShared();
+        Channel[] channels = mAllChannels;
+        releaseShared();
+
+        long lowestIndex = index;
+
+        for (Channel channel : channels) {
+            channel.compact(this, index);
+            Peer peer = channel.peer();
+            lowestIndex = Math.min(lowestIndex, peer.mCompactIndex);
+        }
+
+        mStateLog.compact(lowestIndex);
+    }
+
+    @Override
     public long getLocalMemberId() {
         return mChanMan.getLocalMemberId();
     }
@@ -1559,7 +1576,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         acquireExclusive();
         try {
-            if (mConsensusPeers.length == 0 || term != mStateLog.termLogAt(index).term()) {
+            TermLog termLog;
+            if (mConsensusPeers.length == 0
+                || (termLog = mStateLog.termLogAt(index)) == null || term != termLog.term())
+            {
                 // Received a stale reply.
                 System.out.println("stale reply");
                 return true;
@@ -1595,6 +1615,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
+        return true;
+    }
+
+    @Override
+    public boolean compact(Channel from, long index) {
+        from.peer().mCompactIndex = index;
         return true;
     }
 
