@@ -397,7 +397,9 @@ final class FileStateLog extends Latch implements StateLog {
 
         while (true) {
             TermLog nextLog = (TermLog) mTermLogs.higher(highestLog); // findGt
+
             highestLog.captureHighest(info);
+
             if (nextLog == null || info.mHighestIndex < nextLog.startIndex()) {
                 if (tryUpgrade()) {
                     mHighestTermLog = highestLog;
@@ -413,6 +415,7 @@ final class FileStateLog extends Latch implements StateLog {
                 }
                 return highestLog;
             }
+
             highestLog = nextLog;
         }
     }
@@ -458,9 +461,20 @@ final class FileStateLog extends Latch implements StateLog {
             downgrade();
         }
 
-        do {
-            commitLog.commit(commitIndex);
-        } while ((commitLog = (TermLog) mTermLogs.higher(commitLog)) != null);
+        // Pass the commit index to the terms in descending order, to prevent a race condition
+        // with the doCaptureHighest method. It iterates in ascending order, assuming that the
+        // commit index of a higher term cannot be lower. If the terms are committed in
+        // ascending order, latch coupling would be required to prevent the doCaptureHighest
+        // from going too far ahead. Descending order commit is simpler.
+
+        Iterator<LKey<TermLog>> it = mTermLogs.descendingIterator();
+        while (it.hasNext()) {
+            TermLog termLog = (TermLog) it.next();
+            termLog.commit(commitIndex);
+            if (termLog == commitLog) {
+                break;
+            }
+        }
 
         releaseShared();
     }
