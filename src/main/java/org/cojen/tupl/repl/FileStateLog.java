@@ -792,28 +792,22 @@ final class FileStateLog extends Latch implements StateLog {
                 return false;
             }
 
-            // FIXME: also check the commit index to be extra sure
+            checkDurable(index, mMetadataHighestIndex);
 
-            if (index > mMetadataHighestIndex) {
-                throw new IllegalStateException("Commit index is too high: " + index
-                                                + " > " + mMetadataHighestIndex);
-            }
+            captureHighest(mMetadataInfo);
 
-            acquireShared();
-            try {
-                TermLog highestLog = mHighestTermLog;
-                if (highestLog != null && highestLog == mTermLogs.last()) {
-                    highestLog.captureHighest(mMetadataInfo);
-                } else {
-                    highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
-                }
-            } finally {
-                releaseShared();
-            }
+            checkDurable(index, mMetadataInfo.mCommitIndex);
 
             syncMetadata(index);
 
             return true;
+        }
+    }
+
+    private static void checkDurable(long index, long highestIndex) {
+        if (index > highestIndex) {
+            throw new IllegalStateException("Commit index is too high: " + index
+                                            + " > " + highestIndex);
         }
     }
 
