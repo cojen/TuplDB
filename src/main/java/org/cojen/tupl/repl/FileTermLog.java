@@ -387,7 +387,9 @@ final class FileTermLog extends Latch implements TermLog {
                 seg.releaseExclusive();
             }
 
-            if (!seg.file().delete()) {
+            File segFile = seg.file();
+
+            if (!segFile.delete() && segFile.exists()) {
                 // If segment can't be deleted for some reason, try again later instead of
                 // creating a potential segment gap.
                 break;
