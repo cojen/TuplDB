@@ -380,8 +380,18 @@ final class FileTermLog extends Latch implements TermLog {
                 break;
             }
 
-            seg.close(true);
-            seg.file().delete();
+            seg.acquireExclusive();
+            try {
+                seg.close(true);
+            } finally {
+                seg.releaseExclusive();
+            }
+
+            if (!seg.file().delete()) {
+                // If segment can't be deleted for some reason, try again later instead of
+                // creating a potential segment gap.
+                break;
+            }
 
             it.remove();
 
