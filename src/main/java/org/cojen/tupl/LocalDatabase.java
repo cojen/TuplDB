@@ -1937,7 +1937,7 @@ final class LocalDatabase extends AbstractDatabase {
 
         try {
             TransactionContext context = anyTransactionContext();
-            context.redoTimestamp(redo, op); 
+            context.redoTimestamp(redo, op);
             context.flush();
 
             redo.force(true);
