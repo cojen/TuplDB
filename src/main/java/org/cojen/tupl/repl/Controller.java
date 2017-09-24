@@ -1407,10 +1407,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean writeData(Channel from, long prevTerm, long term, long index,
                              long highestIndex, long commitIndex, byte[] data)
     {
-        try {
-            validateLeaderTerm(from, term);
-        } catch (IOException e) {
-            uncaught(e);
+        if (!validateLeaderTerm(from, term)) {
             return false;
         }
 
@@ -1462,36 +1459,51 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     /**
      * Called when receiving data from the leader.
      *
-     * @throws IOException if check failed and caller should abort
+     * @return false if not validated, and received data should be discarded
      */
-    private void validateLeaderTerm(Channel from, long term) throws IOException {
+    private boolean validateLeaderTerm(Channel from, long term) {
         acquireShared();
         long originalTerm = mCurrentTerm;
 
         if (term == originalTerm) {
             if (mElectionValidated > 0) {
                 releaseShared();
-                return;
-            } else if (tryUpgrade()) {
+                return true;
+            }
+
+            if (tryUpgrade()) {
                 mLeaderReplyChannel = from;
                 mElectionValidated = 1;
                 mVotedFor = 0; // election is over
                 releaseExclusive();
-                return;
+                return true;
             }
+        } else if (term < originalTerm) {
+            releaseShared();
+            return false;
         }
 
         if (!tryUpgrade()) {
             releaseShared();
             acquireExclusive();
             originalTerm = mCurrentTerm;
+            if (term < originalTerm) {
+                releaseExclusive();
+                return false;
+            }
         }
 
         try {
             if (term != originalTerm) {
-                mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                assert term > originalTerm;
+                try {
+                    mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                } catch (IOException e) {
+                    uncaught(e);
+                    return false;
+                }
                 if (mCurrentTerm <= originalTerm) {
-                    return;
+                    return true;
                 }
                 toFollower();
             }
@@ -1502,6 +1514,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } finally {
             releaseExclusive();
         }
+
+        return true;
     }
 
     @Override
