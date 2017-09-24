@@ -1845,9 +1845,9 @@ final class FileTermLog extends Latch implements TermLog {
             if (mFileIO != null) {
                 mFileIO.close();
                 mFileIO = null;
-                if (permanent) {
-                    mClosed = true;
-                }
+            }
+            if (permanent) {
+                mClosed = true;
             }
         }
 
