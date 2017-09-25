@@ -98,7 +98,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * will also be set, if the given index is within the contiguous region of data.
      *
      * @return the commit index
-     * @throws IllegalArgumentException if the given index is lower than the commit index
+     * @throws IllegalStateException if the given index is lower than the commit index
      * @throws IllegalStateException if the term is already finished at a lower index
      */
     long finishTerm(long endIndex) throws IOException;

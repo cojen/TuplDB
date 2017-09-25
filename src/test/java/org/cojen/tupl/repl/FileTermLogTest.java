@@ -956,7 +956,7 @@ public class FileTermLogTest {
         try {
             mLog.finishTerm(100);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
             // Expected.
         }
     }
@@ -979,6 +979,45 @@ public class FileTermLogTest {
         write(writer, new byte[100], 250);
         mLog.captureHighest(info);
         assertEquals(250, info.mHighestIndex);
+    }
+
+    @Test
+    public void compactionZone() throws Exception {
+        // Reads from the compaction zone should fail, and writes into the compaction zone
+        // should be ignored.
+
+        LogWriter writer = mLog.openWriter(0);
+        byte[] b = new byte[10000];
+        for (int i=0; i<1000; i++) {
+            write(writer, b);
+        }
+        writer.release();
+
+        long commitIndex = 1_500_000;
+        mLog.commit(commitIndex);
+        mLog.compact(commitIndex);
+
+        LogReader reader = mLog.openReader(0);
+        try {
+            int amt = reader.read(b);
+            System.out.println(amt);
+            fail();
+        } catch (IllegalStateException e) {
+            // Too low.
+        }
+
+        reader.release();
+
+        writer = mLog.openWriter(0);
+        assertEquals(0, writer.write(b));
+        writer.release();
+
+        // Some segment overlap. Although the higher portion of the write could be written, the
+        // returned amount from the write wouldn't make sense. Ditch it all.
+
+        writer = mLog.openWriter(1024 * 1024 - 100);
+        assertEquals(0, writer.write(b));
+        writer.release();
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {
