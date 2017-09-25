@@ -605,7 +605,7 @@ final class FileTermLog extends Latch implements TermLog {
         try {
             commitIndex = actualCommitIndex();
             if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
-                throw new IllegalArgumentException
+                throw new IllegalStateException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
             }
 
@@ -864,15 +864,14 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     /**
-     * @return null if index is at or higher than end index
+     * @return null if index is at or higher than end index, or if segment doesn't exist and is
+     * lower than the commit index
      */
     Segment segmentForWriting(long index) throws IOException {
         LKey<Segment> key = new LKey.Finder<>(index);
 
         acquireExclusive();
         find: try {
-            indexCheck(index);
-
             if (index >= mLogEndIndex) {
                 releaseExclusive();
                 return null;
@@ -886,9 +885,9 @@ final class FileTermLog extends Latch implements TermLog {
                 return startSegment;
             }
 
-            if (index < mLogStartIndex) {
-                throw new IllegalStateException
-                    ("Cannot write lower than start: " + index + " < " + mLogStartIndex);
+            if (index < Math.max(mLogStartIndex, actualCommitIndex())) {
+                // Don't create segments for committed data.
+                return null;
             }
 
             if (mLogClosed) {
@@ -928,26 +927,23 @@ final class FileTermLog extends Latch implements TermLog {
 
         acquireExclusive();
         try {
-            indexCheck(index);
-
             Segment segment = (Segment) mSegments.floor(key); // findLe
             if (segment != null && index < segment.endIndex()) {
                 cRefCountUpdater.getAndIncrement(segment);
                 return segment;
+            }
+
+            long commitIndex = Math.max(mLogStartIndex, actualCommitIndex());
+
+            if (index < commitIndex) {
+                throw new IllegalStateException
+                    ("Index is too low: " + index + " < " + commitIndex);
             }
         } finally {
             releaseExclusive();
         }
 
         return null;
-    }
-
-    // Caller must hold any latch.
-    private void indexCheck(long index) throws IllegalArgumentException {
-        if (index < mLogStartIndex) {
-            throw new IllegalArgumentException
-                ("Index is too low: " + index + " < " + mLogStartIndex);
-        }
     }
 
     /**
