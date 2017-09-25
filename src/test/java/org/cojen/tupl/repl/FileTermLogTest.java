@@ -961,8 +961,35 @@ public class FileTermLogTest {
         }
     }
 
+    @Test
+    public void clampHighest() throws Exception {
+        // Verify that the highest index cannot be set higher than the contiguous index.
+
+        LogWriter writer = mLog.openWriter(0);
+        write(writer, new byte[100]);
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(100, info.mHighestIndex);
+
+        write(writer, new byte[100], 250);
+        mLog.captureHighest(info);
+        assertEquals(100, info.mHighestIndex);
+
+        write(writer, new byte[100], 250);
+        mLog.captureHighest(info);
+        assertEquals(250, info.mHighestIndex);
+    }
+
     private static void write(LogWriter writer, byte[] data) throws IOException {
         int amt = writer.write(data, 0, data.length, writer.index() + data.length);
+        assertEquals(data.length, amt);
+    }
+
+    private static void write(LogWriter writer, byte[] data, long highestIndex)
+        throws IOException
+    {
+        int amt = writer.write(data, 0, data.length, highestIndex);
         assertEquals(data.length, amt);
     }
 
