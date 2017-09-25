@@ -1018,6 +1018,26 @@ public class FileTermLogTest {
         writer = mLog.openWriter(1024 * 1024 - 100);
         assertEquals(0, writer.write(b));
         writer.release();
+
+        // Try again with writers that reference deleted segements.
+
+        writer = mLog.openWriter(commitIndex);
+        for (int i=0; i<1000; i++) {
+            write(writer, b);
+        }
+        writer.release();
+
+        // Re-open at the start index.
+        writer = mLog.openWriter(commitIndex);
+        // Force segement to be referenced.
+        writer.write(b);
+
+        long commitIndex2 = 4_000_000;
+        mLog.commit(commitIndex2);
+        mLog.compact(commitIndex2);
+
+        assertEquals(0, writer.write(b));
+        writer.release();
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {

@@ -1179,7 +1179,7 @@ final class FileTermLog extends Latch implements TermLog {
         long mWriterHighestIndex;
         Segment mWriterSegment;
 
-        private volatile boolean mClosed;
+        private volatile boolean mWriterClosed;
 
         private SegmentWriter mCacheNext;
         private SegmentWriter mCacheMoreUsed;
@@ -1256,7 +1256,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         private Segment segmentForWriting(long index) throws IOException {
-            if (mClosed) {
+            if (mWriterClosed) {
                 throw new IOException("Closed");
             }
             return FileTermLog.this.segmentForWriting(index);
@@ -1279,7 +1279,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public void close() {
-            mClosed = true;
+            mWriterClosed = true;
             FileTermLog.this.release(this, false);
             signalClosed(this);
         }
@@ -1335,7 +1335,7 @@ final class FileTermLog extends Latch implements TermLog {
         private long mReaderContigIndex;
         Segment mReaderSegment;
 
-        private volatile boolean mClosed;
+        private volatile boolean mReaderClosed;
 
         private SegmentReader mCacheNext;
         private SegmentReader mCacheMoreUsed;
@@ -1383,7 +1383,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
                 commitIndex = waitForCommit(index + 1, -1, this);
                 if (commitIndex < 0) {
-                    if (mClosed) {
+                    if (mReaderClosed) {
                         throw new IOException("Closed");
                     }
                     return EOF;
@@ -1454,7 +1454,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         private Segment segmentForReading(long index) throws IOException {
-            if (mClosed) {
+            if (mReaderClosed) {
                 throw new IOException("Closed");
             }
             return FileTermLog.this.segmentForReading(index);
@@ -1467,7 +1467,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public void close() {
-            mClosed = true;
+            mReaderClosed = true;
             FileTermLog.this.release(this, false);
             signalClosed(this);
         }
@@ -1528,7 +1528,7 @@ final class FileTermLog extends Latch implements TermLog {
         // Zero-based reference count.
         volatile int mRefCount;
         private FileIO mFileIO;
-        private boolean mClosed;
+        private boolean mSegmentClosed;
 
         volatile int mDirty;
         Segment mNextDirty;
@@ -1625,6 +1625,10 @@ final class FileTermLog extends Latch implements TermLog {
                     releaseExclusive();
                 }
 
+                if (io == null) {
+                    return 0;
+                }
+
                 io.map();
                 length = (int) amt;
             }
@@ -1696,12 +1700,19 @@ final class FileTermLog extends Latch implements TermLog {
 
         /**
          * Opens or re-opens the segment file if it was closed. Caller must hold exclusive latch.
+         *
+         * @return null if permanently closed
          */
         FileIO openForWriting() throws IOException {
             FileIO io = mFileIO;
 
             if (io == null) {
-                checkClosed();
+                if (mSegmentClosed) {
+                    if (mLogClosed) {
+                        throw new IOException("Closed");
+                    }
+                    return null;
+                }
                 EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
                 int handles = 1;
                 if (mMaxLength > 0) {
@@ -1728,7 +1739,9 @@ final class FileTermLog extends Latch implements TermLog {
             FileIO io = mFileIO;
 
             if (io == null) {
-                checkClosed();
+                if (mSegmentClosed) {
+                    throw new IOException("Closed");
+                }
                 EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
                 int handles = 1;
                 if (mMaxLength > 0) {
@@ -1738,12 +1751,6 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             return io;
-        }
-
-        private void checkClosed() throws IOException {
-            if (mClosed) {
-                throw new IOException("Closed");
-            }
         }
 
         /**
@@ -1794,10 +1801,9 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 try {
-                    if (mMaxLength == 0 || mClosed) {
+                    if (mMaxLength == 0 || (io = openForWriting()) == null) {
                         return;
                     }
-                    io = openForWriting();
                 } finally {
                     releaseExclusive();
                 }
@@ -1817,8 +1823,8 @@ final class FileTermLog extends Latch implements TermLog {
                 if (maxLength == 0) {
                     close(true);
                     io = null;
-                } else {
-                    io = openForWriting();
+                } else if ((io = openForWriting()) == null) {
+                    return;
                 }
             } finally {
                 releaseExclusive();
@@ -1845,7 +1851,7 @@ final class FileTermLog extends Latch implements TermLog {
                 mFileIO = null;
             }
             if (permanent) {
-                mClosed = true;
+                mSegmentClosed = true;
             }
         }
 
