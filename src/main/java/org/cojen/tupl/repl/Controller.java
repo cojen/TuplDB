@@ -952,8 +952,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             System.out.println("follower: " + mCurrentTerm);
 
             mLocalMode = MODE_FOLLOWER;
-            mVotedFor = 0;
-            mGrantsRemaining = 0;
 
             if (mLeaderLogWriter != null) {
                 mLeaderLogWriter.release();
@@ -1181,6 +1179,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             if (currentTerm > originalTerm) {
+                mVotedFor = 0;
                 toFollower();
             }
 
@@ -1243,6 +1242,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 releaseExclusive();
                 return true;
             }
+
+            mVotedFor = 0;
         }
 
         toFollower();
@@ -1319,6 +1320,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (term > originalTerm) {
                 mCurrentTerm = mStateLog.checkCurrentTerm(term);
                 if (mCurrentTerm > originalTerm) {
+                    mVotedFor = 0;
                     toFollower();
                 }
             }
@@ -1474,7 +1476,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (tryUpgrade()) {
                 mLeaderReplyChannel = from;
                 mElectionValidated = 1;
-                mVotedFor = 0; // election is over
                 releaseExclusive();
                 return true;
             }
@@ -1505,12 +1506,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (mCurrentTerm <= originalTerm) {
                     return true;
                 }
+                mVotedFor = 0;
                 toFollower();
             }
 
             mLeaderReplyChannel = from;
             mElectionValidated = 1;
-            mVotedFor = 0; // election is over
         } finally {
             releaseExclusive();
         }
@@ -1539,6 +1540,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 if (mCurrentTerm > originalTerm) {
+                    mVotedFor = 0;
                     toFollower();
                 } else {
                     // Cannot commit on behalf of older terms.
