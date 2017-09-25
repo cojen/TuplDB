@@ -837,7 +837,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void doElectionTask() {
         Channel[] peerChannels;
         long term, candidateId;
-        LogInfo info = new LogInfo();
+        LogInfo info;
 
         acquireExclusive();
         try {
@@ -877,7 +877,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             peerChannels = mConsensusChannels;
 
-            mStateLog.captureHighest(info);
+            info = mStateLog.captureHighest();
 
             try {
                 mCurrentTerm = term = mStateLog.incrementCurrentTerm(1);
