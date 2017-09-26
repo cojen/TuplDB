@@ -338,7 +338,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         while (true) {
             if (mStateLog.isDurable(index)) {
-                return true;
+                break;
             }
 
             if (nanosTimeout == 0) {
@@ -367,7 +367,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (channels.length == 0) {
                     // Already have consensus.
                     mStateLog.commitDurable(index);
-                    return true;
+                    break;
                 }
 
                 for (Channel channel : channels) {
@@ -384,7 +384,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 acquireExclusive();
                 if (mStateLog.isDurable(index)) {
                     releaseExclusive();
-                    return true;
+                    break;
                 }
                 int result = mSyncCommitCondition.await(this, actualTimeout, nanosEnd);
                 releaseExclusive();
@@ -398,20 +398,31 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 nanosTimeout = 0;
             }
         }
-    }
 
-    @Override
-    public void compact(long index) throws IOException {
+        // Notify all peers that they don't need to retain data on our behalf.
+
         acquireShared();
         Channel[] channels = mAllChannels;
         releaseShared();
 
-        long lowestIndex = index;
-
         for (Channel channel : channels) {
             channel.compact(this, index);
-            Peer peer = channel.peer();
-            lowestIndex = Math.min(lowestIndex, peer.mCompactIndex);
+        }
+
+        return true;
+    }
+
+    @Override
+    public void compact(long index) throws IOException {
+        long lowestIndex = index;
+
+        acquireShared();
+        try {
+            for (Channel channel : mAllChannels) {
+                lowestIndex = Math.min(lowestIndex, channel.peer().mCompactIndex);
+            }
+        } finally {
+            releaseShared();
         }
 
         mStateLog.compact(lowestIndex);
