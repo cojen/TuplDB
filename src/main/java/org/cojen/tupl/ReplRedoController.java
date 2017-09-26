@@ -146,6 +146,11 @@ final class ReplRedoController extends ReplRedoWriter {
                 // earlier operations. Transactional operations are expected to be idempotent,
                 // but the transactions will roll back regardless.
 
+                // FIXME: If becomes a replica, and the confirmed just keeps going higher,
+                // isn't it possible that mCheckpointPos goes higher than is expected? Yes, see
+                // context.confirmed in the leaderNotify method. This requires a flip back to
+                // leader mode, however. Capture this state earlier to be safe?
+
                 long[] result = db.highestTransactionContext().copyConfirmed();
 
                 mCheckpointPos = result[0];
