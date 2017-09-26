@@ -85,10 +85,11 @@ final class ReplRedoController extends ReplRedoWriter {
     void checkpointSwitch(TransactionContext[] contexts) throws IOException {
         mCheckpointNum++;
 
+        ReplRedoWriter redo = mTxnRedoWriter;
+        mCheckpointRedoWriter = redo;
+
         // Only capture new checkpoint state if previous attempt succeeded.
         if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
-            ReplRedoWriter redo = mTxnRedoWriter;
-            mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
             if (writer == null) {
                 mCheckpointPos = mEngine.suspendedDecodePosition();
