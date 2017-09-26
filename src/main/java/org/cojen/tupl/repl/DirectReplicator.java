@@ -36,15 +36,15 @@ import java.util.function.LongConsumer;
  */
 public interface DirectReplicator extends Replicator {
     /**
-     * Start accepting replication data, to be called for new or existing replicators.
-     *
-     * @return false if already started
+     * Start accepting replication data, to be called for new or existing members. For newly
+     * restored members, the start method must be called to update its role.
      */
-    boolean start() throws IOException;
+    void start() throws IOException;
 
     /**
      * Start by receiving a {@link #requestSnapshot snapshot} from another group member,
-     * expected to be called only by newly joined members.
+     * expected to be called only by newly joined members. New members are initially {@link
+     * Role#OBSERVER obervers}, so call the start method after restoration to update the role.
      *
      * @param options requested options; can pass null if none
      * @return null if no snapshot could be found and replicator hasn't started

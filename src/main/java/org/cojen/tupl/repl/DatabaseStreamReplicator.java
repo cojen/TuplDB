@@ -101,7 +101,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             return null;
         }
 
-        // FIXME: Try to switch local role to OBSERVER, in case member was already in the group
+        // TODO: Try to switch local role to OBSERVER, in case member was already in the group
         // as NORMAL or STANDBY, but it shouldn't become the leader during the restore.
 
         InputStream in;
@@ -172,7 +172,10 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             }
         });
 
-        // FIXME: Wait until caught up?
+        // Update the local member role.
+        mRepl.start();
+
+        // TODO: Wait until caught up?
     }
 
     private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
