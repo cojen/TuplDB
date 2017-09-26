@@ -216,8 +216,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean start() throws IOException {
-        return start(null);
+    public void start() throws IOException {
+        start(null);
     }
 
     @Override
@@ -228,48 +228,41 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         SocketSnapshotReceiver receiver = requestSnapshot(options);
 
-        if (receiver == null) {
-            return null;
-        }
-
-        try {
-            start(receiver);
-        } catch (Throwable e) {
-            closeQuietly(receiver);
-            throw e;
+        if (receiver != null) {
+            try {
+                start(receiver);
+            } catch (Throwable e) {
+                closeQuietly(receiver);
+                throw e;
+            }
         }
 
         return receiver;
     }
 
-    private boolean start(SocketSnapshotReceiver receiver) throws IOException {
-        if (mChanMan.isStarted()) {
+    private void start(SocketSnapshotReceiver receiver) throws IOException {
+        if (!mChanMan.isStarted()) {
             if (receiver != null) {
-                throw new IllegalStateException("Already started");
+                mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.index());
             }
-            return false;
+
+            mChanMan.start(this);
+
+            scheduleElectionTask();
+            scheduleMissingDataTask();
+
+            mChanMan.joinAcceptor(this::requestJoin);
         }
 
-        if (receiver != null) {
-            mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.index());
+        if (receiver == null) {
+            acquireShared();
+            boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
+            releaseShared();
+
+            if (roleChange) {
+                mScheduler.execute(this::roleChangeTask);
+            }
         }
-
-        mChanMan.start(this);
-
-        scheduleElectionTask();
-        scheduleMissingDataTask();
-
-        mChanMan.joinAcceptor(this::requestJoin);
-
-        acquireShared();
-        boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
-        releaseShared();
-
-        if (roleChange) {
-            mScheduler.execute(this::roleChangeTask);
-        }
-
-        return true;
     }
 
     @Override

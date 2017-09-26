@@ -97,8 +97,8 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
-    public boolean start() throws IOException {
-        return mRepl.start();
+    public void start() throws IOException {
+        mRepl.start();
     }
 
     @Override
