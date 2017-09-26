@@ -1131,7 +1131,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 release(exclusive);
                 return requestChannel;
             }
-            if (tryUpgrade()) {
+            if (exclusive || tryUpgrade()) {
                 break;
             }
             releaseShared();
@@ -1261,6 +1261,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } catch (Throwable e) {
             releaseExclusive();
             uncaught(e);
+            return;
         }
 
         doAffirmLeadership();
