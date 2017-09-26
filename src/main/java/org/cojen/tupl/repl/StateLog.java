@@ -52,17 +52,25 @@ interface StateLog extends Closeable {
     /**
      * Increment the current term by the amount given.
      *
+     * @param candidateId local member id, voting for itself
      * @throws IllegalArgumentException if amount isn't greater than zero
      */
-    long incrementCurrentTerm(int amount) throws IOException;
+    long incrementCurrentTerm(int amount, long candidateId) throws IOException;
 
     /**
      * Compares the given term against the one given. If given a higher term, then the current
-     * term is updated to match it.
+     * term is updated to match it and the voted-for field is cleared.
      *
      * @return effective current term
      */
     long checkCurrentTerm(long term) throws IOException;
+
+    /**
+     * Returns true if the given candidate matches the current voted-for candidate, or if the
+     * current voted-for candidate is zero. Returning true also implies that the given
+     * candidate is now the current voted-for candidate.
+     */
+    boolean checkCandidate(long candidateId) throws IOException;
 
     /**
      * Set the log start index higher, assumed to be a valid commit index, and potentially

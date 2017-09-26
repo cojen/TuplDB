@@ -484,7 +484,7 @@ public class FileStateLogTest {
         mLog = new FileStateLog(mBase);
 
         assertEquals(1, mLog.checkCurrentTerm(0));
-        assertEquals(5, mLog.incrementCurrentTerm(4));
+        assertEquals(5, mLog.incrementCurrentTerm(4, 0));
 
         mLog.close();
         mLog = new FileStateLog(mBase);
@@ -492,10 +492,15 @@ public class FileStateLogTest {
         assertEquals(5, mLog.checkCurrentTerm(0));
 
         try {
-            mLog.incrementCurrentTerm(0);
+            mLog.incrementCurrentTerm(0, 0);
             fail();
         } catch (IllegalArgumentException e) {
         }
+
+        assertTrue(mLog.checkCandidate(123));
+        assertFalse(mLog.checkCandidate(234));
+        assertEquals(6, mLog.checkCurrentTerm(6));
+        assertTrue(mLog.checkCandidate(234));
     }
 
     @Test
@@ -503,7 +508,7 @@ public class FileStateLogTest {
         Random rnd = new Random(7435847);
 
         long prevTerm = mLog.checkCurrentTerm(0);
-        long term = mLog.incrementCurrentTerm(1);
+        long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
         byte[] msg1 = new byte[1000];
         rnd.nextBytes(msg1);
@@ -511,7 +516,7 @@ public class FileStateLogTest {
         writer.release();
 
         prevTerm = mLog.checkCurrentTerm(0);
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 123);
         writer = mLog.openWriter(prevTerm, term, 1000);
         byte[] msg2 = new byte[2000];
         rnd.nextBytes(msg2);
@@ -527,11 +532,13 @@ public class FileStateLogTest {
         assertEquals(prevTerm, info.mTerm);
         assertEquals(1000, info.mHighestIndex);
         assertEquals(0, info.mCommitIndex);
+        assertFalse(mLog.checkCandidate(1)); // doesn't match 123
+        assertTrue(mLog.checkCandidate(123));
 
         // Last term must always be opened without an end index.
         verifyLog(mLog, 0, msg1, 0);
 
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
         byte[] msg3 = new byte[3500];
         rnd.nextBytes(msg3);
@@ -613,7 +620,7 @@ public class FileStateLogTest {
         byte[] buf = new byte[1000];
 
         long prevTerm = mLog.checkCurrentTerm(0);
-        long term = mLog.incrementCurrentTerm(1);
+        long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
 
         for (int i=0; i<10_000; i++) {
@@ -623,7 +630,7 @@ public class FileStateLogTest {
         writer.release();
 
         prevTerm = mLog.checkCurrentTerm(0);
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, writer.index());
 
         for (int i=0; i<5_000; i++) {
@@ -641,7 +648,7 @@ public class FileStateLogTest {
 
         for (int x=0; x<2; x++) {
             prevTerm = mLog.checkCurrentTerm(0);
-            term = mLog.incrementCurrentTerm(1);
+            term = mLog.incrementCurrentTerm(1, 0);
             writer = mLog.openWriter(prevTerm, term, writer.index());
             for (int i=0; i<5_000; i++) {
                 rnd.nextBytes(buf);
@@ -699,7 +706,7 @@ public class FileStateLogTest {
         Random rnd = new Random(64926492);
 
         long prevTerm = mLog.checkCurrentTerm(0);
-        long term = mLog.incrementCurrentTerm(1);
+        long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
         byte[] msg1 = new byte[1000];
         rnd.nextBytes(msg1);
@@ -707,7 +714,7 @@ public class FileStateLogTest {
         writer.release();
 
         prevTerm = mLog.checkCurrentTerm(0);
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
         byte[] msg2 = new byte[2_000_000];
         rnd.nextBytes(msg2);

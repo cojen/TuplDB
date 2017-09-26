@@ -66,10 +66,11 @@ final class FileStateLog extends Latch implements StateLog {
       8:  Encoding version (int)
       12: Metadata counter (int)
       16: Current term (long)
-      24: Highest log term (long)
-      32: Highest contiguous log index (exclusive) (long)
-      40: Durable commit log index (exclusive) (long)
-      48: CRC32C (int)
+      24: Voted for (long)
+      32: Highest log term (long)
+      40: Highest contiguous log index (exclusive) (long)
+      48: Durable commit log index (exclusive) (long)
+      56: CRC32C (int)
 
       Example segment files with base of "mydata.repl":
 
@@ -84,10 +85,10 @@ final class FileStateLog extends Latch implements StateLog {
     */
 
     private static final long MAGIC_NUMBER = 5267718596810043313L;
-    private static final int ENCODING_VERSION = 20170922;
+    private static final int ENCODING_VERSION = 20170925;
     private static final int SECTION_POW = 12;
     private static final int SECTION_SIZE = 1 << SECTION_POW;
-    private static final int METADATA_SIZE = 52;
+    private static final int METADATA_SIZE = 60;
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
     private static final int COUNTER_OFFSET = 12;
     private static final int CURRENT_TERM_OFFSET = 16;
@@ -108,6 +109,7 @@ final class FileStateLog extends Latch implements StateLog {
     private long mMetadataDurableIndex;
 
     private long mCurrentTerm;
+    private long mVotedForId;
 
     private TermLog mHighestTermLog;
     private TermLog mCommitTermLog;
@@ -178,6 +180,7 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataBuffer.clear();
         mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
         long currentTerm = mMetadataBuffer.getLong();
+        long votedForId = mMetadataBuffer.getLong();
         long highestTerm = mMetadataBuffer.getLong();
         long highestIndex = mMetadataBuffer.getLong();
         long durableIndex = mMetadataBuffer.getLong();
@@ -202,6 +205,7 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataDurableIndex = durableIndex;
 
         mCurrentTerm = currentTerm;
+        mVotedForId = votedForId;
 
         // Open all the existing terms.
         TreeMap<Long, List<String>> mTermFileNames = new TreeMap<>();
@@ -299,11 +303,12 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(ENCODING_VERSION);
         bb.putInt(counter);
 
-        // Initialize current term, highest log term, highest log index, commit log index.
+        // Initialize current term, voted for, highest log term, highest contiguous log index,
+        // and durable commit log index.
         if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
             throw new AssertionError();
         }
-        for (int i=0; i<4; i++) {
+        for (int i=0; i<5; i++) {
             bb.putLong(0);
         }
 
@@ -480,12 +485,13 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public long incrementCurrentTerm(int termIncrement) throws IOException {
+    public long incrementCurrentTerm(int termIncrement, long candidateId) throws IOException {
         if (termIncrement <= 0) {
             throw new IllegalArgumentException();
         }
         synchronized (mMetadataInfo) {
             mCurrentTerm += termIncrement;
+            mVotedForId = candidateId;
             doSync();
             return mCurrentTerm;
         }
@@ -496,9 +502,25 @@ final class FileStateLog extends Latch implements StateLog {
         synchronized (mMetadataInfo) {
             if (term > mCurrentTerm) {
                 mCurrentTerm = term;
+                mVotedForId = 0;
                 doSync();
             }
             return mCurrentTerm;
+        }
+    }
+
+    @Override
+    public boolean checkCandidate(long candidateId) throws IOException {
+        synchronized (mMetadataInfo) {
+            if (mVotedForId == candidateId) {
+                return true;
+            }
+            if (mVotedForId == 0) {
+                mVotedForId = candidateId;
+                doSync();
+                return true;
+            }
+            return false;
         }
     }
 
@@ -872,6 +894,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         bb.putInt(counter);
         bb.putLong(mCurrentTerm);
+        bb.putLong(mVotedForId);
         bb.putLong(mMetadataInfo.mTerm);
         bb.putLong(mMetadataInfo.mHighestIndex);
         bb.putLong(durableIndex);

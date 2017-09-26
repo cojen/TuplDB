@@ -89,7 +89,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mLocalMode;
 
     private long mCurrentTerm;
-    private long mVotedFor;
     private int mGrantsRemaining;
     private int mElectionValidated;
 
@@ -879,16 +878,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             info = mStateLog.captureHighest();
 
+            candidateId = mChanMan.getLocalMemberId();
+
             try {
-                mCurrentTerm = term = mStateLog.incrementCurrentTerm(1);
+                mCurrentTerm = term = mStateLog.incrementCurrentTerm(1, candidateId);
             } catch (IOException e) {
                 releaseExclusive();
                 uncaught(e);
                 return;
             }
-
-            candidateId = mChanMan.getLocalMemberId();
-            mVotedFor = candidateId;
 
             // Only need a majority of vote grants (already voted for self).
             mGrantsRemaining = (peerChannels.length + 1) / 2;
@@ -1171,28 +1169,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             final long originalTerm = mCurrentTerm;
 
-            try {
-                mCurrentTerm = currentTerm = mStateLog.checkCurrentTerm(term);
-            } catch (IOException e) {
-                uncaught(e);
-                return false;
-            }
+            mCurrentTerm = currentTerm = mStateLog.checkCurrentTerm(term);
 
             if (currentTerm > originalTerm) {
-                mVotedFor = 0;
                 toFollower();
             }
 
-            if (currentTerm >= originalTerm
-                && ((mVotedFor == 0 || mVotedFor == candidateId)
-                    && !isBehind(highestTerm, highestIndex)))
-            {
-                mVotedFor = candidateId;
-                // Set voteGranted result bit to true.
-                currentTerm |= 1L << 63;
-                // Treat new candidate as active, so don't start a new election too soon.
-                mElectionValidated = 1;
+            if (currentTerm >= originalTerm && !isBehind(highestTerm, highestIndex)) {
+                if (mStateLog.checkCandidate(candidateId)) {
+                    // Set voteGranted result bit to true.
+                    currentTerm |= 1L << 63;
+                    // Treat new candidate as active, so don't start a new election too soon.
+                    mElectionValidated = 1;
+                }
             }
+        } catch (IOException e) {
+            uncaught(e);
+            return false;
         } finally {
             releaseExclusive();
         }
@@ -1242,8 +1235,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 releaseExclusive();
                 return true;
             }
-
-            mVotedFor = 0;
         }
 
         toFollower();
@@ -1320,7 +1311,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (term > originalTerm) {
                 mCurrentTerm = mStateLog.checkCurrentTerm(term);
                 if (mCurrentTerm > originalTerm) {
-                    mVotedFor = 0;
                     toFollower();
                 }
             }
@@ -1506,7 +1496,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (mCurrentTerm <= originalTerm) {
                     return true;
                 }
-                mVotedFor = 0;
                 toFollower();
             }
 
@@ -1540,7 +1529,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 if (mCurrentTerm > originalTerm) {
-                    mVotedFor = 0;
                     toFollower();
                 } else {
                     // Cannot commit on behalf of older terms.
