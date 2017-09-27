@@ -87,7 +87,6 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         }
 
         try {
-            // FIXME: Must disable log start truncation.
             TermLog termLog = termLogAt(index);
             if (termLog == null) {
                 throw new IllegalStateException("Unknown term at index: " + index);
@@ -132,8 +131,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     }
 
     @Override
-    public final void close() throws IOException {
-        // FIXME: unregister from Controller
+    public void close() throws IOException {
         mSocket.close();
     }
 
