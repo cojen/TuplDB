@@ -1023,7 +1023,7 @@ final class GroupFile extends Latch {
     }
 
     static SocketAddress parseSocketAddress(String str) throws UnknownHostException {
-        int ix = str.indexOf(':');
+        int ix = str.lastIndexOf(':');
         if (ix <= 0) {
             return null;
         }

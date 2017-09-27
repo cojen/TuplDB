@@ -115,7 +115,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
         if (port <= 0) {
             throw new IllegalArgumentException();
         }
-        mLocalAddress = new InetSocketAddress(InetAddress.getLocalHost(), port);
+        mLocalAddress = new InetSocketAddress(LocalHost.getLocalHost(), port);
         mListenAddress = new InetSocketAddress(port);
         return this;
     }
@@ -163,7 +163,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             InetAddress addr = sockAddr.getAddress();
             if (addr.isAnyLocalAddress()) {
                 mLocalAddress = new InetSocketAddress
-                    (InetAddress.getLocalHost(), sockAddr.getPort());
+                    (LocalHost.getLocalHost(), sockAddr.getPort());
             }
         }
 
