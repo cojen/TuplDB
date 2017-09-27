@@ -598,17 +598,15 @@ final class FileStateLog extends Latch implements StateLog {
     public long checkForMissingData(long contigIndex, IndexRange results) {
         acquireShared();
 
+        if (mTermLogs.isEmpty()) {
+            releaseShared();
+            return 0;
+        }
+
         TermLog termLog = mContigTermLog;
         if (termLog != null && termLog == mTermLogs.last()) {
             releaseShared();
             return termLog.checkForMissingData(contigIndex, results);
-        }
-
-        int size = mTermLogs.size();
-
-        if (size == 0) {
-            releaseShared();
-            return 0;
         }
 
         if (termLog != null) {
