@@ -105,6 +105,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private volatile Consumer<byte[]> mControlMessageAcceptor;
 
+    // Incremented when snapshot senders are created, and decremented when they are closed.
+    private int mSnapshotSessionCount;
+
     /**
     * @param localSocket optional; used for testing
      */
@@ -562,17 +565,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
-        final class Sender extends SocketSnapshotSender {
-            Sender(Socket socket) throws IOException {
-                super(mGroupFile, socket);
-            }
-
-            @Override
-            TermLog termLogAt(long index) {
-                return mStateLog.termLogAt(index);
-            }
-        }
-
         mChanMan.snapshotRequestAcceptor(sock -> {
             SnapshotSender sender;
             try {
@@ -580,12 +572,46 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } catch (IOException e) {
                 closeQuietly(sock);
                 return;
+            } catch (Throwable e) {
+                closeQuietly(sock);
+                throw e;
             }
-
-            // FIXME: register the sender
 
             mScheduler.execute(() -> acceptor.accept(sender));
         });
+    }
+
+    final class Sender extends SocketSnapshotSender {
+        boolean mClosed;
+
+        Sender(Socket socket) throws IOException {
+            super(mGroupFile, socket);
+            adjustSnapshotSessionCount(this, +1);
+        }
+
+        @Override
+        public void close() throws IOException {
+            adjustSnapshotSessionCount(this, -1);
+            super.close();
+        }
+
+        @Override
+        TermLog termLogAt(long index) {
+            return mStateLog.termLogAt(index);
+        }
+    }
+
+    private void adjustSnapshotSessionCount(Sender sender, int amt) {
+        acquireExclusive();
+
+        if (!sender.mClosed) {
+            mSnapshotSessionCount += amt;
+            if (amt < 0) {
+                sender.mClosed = true;
+            }
+        }
+
+        releaseExclusive();
     }
 
     final class ReplWriter implements Writer {
@@ -1636,14 +1662,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean snapshotScore(Channel from) {
-        // FIXME: reply with high session count and weight if no acceptor is installed
+        if (!mChanMan.hasSnapshotRequestAcceptor()) {
+            // No acceptor, so reply with infinite score (least preferred).
+            from.snapshotScoreReply(null, Integer.MAX_VALUE, Float.POSITIVE_INFINITY);
+            return true;
+        }
 
         acquireShared();
+        int sessionCount = mSnapshotSessionCount;
         int mode = mLocalMode;
         releaseShared();
 
-        // FIXME: provide active session count
-        from.snapshotScoreReply(null, 0, mode == MODE_LEADER ? 1 : -1);
+        from.snapshotScoreReply(null, sessionCount, mode == MODE_LEADER ? 1 : -1);
 
         return true;
     }

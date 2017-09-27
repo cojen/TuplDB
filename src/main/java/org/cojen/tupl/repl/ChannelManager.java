@@ -232,6 +232,10 @@ final class ChannelManager {
         mSnapshotRequestAcceptor = acceptor;
     }
 
+    boolean hasSnapshotRequestAcceptor() {
+        return mSnapshotRequestAcceptor != null;
+    }
+
     /**
      * Stop accepting incoming channels, close all existing channels, and disconnect all remote
      * members.
