@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -1104,19 +1105,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return false;
     }
 
-    private static boolean validateJoinAddress(Socket s, SocketAddress addr) {
-        if (!(addr instanceof InetSocketAddress)) {
+    private static boolean validateJoinAddress(Socket s, SocketAddress joinAddr) {
+        if (!(joinAddr instanceof InetSocketAddress)) {
             return false;
         }
 
-        SocketAddress socketAddr = s.getRemoteSocketAddress();
+        SocketAddress actualAddr = s.getRemoteSocketAddress();
 
-        if (!(socketAddr instanceof InetSocketAddress)) {
+        if (!(actualAddr instanceof InetSocketAddress)) {
             return false;
         }
 
-        return ((InetSocketAddress) addr).getAddress()
-            .equals(((InetSocketAddress) socketAddr).getAddress());
+        InetAddress join = ((InetSocketAddress) joinAddr).getAddress();
+        InetAddress actual = ((InetSocketAddress) actualAddr).getAddress();
+
+        return actual.isLoopbackAddress() || actual.equals(join);
     }
 
     private void roleChangeTask() {
