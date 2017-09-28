@@ -541,7 +541,7 @@ final class FileStateLog extends Latch implements StateLog {
                 if (!termLog.isEmpty()) {
                     break;
                 }
-                it.remove();
+                mTermLogs.remove(termLog);
                 termLog = nextLog;
             }
         }
