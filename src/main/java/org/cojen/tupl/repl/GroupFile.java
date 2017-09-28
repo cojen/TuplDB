@@ -600,7 +600,29 @@ final class GroupFile extends Latch {
             return null;
         }
 
-        if (checkAddPeer(address, role)) {
+        if (address == null || role == null) {
+            throw new IllegalArgumentException();
+        }
+
+        boolean isPeer = true;
+
+        if (address.equals(mLocalMemberAddress)) {
+            if (mLocalMemberId == 0) {
+                isPeer = false;
+            } else {
+                throw new IllegalStateException("Address used by local member");
+            }
+        }
+
+        for (Peer peer : mPeerSet) {
+            if (address.equals(peer.mAddress)) {
+                // Member already exists, so update the role instead.
+                doUpdateRole(peer, role);
+                return peer;
+            }
+        }
+
+        if (isPeer) {
             Peer peer = new Peer(mVersion + 1, address, role);
             
             if (!mPeerSet.add(peer)) {
@@ -632,35 +654,6 @@ final class GroupFile extends Latch {
         }
 
         return null;
-    }
-
-    /**
-     * Caller must hold any latch.
-     *
-     * @return true if peer, false if adding local member id
-     */
-    private boolean checkAddPeer(SocketAddress address, Role role) {
-        if (address == null || role == null) {
-            throw new IllegalArgumentException();
-        }
-
-        boolean isPeer = true;
-
-        if (address.equals(mLocalMemberAddress)) {
-            if (mLocalMemberId == 0) {
-                isPeer = false;
-            } else {
-                throw new IllegalStateException("Address used by local member");
-            }
-        }
-
-        for (Peer peer : mPeerSet) {
-            if (address.equals(peer.mAddress)) {
-                throw new IllegalStateException("Address used by another peer");
-            }
-        }
-
-        return isPeer;
     }
 
     /**
@@ -759,6 +752,15 @@ final class GroupFile extends Latch {
             return true;
         }
 
+        doUpdateRole(existing, role);
+
+        return true;
+    }
+
+    /**
+     * Caller must hold exclusive latch.
+     */
+    private void doUpdateRole(Peer existing, Role role) throws IOException {
         Role existingRole = existing.mRole;
 
         if (existingRole != role) {
@@ -772,8 +774,6 @@ final class GroupFile extends Latch {
                 throw e;
             }
         }
-
-        return true;
     }
 
     /**

@@ -138,12 +138,9 @@ public class GroupFileTest {
         assertEquals(1, allPeers.size());
         assertEquals(peer, allPeers.iterator().next());
 
-        try {
-            gf.addPeer(new InetSocketAddress("localhost", 1002), Role.STANDBY);
-            fail();
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("peer") > 0);
-        }
+        Peer result = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.NORMAL);
+        assertTrue(result == peer);
+        assertEquals(Role.NORMAL, peer.mRole);
 
         Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
         assertTrue(peer2.mMemberId != 0);
@@ -167,7 +164,7 @@ public class GroupFileTest {
         for (Peer p : allPeers) {
             if (p.equals(peer)) {
                 assertEquals(new InetSocketAddress("localhost", 1002), p.mAddress);
-                assertEquals(Role.OBSERVER, p.mRole);
+                assertEquals(Role.NORMAL, p.mRole);
             } else {
                 assertEquals(new InetSocketAddress("localhost", 1003), p.mAddress);
                 assertEquals(Role.STANDBY, p.mRole);
