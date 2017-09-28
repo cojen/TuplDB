@@ -896,6 +896,11 @@ final class FileStateLog extends Latch implements StateLog {
             return;
         }
 
+        if (mMetadataInfo.mHighestIndex < durableIndex) {
+            throw new IllegalStateException("Highest index is lower than durable index: " +
+                                            mMetadataInfo.mHighestIndex + " < " + durableIndex);
+        }
+
         int counter = mMetadataCounter + 1;
         int offset = (counter & 1) << SECTION_POW;
 
