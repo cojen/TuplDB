@@ -55,9 +55,14 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * be lower than what was requested, dependent on how much data could be truncated. As a
      * side-effect of calling this method, the previous term might be updated.
      *
-     * @return true if log is empty
+     * @param true if all segements can be deleted, even the last one
      */
-    boolean compact(long startIndex) throws IOException;
+    void compact(long startIndex, boolean all) throws IOException;
+
+    /**
+     * @return true if log has no segments
+     */
+    boolean isEmpty();
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.

@@ -736,6 +736,36 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void compactAll() throws Exception {
+        LogWriter writer = mLog.openWriter(0, 1, 0);
+        byte[] b = new byte[1024];
+        for (int i=0; i<1024; i++) {
+            writer.write(b);
+        }
+        long commitIndex = writer.index();
+        mLog.commit(commitIndex);
+        writer.release();
+
+        File expect = new File(mBase.getPath() + ".0.1.0");
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+
+        mLog.compact(commitIndex);
+
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+
+        // Define a new term, but no segments yet.
+
+        writer = mLog.openWriter(1, 2, commitIndex);
+
+        mLog.compact(commitIndex);
+
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+    }
+
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
