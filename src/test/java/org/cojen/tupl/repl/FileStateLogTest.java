@@ -766,6 +766,16 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void doubleOpen() throws Exception {
+        try {
+            new FileStateLog(mBase);
+            fail();
+        } catch (IOException e) {
+            assertTrue(e.getMessage().indexOf("open") > 0);
+        }
+    }
+
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
