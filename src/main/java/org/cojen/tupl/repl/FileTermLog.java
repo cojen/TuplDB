@@ -135,7 +135,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (namesArray != null && namesArray.length != 0) {
                 // This pattern matches the term, and it discards the optional prevTerm.
-                Pattern p = Pattern.compile(base.getName() + "(?:\\.\\d+)?\\." + term + "\\.\\d+");
+                Pattern p = Pattern.compile(base.getName() + "\\." + term + "\\.\\d+(?:\\.\\d+)?");
 
                 segmentFileNames = new ArrayList<>();
                 for (String name : namesArray) {
@@ -196,8 +196,8 @@ final class FileTermLog extends Latch implements TermLog {
 
             File parent = base.getParentFile();
 
-            // This pattern captures the optional prevTerm and required start index.
-            Pattern p = Pattern.compile(base.getName() + "(?:\\.(\\d+))?\\." + term + "\\.(\\d+)");
+            // This pattern captures required start index and the optional prevTerm.
+            Pattern p = Pattern.compile(base.getName() + "\\." + term + "\\.(\\d+)(?:\\.(\\d+))?");
 
             boolean anyMatches = false;
 
@@ -210,7 +210,9 @@ final class FileTermLog extends Latch implements TermLog {
 
                 anyMatches = true;
 
-                String prevTermStr = m.group(1);
+                long start = Long.parseLong(m.group(1));
+
+                String prevTermStr = m.group(2);
 
                 if (prevTermStr != null) {
                     long parsedPrevTerm = Long.parseLong(prevTermStr);
@@ -221,8 +223,6 @@ final class FileTermLog extends Latch implements TermLog {
                             ("Mismatched previous term: " + prevTerm + " != " + prevTermStr);
                     }
                 }
-
-                long start = Long.parseLong(m.group(2));
 
                 // Start with the desired max length, and then truncate on the second pass.
                 long maxLength = Math.max(maxSegmentLength(), new File(parent, name).length());
@@ -1557,11 +1557,11 @@ final class FileTermLog extends Latch implements TermLog {
             StringBuilder b = new StringBuilder();
             b.append(mBase.getPath()).append('.');
 
-            if (prevTerm != term) {
-                b.append(prevTerm).append('.');
-            }
-
             b.append(term).append('.').append(mStartIndex);
+
+            if (prevTerm != term) {
+                b.append('.').append(prevTerm);
+            }
 
             return new File(b.toString());
         }

@@ -746,7 +746,7 @@ public class FileStateLogTest {
         mLog.commit(commitIndex);
         writer.release();
 
-        File expect = new File(mBase.getPath() + ".0.1.0");
+        File expect = new File(mBase.getPath() + ".1.0.0");
         assertTrue(expect.exists());
         assertEquals(commitIndex, expect.length());
 

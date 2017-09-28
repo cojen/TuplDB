@@ -241,7 +241,7 @@ public class FileTermLogTest {
         new File(basePath + '.' + term + ".foo").createNewFile();
 
         // Create some out-of-bounds segments that should be deleted.
-        File low = new File(basePath + prevTerm + '.' + term + ".123");
+        File low = new File(basePath + term + ".123." + prevTerm);
         low.createNewFile();
         assertTrue(low.exists());
         File high = new File(basePath + term + ".999999999999");
@@ -249,7 +249,7 @@ public class FileTermLogTest {
         assertTrue(high.exists());
 
         // Expand a segment that should be truncated.
-        File first = new File(basePath + prevTerm + '.' + term + ".1000");
+        File first = new File(basePath + term + ".1000." + prevTerm);
         assertTrue(first.exists());
         long firstLen = first.length();
         assertTrue(firstLen > 1_000_000);
