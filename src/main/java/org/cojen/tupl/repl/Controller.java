@@ -1025,10 +1025,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
 
-        if (!validateJoinAddress(s, addr)) {
-            return joinFailure(s, ErrorCodes.INVALID_ADDRESS);
-        }
-
         OutputStream out = s.getOutputStream();
 
         acquireShared();
@@ -1103,23 +1099,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static boolean joinFailure(Socket s, byte errorCode) throws IOException {
         s.getOutputStream().write(new byte[] {GroupJoiner.OP_ERROR, errorCode});
         return false;
-    }
-
-    private static boolean validateJoinAddress(Socket s, SocketAddress joinAddr) {
-        if (!(joinAddr instanceof InetSocketAddress)) {
-            return false;
-        }
-
-        SocketAddress actualAddr = s.getRemoteSocketAddress();
-
-        if (!(actualAddr instanceof InetSocketAddress)) {
-            return false;
-        }
-
-        InetAddress join = ((InetSocketAddress) joinAddr).getAddress();
-        InetAddress actual = ((InetSocketAddress) actualAddr).getAddress();
-
-        return actual.isLoopbackAddress() || actual.equals(join);
     }
 
     private void roleChangeTask() {
