@@ -213,7 +213,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (fileNames != null && fileNames.length != 0) {
             // This pattern captures the term, but it discards the optional prevTerm.
-            Pattern p = Pattern.compile(base.getName() + "(?:\\.\\d+)?\\.(\\d+)\\.\\d+");
+            Pattern p = Pattern.compile(base.getName() + "\\.(\\d+)\\.\\d+(?:\\.\\d+)?");
 
             for (String name : fileNames) {
                 Matcher m = p.matcher(name);
