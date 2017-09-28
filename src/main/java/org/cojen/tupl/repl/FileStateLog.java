@@ -25,6 +25,8 @@ import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
 
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 
 import java.nio.file.StandardOpenOption;
 
@@ -101,6 +103,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final ConcurrentSkipListSet<LKey<TermLog>> mTermLogs;
 
     private final FileChannel mMetadataFile;
+    private final FileLock mMetadataLock;
     private final MappedByteBuffer mMetadataBuffer;
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
@@ -131,6 +134,17 @@ final class FileStateLog extends Latch implements StateLog {
              StandardOpenOption.WRITE,
              StandardOpenOption.CREATE,
              StandardOpenOption.DSYNC);
+
+        try {
+            mMetadataLock = mMetadataFile.tryLock();
+        } catch (OverlappingFileLockException e) {
+            throw new IOException("Replicator is already open by current process");
+        }
+
+        if (mMetadataLock == null) {
+            Utils.closeQuietly(mMetadataFile);
+            throw new IOException("Replicator is open and locked by another process");
+        }
 
         boolean mdFileExists = mMetadataFile.size() != 0;
 
@@ -942,6 +956,8 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 mClosed = true;
+
+                mMetadataLock.close();
 
                 mMetadataFile.close();
                 Utils.delete(mMetadataBuffer);
