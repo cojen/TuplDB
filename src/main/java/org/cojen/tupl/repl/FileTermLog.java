@@ -1404,7 +1404,30 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public int readAny(byte[] buf, int offset, int length) throws IOException {
+        public int tryRead(byte[] buf, int offset, int length) throws IOException {
+            long index = mReaderIndex;
+            long commitIndex = mReaderCommitIndex;
+            long avail = commitIndex - index;
+
+            if (avail <= 0) {
+                FileTermLog.this.acquireShared();
+                commitIndex = mLogCommitIndex;
+                long endIndex = mLogEndIndex;
+                FileTermLog.this.releaseShared();
+
+                mReaderCommitIndex = commitIndex;
+                avail = commitIndex - index;
+
+                if (avail <= 0) {
+                    return commitIndex == endIndex ? EOF : 0;
+                }
+            }
+
+            return doRead(index, buf, offset, (int) Math.min(length, avail));
+        }
+
+        @Override
+        public int tryReadAny(byte[] buf, int offset, int length) throws IOException {
             long index = mReaderIndex;
             long contigIndex = mReaderContigIndex;
             long avail = contigIndex - index;

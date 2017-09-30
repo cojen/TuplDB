@@ -805,7 +805,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestMissingData(long startIndex, long endIndex) {
         // FIXME: Need a way to abort outstanding requests.
-        System.out.println("must call queryData! " + startIndex + ".." + endIndex);
+        //System.out.println("must call queryData! " + startIndex + ".." + endIndex);
 
         long remaining = endIndex - startIndex;
 
@@ -1346,11 +1346,30 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 byte[] buf = new byte[(int) Math.min(9000, remaining)];
 
                 while (true) {
+                    long currentTerm = 0;
+
                     long prevTerm = reader.prevTerm();
                     long index = reader.index();
                     long term = reader.term();
 
-                    int amt = reader.readAny(buf, 0, (int) Math.min(buf.length, remaining));
+                    int require = (int) Math.min(buf.length, remaining);
+                    int amt = reader.tryRead(buf, 0, require);
+
+                    if (amt == 0) {
+                        // If the leader, read past the commit index, up to the highest index.
+                        acquireShared();
+                        try {
+                            if (mLocalMode == MODE_LEADER) {
+                                int any = reader.tryReadAny(buf, amt, require);
+                                if (any > 0) {
+                                    currentTerm = mCurrentTerm;
+                                    amt += any;
+                                }
+                            }
+                        } finally {
+                            releaseShared();
+                        }
+                    }
 
                     if (amt <= 0) {
                         if (amt < 0) {
@@ -1365,7 +1384,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     byte[] data = new byte[amt];
                     System.arraycopy(buf, 0, data, 0, amt);
 
-                    from.queryDataReply(null, prevTerm, term, index, data);
+                    from.queryDataReply(null, currentTerm, prevTerm, term, index, data);
 
                     startIndex += amt;
                     remaining -= amt;
@@ -1385,9 +1404,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean queryDataReply(Channel from, long prevTerm, long term,
-                                  long index, byte[] data)
+    public boolean queryDataReply(Channel from, long currentTerm,
+                                  long prevTerm, long term, long index, byte[] data)
     {
+        if (currentTerm != 0 && !validateLeaderTerm(from, currentTerm)) {
+            return false;
+        }
+
         mReceivingMissingData = true;
 
         try {

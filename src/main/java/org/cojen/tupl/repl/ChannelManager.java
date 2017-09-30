@@ -836,13 +836,14 @@ final class ChannelManager {
                         commandLength -= (8 * 2);
                         break;
                     case OP_QUERY_DATA_REPLY:
+                        long currentTerm = in.readLongLE();
                         long prevTerm = in.readLongLE();
                         long term = in.readLongLE();
                         long index = in.readLongLE();
-                        commandLength -= (8 * 3);
+                        commandLength -= (8 * 4);
                         byte[] data = new byte[commandLength];
                         readFully(in, data, 0, data.length);
-                        localServer.queryDataReply(this, prevTerm, term, index, data);
+                        localServer.queryDataReply(this, currentTerm, prevTerm, term, index, data);
                         commandLength = 0;
                         break;
                     case OP_WRITE_DATA:
@@ -992,8 +993,8 @@ final class ChannelManager {
         }
 
         @Override
-        public boolean queryDataReply(Channel from, long prevTerm, long term, long index,
-                                      byte[] data)
+        public boolean queryDataReply(Channel from, long currentTerm,
+                                      long prevTerm, long term, long index, byte[] data)
         {
             if (data.length > ((1 << 24) - (8 * 3))) {
                 // FIXME: break it up into several commands
@@ -1005,12 +1006,13 @@ final class ChannelManager {
                 if (mOut == null) {
                     return false;
                 }
-                byte[] command = new byte[(8 + 8 * 3) + data.length];
+                byte[] command = new byte[(8 + 8 * 4) + data.length];
                 prepareCommand(command, OP_QUERY_DATA_REPLY, 0, command.length - 8);
-                encodeLongLE(command, 8, prevTerm);
-                encodeLongLE(command, 16, term);
-                encodeLongLE(command, 24, index);
-                System.arraycopy(data, 0, command, 32, data.length);
+                encodeLongLE(command, 8, currentTerm);
+                encodeLongLE(command, 16, prevTerm);
+                encodeLongLE(command, 24, term);
+                encodeLongLE(command, 32, index);
+                System.arraycopy(data, 0, command, 40, data.length);
                 return writeCommand(command, 0, command.length);
             } finally {
                 releaseExclusive();

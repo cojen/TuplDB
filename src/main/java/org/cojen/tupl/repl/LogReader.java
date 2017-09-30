@@ -31,13 +31,22 @@ interface LogReader extends StreamReplicator.Reader {
     long prevTerm();
 
     /**
+     * Reads whatever log data is available, never higher than a commit index, never higher
+     * than a term, and never blocking.
+     *
+     * @return amount of bytes read, or EOF (-1) if the term end has been reached
+     * @throws IllegalStateException if log data was deleted (index is too low)
+     */
+    int tryRead(byte[] buf, int offset, int length) throws IOException;
+
+    /**
      * Reads whatever log data is available, possibly higher than a commit index, never higher
      * than a term, and never blocking.
      *
      * @return amount of bytes read, or EOF (-1) if the term end has been reached
      * @throws IllegalStateException if log data was deleted (index is too low)
      */
-    int readAny(byte[] buf, int offset, int length) throws IOException;
+    int tryReadAny(byte[] buf, int offset, int length) throws IOException;
 
     /**
      * Indicate that the reader isn't intended to be used again, allowing file handles to be
