@@ -1426,8 +1426,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (now >= mNextQueryTermTime) {
                     LogInfo info = mStateLog.captureHighest();
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
-                        // FIXME: "from" peer might not have all the terms
-                        from.queryTerms(null, info.mCommitIndex, index);
+                        Channel requestChannel = leaderRequestChannel();
+                        if (requestChannel != null) {
+                            requestChannel.queryTerms(this, info.mCommitIndex, index);
+                        }
                     }
                     mNextQueryTermTime = now + QUERY_TERMS_RATE_MILLIS;
                 }
