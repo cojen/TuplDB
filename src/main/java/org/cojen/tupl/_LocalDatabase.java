@@ -2006,7 +2006,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         try {
             _TransactionContext context = anyTransactionContext();
-            context.redoTimestamp(redo, op); 
+            context.redoTimestamp(redo, op);
             context.flush();
 
             redo.force(true);

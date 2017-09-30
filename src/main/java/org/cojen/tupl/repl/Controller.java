@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.net.ConnectException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -89,7 +90,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mLocalMode;
 
     private long mCurrentTerm;
-    private long mVotedFor;
     private int mGrantsRemaining;
     private int mElectionValidated;
 
@@ -105,6 +105,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
     private volatile Consumer<byte[]> mControlMessageAcceptor;
+
+    // Incremented when snapshot senders are created, and decremented when they are closed.
+    private int mSnapshotSessionCount;
 
     /**
     * @param localSocket optional; used for testing
@@ -217,8 +220,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean start() throws IOException {
-        return start(null);
+    public void start() throws IOException {
+        start(null);
     }
 
     @Override
@@ -229,49 +232,41 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         SocketSnapshotReceiver receiver = requestSnapshot(options);
 
-        if (receiver == null) {
-            return null;
-        }
-
-        try {
-            start(receiver);
-        } catch (Throwable e) {
-            closeQuietly(receiver);
-            throw e;
+        if (receiver != null) {
+            try {
+                start(receiver);
+            } catch (Throwable e) {
+                closeQuietly(receiver);
+                throw e;
+            }
         }
 
         return receiver;
     }
 
-    private boolean start(SocketSnapshotReceiver receiver) throws IOException {
-        if (mChanMan.isStarted()) {
+    private void start(SocketSnapshotReceiver receiver) throws IOException {
+        if (!mChanMan.isStarted()) {
             if (receiver != null) {
-                throw new IllegalStateException("Already started");
+                mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.index());
             }
-            return false;
+
+            mChanMan.start(this);
+
+            scheduleElectionTask();
+            scheduleMissingDataTask();
+
+            mChanMan.joinAcceptor(this::requestJoin);
         }
 
-        if (receiver != null) {
-            mStateLog.truncateStart(receiver.index());
-            mStateLog.defineTerm(receiver.prevTerm(), receiver.term(), receiver.index());
+        if (receiver == null) {
+            acquireShared();
+            boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
+            releaseShared();
+
+            if (roleChange) {
+                mScheduler.execute(this::roleChangeTask);
+            }
         }
-
-        mChanMan.start(this);
-
-        scheduleElectionTask();
-        scheduleMissingDataTask();
-
-        mChanMan.joinAcceptor(this::requestJoin);
-
-        acquireShared();
-        boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
-        releaseShared();
-
-        if (roleChange) {
-            mScheduler.execute(this::roleChangeTask);
-        }
-
-        return true;
     }
 
     @Override
@@ -347,7 +342,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         while (true) {
             if (mStateLog.isDurable(index)) {
-                return true;
+                break;
             }
 
             if (nanosTimeout == 0) {
@@ -376,7 +371,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (channels.length == 0) {
                     // Already have consensus.
                     mStateLog.commitDurable(index);
-                    return true;
+                    break;
                 }
 
                 for (Channel channel : channels) {
@@ -393,7 +388,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 acquireExclusive();
                 if (mStateLog.isDurable(index)) {
                     releaseExclusive();
-                    return true;
+                    break;
                 }
                 int result = mSyncCommitCondition.await(this, actualTimeout, nanosEnd);
                 releaseExclusive();
@@ -407,6 +402,34 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 nanosTimeout = 0;
             }
         }
+
+        // Notify all peers that they don't need to retain data on our behalf.
+
+        acquireShared();
+        Channel[] channels = mAllChannels;
+        releaseShared();
+
+        for (Channel channel : channels) {
+            channel.compact(this, index);
+        }
+
+        return true;
+    }
+
+    @Override
+    public void compact(long index) throws IOException {
+        long lowestIndex = index;
+
+        acquireShared();
+        try {
+            for (Channel channel : mAllChannels) {
+                lowestIndex = Math.min(lowestIndex, channel.peer().mCompactIndex);
+            }
+        } finally {
+            releaseShared();
+        }
+
+        mStateLog.compact(lowestIndex);
     }
 
     @Override
@@ -543,17 +566,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor) {
-        final class Sender extends SocketSnapshotSender {
-            Sender(Socket socket) throws IOException {
-                super(mGroupFile, socket);
-            }
-
-            @Override
-            TermLog termLogAt(long index) {
-                return mStateLog.termLogAt(index);
-            }
-        }
-
         mChanMan.snapshotRequestAcceptor(sock -> {
             SnapshotSender sender;
             try {
@@ -561,12 +573,46 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } catch (IOException e) {
                 closeQuietly(sock);
                 return;
+            } catch (Throwable e) {
+                closeQuietly(sock);
+                throw e;
             }
-
-            // FIXME: register the sender
 
             mScheduler.execute(() -> acceptor.accept(sender));
         });
+    }
+
+    final class Sender extends SocketSnapshotSender {
+        boolean mClosed;
+
+        Sender(Socket socket) throws IOException {
+            super(mGroupFile, socket);
+            adjustSnapshotSessionCount(this, +1);
+        }
+
+        @Override
+        public void close() throws IOException {
+            adjustSnapshotSessionCount(this, -1);
+            super.close();
+        }
+
+        @Override
+        TermLog termLogAt(long index) {
+            return mStateLog.termLogAt(index);
+        }
+    }
+
+    private void adjustSnapshotSessionCount(Sender sender, int amt) {
+        acquireExclusive();
+
+        if (!sender.mClosed) {
+            mSnapshotSessionCount += amt;
+            if (amt < 0) {
+                sender.mClosed = true;
+            }
+        }
+
+        releaseExclusive();
     }
 
     final class ReplWriter implements Writer {
@@ -759,7 +805,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestMissingData(long startIndex, long endIndex) {
         // FIXME: Need a way to abort outstanding requests.
-        System.out.println("must call queryData! " + startIndex + ".." + endIndex);
+        //System.out.println("must call queryData! " + startIndex + ".." + endIndex);
 
         long remaining = endIndex - startIndex;
 
@@ -821,7 +867,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void doElectionTask() {
         Channel[] peerChannels;
         long term, candidateId;
-        LogInfo info = new LogInfo();
+        LogInfo info;
 
         acquireExclusive();
         try {
@@ -861,18 +907,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             peerChannels = mConsensusChannels;
 
-            mStateLog.captureHighest(info);
+            info = mStateLog.captureHighest();
+
+            candidateId = mChanMan.getLocalMemberId();
 
             try {
-                mCurrentTerm = term = mStateLog.incrementCurrentTerm(1);
+                mCurrentTerm = term = mStateLog.incrementCurrentTerm(1, candidateId);
             } catch (IOException e) {
                 releaseExclusive();
                 uncaught(e);
                 return;
             }
-
-            candidateId = mChanMan.getLocalMemberId();
-            mVotedFor = candidateId;
 
             // Only need a majority of vote grants (already voted for self).
             mGrantsRemaining = (peerChannels.length + 1) / 2;
@@ -936,8 +981,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             System.out.println("follower: " + mCurrentTerm);
 
             mLocalMode = MODE_FOLLOWER;
-            mVotedFor = 0;
-            mGrantsRemaining = 0;
 
             if (mLeaderLogWriter != null) {
                 mLeaderLogWriter.release();
@@ -981,10 +1024,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
-
-        if (!validateJoinAddress(s, addr)) {
-            return joinFailure(s, ErrorCodes.INVALID_ADDRESS);
-        }
 
         OutputStream out = s.getOutputStream();
 
@@ -1062,21 +1101,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return false;
     }
 
-    private static boolean validateJoinAddress(Socket s, SocketAddress addr) {
-        if (!(addr instanceof InetSocketAddress)) {
-            return false;
-        }
-
-        SocketAddress socketAddr = s.getRemoteSocketAddress();
-
-        if (!(socketAddr instanceof InetSocketAddress)) {
-            return false;
-        }
-
-        return ((InetSocketAddress) addr).getAddress()
-            .equals(((InetSocketAddress) socketAddr).getAddress());
-    }
-
     private void roleChangeTask() {
         acquireShared();
         Role desiredRole = mLocalRole;
@@ -1119,7 +1143,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 release(exclusive);
                 return requestChannel;
             }
-            if (tryUpgrade()) {
+            if (exclusive || tryUpgrade()) {
                 break;
             }
             releaseShared();
@@ -1157,27 +1181,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             final long originalTerm = mCurrentTerm;
 
-            try {
-                mCurrentTerm = currentTerm = mStateLog.checkCurrentTerm(term);
-            } catch (IOException e) {
-                uncaught(e);
-                return false;
-            }
+            mCurrentTerm = currentTerm = mStateLog.checkCurrentTerm(term);
 
             if (currentTerm > originalTerm) {
                 toFollower();
             }
 
-            if (currentTerm >= originalTerm
-                && ((mVotedFor == 0 || mVotedFor == candidateId)
-                    && !isBehind(highestTerm, highestIndex)))
-            {
-                mVotedFor = candidateId;
-                // Set voteGranted result bit to true.
-                currentTerm |= 1L << 63;
-                // Treat new candidate as active, so don't start a new election too soon.
-                mElectionValidated = 1;
+            if (currentTerm >= originalTerm && !isBehind(highestTerm, highestIndex)) {
+                if (mStateLog.checkCandidate(candidateId)) {
+                    // Set voteGranted result bit to true.
+                    currentTerm |= 1L << 63;
+                    // Treat new candidate as active, so don't start a new election too soon.
+                    mElectionValidated = 1;
+                }
             }
+        } catch (IOException e) {
+            uncaught(e);
+            return false;
         } finally {
             releaseExclusive();
         }
@@ -1244,9 +1264,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             for (Channel channel : mAllChannels) {
                 channel.peer().mMatchIndex = 0;
             }
+
+            if (mConsensusPeers.length == 0) {
+                // Only a consensus group of one, so commit changes immediately.
+                mStateLog.captureHighest(mLeaderLogWriter);
+                mStateLog.commit(mLeaderLogWriter.mHighestIndex);
+            }
         } catch (Throwable e) {
             releaseExclusive();
             uncaught(e);
+            return;
         }
 
         doAffirmLeadership();
@@ -1319,11 +1346,30 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 byte[] buf = new byte[(int) Math.min(9000, remaining)];
 
                 while (true) {
+                    long currentTerm = 0;
+
                     long prevTerm = reader.prevTerm();
                     long index = reader.index();
                     long term = reader.term();
 
-                    int amt = reader.readAny(buf, 0, (int) Math.min(buf.length, remaining));
+                    int require = (int) Math.min(buf.length, remaining);
+                    int amt = reader.tryRead(buf, 0, require);
+
+                    if (amt == 0) {
+                        // If the leader, read past the commit index, up to the highest index.
+                        acquireShared();
+                        try {
+                            if (mLocalMode == MODE_LEADER) {
+                                int any = reader.tryReadAny(buf, amt, require);
+                                if (any > 0) {
+                                    currentTerm = mCurrentTerm;
+                                    amt += any;
+                                }
+                            }
+                        } finally {
+                            releaseShared();
+                        }
+                    }
 
                     if (amt <= 0) {
                         if (amt < 0) {
@@ -1338,7 +1384,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     byte[] data = new byte[amt];
                     System.arraycopy(buf, 0, data, 0, amt);
 
-                    from.queryDataReply(null, prevTerm, term, index, data);
+                    from.queryDataReply(null, currentTerm, prevTerm, term, index, data);
 
                     startIndex += amt;
                     remaining -= amt;
@@ -1358,9 +1404,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean queryDataReply(Channel from, long prevTerm, long term,
-                                  long index, byte[] data)
+    public boolean queryDataReply(Channel from, long currentTerm,
+                                  long prevTerm, long term, long index, byte[] data)
     {
+        if (currentTerm != 0 && !validateLeaderTerm(from, currentTerm)) {
+            return false;
+        }
+
         mReceivingMissingData = true;
 
         try {
@@ -1385,10 +1435,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean writeData(Channel from, long prevTerm, long term, long index,
                              long highestIndex, long commitIndex, byte[] data)
     {
-        try {
-            validateLeaderTerm(from, term);
-        } catch (IOException e) {
-            uncaught(e);
+        if (!validateLeaderTerm(from, term)) {
             return false;
         }
 
@@ -1396,13 +1443,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
 
             if (writer == null) {
-                // FIXME: stash the write for later
+                // FIXME: stash the write for later (unless it's a stale write)
                 // Cannot write because terms are missing, so request them.
                 long now = System.currentTimeMillis();
                 if (now >= mNextQueryTermTime) {
                     LogInfo info = mStateLog.captureHighest();
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
-                        from.queryTerms(null, info.mCommitIndex, index);
+                        Channel requestChannel = leaderRequestChannel();
+                        if (requestChannel != null) {
+                            requestChannel.queryTerms(this, info.mCommitIndex, index);
+                        }
                     }
                     mNextQueryTermTime = now + QUERY_TERMS_RATE_MILLIS;
                 }
@@ -1439,46 +1489,61 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     /**
      * Called when receiving data from the leader.
      *
-     * @throws IOException if check failed and caller should abort
+     * @return false if not validated, and received data should be discarded
      */
-    private void validateLeaderTerm(Channel from, long term) throws IOException {
+    private boolean validateLeaderTerm(Channel from, long term) {
         acquireShared();
         long originalTerm = mCurrentTerm;
 
         if (term == originalTerm) {
             if (mElectionValidated > 0) {
                 releaseShared();
-                return;
-            } else if (tryUpgrade()) {
+                return true;
+            }
+
+            if (tryUpgrade()) {
                 mLeaderReplyChannel = from;
                 mElectionValidated = 1;
-                mVotedFor = 0; // election is over
                 releaseExclusive();
-                return;
+                return true;
             }
+        } else if (term < originalTerm) {
+            releaseShared();
+            return false;
         }
 
         if (!tryUpgrade()) {
             releaseShared();
             acquireExclusive();
             originalTerm = mCurrentTerm;
+            if (term < originalTerm) {
+                releaseExclusive();
+                return false;
+            }
         }
 
         try {
             if (term != originalTerm) {
-                mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                assert term > originalTerm;
+                try {
+                    mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                } catch (IOException e) {
+                    uncaught(e);
+                    return false;
+                }
                 if (mCurrentTerm <= originalTerm) {
-                    return;
+                    return true;
                 }
                 toFollower();
             }
 
             mLeaderReplyChannel = from;
             mElectionValidated = 1;
-            mVotedFor = 0; // election is over
         } finally {
             releaseExclusive();
         }
+
+        return true;
     }
 
     @Override
@@ -1554,7 +1619,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         acquireExclusive();
         try {
-            if (mConsensusPeers.length == 0 || term != mStateLog.termLogAt(index).term()) {
+            TermLog termLog;
+            if (mConsensusPeers.length == 0
+                || (termLog = mStateLog.termLogAt(index)) == null || term != termLog.term())
+            {
                 // Received a stale reply.
                 System.out.println("stale reply");
                 return true;
@@ -1594,15 +1662,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public boolean compact(Channel from, long index) {
+        from.peer().mCompactIndex = index;
+        return true;
+    }
+
+    @Override
     public boolean snapshotScore(Channel from) {
-        // FIXME: reply with high session count and weight if no acceptor is installed
+        if (!mChanMan.hasSnapshotRequestAcceptor()) {
+            // No acceptor, so reply with infinite score (least preferred).
+            from.snapshotScoreReply(null, Integer.MAX_VALUE, Float.POSITIVE_INFINITY);
+            return true;
+        }
 
         acquireShared();
+        int sessionCount = mSnapshotSessionCount;
         int mode = mLocalMode;
         releaseShared();
 
-        // FIXME: provide active session count
-        from.snapshotScoreReply(null, 0, mode == MODE_LEADER ? 1 : -1);
+        from.snapshotScoreReply(null, sessionCount, mode == MODE_LEADER ? 1 : -1);
 
         return true;
     }

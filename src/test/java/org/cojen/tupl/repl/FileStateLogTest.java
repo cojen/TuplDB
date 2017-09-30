@@ -83,7 +83,7 @@ public class FileStateLogTest {
         assertFalse(mLog.defineTerm(10, 11, 1000));
 
         // Allow term definition with no previous term at the start.
-        mLog.truncateStart(1000);
+        mLog.truncateAll(0, 0, 1000);
         assertTrue(mLog.defineTerm(0, 10, 1000));
         assertTrue(mLog.defineTerm(0, 10, 1000));
 
@@ -286,7 +286,7 @@ public class FileStateLogTest {
         // Verify missing ranges when log starts higher than index zero.
 
         // Start at index 1000.
-        mLog.truncateStart(1000);
+        mLog.truncateAll(0, 0, 1000);
         mLog.defineTerm(0, 10, 1000);
 
         RangeResult result = new RangeResult();
@@ -343,7 +343,7 @@ public class FileStateLogTest {
         LogReader reader = mLog.openReader(0);
 
         byte[] buf = new byte[10];
-        assertEquals(0, reader.readAny(buf, 0, buf.length));
+        assertEquals(0, reader.tryReadAny(buf, 0, buf.length));
 
         new Thread(() -> {
             try {
@@ -484,7 +484,7 @@ public class FileStateLogTest {
         mLog = new FileStateLog(mBase);
 
         assertEquals(1, mLog.checkCurrentTerm(0));
-        assertEquals(5, mLog.incrementCurrentTerm(4));
+        assertEquals(5, mLog.incrementCurrentTerm(4, 0));
 
         mLog.close();
         mLog = new FileStateLog(mBase);
@@ -492,10 +492,15 @@ public class FileStateLogTest {
         assertEquals(5, mLog.checkCurrentTerm(0));
 
         try {
-            mLog.incrementCurrentTerm(0);
+            mLog.incrementCurrentTerm(0, 0);
             fail();
         } catch (IllegalArgumentException e) {
         }
+
+        assertTrue(mLog.checkCandidate(123));
+        assertFalse(mLog.checkCandidate(234));
+        assertEquals(6, mLog.checkCurrentTerm(6));
+        assertTrue(mLog.checkCandidate(234));
     }
 
     @Test
@@ -503,7 +508,7 @@ public class FileStateLogTest {
         Random rnd = new Random(7435847);
 
         long prevTerm = mLog.checkCurrentTerm(0);
-        long term = mLog.incrementCurrentTerm(1);
+        long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
         byte[] msg1 = new byte[1000];
         rnd.nextBytes(msg1);
@@ -511,7 +516,7 @@ public class FileStateLogTest {
         writer.release();
 
         prevTerm = mLog.checkCurrentTerm(0);
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 123);
         writer = mLog.openWriter(prevTerm, term, 1000);
         byte[] msg2 = new byte[2000];
         rnd.nextBytes(msg2);
@@ -527,11 +532,13 @@ public class FileStateLogTest {
         assertEquals(prevTerm, info.mTerm);
         assertEquals(1000, info.mHighestIndex);
         assertEquals(0, info.mCommitIndex);
+        assertFalse(mLog.checkCandidate(1)); // doesn't match 123
+        assertTrue(mLog.checkCandidate(123));
 
         // Last term must always be opened without an end index.
         verifyLog(mLog, 0, msg1, 0);
 
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
         byte[] msg3 = new byte[3500];
         rnd.nextBytes(msg3);
@@ -613,7 +620,7 @@ public class FileStateLogTest {
         byte[] buf = new byte[1000];
 
         long prevTerm = mLog.checkCurrentTerm(0);
-        long term = mLog.incrementCurrentTerm(1);
+        long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
 
         for (int i=0; i<10_000; i++) {
@@ -623,7 +630,7 @@ public class FileStateLogTest {
         writer.release();
 
         prevTerm = mLog.checkCurrentTerm(0);
-        term = mLog.incrementCurrentTerm(1);
+        term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, writer.index());
 
         for (int i=0; i<5_000; i++) {
@@ -641,7 +648,7 @@ public class FileStateLogTest {
 
         for (int x=0; x<2; x++) {
             prevTerm = mLog.checkCurrentTerm(0);
-            term = mLog.incrementCurrentTerm(1);
+            term = mLog.incrementCurrentTerm(1, 0);
             writer = mLog.openWriter(prevTerm, term, writer.index());
             for (int i=0; i<5_000; i++) {
                 rnd.nextBytes(buf);
@@ -690,6 +697,82 @@ public class FileStateLogTest {
 
         reader.interrupt();
         reader.join();
+    }
+
+    @Test
+    public void recoverState3() throws Exception {
+        // Test recovery of the start index and term, after truncating the log.
+
+        Random rnd = new Random(64926492);
+
+        long prevTerm = mLog.checkCurrentTerm(0);
+        long term = mLog.incrementCurrentTerm(1, 0);
+        LogWriter writer = mLog.openWriter(prevTerm, term, 0);
+        byte[] msg1 = new byte[1000];
+        rnd.nextBytes(msg1);
+        write(writer, msg1);
+        writer.release();
+
+        prevTerm = mLog.checkCurrentTerm(0);
+        term = mLog.incrementCurrentTerm(1, 0);
+        writer = mLog.openWriter(prevTerm, term, 1000);
+        byte[] msg2 = new byte[2_000_000];
+        rnd.nextBytes(msg2);
+        write(writer, msg2);
+        writer.release();
+
+        mLog.commit(writer.index());
+        mLog.sync();
+        mLog.commitDurable(writer.index());
+        mLog.compact(1_500_000);
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        TermLog termLog = mLog.termLogAt(1_500_000);
+        assertEquals(1000 + 1024 * 1024, termLog.startIndex());
+        assertEquals(2, termLog.prevTermAt(termLog.startIndex()));
+        assertEquals(2, termLog.term());
+    }
+
+    @Test
+    public void compactAll() throws Exception {
+        LogWriter writer = mLog.openWriter(0, 1, 0);
+        byte[] b = new byte[1024];
+        for (int i=0; i<1024; i++) {
+            writer.write(b);
+        }
+        long commitIndex = writer.index();
+        mLog.commit(commitIndex);
+        writer.release();
+
+        File expect = new File(mBase.getPath() + ".1.0.0");
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+
+        mLog.compact(commitIndex);
+
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+
+        // Define a new term, but no segments yet.
+
+        writer = mLog.openWriter(1, 2, commitIndex);
+
+        mLog.compact(commitIndex);
+
+        assertTrue(expect.exists());
+        assertEquals(commitIndex, expect.length());
+    }
+
+    @Test
+    public void doubleOpen() throws Exception {
+        try {
+            new FileStateLog(mBase);
+            fail();
+        } catch (IOException e) {
+            assertTrue(e.getMessage().indexOf("open") > 0);
+        }
     }
 
     @Test
@@ -786,7 +869,7 @@ public class FileStateLogTest {
         byte[] buf = new byte[100];
 
         while (true) {
-            int amt = reader.readAny(buf, 0, buf.length);
+            int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 reader.release();
                 writer.release();
@@ -811,7 +894,7 @@ public class FileStateLogTest {
         int offset = 0;
 
         while (offset < buf.length) {
-            int amt = reader.readAny(buf, offset, buf.length - offset);
+            int amt = reader.tryReadAny(buf, offset, buf.length - offset);
             if (amt <= 0) {
                 reader.release();
                 if (amt == 0) {
@@ -826,7 +909,7 @@ public class FileStateLogTest {
 
         TestUtils.fastAssertArrayEquals(expect, buf);
 
-        assertEquals(finalAmt, reader.readAny(buf, 0, 1));
+        assertEquals(finalAmt, reader.tryReadAny(buf, 0, 1));
         reader.release();
     }
 

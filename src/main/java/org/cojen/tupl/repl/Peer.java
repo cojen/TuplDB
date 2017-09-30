@@ -47,6 +47,8 @@ final class Peer implements Comparable<Peer> {
 
     long mSyncMatchIndex;
 
+    volatile long mCompactIndex;
+
     volatile long mGroupVersion;
 
     private volatile SnapshotScore mSnapshotScore;
