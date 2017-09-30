@@ -92,9 +92,10 @@ final class ChannelManager {
         OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
         OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
         OP_SYNC_COMMIT    = 10, OP_SYNC_COMMIT_REPLY    = 11,
-        OP_SNAPSHOT_SCORE = 12, OP_SNAPSHOT_SCORE_REPLY = 13,
-        OP_UPDATE_ROLE    = 14, OP_UPDATE_ROLE_REPLY    = 15,
-        OP_GROUP_VERSION  = 16, OP_GROUP_VERSION_REPLY  = 17;
+        OP_COMPACT        = 12, //OP_COMPACT_REPLY = 13,
+        OP_SNAPSHOT_SCORE = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
+        OP_UPDATE_ROLE    = 16, OP_UPDATE_ROLE_REPLY    = 17,
+        OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19;
 
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -229,6 +230,10 @@ final class ChannelManager {
 
     void snapshotRequestAcceptor(Consumer<Socket> acceptor) {
         mSnapshotRequestAcceptor = acceptor;
+    }
+
+    boolean hasSnapshotRequestAcceptor() {
+        return mSnapshotRequestAcceptor != null;
     }
 
     /**
@@ -831,13 +836,14 @@ final class ChannelManager {
                         commandLength -= (8 * 2);
                         break;
                     case OP_QUERY_DATA_REPLY:
+                        long currentTerm = in.readLongLE();
                         long prevTerm = in.readLongLE();
                         long term = in.readLongLE();
                         long index = in.readLongLE();
-                        commandLength -= (8 * 3);
+                        commandLength -= (8 * 4);
                         byte[] data = new byte[commandLength];
                         readFully(in, data, 0, data.length);
-                        localServer.queryDataReply(this, prevTerm, term, index, data);
+                        localServer.queryDataReply(this, currentTerm, prevTerm, term, index, data);
                         commandLength = 0;
                         break;
                     case OP_WRITE_DATA:
@@ -866,6 +872,10 @@ final class ChannelManager {
                         localServer.syncCommitReply(this, in.readLongLE(),
                                                     in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 3);
+                        break;
+                    case OP_COMPACT:
+                        localServer.compact(this, in.readLongLE());
+                        commandLength -= (8 * 1);
                         break;
                     case OP_SNAPSHOT_SCORE:
                         localServer.snapshotScore(this);
@@ -983,8 +993,8 @@ final class ChannelManager {
         }
 
         @Override
-        public boolean queryDataReply(Channel from, long prevTerm, long term, long index,
-                                      byte[] data)
+        public boolean queryDataReply(Channel from, long currentTerm,
+                                      long prevTerm, long term, long index, byte[] data)
         {
             if (data.length > ((1 << 24) - (8 * 3))) {
                 // FIXME: break it up into several commands
@@ -996,12 +1006,13 @@ final class ChannelManager {
                 if (mOut == null) {
                     return false;
                 }
-                byte[] command = new byte[(8 + 8 * 3) + data.length];
+                byte[] command = new byte[(8 + 8 * 4) + data.length];
                 prepareCommand(command, OP_QUERY_DATA_REPLY, 0, command.length - 8);
-                encodeLongLE(command, 8, prevTerm);
-                encodeLongLE(command, 16, term);
-                encodeLongLE(command, 24, index);
-                System.arraycopy(data, 0, command, 32, data.length);
+                encodeLongLE(command, 8, currentTerm);
+                encodeLongLE(command, 16, prevTerm);
+                encodeLongLE(command, 24, term);
+                encodeLongLE(command, 32, index);
+                System.arraycopy(data, 0, command, 40, data.length);
                 return writeCommand(command, 0, command.length);
             } finally {
                 releaseExclusive();
@@ -1049,6 +1060,11 @@ final class ChannelManager {
         @Override
         public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
             return writeCommand(OP_SYNC_COMMIT_REPLY, groupVersion, term, index);
+        }
+
+        @Override
+        public boolean compact(Channel from, long index) {
+            return writeCommand(OP_COMPACT, index);
         }
 
         @Override

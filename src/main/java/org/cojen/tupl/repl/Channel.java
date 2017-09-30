@@ -90,12 +90,14 @@ interface Channel {
     boolean queryData(Channel from, long startIndex, long endIndex);
 
     /**
+     * @param currentTerm current term of leader which replied; is 0 if data is committed
      * @param prevTerm expected term at previous index
      * @param term term at given index
      * @param index any index in the term to write to
      * @return false if not sent or processed
      */
-    boolean queryDataReply(Channel from, long prevTerm, long term, long index, byte[] data);
+    boolean queryDataReply(Channel from, long currentTerm,
+                           long prevTerm, long term, long index, byte[] data);
 
     /**
      * @param prevTerm expected term at previous index
@@ -126,6 +128,12 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean syncCommitReply(Channel from, long groupVersion, long term, long index);
+
+    /**
+     * @param index lowest index which must be retained
+     * @return false if not sent or processed
+     */
+    boolean compact(Channel from, long index);
 
     /**
      * @return false if not sent or processed

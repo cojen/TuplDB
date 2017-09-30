@@ -85,10 +85,11 @@ final class _ReplRedoController extends _ReplRedoWriter {
     void checkpointSwitch(_TransactionContext[] contexts) throws IOException {
         mCheckpointNum++;
 
+        _ReplRedoWriter redo = mTxnRedoWriter;
+        mCheckpointRedoWriter = redo;
+
         // Only capture new checkpoint state if previous attempt succeeded.
         if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
-            _ReplRedoWriter redo = mTxnRedoWriter;
-            mCheckpointRedoWriter = redo;
             ReplicationManager.Writer writer = redo.mReplWriter;
             if (writer == null) {
                 mCheckpointPos = mEngine.suspendedDecodePosition();
@@ -145,6 +146,11 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 // restored from the checkpoint, any in-progress transactions will re-apply
                 // earlier operations. Transactional operations are expected to be idempotent,
                 // but the transactions will roll back regardless.
+
+                // FIXME: If becomes a replica, and the confirmed just keeps going higher,
+                // isn't it possible that mCheckpointPos goes higher than is expected? Yes, see
+                // context.confirmed in the leaderNotify method. This requires a flip back to
+                // leader mode, however. Capture this state earlier to be safe?
 
                 long[] result = db.highestTransactionContext().copyConfirmed();
 

@@ -468,6 +468,10 @@
 <dd>
 <div class="block">Commits and exits all transaction scopes.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#compact-long-">compact(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
+<dd>
+<div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>
+</dd>
 <dt><a href="org/cojen/tupl/tools/Compact.html" title="class in org.cojen.tupl.tools"><span class="typeNameLink">Compact</span></a> - Class in <a href="org/cojen/tupl/tools/package-summary.html">org.cojen.tupl.tools</a></dt>
 <dd>
 <div class="block">Simple database file compaction utility.</div>
@@ -2691,7 +2695,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#start--">start()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
-<div class="block">Start accepting replication data, to be called for new or existing replicators.</div>
+<div class="block">Start accepting replication data, to be called for new or existing members.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#stats--">stats()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2827,7 +2831,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
-<div class="block">Returns the fixed index at the start of the term.</div>
+<div class="block">Returns the index at the start of the term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#toString-javax.crypto.SecretKey-">toString(SecretKey)</a></span> - Static method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>

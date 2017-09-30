@@ -36,15 +36,15 @@ import java.util.function.LongConsumer;
  */
 public interface DirectReplicator extends Replicator {
     /**
-     * Start accepting replication data, to be called for new or existing replicators.
-     *
-     * @return false if already started
+     * Start accepting replication data, to be called for new or existing members. For newly
+     * restored members, the start method must be called to update its role.
      */
-    boolean start() throws IOException;
+    void start() throws IOException;
 
     /**
      * Start by receiving a {@link #requestSnapshot snapshot} from another group member,
-     * expected to be called only by newly joined members.
+     * expected to be called only by newly joined members. New members are initially {@link
+     * Role#OBSERVER obervers}, so call the start method after restoration to update the role.
      *
      * @param options requested options; can pass null if none
      * @return null if no snapshot could be found and replicator hasn't started
@@ -132,6 +132,13 @@ public interface DirectReplicator extends Replicator {
     boolean syncCommit(long index, long nanosTimeout) throws IOException;
 
     /**
+     * Permit all data lower than the given index to be deleted, freeing up space in the log.
+     *
+     * @param index lowest index which must be retained
+     */
+    void compact(long index) throws IOException;
+
+    /**
      * Direct interface for accessing replication data, for a given term.
      */
     public static interface Accessor extends Closeable {
@@ -141,7 +148,7 @@ public interface DirectReplicator extends Replicator {
         long term();
 
         /**
-         * Returns the fixed index at the start of the term.
+         * Returns the index at the start of the term.
          */
         long termStartIndex();
 

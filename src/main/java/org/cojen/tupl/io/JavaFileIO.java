@@ -370,8 +370,14 @@ final class JavaFileIO extends AbstractFileIO {
         @Override
         public void seek(long pos) throws IOException {
             if (pos != mPosition) {
-                super.seek(pos);
-                mPosition = pos;
+                try {
+                    super.seek(pos);
+                    mPosition = pos;
+                } catch (Throwable e) {
+                    // Undefined position.
+                    mPosition = -1;
+                    throw e;
+                }
             }
         }
 
@@ -382,11 +388,17 @@ final class JavaFileIO extends AbstractFileIO {
 
         @Override
         public int read(byte[] buf, int offset, int length) throws IOException {
-            int amt = super.read(buf, offset, length);
-            if (amt > 0) {
-                mPosition += amt;
+            try {
+                int amt = super.read(buf, offset, length);
+                if (amt > 0) {
+                    mPosition += amt;
+                }
+                return amt;
+            } catch (Throwable e) {
+                // Undefined position.
+                mPosition = -1;
+                throw e;
             }
-            return amt;
         }
 
         @Override
@@ -396,8 +408,26 @@ final class JavaFileIO extends AbstractFileIO {
 
         @Override
         public void write(byte[] buf, int offset, int length) throws IOException {
-            super.write(buf, offset, length);
-            mPosition += length;
+            try {
+                super.write(buf, offset, length);
+                mPosition += length;
+            } catch (Throwable e) {
+                // Undefined position.
+                mPosition = -1;
+                throw e;
+            }
+        }
+
+        @Override
+        public void setLength(long length) throws IOException {
+            // Undefined position. The Windows implementation of the setLength method first
+            // sets the position to the desired length, but setting the length might fail. The
+            // position isn't repaired, leaving an unexpected side-effect. This is a horrible
+            // bug, which hasn't been noticed/fixed in over 20 years. Even in the happy case
+            // the position gets modified, so don't trust it all.
+            mPosition = -1;
+
+            super.setLength(length);
         }
     }
 }

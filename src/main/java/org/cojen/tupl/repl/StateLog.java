@@ -52,26 +52,37 @@ interface StateLog extends Closeable {
     /**
      * Increment the current term by the amount given.
      *
+     * @param candidateId local member id, voting for itself
      * @throws IllegalArgumentException if amount isn't greater than zero
      */
-    long incrementCurrentTerm(int amount) throws IOException;
+    long incrementCurrentTerm(int amount, long candidateId) throws IOException;
 
     /**
      * Compares the given term against the one given. If given a higher term, then the current
-     * term is updated to match it.
+     * term is updated to match it and the voted-for field is cleared.
      *
      * @return effective current term
      */
     long checkCurrentTerm(long term) throws IOException;
 
     /**
+     * Returns true if the given candidate matches the current voted-for candidate, or if the
+     * current voted-for candidate is zero. Returning true also implies that the given
+     * candidate is now the current voted-for candidate.
+     */
+    boolean checkCandidate(long candidateId) throws IOException;
+
+    /**
      * Set the log start index higher, assumed to be a valid commit index, and potentially
      * truncate any lower data. Method does nothing if given start index is lower than the
      * current start.
-     *
-     * @throws IllegalStateException if term is unknown at given index
      */
-    void truncateStart(long index) throws IOException;
+    void compact(long index) throws IOException;
+
+    /**
+     * Truncate the entire log, and create a primordial term.
+     */
+    void truncateAll(long prevTerm, long term, long index) throws IOException;
 
     /**
      * Ensures that a term is defined at the given index.
@@ -151,7 +162,9 @@ interface StateLog extends Closeable {
     boolean isDurable(long index);
 
     /**
-     * Durably persist the commit index, as agreed by consensus.
+     * Durably persist the commit index, as agreed by consensus. Only metadata is persisted by
+     * this method -- sync or syncCommit must have been called earlier, ensuring that all data
+     * up to the given index is durable.
      *
      * @return false if given index is already durable
      * @throws IllegalStateException if index is too high

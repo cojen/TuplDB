@@ -33,7 +33,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
     }
 
     /**
-     * Returns the fixed previous term of this log.
+     * Returns the previous term of this log, relative to the start index.
      */
     long prevTerm();
 
@@ -52,9 +52,17 @@ interface TermLog extends LKey<TermLog>, Closeable {
     /**
      * Attempt to increase the term start index, assumed to be a valid commit index, and
      * truncate as much data as possible lower than it. The effective start index applied might
-     * be lower than what was requested, dependent on how much data could be truncated.
+     * be lower than what was requested, dependent on how much data could be truncated. As a
+     * side-effect of calling this method, the previous term might be updated.
+     *
+     * @param true if all segements can be deleted, even the last one
      */
-    void truncateStart(long startIndex) throws IOException;
+    void compact(long startIndex, boolean all) throws IOException;
+
+    /**
+     * @return true if log has no segments
+     */
+    boolean isEmpty();
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.
@@ -95,7 +103,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * will also be set, if the given index is within the contiguous region of data.
      *
      * @return the commit index
-     * @throws IllegalArgumentException if the given index is lower than the commit index
+     * @throws IllegalStateException if the given index is lower than the commit index
      * @throws IllegalStateException if the term is already finished at a lower index
      */
     long finishTerm(long endIndex) throws IOException;
