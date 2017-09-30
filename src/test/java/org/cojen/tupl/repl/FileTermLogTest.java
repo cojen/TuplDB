@@ -132,7 +132,7 @@ public class FileTermLogTest {
 
         while (true) {
             assertEquals(index, reader.index());
-            int amt = reader.readAny(buf, 0, buf.length);
+            int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 assertTrue(amt == 0);
                 break;
@@ -309,7 +309,7 @@ public class FileTermLogTest {
 
         while (true) {
             assertEquals(index, reader.index());
-            int amt = reader.readAny(buf, 0, buf.length);
+            int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 assertTrue(amt == 0);
                 break;

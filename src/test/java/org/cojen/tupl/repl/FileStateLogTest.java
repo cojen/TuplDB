@@ -343,7 +343,7 @@ public class FileStateLogTest {
         LogReader reader = mLog.openReader(0);
 
         byte[] buf = new byte[10];
-        assertEquals(0, reader.readAny(buf, 0, buf.length));
+        assertEquals(0, reader.tryReadAny(buf, 0, buf.length));
 
         new Thread(() -> {
             try {
@@ -869,7 +869,7 @@ public class FileStateLogTest {
         byte[] buf = new byte[100];
 
         while (true) {
-            int amt = reader.readAny(buf, 0, buf.length);
+            int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 reader.release();
                 writer.release();
@@ -894,7 +894,7 @@ public class FileStateLogTest {
         int offset = 0;
 
         while (offset < buf.length) {
-            int amt = reader.readAny(buf, offset, buf.length - offset);
+            int amt = reader.tryReadAny(buf, offset, buf.length - offset);
             if (amt <= 0) {
                 reader.release();
                 if (amt == 0) {
@@ -909,7 +909,7 @@ public class FileStateLogTest {
 
         TestUtils.fastAssertArrayEquals(expect, buf);
 
-        assertEquals(finalAmt, reader.readAny(buf, 0, 1));
+        assertEquals(finalAmt, reader.tryReadAny(buf, 0, 1));
         reader.release();
     }
 
