@@ -1455,7 +1455,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     LogInfo info = mStateLog.captureHighest();
                     if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
                         Channel requestChannel = leaderRequestChannel();
-                        if (requestChannel != null) {
+                        if (requestChannel != null && requestChannel != this) {
                             requestChannel.queryTerms(this, info.mCommitIndex, index);
                         }
                     }
