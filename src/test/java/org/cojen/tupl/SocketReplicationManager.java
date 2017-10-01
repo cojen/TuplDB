@@ -196,6 +196,11 @@ class SocketReplicationManager implements ReplicationManager {
         }
 
         @Override
+        public long confirmedPosition() {
+            return mPos;
+        }
+
+        @Override
         public boolean leaderNotify(Runnable callback) {
             // Leadership is never lost, so no need to register the callback.
             mNotified = true;

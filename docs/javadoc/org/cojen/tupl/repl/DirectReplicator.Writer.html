@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":18,"i2":6,"i3":18};
+var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -134,26 +134,32 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#commitIndex--">commitIndex</a></span>()</code>
+<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+</td>
+</tr>
+<tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit</a></span>(long&nbsp;index,
           <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code>
 <div class="block">Invokes the given task when the commit index reaches the requested index.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code>
 <div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForCommit-long-long-">waitForCommit</a></span>(long&nbsp;index,
              long&nbsp;nanosTimeout)</code>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>default long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForEndCommit-long-">waitForEndCommit</a></span>(long&nbsp;nanosTimeout)</code>
 <div class="block">Blocks until the commit index reaches the end of the term.</div>
@@ -181,6 +187,16 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <!--   -->
 </a>
 <h3>Method Detail</h3>
+<a name="commitIndex--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>commitIndex</h4>
+<pre>long&nbsp;commitIndex()</pre>
+<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+</li>
+</ul>
 <a name="waitForCommit-long-long-">
 <!--   -->
 </a>

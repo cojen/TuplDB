@@ -316,6 +316,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         }
 
         @Override
+        public long confirmedPosition() {
+            return mWriter.commitIndex();
+        }
+
+        @Override
         public boolean leaderNotify(Runnable callback) {
             mWriter.uponCommit(Long.MAX_VALUE, index -> new Thread(callback).start());
             return true;
