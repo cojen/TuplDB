@@ -120,6 +120,11 @@ class NonReplicationManager implements ReplicationManager {
         }
 
         @Override
+        public synchronized long confirmedPosition() {
+            return mPosition;
+        }
+
+        @Override
         public synchronized boolean leaderNotify(Runnable callback) {
             if (mClosed) {
                 return false;

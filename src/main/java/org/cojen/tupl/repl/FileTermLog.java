@@ -430,11 +430,18 @@ final class FileTermLog extends Latch implements TermLog {
     // Caller must hold any latch.
     private void doCaptureHighest(LogInfo info) {
         info.mHighestIndex = mLogHighestIndex;
-        info.mCommitIndex = actualCommitIndex();
+        info.mCommitIndex = doActualCommitIndex();
+    }
+
+    long actualCommitIndex() {
+        acquireShared();
+        long commitIndex = doActualCommitIndex();
+        releaseShared();
+        return commitIndex;
     }
 
     // Caller must hold any latch.
-    private long actualCommitIndex() {
+    private long doActualCommitIndex() {
         return Math.min(mLogCommitIndex, mLogHighestIndex);
     }
 
@@ -447,7 +454,7 @@ final class FileTermLog extends Latch implements TermLog {
                 commitIndex = endIndex;
             }
             mLogCommitIndex = commitIndex;
-            notifyCommitTasks(actualCommitIndex());
+            notifyCommitTasks(doActualCommitIndex());
             return;
         }
         releaseExclusive();
@@ -464,7 +471,7 @@ final class FileTermLog extends Latch implements TermLog {
         boolean exclusive = false;
         acquireShared();
         while (true) {
-            long commitIndex = actualCommitIndex();
+            long commitIndex = doActualCommitIndex();
             if (commitIndex >= index) {
                 release(exclusive);
                 return commitIndex;
@@ -587,7 +594,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     private boolean tryUponCommit(Delayed task, boolean exclusive) {
-        long commitIndex = actualCommitIndex();
+        long commitIndex = doActualCommitIndex();
         long waitFor = task.mCounter;
 
         if (commitIndex < waitFor) {
@@ -611,7 +618,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         acquireExclusive();
         try {
-            commitIndex = actualCommitIndex();
+            commitIndex = doActualCommitIndex();
             if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
                 throw new IllegalStateException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
@@ -893,7 +900,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return startSegment;
             }
 
-            if (index < Math.max(mLogStartIndex, actualCommitIndex())) {
+            if (index < Math.max(mLogStartIndex, doActualCommitIndex())) {
                 // Don't create segments for committed data.
                 return null;
             }
@@ -941,7 +948,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return segment;
             }
 
-            long commitIndex = Math.max(mLogStartIndex, actualCommitIndex());
+            long commitIndex = Math.max(mLogStartIndex, doActualCommitIndex());
 
             if (index < commitIndex) {
                 throw new IllegalStateException
@@ -1028,7 +1035,7 @@ final class FileTermLog extends Latch implements TermLog {
 
                 mLogHighestIndex = highestIndex;
                 doCaptureHighest(writer);
-                notifyCommitTasks(actualCommitIndex());
+                notifyCommitTasks(doActualCommitIndex());
                 return;
             }
         }
@@ -1058,7 +1065,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return;
             }
             acquireExclusive();
-            commitIndex = actualCommitIndex();
+            commitIndex = doActualCommitIndex();
         }
     }
 
@@ -1221,6 +1228,11 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         public long index() {
             return mWriterIndex;
+        }
+
+        @Override
+        public long commitIndex() {
+            return FileTermLog.this.actualCommitIndex();
         }
 
         @Override

@@ -647,6 +647,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
+        public long commitIndex() {
+            return mWriter.commitIndex();
+        }
+
+        @Override
         public int write(byte[] data, int offset, int length, long highestIndex)
             throws IOException
         {

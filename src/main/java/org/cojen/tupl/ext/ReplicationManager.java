@@ -129,6 +129,11 @@ public interface ReplicationManager extends Closeable {
         long position();
 
         /**
+         * Returns the current confirmed log position.
+         */
+        long confirmedPosition();
+
+        /**
          * Invokes the given callback upon a leadership change. Callback should be invoked at
          * most once, but extra invocations are ignored.
          *
