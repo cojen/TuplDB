@@ -1423,7 +1423,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (avail <= 0) {
                 FileTermLog.this.acquireShared();
-                commitIndex = mLogCommitIndex;
+                commitIndex = doActualCommitIndex();
                 long endIndex = mLogEndIndex;
                 FileTermLog.this.releaseShared();
 
