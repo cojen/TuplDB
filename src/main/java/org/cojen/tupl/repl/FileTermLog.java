@@ -662,6 +662,8 @@ final class FileTermLog extends Latch implements TermLog {
                     SegmentWriter writer = it.next();
                     if (writer.mWriterStartIndex >= endIndex) {
                         it.remove();
+                    } else if (endIndex < writer.mWriterHighestIndex) {
+                        writer.mWriterHighestIndex = endIndex;
                     }
                 }
             }
