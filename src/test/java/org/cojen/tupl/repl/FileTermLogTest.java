@@ -419,7 +419,7 @@ public class FileTermLogTest {
             assertEquals(index, info.mHighestIndex);
 
             long commitIndex = index + (rnd.nextInt(1000) - 500);
-            if (commitIndex >= 0) {
+            if (commitIndex >= 0 && i < (100000 - 1)) {
                 mLog.commit(commitIndex);
             }
         }
@@ -436,11 +436,12 @@ public class FileTermLogTest {
         assertEquals(index, mLog.endIndex());
         r.join();
 
-        assertEquals(index, r.mTotal);
         Throwable ex = r.mEx;
         if (ex != null) {
             throw ex;
         }
+
+        assertEquals(index, r.mTotal);
     }
 
     @Test
@@ -598,23 +599,34 @@ public class FileTermLogTest {
         TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
             TestUtils.sleep(1000);
             try {
-                mLog.finishTerm(findex);
+                LogWriter w = mLog.openWriter(findex);
+                int rem = 100 - msg3.length;
+                byte[] b = new byte[(int) (findex + rem)]; 
+                for (int i=0; i<b.length; i++) {
+                    b[i] = (byte) (i + 1);
+                }
+                write(w, b);
+                mLog.finishTerm(findex + rem);
             } catch (IOException e) {
                 Utils.uncaught(e);
             }
         }));
 
-        waiter = new Waiter(index + 1, upon);
+        waiter = new Waiter(index + 101, upon);
         waiter.begin();
         assertEquals(-1, waiter.waitForResult(-1));
 
         // Verify that everything is read back properly, with no blocking.
         byte[] complete = concat(msg1, msg2, msg3);
-        byte[] buf = new byte[100];
+        byte[] buf = new byte[complete.length + 100 - msg3.length];
         LogReader reader = mLog.openReader(0);
         int amt = reader.read(buf, 0, buf.length);
+        assertEquals(buf.length, amt);
         reader.release();
-        TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, amt));
+        TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, complete.length));
+        for (int i=0; i<(100 - msg3.length); i++) {
+            assertEquals((byte) (i + 1), buf[i + complete.length]);
+        }
     }
 
     @Test

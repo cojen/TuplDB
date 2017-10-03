@@ -76,7 +76,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         start <= commit <= highest <= contig <= end
 
-      Commit index field can be larger than the highest index, but the actual reported value is
+      Commit index field can be larger than the highest index, but the appliable index is:
         min(commit, highest).
     */
 
@@ -430,18 +430,18 @@ final class FileTermLog extends Latch implements TermLog {
     // Caller must hold any latch.
     private void doCaptureHighest(LogInfo info) {
         info.mHighestIndex = mLogHighestIndex;
-        info.mCommitIndex = doActualCommitIndex();
+        info.mCommitIndex = doAppliableCommitIndex();
     }
 
-    long actualCommitIndex() {
+    long appliableCommitIndex() {
         acquireShared();
-        long commitIndex = doActualCommitIndex();
+        long commitIndex = doAppliableCommitIndex();
         releaseShared();
         return commitIndex;
     }
 
     // Caller must hold any latch.
-    private long doActualCommitIndex() {
+    private long doAppliableCommitIndex() {
         return Math.min(mLogCommitIndex, mLogHighestIndex);
     }
 
@@ -454,7 +454,7 @@ final class FileTermLog extends Latch implements TermLog {
                 commitIndex = endIndex;
             }
             mLogCommitIndex = commitIndex;
-            notifyCommitTasks(doActualCommitIndex());
+            notifyCommitTasks(doAppliableCommitIndex());
             return;
         }
         releaseExclusive();
@@ -471,7 +471,7 @@ final class FileTermLog extends Latch implements TermLog {
         boolean exclusive = false;
         acquireShared();
         while (true) {
-            long commitIndex = doActualCommitIndex();
+            long commitIndex = doAppliableCommitIndex();
             if (commitIndex >= index) {
                 release(exclusive);
                 return commitIndex;
@@ -497,7 +497,7 @@ final class FileTermLog extends Latch implements TermLog {
             } else {
                 dwaiter.mCounter = index;
                 dwaiter.mWaiter = waiter;
-                dwaiter.mActualIndex = 0;
+                dwaiter.mAppliableIndex = 0;
             }
 
             mCommitTasks.add(dwaiter);
@@ -516,7 +516,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (Thread.interrupted()) {
                 throw new InterruptedIOException();
             }
-            long commitIndex = dwaiter.mActualIndex;
+            long commitIndex = dwaiter.mAppliableIndex;
             if (commitIndex < 0) {
                 return commitIndex;
             }
@@ -550,7 +550,7 @@ final class FileTermLog extends Latch implements TermLog {
     static class DelayedWaiter extends Delayed {
         final Thread mThread;
         Object mWaiter;
-        volatile long mActualIndex;
+        volatile long mAppliableIndex;
 
         DelayedWaiter(long index, Thread thread, Object waiter) {
             super(index);
@@ -561,7 +561,7 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         protected void doRun(long index) {
             mWaiter = null;
-            mActualIndex = index;
+            mAppliableIndex = index;
             LockSupport.unpark(mThread);
         }
     }
@@ -594,7 +594,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     private boolean tryUponCommit(Delayed task, boolean exclusive) {
-        long commitIndex = doActualCommitIndex();
+        long commitIndex = doAppliableCommitIndex();
         long waitFor = task.mCounter;
 
         if (commitIndex < waitFor) {
@@ -618,7 +618,10 @@ final class FileTermLog extends Latch implements TermLog {
 
         acquireExclusive();
         try {
-            commitIndex = doActualCommitIndex();
+            // Pass along the commit index as provided by the leader, which might not be
+            // appliable yet.
+            commitIndex = mLogCommitIndex;
+
             if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
                 throw new IllegalStateException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
@@ -900,7 +903,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return startSegment;
             }
 
-            if (index < Math.max(mLogStartIndex, doActualCommitIndex())) {
+            if (index < Math.max(mLogStartIndex, doAppliableCommitIndex())) {
                 // Don't create segments for committed data.
                 return null;
             }
@@ -948,7 +951,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return segment;
             }
 
-            long commitIndex = Math.max(mLogStartIndex, doActualCommitIndex());
+            long commitIndex = Math.max(mLogStartIndex, doAppliableCommitIndex());
 
             if (index < commitIndex) {
                 throw new IllegalStateException
@@ -1035,7 +1038,7 @@ final class FileTermLog extends Latch implements TermLog {
 
                 mLogHighestIndex = highestIndex;
                 doCaptureHighest(writer);
-                notifyCommitTasks(doActualCommitIndex());
+                notifyCommitTasks(doAppliableCommitIndex());
                 return;
             }
         }
@@ -1065,7 +1068,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return;
             }
             acquireExclusive();
-            commitIndex = doActualCommitIndex();
+            commitIndex = doAppliableCommitIndex();
         }
     }
 
@@ -1232,7 +1235,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public long commitIndex() {
-            return FileTermLog.this.actualCommitIndex();
+            return FileTermLog.this.appliableCommitIndex();
         }
 
         @Override
@@ -1423,7 +1426,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (avail <= 0) {
                 FileTermLog.this.acquireShared();
-                commitIndex = doActualCommitIndex();
+                commitIndex = doAppliableCommitIndex();
                 long endIndex = mLogEndIndex;
                 FileTermLog.this.releaseShared();
 
