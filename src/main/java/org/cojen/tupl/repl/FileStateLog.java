@@ -138,6 +138,7 @@ final class FileStateLog extends Latch implements StateLog {
         try {
             mMetadataLock = mMetadataFile.tryLock();
         } catch (OverlappingFileLockException e) {
+            Utils.closeQuietly(mMetadataFile);
             throw new IOException("Replicator is already open by current process");
         }
 
