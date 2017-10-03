@@ -1027,19 +1027,20 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             applyHighest: {
-                if (endIndex < Long.MAX_VALUE) {
-                    // Term has ended, which is always at a valid highest index. The contiguous
-                    // index can be used as the highest, allowing the commit index to advance.
+                if (contigIndex == endIndex || contigIndex <= commitIndex) {
+                    // The contig index is guaranteed to be a valid highest index (no message
+                    // tearing is possible), so allow the appliable commit index to advance.
                     highestIndex = contigIndex;
-                } else if (highestIndex <= mLogHighestIndex || highestIndex > contigIndex) {
-                    // Cannot apply just yet.
+                } else if (highestIndex > contigIndex) {
+                    // Can't apply higher than what's available.
                     break applyHighest;
                 }
-
-                mLogHighestIndex = highestIndex;
-                doCaptureHighest(writer);
-                notifyCommitTasks(doAppliableCommitIndex());
-                return;
+                if (highestIndex > mLogHighestIndex) {
+                    mLogHighestIndex = highestIndex;
+                    doCaptureHighest(writer);
+                    notifyCommitTasks(doAppliableCommitIndex());
+                    return;
+                }
             }
         }
 
