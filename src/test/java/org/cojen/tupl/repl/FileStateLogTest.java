@@ -742,7 +742,8 @@ public class FileStateLogTest {
 
     @Test
     public void compactAll() throws Exception {
-        LogWriter writer = mLog.openWriter(0, 1, 0);
+        long term = mLog.incrementCurrentTerm(1, 0);
+        LogWriter writer = mLog.openWriter(0, term, 0);
         byte[] b = new byte[1024];
         for (int i=0; i<1024; i++) {
             writer.write(b);
@@ -755,19 +756,25 @@ public class FileStateLogTest {
         assertTrue(expect.exists());
         assertEquals(commitIndex, expect.length());
 
-        mLog.compact(commitIndex);
-
-        assertTrue(expect.exists());
-        assertEquals(commitIndex, expect.length());
-
-        // Define a new term, but no segments yet.
-
-        writer = mLog.openWriter(1, 2, commitIndex);
+        mLog.sync();
+        mLog.commitDurable(commitIndex);
 
         mLog.compact(commitIndex);
 
+        assertFalse(expect.exists());
+
+        // Close and re-open with no segment files.
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        // Continue writing the same term.
+        writer = mLog.openWriter(term, term, commitIndex);
+        writer.write(new byte[100]);
+        writer.release();
+
+        expect = new File(mBase.getPath() + ".1." + commitIndex);
         assertTrue(expect.exists());
-        assertEquals(commitIndex, expect.length());
+        assertEquals(1024 * 1024, expect.length());
     }
 
     @Test

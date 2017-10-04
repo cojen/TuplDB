@@ -297,7 +297,8 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (mTermLogs.isEmpty()) {
             // Create a primordial term.
-            mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, 0, 0, 0, 0));
+            mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, highestPrevTerm, highestTerm,
+                                              highestIndex, durableIndex));
         }
 
         if (durableIndex > 0) {
@@ -541,22 +542,12 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public void compact(long index) throws IOException {
         Iterator<LKey<TermLog>> it = mTermLogs.iterator();
-
-        if (it.hasNext()) {
+        while (it.hasNext()) {
             TermLog termLog = (TermLog) it.next();
-
-            while (true) {
-                TermLog nextLog;
-                if (!it.hasNext() || (nextLog = (TermLog) it.next()).isEmpty()) {
-                    termLog.compact(index, false);
-                    break;
-                }
-                termLog.compact(index, true);
-                if (!termLog.isEmpty()) {
-                    break;
-                }
-                mTermLogs.remove(termLog);
-                termLog = nextLog;
+            if (termLog.compact(index)) {
+                it.remove();
+            } else {
+                break;
             }
         }
     }
@@ -572,12 +563,7 @@ final class FileStateLog extends Latch implements StateLog {
 
             acquireExclusive();
             try {
-                Iterator<LKey<TermLog>> it = mTermLogs.iterator();
-                while (it.hasNext()) {
-                    TermLog termLog = (TermLog) it.next();
-                    termLog.compact(Long.MAX_VALUE, true);
-                    it.remove();
-                }
+                compact(Long.MAX_VALUE);
 
                 // Create a new primordial term.
                 highestLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index);

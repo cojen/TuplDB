@@ -386,7 +386,7 @@ public class FileTermLogTest {
                             assertEquals((byte) rnd2.nextInt(), buf[j]);
                         }
                         if (compact) {
-                            mLog.compact(reader.index(), true);
+                            mLog.compact(reader.index());
                         }
                     }
 
@@ -1009,7 +1009,7 @@ public class FileTermLogTest {
 
         long commitIndex = 1_500_000;
         mLog.commit(commitIndex);
-        mLog.compact(commitIndex, true);
+        mLog.compact(commitIndex);
 
         LogReader reader = mLog.openReader(0);
         try {
@@ -1048,7 +1048,7 @@ public class FileTermLogTest {
 
         long commitIndex2 = 4_000_000;
         mLog.commit(commitIndex2);
-        mLog.compact(commitIndex2, true);
+        mLog.compact(commitIndex2);
 
         assertEquals(0, writer.write(b));
         writer.release();
