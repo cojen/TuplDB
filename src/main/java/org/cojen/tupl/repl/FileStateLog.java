@@ -256,8 +256,6 @@ final class FileStateLog extends Latch implements StateLog {
             prevTerm = term;
         }
 
-        TermLog highest = null;
-
         if (!mTermLogs.isEmpty()) {
             Iterator<LKey<TermLog>> it = mTermLogs.iterator();
             TermLog termLog = (TermLog) it.next();
@@ -275,8 +273,6 @@ final class FileStateLog extends Latch implements StateLog {
                     }
                     break;
                 }
-
-                highest = termLog;
 
                 TermLog next;
                 if (it.hasNext()) {
