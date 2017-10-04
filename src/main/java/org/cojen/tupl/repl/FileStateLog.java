@@ -708,8 +708,37 @@ final class FileStateLog extends Latch implements StateLog {
                 long actualPrevTerm = termLog.prevTermAt(index);
 
                 if (prevTerm != actualPrevTerm) {
-                    termLog = null;
-                    break defineTermLog;
+                    int removeCount = countConflictingEmptyTerms(prevTerm, index, termLog);
+
+                    if (removeCount <= 0) {
+                        termLog = null;
+                        break defineTermLog;
+                    }
+
+                    // Remove the empty terms, but exclusive latch must be held.
+
+                    if (!exclusive) {
+                        if (tryUpgrade()) {
+                            exclusive = true;
+                        } else {
+                            releaseShared();
+                            acquireExclusive();
+                            exclusive = true;
+                            continue;
+                        }
+                    }
+
+                    while (true) {
+                        termLog.finishTerm(termLog.startIndex());
+                        mTermLogs.remove(termLog);
+                        removeCount--;
+                        if (removeCount <= 0) {
+                            break;
+                        }
+                        termLog = (TermLog) mTermLogs.lower(termLog);
+                    }
+
+                    continue;
                 }
 
                 long actualTerm = termLog.term();
@@ -762,6 +791,31 @@ final class FileStateLog extends Latch implements StateLog {
             return termLog;
         } finally {
             release(exclusive);
+        }
+    }
+
+    /**
+     * Checks if removing empty terms would resolve a prev term conflict.
+     * Caller must hold any latch.
+     *
+     * @return amount of terms to remove; 0 if the conflict cannot be resolved
+     */
+    private int countConflictingEmptyTerms(long prevTerm, long index, TermLog termLog) {
+        int count = 1;
+
+        while (true) {
+            if (!termLog.isEmpty()) {
+                return 0;
+            }
+            termLog = (TermLog) mTermLogs.lower(termLog); // findLt
+            if (termLog == null) {
+                // Cannot remove the primordial term.
+                return 0;
+            }
+            if (prevTerm == termLog.prevTermAt(index)) {
+                return count;
+            }
+            count++;
         }
     }
 

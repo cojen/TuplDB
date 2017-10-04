@@ -60,7 +60,8 @@ interface TermLog extends LKey<TermLog>, Closeable {
     void compact(long startIndex, boolean all) throws IOException;
 
     /**
-     * @return true if log has no segments
+     * @return true if log has no segments, or if the highest index is the same as the start
+     * index
      */
     boolean isEmpty();
 
@@ -104,7 +105,6 @@ interface TermLog extends LKey<TermLog>, Closeable {
      *
      * @return the commit index; might be higher than what's appliable
      * @throws IllegalStateException if the given index is lower than the commit index
-     * @throws IllegalStateException if the term is already finished at a lower index
      */
     long finishTerm(long endIndex) throws IOException;
 

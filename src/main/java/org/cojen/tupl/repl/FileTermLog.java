@@ -408,7 +408,13 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public boolean isEmpty() {
-        return mSegments.isEmpty();
+        if (mSegments.isEmpty()) {
+            return true;
+        }
+        acquireShared();
+        boolean result = mLogHighestIndex <= mLogStartIndex;
+        releaseShared();
+        return result;
     }
 
     @Override
@@ -627,13 +633,9 @@ final class FileTermLog extends Latch implements TermLog {
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
             }
 
-            if (endIndex == mLogEndIndex) {
+            if (endIndex >= mLogEndIndex) {
+                mLogEndIndex = endIndex;
                 return commitIndex;
-            }
-
-            if (endIndex > mLogEndIndex) {
-                throw new IllegalStateException
-                    ("Term is already finished: " + endIndex + " > " + mLogEndIndex);
             }
 
             for (LKey<Segment> key : mSegments) {

@@ -95,6 +95,11 @@ public class FileStateLogTest {
         assertTrue(term != null);
         assertTrue(term == mLog.defineTermLog(11, 15, 3000));
 
+        // Validate the term.
+        LogWriter writer = mLog.openWriter(11, 15, 3000);
+        writer.write(new byte[1]);
+        writer.release();
+
         // Previous term conflict.
         assertFalse(mLog.defineTerm(10, 16, 4000));
 
@@ -773,6 +778,55 @@ public class FileStateLogTest {
         } catch (IOException e) {
             assertTrue(e.getMessage().indexOf("open") > 0);
         }
+    }
+
+    @Test
+    public void replaceEmptyTerm() throws Exception {
+        // An empty term shouldn't prevent a new term from replacing it.
+
+        LogWriter w1 = mLog.openWriter(0, 1, 0);
+        assertEquals(100, w1.write(new byte[100]));
+
+        // Define an empty term 2.
+        assertTrue(mLog.defineTerm(1, 2, 100));
+
+        // Define term 3, with the expecation that term 1 will be extended.
+        assertTrue(mLog.defineTerm(1, 3, 200));
+
+        // Continue with term 1.
+        assertEquals(100, w1.write(new byte[100]));
+        w1.release();
+
+        LogWriter w3 = mLog.openWriter(1, 3, 200);
+        assertEquals(100, w3.write(new byte[100]));
+
+        mLog.commit(300);
+
+        LogInfo info = mLog.captureHighest();
+        assertEquals(3, info.mTerm);
+        assertEquals(300, info.mHighestIndex);
+        assertEquals(300, info.mCommitIndex);
+
+        // Now create multiple empty terms.
+        assertTrue(mLog.defineTerm(3, 4, 400));
+        assertTrue(mLog.defineTerm(4, 5, 500));
+
+        // Define term 6, with the expecation that term 3 will be extended.
+        assertTrue(mLog.defineTerm(3, 6, 600));
+
+        // Continue with term 3 (note that the write cannot extend past the end)
+        assertEquals(300, w3.write(new byte[400]));
+        w3.release();
+
+        LogWriter w6 = mLog.openWriter(3, 6, 600);
+        assertEquals(100, w6.write(new byte[100]));
+
+        mLog.commit(700);
+
+        info = mLog.captureHighest();
+        assertEquals(6, info.mTerm);
+        assertEquals(700, info.mHighestIndex);
+        assertEquals(700, info.mCommitIndex);
     }
 
     @Test
