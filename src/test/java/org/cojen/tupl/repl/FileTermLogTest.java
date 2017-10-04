@@ -152,12 +152,14 @@ public class FileTermLogTest {
         mLog.finishTerm(index);
         assertEquals(index, mLog.endIndex());
 
+        /* Extending the term is allowed, because conflicting empty terms can be removed.
         try {
             mLog.finishTerm(index + 1);
             fail();
         } catch (IllegalStateException e) {
             // Expected.
         }
+        */
 
         // Cannot write past end.
         if (reopen) {
