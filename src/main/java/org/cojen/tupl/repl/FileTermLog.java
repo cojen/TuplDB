@@ -368,17 +368,12 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public void compact(long startIndex, boolean all) throws IOException {
+    public boolean compact(long startIndex) throws IOException {
         // Delete all lower segments.
 
         Iterator<LKey<Segment>> it = mSegments.iterator();
         while (it.hasNext()) {
             Segment seg = (Segment) it.next();
-
-            if (!all && !it.hasNext()) {
-                // Cannot delete the last segment.
-                break;
-            }
 
             long endIndex = seg.endIndex();
             if (endIndex > startIndex) {
@@ -404,13 +399,12 @@ final class FileTermLog extends Latch implements TermLog {
 
             mSegmentCache.remove(seg.cacheKey());
         }
+
+        return mSegments.isEmpty();
     }
 
     @Override
     public boolean isEmpty() {
-        if (mSegments.isEmpty()) {
-            return true;
-        }
         acquireShared();
         boolean result = mLogHighestIndex <= mLogStartIndex;
         releaseShared();
