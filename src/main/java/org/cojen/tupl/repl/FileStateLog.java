@@ -69,28 +69,29 @@ final class FileStateLog extends Latch implements StateLog {
       12: Metadata counter (int)
       16: Current term (long)
       24: Voted for (long)
-      32: Highest log term (long)
-      40: Highest contiguous log index (exclusive) (long)
-      48: Durable commit log index (exclusive) (long)
-      56: CRC32C (int)
+      32: Highest prev log term (long)
+      40: Highest log term (long)
+      48: Highest contiguous log index (exclusive) (long)
+      56: Durable commit log index (exclusive) (long)
+      64: CRC32C (int)
 
       Example segment files with base of "mydata.repl":
 
       mydata.repl
-      mydata.repl.0.1.0
+      mydata.repl.1.0.0
       mydata.repl.1.4000
       mydata.repl.1.8000
-      mydata.repl.1.2.9000
+      mydata.repl.2.9000.1
 
       The prevTerm field is not required if it matches the term.
 
     */
 
     private static final long MAGIC_NUMBER = 5267718596810043313L;
-    private static final int ENCODING_VERSION = 20170925;
+    private static final int ENCODING_VERSION = 20171004;
     private static final int SECTION_POW = 12;
     private static final int SECTION_SIZE = 1 << SECTION_POW;
-    private static final int METADATA_SIZE = 60;
+    private static final int METADATA_SIZE = 68;
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
     private static final int COUNTER_OFFSET = 12;
     private static final int CURRENT_TERM_OFFSET = 16;
@@ -196,6 +197,7 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
         long currentTerm = mMetadataBuffer.getLong();
         long votedForId = mMetadataBuffer.getLong();
+        long highestPrevTerm = mMetadataBuffer.getLong();
         long highestTerm = mMetadataBuffer.getLong();
         long highestIndex = mMetadataBuffer.getLong();
         long durableIndex = mMetadataBuffer.getLong();
@@ -314,12 +316,12 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(ENCODING_VERSION);
         bb.putInt(counter);
 
-        // Initialize current term, voted for, highest log term, highest contiguous log index,
-        // and durable commit log index.
+        // Initialize current term, voted for, highest prev log term, highest log term, highest
+        // contiguous log index, and durable commit log index.
         if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
             throw new AssertionError();
         }
-        for (int i=0; i<5; i++) {
+        for (int i=0; i<6; i++) {
             bb.putLong(0);
         }
 
@@ -377,15 +379,16 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public void captureHighest(LogInfo info) {
+    public TermLog captureHighest(LogInfo info) {
         acquireShared();
         TermLog highestLog = mHighestTermLog;
         if (highestLog != null && highestLog == mTermLogs.last()) {
             highestLog.captureHighest(info);
             releaseShared();
         } else {
-            doCaptureHighest(info, highestLog, true);
+            highestLog = doCaptureHighest(info, highestLog, true);
         }
+        return highestLog;
     }
 
     // Must be called with shared latch held.
@@ -565,6 +568,8 @@ final class FileStateLog extends Latch implements StateLog {
                 throw new IOException("Closed");
             }
 
+            TermLog highestLog;
+
             acquireExclusive();
             try {
                 Iterator<LKey<TermLog>> it = mTermLogs.iterator();
@@ -575,7 +580,8 @@ final class FileStateLog extends Latch implements StateLog {
                 }
 
                 // Create a new primordial term.
-                mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index));
+                highestLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index);
+                mTermLogs.add(highestLog);
             } finally {
                 releaseExclusive();
             }
@@ -586,7 +592,7 @@ final class FileStateLog extends Latch implements StateLog {
             mMetadataHighestIndex = index;
             mMetadataDurableIndex = index;
 
-            syncMetadata();
+            syncMetadata(highestLog, prevTerm);
         }
     }
 
@@ -851,6 +857,8 @@ final class FileStateLog extends Latch implements StateLog {
                 throw new IOException("Closed");
             }
 
+            TermLog highestLog;
+
             acquireShared();
             try {
                 TermLog termLog = termLogAt(index);
@@ -861,7 +869,7 @@ final class FileStateLog extends Latch implements StateLog {
                     return -1;
                 }
 
-                TermLog highestLog = mHighestTermLog;
+                highestLog = mHighestTermLog;
                 if (highestLog != null && highestLog == mTermLogs.last()) {
                     highestLog.captureHighest(mMetadataInfo);
                 } else {
@@ -882,7 +890,7 @@ final class FileStateLog extends Latch implements StateLog {
                 releaseShared();
             }
 
-            syncMetadata();
+            syncMetadata(highestLog);
 
             return mMetadataInfo.mCommitIndex;
         }
@@ -908,11 +916,11 @@ final class FileStateLog extends Latch implements StateLog {
 
             checkDurable(index, mMetadataHighestIndex);
 
-            captureHighest(mMetadataInfo);
+            TermLog highestLog = captureHighest(mMetadataInfo);
 
             checkDurable(index, mMetadataInfo.mCommitIndex);
 
-            syncMetadata(index);
+            syncMetadata(highestLog, index);
 
             return true;
         }
@@ -931,9 +939,11 @@ final class FileStateLog extends Latch implements StateLog {
             return;
         }
 
+        TermLog highestLog;
+
         acquireShared();
         try {
-            TermLog highestLog = mHighestTermLog;
+            highestLog = mHighestTermLog;
             if (highestLog != null && highestLog == mTermLogs.last()) {
                 highestLog.captureHighest(mMetadataInfo);
                 highestLog.sync();
@@ -947,16 +957,16 @@ final class FileStateLog extends Latch implements StateLog {
             releaseShared();
         }
 
-        syncMetadata();
+        syncMetadata(highestLog);
     }
 
     // Caller must be synchronized on mMetadataInfo.
-    private void syncMetadata() throws IOException {
-        syncMetadata(mMetadataDurableIndex);
+    private void syncMetadata(TermLog highestLog) throws IOException {
+        syncMetadata(highestLog, mMetadataDurableIndex);
     }
 
     // Caller must be synchronized on mMetadataInfo.
-    private void syncMetadata(long durableIndex) throws IOException {
+    private void syncMetadata(TermLog highestLog, long durableIndex) throws IOException {
         if (mClosed) {
             return;
         }
@@ -969,6 +979,9 @@ final class FileStateLog extends Latch implements StateLog {
         int counter = mMetadataCounter + 1;
         int offset = (counter & 1) << SECTION_POW;
 
+        long highestTerm = mMetadataInfo.mTerm;
+        long highestIndex = mMetadataInfo.mHighestIndex;
+
         MappedByteBuffer bb = mMetadataBuffer;
 
         bb.clear();
@@ -978,8 +991,9 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(counter);
         bb.putLong(mCurrentTerm);
         bb.putLong(mVotedForId);
-        bb.putLong(mMetadataInfo.mTerm);
-        bb.putLong(mMetadataInfo.mHighestIndex);
+        bb.putLong(highestLog == null ? highestTerm : highestLog.prevTermAt(highestIndex));
+        bb.putLong(highestTerm);
+        bb.putLong(highestIndex);
         bb.putLong(durableIndex);
 
         bb.position(offset);

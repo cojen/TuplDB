@@ -39,8 +39,10 @@ interface StateLog extends Closeable {
     /**
      * Copies into all relevant fields of the given info object, for the highest term over a
      * contiguous range (by highest index).
+     *
+     * @return the highest term, or null if none
      */
-    void captureHighest(LogInfo info);
+    TermLog captureHighest(LogInfo info);
 
     /**
      * Permit the commit index to advance. If the highest index (over a contiguous range)
