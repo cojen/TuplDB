@@ -60,6 +60,8 @@ public enum EventType {
     /** Signals that deletion of an index has completed. */
     DELETION_COMPLETE(Category.DELETION, Level.INFO),
 
+    /** Generic info message from the replication system. */
+    REPLICATION_INFO(Category.REPLICATION, Level.INFO),
     /** Generic warning message from the replication system. */
     REPLICATION_WARNING(Category.REPLICATION, Level.WARNING),
     /** Unhandled in the replication system, and the database must be shutdown. */
