@@ -900,7 +900,10 @@ final class _LocalDatabase extends AbstractDatabase {
                 controller.ready(config.mReplInitialTxnId, new ReplicationManager.Accessor() {
                     @Override
                     public void notify(EventType type, String message, Object... args) {
-                        mEventListener.notify(type, message, args);
+                        EventListener listener = mEventListener;
+                        if (listener != null) {
+                            listener.notify(type, message, args);
+                        }
                     }
 
                     @Override
