@@ -226,7 +226,8 @@ final class FileStateLog extends Latch implements StateLog {
 
         // Open all the existing terms.
         TreeMap<Long, List<String>> mTermFileNames = new TreeMap<>();
-        String[] fileNames = mBase.getParentFile().list();
+        File parentFile = mBase.getParentFile();
+        String[] fileNames = parentFile.list();
 
         if (fileNames != null && fileNames.length != 0) {
             // This pattern captures the term, but it discards the optional prevTerm.
@@ -239,12 +240,17 @@ final class FileStateLog extends Latch implements StateLog {
                     if (term <= 0) {
                         throw new IOException("Illegal term: " + term);
                     }
-                    List<String> termNames = mTermFileNames.get(term);
-                    if (termNames == null) {
-                        termNames = new ArrayList<>();
-                        mTermFileNames.put(term, termNames);
+                    if (term > highestTerm) {
+                        // Delete all terms higher than the highest.
+                        new File(parentFile, name).delete();
+                    } else {
+                        List<String> termNames = mTermFileNames.get(term);
+                        if (termNames == null) {
+                            termNames = new ArrayList<>();
+                            mTermFileNames.put(term, termNames);
+                        }
+                        termNames.add(name);
                     }
-                    termNames.add(name);
                 }
             }
         }
@@ -263,19 +269,6 @@ final class FileStateLog extends Latch implements StateLog {
             TermLog termLog = (TermLog) it.next();
 
             while (true) {
-                if (termLog.term() > highestTerm) {
-                    // Delete all terms higher than the highest.
-                    while (true) {
-                        termLog.finishTerm(termLog.startIndex());
-                        it.remove();
-                        if (!it.hasNext()) {
-                            break;
-                        }
-                        termLog = (TermLog) it.next();
-                    }
-                    break;
-                }
-
                 TermLog next;
                 if (it.hasNext()) {
                     next = (TermLog) it.next();
