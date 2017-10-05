@@ -217,7 +217,7 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest--">restoreRequest</a></span>()</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest-org.cojen.tupl.EventListener-">restoreRequest</a></span>(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code>
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer.</div>
 </td>
@@ -289,18 +289,20 @@ extends <a href="http://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html
  other implementations.</div>
 </li>
 </ul>
-<a name="restoreRequest--">
+<a name="restoreRequest-org.cojen.tupl.EventListener-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>restoreRequest</h4>
-<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest()
+<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)
                             throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer. If null is returned, the database will try to start
  reading replication data at the lowest position.</div>
 <dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>listener</code> - optional restore event listener</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>null if no snapshot could be found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>

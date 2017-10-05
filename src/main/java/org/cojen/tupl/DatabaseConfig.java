@@ -629,7 +629,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
             }
 
             // ReplicationManager returns null if no restore should be performed.
-            restore = mReplManager.restoreRequest();
+            restore = mReplManager.restoreRequest(mEventListener);
         }
 
         Method m;

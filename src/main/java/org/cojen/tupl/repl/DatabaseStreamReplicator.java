@@ -37,6 +37,7 @@ import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
@@ -52,6 +53,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  */
 final class DatabaseStreamReplicator implements DatabaseReplicator {
     private static final long ENCODING = 7944834171105125288L;
+    private static final long RESTORE_EVENT_RATE_MILLIS = 5000;
 
     private final StreamReplicator mRepl;
 
@@ -93,7 +95,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public InputStream restoreRequest() throws IOException {
+    public InputStream restoreRequest(EventListener listener) throws IOException {
         Map<String, String> options = Collections.singletonMap("checksum", "CRC32C");
         SnapshotReceiver receiver = mRepl.restore(options);
 
@@ -115,12 +117,89 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                     throw new IOException("Unknown checksum option: " + checksumOption);
                 }
             }
+
+            long length = receiver.length();
+
+            if (listener != null && length >= 0 && (mRepl instanceof Controller)) {
+                Scheduler scheduler = ((Controller) mRepl).scheduler();
+                RestoreInputStream rin = new RestoreInputStream(in);
+                in = rin;
+                scheduler.schedule(new ProgressTask(listener, scheduler, rin, length));
+            }
         } catch (Throwable e) {
             Utils.closeQuietly(receiver);
             throw e;
         }
 
         return in;
+    }
+
+    private static final class ProgressTask extends Delayed {
+        private final EventListener mListener;
+        private final RestoreInputStream mRestore;
+        private final long mLength;
+        private final Scheduler mScheduler;
+
+        private long mLastTimeMillis = Long.MIN_VALUE;
+        private long mLastReceived;
+
+        ProgressTask(EventListener listener, Scheduler scheduler,
+                     RestoreInputStream in, long length)
+        {
+            super(0);
+            mListener = listener;
+            mScheduler = scheduler;
+            mRestore = in;
+            mLength = length;
+        }
+
+        @Override
+        protected void doRun(long counter) {
+            if (mRestore.isFinished()) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+
+            long received = mRestore.received();
+            double percent = 100.0 * (received / (double) mLength);
+            long progess = received - mLastReceived;
+
+            if (mLastTimeMillis == Long.MIN_VALUE) {
+                mLastTimeMillis = now;
+                mListener.notify(EventType.REPLICATION_RESTORE,
+                                "Receiving snapshot: %1$,d bytes", mLength);
+            } else {
+                double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
+                String format = "Receiving snapshot: %1$1.3f%%";
+                if (rate == 0) {
+                    mListener.notify(EventType.REPLICATION_RESTORE, format, percent);
+                } else {
+                    format += "  rate: %2$,d bytes/s  remaining: ~%3$s";
+                    long remainingSeconds = (long) ((mLength - received) / rate);
+                    mListener.notify
+                        (EventType.REPLICATION_RESTORE, format,
+                         percent, (long) rate, remainingDuration(remainingSeconds));
+                }
+            }
+
+            mLastReceived = received;
+            mCounter = now + RESTORE_EVENT_RATE_MILLIS;
+
+            mScheduler.schedule(this);
+        }
+
+        private static String remainingDuration(long seconds) {
+            if (seconds < (60 * 2)) {
+                return seconds + "s";
+            } else if (seconds < (60 * 60 * 2)) {
+                return (seconds / 60) + "m";
+            } else if (seconds < (60 * 60 * 24 * 2)) {
+                return (seconds / (60 * 60)) + "h";
+            } else {
+                return (seconds / (60 * 60 * 24)) + "d";
+            }
+        }
     }
 
     @Override
