@@ -166,7 +166,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             long progess = received - mLastReceived;
 
             if (mLastTimeMillis == Long.MIN_VALUE) {
-                mLastTimeMillis = now;
                 mListener.notify(EventType.REPLICATION_RESTORE,
                                 "Receiving snapshot: %1$,d bytes", mLength);
             } else {
@@ -183,8 +182,10 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 }
             }
 
-            mLastReceived = received;
             mCounter = now + RESTORE_EVENT_RATE_MILLIS;
+
+            mLastTimeMillis = now;
+            mLastReceived = received;
 
             mScheduler.schedule(this);
         }
@@ -204,6 +205,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void start(long position) throws IOException {
+        System.out.println("start: " + position);
+
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }
