@@ -95,7 +95,8 @@ final class ChannelManager {
         OP_COMPACT        = 12, //OP_COMPACT_REPLY = 13,
         OP_SNAPSHOT_SCORE = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
         OP_UPDATE_ROLE    = 16, OP_UPDATE_ROLE_REPLY    = 17,
-        OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19;
+        OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19,
+        OP_GROUP_FILE     = 20, OP_GROUP_FILE_REPLY     = 21;
 
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -903,6 +904,13 @@ final class ChannelManager {
                         localServer.groupVersionReply(this, in.readLongLE());
                         commandLength -= (8 * 1);
                         break;
+                    case OP_GROUP_FILE:
+                        localServer.groupFile(this, in.readLongLE());
+                        commandLength -= (8 * 1);
+                        break;
+                    case OP_GROUP_FILE_REPLY:
+                        localServer.groupFileReply(this, in);
+                        break;
                     default:
                         System.out.println("unknown op: " + op);
                         break;
@@ -1109,6 +1117,28 @@ final class ChannelManager {
         @Override
         public boolean groupVersionReply(Channel from, long groupVersion) {
             return writeCommand(OP_GROUP_VERSION_REPLY, groupVersion);
+        }
+
+        @Override
+        public boolean groupFile(Channel from, long groupVersion) {
+            return writeCommand(OP_GROUP_FILE, groupVersion);
+        }
+
+        @Override
+        public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
+            acquireExclusive();
+            try {
+                if (mOut != null) {
+                    byte[] command = new byte[8];
+                    prepareCommand(command, OP_GROUP_FILE_REPLY, 0, 0);
+                    if (writeCommand(command, 0, command.length)) {
+                        return mOut;
+                    }
+                }
+            } finally {
+                releaseExclusive();
+            }
+            return null;
         }
 
         private boolean writeCommand(int op) {
