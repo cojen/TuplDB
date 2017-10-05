@@ -60,6 +60,8 @@ public enum EventType {
     /** Signals that deletion of an index has completed. */
     DELETION_COMPLETE(Category.DELETION, Level.INFO),
 
+    /** Snapshot restore progress event. */
+    REPLICATION_RESTORE(Category.REPLICATION, Level.INFO),
     /** Generic info message from the replication system. */
     REPLICATION_INFO(Category.REPLICATION, Level.INFO),
     /** Generic warning message from the replication system. */
