@@ -18,6 +18,7 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
+import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -49,7 +50,7 @@ import org.cojen.tupl.util.LatchCondition;
 import static org.cojen.tupl.io.Utils.*;
 
 /**
- * 
+ * Core replicator implementation.
  *
  * @author Brian S O'Neill
  */
@@ -482,6 +483,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 refresh = mGroupFile.applyUpdateRole(message);
                 break;
             }
+
+            // FIXME: Followers should inform the leader very early of their current group
+            // version, and if they inform the leader again whenever it changes. This speeds up
+            // updateRole without forcing the caller to retry.
 
             if (refresh) {
                 refreshPeerSet();
@@ -1619,10 +1624,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
-        if (groupVersion > mGroupFile.version()) {
-            // FIXME: exec task to sync the group
-            System.out.println("group mismatch");
-        }
+        checkGroupVersion(groupVersion);
 
         long durableIndex;
 
@@ -1763,10 +1765,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     message = null;
                     result = ErrorCodes.NO_CONSENSUS;
 
-                    // FIXME: Can speed things up if followers inform the leader very early of
-                    // their current group version, and if they inform the leader again
-                    // whenever it changes.
-
                     // Request updated versions. Caller must retry.
                     for (Channel channel : mConsensusChannels) {
                         channel.groupVersion(this, groupVersion);
@@ -1792,17 +1790,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
-        /*
-        System.out.println("updateRoleReply: " + from + ", " + groupVersion + ", " +
-                           memberId + ", " + ErrorCodes.toString(result) + ", " +
-                           mGroupFile.version());
-        */
+        checkGroupVersion(groupVersion);
 
         // FIXME: log or report an event
         //System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
-
-        // FIXME: If version mismatch schedule a task to sync the group file, but only if the
-        // version truly doesn't match.
 
         return true;
     }
@@ -1820,5 +1811,48 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     public boolean groupVersionReply(Channel from, long groupVersion) {
         from.peer().updateGroupVersion(groupVersion);
         return true;
+    }
+
+    @Override
+    public boolean groupFile(Channel from, long groupVersion) throws IOException {
+        if (groupVersion < mGroupFile.version()) {
+            OutputStream out = from.groupFileReply(null, null);
+            if (out != null) {
+                mGroupFile.writeTo(out);
+                out.flush();
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
+        if (mGroupFile.readFrom(in)) {
+            // Inform the leader right away so that group updates can be applied quickly.
+            Channel requestChannel = leaderRequestChannel();
+            if (requestChannel != null && requestChannel != this) {
+                requestChannel.groupVersion(this, mGroupFile.version());
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Request that the group file be updated if it's behind. By doing this early instead of
+     * waiting for a control message from the replication stream, this member can participate
+     * in consensus decisions earlier.
+     */
+    private void checkGroupVersion(long groupVersion) {
+        if (groupVersion > mGroupFile.version()) {
+            Channel requestChannel = leaderRequestChannel();
+            if (requestChannel != null && requestChannel != this) {
+                try {
+                    requestChannel.groupFile(this, mGroupFile.version());
+                } catch (IOException e) {
+                    // Ignore.
+                }
+            }
+        }
     }
 }
