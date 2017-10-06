@@ -39,6 +39,7 @@ import java.net.UnknownHostException;
 
 import java.security.SecureRandom;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Properties;
@@ -234,12 +235,57 @@ final class GroupFile extends Latch {
                 ("Group identifier changed: " + mGroupId + " -> " + groupId);
         }
 
-        mPeerSet = peerSet;
+        // The file can be parsed after calling readFrom, which can be called at any time
+        // to sync the group from a peer. The existing Peer objects must not be replaced.
+        // Merge the new set of peers into the old set: add, remove, and update.
+
+        Iterator<Peer> oldIt = mPeerSet.iterator();
+        Iterator<Peer> newIt = peerSet.iterator();
+
+        Peer oldPeer = null, newPeer = null;
+
+        while (true) {
+            oldPeer = tryNext(oldIt, oldPeer);
+            newPeer = tryNext(newIt, newPeer);
+
+            if (oldPeer == null) {
+                if (newPeer == null) {
+                    break;
+                }
+            } else if (newPeer == null || oldPeer.mMemberId < newPeer.mMemberId) {
+                // Remove old peer.
+                oldIt.remove();
+                oldPeer = null;
+                continue;
+            } else if (oldPeer.mMemberId == newPeer.mMemberId) {
+                // Update existing peer.
+                oldPeer.mRole = newPeer.mRole;
+                oldPeer = null;
+                newPeer = null;
+                continue;
+            }
+
+            // Add new peer.
+            mPeerSet.add(newPeer);
+            newPeer = null;
+        }
+
         mVersion = version;
         mLocalMemberId = localMemberId;
         mLocalMemberRole = localMemberRole;
 
         return groupId;
+    }
+
+    /**
+     * @param obj previous object returned by iterator (start with null)
+     * @return next object returned by iterator, or null if none left
+     */
+    private static <P> P tryNext(Iterator<P> it, P obj) {
+        if (obj == null && it.hasNext()) {
+            obj = it.next();
+        }
+        return obj;
     }
 
     /**
