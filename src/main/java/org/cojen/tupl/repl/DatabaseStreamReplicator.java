@@ -124,6 +124,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 Scheduler scheduler = ((Controller) mRepl).scheduler();
                 RestoreInputStream rin = new RestoreInputStream(in);
                 in = rin;
+
+                listener.notify(EventType.REPLICATION_RESTORE,
+                                "Receiving snapshot: %1$,d bytes from %2$s",
+                                length, receiver.senderAddress());
+
                 scheduler.schedule(new ProgressTask(listener, scheduler, rin, length));
             }
         } catch (Throwable e) {
@@ -165,10 +170,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             double percent = 100.0 * (received / (double) mLength);
             long progess = received - mLastReceived;
 
-            if (mLastTimeMillis == Long.MIN_VALUE) {
-                mListener.notify(EventType.REPLICATION_RESTORE,
-                                "Receiving snapshot: %1$,d bytes", mLength);
-            } else {
+            if (mLastTimeMillis != Long.MIN_VALUE) {
                 double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
                 String format = "Receiving snapshot: %1$1.3f%%";
                 if (rate == 0) {
