@@ -1011,17 +1011,18 @@ final class ChannelManager {
 
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[(8 + 8 * 4) + data.length];
-                prepareCommand(command, OP_QUERY_DATA_REPLY, 0, command.length - 8);
+                prepareCommand(out, command, OP_QUERY_DATA_REPLY, 0, command.length - 8);
                 encodeLongLE(command, 8, currentTerm);
                 encodeLongLE(command, 16, prevTerm);
                 encodeLongLE(command, 24, term);
                 encodeLongLE(command, 32, index);
                 System.arraycopy(data, 0, command, 40, data.length);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1038,18 +1039,19 @@ final class ChannelManager {
 
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[(8 + 8 * 5) + data.length];
-                prepareCommand(command, OP_WRITE_DATA, 0, command.length - 8);
+                prepareCommand(out, command, OP_WRITE_DATA, 0, command.length - 8);
                 encodeLongLE(command, 8, prevTerm);
                 encodeLongLE(command, 16, term);
                 encodeLongLE(command, 24, index);
                 encodeLongLE(command, 32, highestIndex);
                 encodeLongLE(command, 40, commitIndex);
                 System.arraycopy(data, 0, command, 48, data.length);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1084,14 +1086,15 @@ final class ChannelManager {
         public boolean snapshotScoreReply(Channel from, int activeSessions, float weight) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 4 * 2];
-                prepareCommand(command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
+                prepareCommand(out, command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
                 encodeIntLE(command, 8, activeSessions);
                 encodeIntLE(command, 12, Float.floatToIntBits(weight));
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1128,11 +1131,12 @@ final class ChannelManager {
         public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
             acquireExclusive();
             try {
-                if (mOut != null) {
+                OutputStream out = mOut;
+                if (out != null) {
                     byte[] command = new byte[8];
-                    prepareCommand(command, OP_GROUP_FILE_REPLY, 0, 0);
-                    if (writeCommand(command, 0, command.length)) {
-                        return mOut;
+                    prepareCommand(out, command, OP_GROUP_FILE_REPLY, 0, 0);
+                    if (writeCommand(out, command, 0, command.length)) {
+                        return out;
                     }
                 }
             } finally {
@@ -1144,12 +1148,13 @@ final class ChannelManager {
         private boolean writeCommand(int op) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8];
-                prepareCommand(command, op, 0, 0);
-                return writeCommand(command, 0, command.length);
+                prepareCommand(out, command, op, 0, 0);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1158,13 +1163,14 @@ final class ChannelManager {
         private boolean writeCommand(int op, long a) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 1];
-                prepareCommand(command, op, 0, 8 * 1);
+                prepareCommand(out, command, op, 0, 8 * 1);
                 encodeLongLE(command, 8, a);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1173,14 +1179,15 @@ final class ChannelManager {
         private boolean writeCommand(int op, long a, long b) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 2];
-                prepareCommand(command, op, 0, 8 * 2);
+                prepareCommand(out, command, op, 0, 8 * 2);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1189,15 +1196,16 @@ final class ChannelManager {
         private boolean writeCommand(int op, long a, long b, byte c) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 2 + 1];
-                prepareCommand(command, op, 0, 8 * 2 + 1);
+                prepareCommand(out, command, op, 0, 8 * 2 + 1);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 command[24] = c;
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1206,15 +1214,16 @@ final class ChannelManager {
         private boolean writeCommand(int op, long a, long b, long c) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 3];
-                prepareCommand(command, op, 0, 8 * 3);
+                prepareCommand(out, command, op, 0, 8 * 3);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1223,16 +1232,17 @@ final class ChannelManager {
         private boolean writeCommand(int op, long a, long b, long c, long d) {
             acquireExclusive();
             try {
-                if (mOut == null) {
+                OutputStream out = mOut;
+                if (out == null) {
                     return false;
                 }
                 byte[] command = new byte[8 + 8 * 4];
-                prepareCommand(command, op, 0, 8 * 4);
+                prepareCommand(out, command, op, 0, 8 * 4);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
                 encodeLongLE(command, 32, d);
-                return writeCommand(command, 0, command.length);
+                return writeCommand(out, command, 0, command.length);
             } finally {
                 releaseExclusive();
             }
@@ -1244,7 +1254,9 @@ final class ChannelManager {
          * @param command must have at least 8 bytes, used for the header
          * @param length max allowed is 16,777,216 bytes
          */
-        private void prepareCommand(byte[] command, int op, int offset, int length) {
+        private void prepareCommand(OutputStream out, byte[] command,
+                                    int op, int offset, int length)
+        {
             ChannelInputStream in = mIn;
             long bytesRead = in == null ? 0 : in.resetReadAmount();
 
@@ -1254,7 +1266,7 @@ final class ChannelManager {
                 encodeIntLE(command, offset + 4, (int) ((1L << 32) - 1));
                 do {
                     bytesRead -= ((1L << 32) - 1);
-                    writeCommand(command, offset, 8);
+                    writeCommand(out, command, offset, 8);
                 } while (Long.compareUnsigned(bytesRead, 1L << 32) >= 0);
             }
 
@@ -1265,10 +1277,10 @@ final class ChannelManager {
         /**
          * Caller must hold exclusive latch and have verified that mOut isn't null.
          */
-        private boolean writeCommand(byte[] command, int offset, int length) {
+        private boolean writeCommand(OutputStream out, byte[] command, int offset, int length) {
             try {
                 mWriteState = 1;
-                mOut.write(command, offset, length);
+                out.write(command, offset, length);
                 mWriteState = 0;
                 return true;
             } catch (IOException e) {
