@@ -519,4 +519,43 @@ public class GroupFileTest {
 
         assertEquals(gf.allPeers(), gf2.allPeers());
     }
+
+    @Test
+    public void fullUpdate() throws Exception {
+        // Test behavior of updating the group when calling readFile. Retained Peer instances
+        // should be updated -- not replaced with new Peer instances.
+
+        File f1 = TestUtils.newTempBaseFile(getClass());
+        GroupFile gf1 = GroupFile.open(f1, new InetSocketAddress("localhost", 1000), true);
+        Peer p1 = gf1.addPeer(new InetSocketAddress("localhost", 1001), Role.NORMAL);
+        Peer p2 = gf1.addPeer(new InetSocketAddress("localhost", 1002), Role.NORMAL);
+
+        // Update the group in a different object.
+        GroupFile gf2 = GroupFile.open(f1, new InetSocketAddress("localhost", 1000), false);
+        gf2.removePeer(p1.mMemberId);
+        Peer p3 = gf2.addPeer(new InetSocketAddress("localhost", 1003), Role.NORMAL);
+        gf2.updateRole(p2.mMemberId, Role.OBSERVER);
+        Peer p4 = gf2.addPeer(new InetSocketAddress("localhost", 1004), Role.NORMAL);
+
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        gf2.writeTo(bout);
+        gf1.readFrom(new ByteArrayInputStream(bout.toByteArray()));
+
+        assertEquals(gf1.allPeers(), gf2.allPeers());
+
+        // Updated instance should be the same.
+
+        boolean found = false;
+
+        for (Peer p : gf1.allPeers()) {
+            if (p.equals(p2)) {
+                assertFalse(found);
+                assertEquals(Role.OBSERVER, p.mRole);
+                assertTrue(p == p2);
+                found = true;
+            }
+        }
+
+        assertTrue(found);
+    }
 }

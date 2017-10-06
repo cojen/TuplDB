@@ -1827,7 +1827,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
-        if (mGroupFile.readFrom(in)) {
+        boolean refresh;
+
+        acquireExclusive();
+        try {
+            refresh = mGroupFile.readFrom(in);
+            if (refresh) {
+                refreshPeerSet();
+            }
+        } finally {
+            releaseExclusive();
+        }
+
+        if (refresh) {
             // Inform the leader right away so that group updates can be applied quickly.
             Channel requestChannel = leaderRequestChannel();
             if (requestChannel != null && requestChannel != this) {
