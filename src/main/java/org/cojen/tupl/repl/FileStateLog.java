@@ -571,7 +571,7 @@ final class FileStateLog extends Latch implements StateLog {
             mMetadataHighestIndex = index;
             mMetadataDurableIndex = index;
 
-            syncMetadata(highestLog, prevTerm);
+            syncMetadata(highestLog);
         }
     }
 
