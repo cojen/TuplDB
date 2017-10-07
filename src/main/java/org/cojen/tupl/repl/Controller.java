@@ -41,8 +41,11 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
+
+import java.util.logging.Level;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
@@ -73,6 +76,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
 
+    private final BiConsumer<Level, String> mEventListener;
+
     private final LatchCondition mSyncCommitCondition;
 
     private GroupFile mGroupFile;
@@ -95,6 +100,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private long mCurrentTerm;
     private int mGrantsRemaining;
     private int mElectionValidated;
+    private long mValidatedTerm;
 
     private LogWriter mLeaderLogWriter;
     private ReplWriter mLeaderReplWriter;
@@ -116,21 +122,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     * @param localSocket optional; used for testing
      */
     static Controller open(StateLog log, long groupToken, File groupFile,
+                           BiConsumer<Level, String> eventListener,
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
         GroupFile gf = GroupFile.open(groupFile, localAddress, seeds.isEmpty());
-        Controller con = new Controller(log, groupToken, gf);
+        Controller con = new Controller(log, groupToken, gf, eventListener);
         con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         return con;
     }
 
-    private Controller(StateLog log, long groupToken, GroupFile gf) throws IOException {
+    private Controller(StateLog log, long groupToken, GroupFile gf,
+                       BiConsumer<Level, String> eventListener)
+        throws IOException
+    {
         mStateLog = log;
         mScheduler = new Scheduler();
         mChanMan = new ChannelManager(mScheduler, groupToken, gf == null ? 0 : gf.groupId());
         mGroupFile = gf;
+        mEventListener = eventListener;
         mSyncCommitCondition = new LatchCondition();
     }
 
@@ -469,6 +480,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public void controlMessageReceived(long index, byte[] message) throws IOException {
         boolean quickCommit = false;
+        Role oldRole = null, newRole = null;
 
         acquireExclusive();
         try {
@@ -482,7 +494,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 refresh = mGroupFile.applyJoin(index, message) != null;
                 break;
             case CONTROL_OP_UPDATE_ROLE:
-                refresh = mGroupFile.applyUpdateRole(message);
+                oldRole = mGroupFile.localMemberRole();
+                if (refresh = mGroupFile.applyUpdateRole(message)) {
+                    newRole = mGroupFile.localMemberRole();
+                }
                 break;
             }
 
@@ -506,6 +521,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (quickCommit) {
             mScheduler.execute(this::affirmLeadership);
+        }
+
+        roleChangeEvent(oldRole, newRole);
+    }
+
+    private void roleChangeEvent(Role oldRole, Role newRole) {
+        if (oldRole != newRole && newRole != null) {
+            event(Level.INFO, "Local member role changed: " + oldRole + " to " + newRole);
         }
     }
 
@@ -950,6 +973,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } else {
             releaseExclusive();
 
+            event(Level.INFO, "Local member is a candidate: newTerm=" + term + ", highestTerm=" +
+                  info.mTerm + ", highestIndex=" + info.mHighestIndex);
+
             for (Channel peerChan : peerChannels) {
                 peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestIndex);
             }
@@ -988,9 +1014,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must hold exclusive latch.
     private void toFollower() {
         final int originalMode = mLocalMode;
-        if (originalMode != MODE_FOLLOWER) {
-            System.out.println("follower: " + mCurrentTerm);
 
+        if (originalMode != MODE_FOLLOWER) {
             mLocalMode = MODE_FOLLOWER;
 
             if (mLeaderLogWriter != null) {
@@ -1002,9 +1027,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderReplWriter.deactivate();
             }
 
-            if (originalMode == MODE_LEADER && mSkipMissingDataTask) {
-                mSkipMissingDataTask = false;
-                scheduleMissingDataTask();
+            if (originalMode == MODE_LEADER) {
+                if (mSkipMissingDataTask) {
+                    mSkipMissingDataTask = false;
+                    scheduleMissingDataTask();
+                }
+                event(Level.INFO, "Local member leadership lost: newTerm=" + mCurrentTerm);
+            } else {
+                event(Level.INFO, "Local member candidacy lost: newTerm=" + mCurrentTerm);
             }
         }
     }
@@ -1178,6 +1208,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return requestChannel;
     }
 
+    private void event(Level level, String message) {
+        if (mEventListener != null) {
+            try {
+                mEventListener.accept(level, message);
+            } catch (Throwable e) {
+                // Ignore.
+            }
+        }
+    }
+
+    @Override
+    public void unknown(Channel from, int op) {
+        event(Level.WARNING,
+              "Unknown operation received from: " + from.peer().mAddress + ", op=" + op);
+    }
+
     @Override
     public boolean nop(Channel from) {
         return true;
@@ -1268,8 +1314,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
+            event(Level.INFO, "Local member is the leader: newTerm=" + term + ", index=" + index);
+
             long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
-            System.out.println("leader: " + prevTerm + " -> " + term + " @" + index);
+
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
             mLocalMode = MODE_LEADER;
             for (Channel channel : mAllChannels) {
@@ -1508,52 +1556,67 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireShared();
         long originalTerm = mCurrentTerm;
 
-        if (term == originalTerm) {
-            if (mElectionValidated > 0) {
-                releaseShared();
-                return true;
-            }
-
-            if (tryUpgrade()) {
-                mLeaderReplyChannel = from;
-                mElectionValidated = 1;
-                releaseExclusive();
-                return true;
-            }
-        } else if (term < originalTerm) {
-            releaseShared();
-            return false;
-        }
-
-        if (!tryUpgrade()) {
-            releaseShared();
-            acquireExclusive();
-            originalTerm = mCurrentTerm;
-            if (term < originalTerm) {
-                releaseExclusive();
-                return false;
-            }
-        }
-
-        try {
-            if (term != originalTerm) {
-                assert term > originalTerm;
-                try {
-                    mCurrentTerm = mStateLog.checkCurrentTerm(term);
-                } catch (IOException e) {
-                    uncaught(e);
-                    return false;
-                }
-                if (mCurrentTerm <= originalTerm) {
+        vadidate: {
+            if (term == originalTerm) {
+                if (mElectionValidated > 0) {
+                    // Already validated.
+                    releaseShared();
                     return true;
                 }
-                toFollower();
+                if (tryUpgrade()) {
+                    break vadidate;
+                }
+            } else if (term < originalTerm) {
+                releaseShared();
+                return false;
             }
 
-            mLeaderReplyChannel = from;
-            mElectionValidated = 1;
-        } finally {
-            releaseExclusive();
+            if (!tryUpgrade()) {
+                releaseShared();
+                acquireExclusive();
+                originalTerm = mCurrentTerm;
+                if (term < originalTerm) {
+                    releaseExclusive();
+                    return false;
+                }
+            }
+
+            if (term != originalTerm) {
+                try {
+                    assert term > originalTerm;
+                    try {
+                        mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                    } catch (IOException e) {
+                        uncaught(e);
+                        releaseExclusive();
+                        return false;
+                    }
+                    if (mCurrentTerm <= originalTerm) {
+                        releaseExclusive();
+                        return true;
+                    }
+                    toFollower();
+                } catch (Throwable e) {
+                    releaseExclusive();
+                    throw e;
+                }
+            }
+        }
+
+        mLeaderReplyChannel = from;
+        mElectionValidated = 1;
+
+        boolean first = false;
+        if (term != mValidatedTerm) {
+            mValidatedTerm = term;
+            first = true;
+        }
+
+        releaseExclusive();
+
+        if (first) {
+            event(Level.INFO, "Remote member is the leader: newTerm=" + term + ", address="
+                  + from.peer().mAddress);
         }
 
         return true;
@@ -1788,10 +1851,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
-        checkGroupVersion(groupVersion);
+        if (result != ErrorCodes.SUCCESS) {
+            acquireShared();
+            boolean ok = mLocalRole == mGroupFile.localMemberRole();
+            releaseShared();
+            if (!ok) {
+                event(ErrorCodes.levelFor(result),
+                      "Unable to update role: " + ErrorCodes.toString(result));
+            }
+        }
 
-        // FIXME: log or report an event
-        //System.out.println("updateRoleReply level: " + ErrorCodes.levelFor(result));
+        checkGroupVersion(groupVersion);
 
         return true;
     }
@@ -1826,12 +1896,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
         boolean refresh;
+        Role oldRole = null, newRole = null;
 
         acquireExclusive();
         try {
+            oldRole = mGroupFile.localMemberRole();
             refresh = mGroupFile.readFrom(in);
             if (refresh) {
                 refreshPeerSet();
+                newRole = mGroupFile.localMemberRole();
             }
         } finally {
             releaseExclusive();
@@ -1844,6 +1917,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 requestChannel.groupVersion(this, mGroupFile.version());
             }
         }
+
+        roleChangeEvent(oldRole, newRole);
 
         return null;
     }

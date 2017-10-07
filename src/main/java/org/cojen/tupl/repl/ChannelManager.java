@@ -912,7 +912,7 @@ final class ChannelManager {
                         localServer.groupFileReply(this, in);
                         break;
                     default:
-                        System.out.println("unknown op: " + op);
+                        localServer.unknown(this, op);
                         break;
                     }
 
@@ -966,6 +966,11 @@ final class ChannelManager {
                     }
                 }
             }
+        }
+
+        @Override
+        public void unknown(Channel from, int op) {
+            // Not a normal remote call.
         }
 
         @Override

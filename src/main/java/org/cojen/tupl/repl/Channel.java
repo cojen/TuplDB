@@ -46,6 +46,11 @@ interface Channel {
     }
 
     /**
+     * Called when an unknown operation was received.
+     */
+    void unknown(Channel from, int op);
+
+    /**
      * @return false if not sent or processed
      */
     boolean nop(Channel from);

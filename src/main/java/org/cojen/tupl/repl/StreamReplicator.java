@@ -98,6 +98,7 @@ public interface StreamReplicator extends DirectReplicator {
 
         return Controller.open(new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
+                               config.mEventListener,
                                localAddress, listenAddress, config.mLocalRole,
                                seeds, config.mLocalSocket);
     }
