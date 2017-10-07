@@ -67,6 +67,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2;
 
+    private static final byte[] EMPTY_DATA = new byte[0];
+
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
@@ -819,7 +821,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestMissingData(long startIndex, long endIndex) {
         // FIXME: Need a way to abort outstanding requests.
-        //System.out.println("must call queryData! " + startIndex + ".." + endIndex);
 
         long remaining = endIndex - startIndex;
 
@@ -978,10 +979,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog.captureHighest(writer);
         long highestIndex = writer.mHighestIndex;
         long commitIndex = writer.mCommitIndex;
-
-        // FIXME: use a custom command
-        // FIXME: ... or use standard client write method
-        byte[] EMPTY_DATA = new byte[0];
 
         for (Channel peerChan : peerChannels) {
             peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, EMPTY_DATA);
@@ -1352,6 +1349,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             return true;
         }
 
+        // FIXME: Gracefully handle stale data requests, received after log compaction.
+
         try {
             LogReader reader = mStateLog.openReader(startIndex);
 
@@ -1635,7 +1634,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 || (termLog = mStateLog.termLogAt(index)) == null || term != termLog.term())
             {
                 // Received a stale reply.
-                System.out.println("stale reply");
                 return true;
             }
 
