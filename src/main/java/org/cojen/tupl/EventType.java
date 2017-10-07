@@ -27,7 +27,7 @@ import java.util.logging.Level;
  */
 public enum EventType {
     /** General debug event type. */
-    DEBUG(Category.DEBUG, Level.INFO),
+    DEBUG(Category.DEBUG, Level.FINE),
 
     /** Signals the beginning of cache initialization. */
     CACHE_INIT_BEGIN(Category.CACHE_INIT, Level.INFO),
@@ -62,6 +62,8 @@ public enum EventType {
 
     /** Snapshot restore progress event. */
     REPLICATION_RESTORE(Category.REPLICATION, Level.INFO),
+    /** Generic debug message from the replication system. */
+    REPLICATION_DEBUG(Category.REPLICATION, Level.FINE),
     /** Generic info message from the replication system. */
     REPLICATION_INFO(Category.REPLICATION, Level.INFO),
     /** Generic warning message from the replication system. */
