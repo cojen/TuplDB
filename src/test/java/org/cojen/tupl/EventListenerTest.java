@@ -84,11 +84,11 @@ public class EventListenerTest {
         assertTrue(filtered == filtered.ignore(EventType.Category.DEBUG));
 
         listener = new Listener();
-        filtered = listener.ignore(Level.INFO);
+        filtered = listener.ignore(Level.FINE);
         filtered.notify(EventType.DEBUG, "hello");
         filtered.notify(EventType.CHECKPOINT_FAILED, "world");
         assertEquals("[CHECKPOINT_FAILED:world:[]]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.ignore(Level.INFO));
+        assertTrue(filtered == filtered.ignore(Level.FINE));
         listener.mEvents.clear();
         filtered = filtered.ignore(Level.WARNING);
         filtered.notify(EventType.DEBUG, "hello");
