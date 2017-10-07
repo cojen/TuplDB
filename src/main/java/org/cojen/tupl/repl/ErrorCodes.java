@@ -46,7 +46,7 @@ final class ErrorCodes {
         case UNCONNECTED_MEMBER:
             return "unconnected member";
         case VERSION_MISMATCH:
-            return "version mismatch";
+            return "group version mismatch";
         case NO_CONSENSUS:
             return "no consensus";
         case NO_LEADER:
