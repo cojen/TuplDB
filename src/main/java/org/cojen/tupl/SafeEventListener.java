@@ -28,6 +28,7 @@ class SafeEventListener implements EventListener {
     static EventListener makeSafe(EventListener listener) {
         return (listener == null
                 || listener instanceof SafeEventListener
+                || listener.getClass() == EventLogger.class
                 || listener.getClass() == EventPrinter.class) ? listener
             : new SafeEventListener(listener);
     }
