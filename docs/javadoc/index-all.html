@@ -1040,6 +1040,18 @@
 <div class="block">Listener which receives notifications of actions being performed by the
  database.</div>
 </dd>
+<dt><a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventLogger</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Event listener implementation which passes events to a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging"><code>logger</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#EventLogger--">EventLogger()</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
+<dd>
+<div class="block">Passes events to the global logger.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#EventLogger-java.util.logging.Logger-">EventLogger(Logger)</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
+<dd>
+<div class="block">Passes events to the given logger.</div>
+</dd>
 <dt><a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventPrinter</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Event listener implementation which prints events to an output stream.</div>
@@ -2132,6 +2144,8 @@
 <div class="block">Empty marker which indicates that value exists but has not been <a href="org/cojen/tupl/Cursor.html#load--"><code>loaded</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EventPrinter.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dt>
 <dd>&nbsp;</dd>
