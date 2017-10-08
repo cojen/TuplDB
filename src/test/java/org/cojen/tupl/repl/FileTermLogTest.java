@@ -31,6 +31,8 @@ import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -1052,6 +1054,44 @@ public class FileTermLogTest {
 
         assertEquals(0, writer.write(b));
         writer.release();
+    }
+
+    @Test
+    public void commitBoostHighest() throws Exception {
+        // Commit should advance the highest index in some cases, because not all writes are
+        // expected to provide a highest index. Replies for missing data don't provide a
+        // highest index, and then the term might end before the leader writes again.
+
+        LogWriter writer = mLog.openWriter(0);
+        write(writer, new byte[100], 0);
+        writer.release();
+
+        AtomicReference<Object> result = new AtomicReference<>();
+
+        Thread stuckReader = TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                byte[] buf = new byte[1000];
+                LogReader reader = mLog.openReader(0);
+                result.set(reader.read(buf));
+            } catch (Throwable e) {
+                result.set(e);
+            }
+        }));
+
+        assertNull(result.get());
+
+        mLog.commit(200);
+        mLog.finishTerm(200);
+
+        byte[] buf = new byte[1000];
+
+        LogReader reader = mLog.openReader(0);
+        int amt = reader.read(buf);
+        assertEquals(100, amt);
+        reader.release();
+
+        stuckReader.join();
+        assertEquals(100, result.get());
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {
