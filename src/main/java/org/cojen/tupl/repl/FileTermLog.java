@@ -456,6 +456,9 @@ final class FileTermLog extends Latch implements TermLog {
                 commitIndex = endIndex;
             }
             mLogCommitIndex = commitIndex;
+            if (mLogHighestIndex < commitIndex) {
+                mLogHighestIndex = Math.min(commitIndex, mLogContigIndex);
+            }
             notifyCommitTasks(doAppliableCommitIndex());
             return;
         }
