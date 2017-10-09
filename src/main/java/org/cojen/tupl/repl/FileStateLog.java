@@ -108,6 +108,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final MappedByteBuffer mMetadataBuffer;
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
+    private final Latch mMetadataLatch;
     private int mMetadataCounter;
     private long mMetadataHighestIndex;
     private long mMetadataDurableIndex;
@@ -155,6 +156,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         mMetadataCrc = CRC32C.newInstance();
         mMetadataInfo = new LogInfo();
+        mMetadataLatch = new Latch();
 
         if (!mdFileExists) {
             // Prepare a new metadata file.
@@ -497,29 +499,36 @@ final class FileStateLog extends Latch implements StateLog {
         if (termIncrement <= 0) {
             throw new IllegalArgumentException();
         }
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             mCurrentTerm += termIncrement;
             mVotedForId = candidateId;
             doSync();
             return mCurrentTerm;
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
     @Override
     public long checkCurrentTerm(long term) throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             if (term > mCurrentTerm) {
                 mCurrentTerm = term;
                 mVotedForId = 0;
                 doSync();
             }
             return mCurrentTerm;
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
     @Override
     public boolean checkCandidate(long candidateId) throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             if (mVotedForId == candidateId) {
                 return true;
             }
@@ -529,6 +538,8 @@ final class FileStateLog extends Latch implements StateLog {
                 return true;
             }
             return false;
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
@@ -547,7 +558,8 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void truncateAll(long prevTerm, long term, long index) throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             if (mClosed) {
                 throw new IOException("Closed");
             }
@@ -572,6 +584,8 @@ final class FileStateLog extends Latch implements StateLog {
             mMetadataDurableIndex = index;
 
             syncMetadata(highestLog);
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
@@ -673,53 +687,30 @@ final class FileStateLog extends Latch implements StateLog {
      */
     // package-private for testing
     TermLog defineTermLog(long prevTerm, long term, long index) throws IOException {
-        final LKey<TermLog> key = new LKey.Finder<>(index);
+        LKey<TermLog> key = new LKey.Finder<>(index);
 
-        boolean exclusive = false;
+        int fullLatch = 0;
         acquireShared();
         try {
             TermLog termLog;
             defineTermLog: while (true) {
                 termLog = (TermLog) mTermLogs.floor(key); // findLe
 
-                if (termLog == null) {
-                    break defineTermLog;
-                }
-
-                long actualPrevTerm = termLog.prevTermAt(index);
-
-                if (prevTerm != actualPrevTerm) {
-                    int removeCount = countConflictingEmptyTerms(prevTerm, index, termLog);
-
-                    if (removeCount <= 0) {
-                        termLog = null;
+                while (true) {
+                    if (termLog == null) {
                         break defineTermLog;
                     }
-
-                    // Remove the empty terms, but exclusive latch must be held.
-
-                    if (!exclusive) {
-                        if (tryUpgrade()) {
-                            exclusive = true;
-                        } else {
-                            releaseShared();
-                            acquireExclusive();
-                            exclusive = true;
-                            continue;
-                        }
+                    if (prevTerm == termLog.prevTermAt(index)) {
+                        // Previous term matches.
+                        break;
                     }
-
-                    while (true) {
-                        termLog.finishTerm(termLog.startIndex());
-                        mTermLogs.remove(termLog);
-                        removeCount--;
-                        if (removeCount <= 0) {
-                            break;
-                        }
-                        termLog = (TermLog) mTermLogs.lower(termLog);
+                    // Skip empty conflicting terms.
+                    if (termLog.isEmpty()) {
+                        key = termLog; // update key for truncation
+                        termLog = (TermLog) mTermLogs.lower(termLog); // findLt
+                    } else {
+                        termLog = null;
                     }
-
-                    continue;
                 }
 
                 long actualTerm = termLog.term();
@@ -738,28 +729,45 @@ final class FileStateLog extends Latch implements StateLog {
                     throw new IOException("Closed");
                 }
 
-                if (!exclusive) {
-                    if (tryUpgrade()) {
-                        exclusive = true;
+                if ((fullLatch = acquireFullLatch(fullLatch)) < 0) {
+                    continue;
+                }
+
+                // Persist metadata before truncating any terms.
+
+                if (index > termLog.startIndex()) {
+                    termLog.sync();
+                    termLog.captureHighest(mMetadataInfo);
+                    if (mMetadataInfo.mHighestIndex > index) {
+                        mMetadataInfo.mHighestIndex = index;
+                    }
+                } else {
+                    TermLog prevTermLog = (TermLog) mTermLogs.lower(termLog); // findLt
+                    if (prevTermLog == null) {
+                        mMetadataInfo.mTerm = termLog.term();
+                        mMetadataInfo.mHighestIndex = index;
                     } else {
-                        releaseShared();
-                        acquireExclusive();
-                        exclusive = true;
-                        continue;
+                        prevTermLog.captureHighest(mMetadataInfo);
                     }
                 }
 
-                termLog.sync();
+                syncMetadata(termLog);
 
                 long commitIndex = termLog.finishTerm(index);
 
-                // Truncate and remove all higher conflicting term logs. Iterator might start
-                // with the term log just finished, facilitating its removal. Finishing again
-                // at the same index is harmless.
+                // Truncate and remove all conflicting term logs. Iterator might start with the
+                // term log just finished, facilitating its removal. Finishing again at the
+                // same index is harmless.
+
                 Iterator<LKey<TermLog>> it = mTermLogs.tailSet(key).iterator(); // viewGe
                 while (it.hasNext()) {
-                    TermLog logGe = (TermLog) it.next();
-                    logGe.finishTerm(index);
+                    termLog = (TermLog) it.next();
+                    if (termLog.startIndex() < index) {
+                        assert termLog.isEmpty();
+                        termLog.finishTerm(termLog.startIndex());
+                    } else {
+                        termLog.finishTerm(index);
+                    }
                     it.remove();
                 }
 
@@ -771,32 +779,47 @@ final class FileStateLog extends Latch implements StateLog {
 
             return termLog;
         } finally {
-            release(exclusive);
+            releaseFullLatch(fullLatch);
         }
     }
 
     /**
-     * Checks if removing empty terms would resolve a prev term conflict.
-     * Caller must hold any latch.
-     *
-     * @return amount of terms to remove; 0 if the conflict cannot be resolved
+     * @param state 0: not full (shared), +/-1: full latch held
+     * @return 1 or -1; if -1, caller must start over because latch was released briefly
      */
-    private int countConflictingEmptyTerms(long prevTerm, long index, TermLog termLog) {
-        int count = 1;
+    private int acquireFullLatch(int state) {
+        if (state == 0) {
+            if (tryUpgrade()) {
+                if (mMetadataLatch.tryAcquireExclusive()) {
+                    return 1;
+                }
+                releaseExclusive();
+            } else {
+                releaseShared();
+            }
+            // Acquire in the canonical, deadlock-free order.
+            mMetadataLatch.acquireExclusive();
+            try {
+                acquireExclusive();
+            } catch (Throwable e) {
+                mMetadataLatch.releaseExclusive();
+                throw e;
+            }
+            return -1;
+        }
 
-        while (true) {
-            if (!termLog.isEmpty()) {
-                return 0;
-            }
-            termLog = (TermLog) mTermLogs.lower(termLog); // findLt
-            if (termLog == null) {
-                // Cannot remove the primordial term.
-                return 0;
-            }
-            if (prevTerm == termLog.prevTermAt(index)) {
-                return count;
-            }
-            count++;
+        return 1;
+    }
+
+    /**
+     * @param state 0: not full (shared), +/-1: full latch held
+     */
+    private void releaseFullLatch(int state) {
+        if (state == 0) {
+            releaseShared();
+        } else {
+            mMetadataLatch.releaseExclusive();
+            releaseExclusive();
         }
     }
 
@@ -824,14 +847,18 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void sync() throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             doSync();
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
     @Override
     public long syncCommit(long prevTerm, long term, long index) throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             if (mClosed) {
                 throw new IOException("Closed");
             }
@@ -872,19 +899,23 @@ final class FileStateLog extends Latch implements StateLog {
             syncMetadata(highestLog);
 
             return mMetadataInfo.mCommitIndex;
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
     @Override
     public boolean isDurable(long index) {
-        synchronized (mMetadataInfo) {
-            return index <= mMetadataDurableIndex;
-        }
+        mMetadataLatch.acquireShared();
+        boolean result = index <= mMetadataDurableIndex;
+        mMetadataLatch.releaseShared();
+        return result;
     }
 
     @Override
     public boolean commitDurable(long index) throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             if (mClosed) {
                 throw new IOException("Closed");
             }
@@ -902,6 +933,8 @@ final class FileStateLog extends Latch implements StateLog {
             syncMetadata(highestLog, index);
 
             return true;
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
     }
 
@@ -912,7 +945,7 @@ final class FileStateLog extends Latch implements StateLog {
         }
     }
 
-    // Caller must be synchronized on mMetadataInfo.
+    // Caller must exclusively hold mMetadataLatch.
     private void doSync() throws IOException {
         if (mClosed) {
             return;
@@ -939,12 +972,12 @@ final class FileStateLog extends Latch implements StateLog {
         syncMetadata(highestLog);
     }
 
-    // Caller must be synchronized on mMetadataInfo.
+    // Caller must exclusively hold mMetadataLatch.
     private void syncMetadata(TermLog highestLog) throws IOException {
         syncMetadata(highestLog, mMetadataDurableIndex);
     }
 
-    // Caller must be synchronized on mMetadataInfo.
+    // Caller must exclusively hold mMetadataLatch.
     private void syncMetadata(TermLog highestLog, long durableIndex) throws IOException {
         if (mClosed) {
             return;
@@ -992,7 +1025,8 @@ final class FileStateLog extends Latch implements StateLog {
 
     @Override
     public void close() throws IOException {
-        synchronized (mMetadataInfo) {
+        mMetadataLatch.acquireExclusive();
+        try {
             acquireExclusive();
             try {
                 if (mClosed) {
@@ -1012,6 +1046,8 @@ final class FileStateLog extends Latch implements StateLog {
             } finally {
                 releaseExclusive();
             }
+        } finally {
+            mMetadataLatch.releaseExclusive();
         }
 
         mWorker.join(true);
