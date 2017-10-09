@@ -698,6 +698,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 LogWriter writer = mWriter;
+
+                // Must capture the previous term before the write potentially changes it.
+                prevTerm = writer.prevTerm();
+                term = writer.term();
                 index = writer.index();
 
                 amt = writer.write(data, offset, length, highestIndex);
@@ -721,8 +725,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     return amt;
                 }
 
-                prevTerm = writer.prevTerm();
-                term = writer.term();
                 commitIndex = writer.mCommitIndex;
             }
 
