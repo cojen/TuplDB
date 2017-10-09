@@ -377,36 +377,23 @@ final class FileStateLog extends Latch implements StateLog {
     @Override
     public TermLog captureHighest(LogInfo info) {
         acquireShared();
-        TermLog highestLog = mHighestTermLog;
-        if (highestLog != null && highestLog == mTermLogs.last()) {
-            highestLog.captureHighest(info);
-            releaseShared();
-        } else {
-            highestLog = doCaptureHighest(info, highestLog, true);
-        }
-        return highestLog;
+        return doCaptureHighest(info, true);
     }
 
     // Must be called with shared latch held.
-    private TermLog doCaptureHighest(LogInfo info, TermLog highestLog, boolean releaseLatch) {
-        int size = mTermLogs.size();
-
-        if (size == 0) {
-            info.mTerm = 0;
-            info.mHighestIndex = 0;
-            info.mCommitIndex = 0;
-            if (releaseLatch) {
-                releaseShared();
-            }
-            return null;
-        }
-
-        if (highestLog != null) {
-            // Search again, in case log instance has been orphaned.
-            highestLog = (TermLog) mTermLogs.ceiling(highestLog); // findGe
-        }
+    private TermLog doCaptureHighest(LogInfo info, boolean releaseLatch) {
+        TermLog highestLog = mHighestTermLog;
 
         if (highestLog == null) {
+            if (mTermLogs.isEmpty()) {
+                info.mTerm = 0;
+                info.mHighestIndex = 0;
+                info.mCommitIndex = 0;
+                if (releaseLatch) {
+                    releaseShared();
+                }
+                return null;
+            }
             highestLog = (TermLog) mTermLogs.first();
         }
 
@@ -416,7 +403,7 @@ final class FileStateLog extends Latch implements StateLog {
             highestLog.captureHighest(info);
 
             if (nextLog == null || info.mHighestIndex < nextLog.startIndex()) {
-                if (tryUpgrade()) {
+                if (highestLog != mHighestTermLog && tryUpgrade()) {
                     mHighestTermLog = highestLog;
                     if (releaseLatch) {
                         releaseExclusive();
@@ -440,25 +427,12 @@ final class FileStateLog extends Latch implements StateLog {
         acquireShared();
 
         TermLog commitLog = mCommitTermLog;
-        if (commitLog != null && commitLog == mTermLogs.last()) {
-            commitLog.commit(commitIndex);
-            releaseShared();
-            return;
-        }
-
-        int size = mTermLogs.size();
-
-        if (size == 0) {
-            releaseShared();
-            return;
-        }
-
-        if (commitLog != null) {
-            // Search again, in case log instance has been orphaned.
-            commitLog = (TermLog) mTermLogs.ceiling(commitLog); // findGe
-        }
 
         if (commitLog == null) {
+            if (mTermLogs.isEmpty()) {
+                releaseShared();
+                return;
+            }
             commitLog = (TermLog) mTermLogs.first();
         }
 
@@ -623,23 +597,13 @@ final class FileStateLog extends Latch implements StateLog {
     public long checkForMissingData(long contigIndex, IndexRange results) {
         acquireShared();
 
-        if (mTermLogs.isEmpty()) {
-            releaseShared();
-            return 0;
-        }
-
         TermLog termLog = mContigTermLog;
-        if (termLog != null && termLog == mTermLogs.last()) {
-            releaseShared();
-            return termLog.checkForMissingData(contigIndex, results);
-        }
-
-        if (termLog != null) {
-            // Search again, in case log instance has been orphaned.
-            termLog = (TermLog) mTermLogs.ceiling(termLog); // findGe
-        }
 
         if (termLog == null) {
+            if (mTermLogs.isEmpty()) {
+                releaseShared();
+                return 0;
+            }
             termLog = (TermLog) mTermLogs.first();
         }
 
@@ -735,13 +699,16 @@ final class FileStateLog extends Latch implements StateLog {
 
                 // Persist metadata before truncating any terms.
 
+                // FIXME: The the key. See next FIXME.
                 if (index > termLog.startIndex()) {
                     termLog.sync();
                     termLog.captureHighest(mMetadataInfo);
                     if (mMetadataInfo.mHighestIndex > index) {
                         mMetadataInfo.mHighestIndex = index;
                     }
+                    syncMetadata(termLog);
                 } else {
+                    // FIXME: Go lower than the key. It determines the surviving highest.
                     TermLog prevTermLog = (TermLog) mTermLogs.lower(termLog); // findLt
                     if (prevTermLog == null) {
                         mMetadataInfo.mTerm = termLog.term();
@@ -749,9 +716,8 @@ final class FileStateLog extends Latch implements StateLog {
                     } else {
                         prevTermLog.captureHighest(mMetadataInfo);
                     }
+                    syncMetadata(prevTermLog);
                 }
-
-                syncMetadata(termLog);
 
                 long commitIndex = termLog.finishTerm(index);
 
@@ -774,6 +740,11 @@ final class FileStateLog extends Latch implements StateLog {
                 termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, commitIndex);
 
                 mTermLogs.add(termLog);
+
+                mHighestTermLog = fixTermRef(mHighestTermLog);
+                mCommitTermLog = fixTermRef(mCommitTermLog);
+                mContigTermLog = fixTermRef(mContigTermLog);
+
                 break defineTermLog;
             }
 
@@ -781,6 +752,19 @@ final class FileStateLog extends Latch implements StateLog {
         } finally {
             releaseFullLatch(fullLatch);
         }
+    }
+
+    /**
+     * Called after adding a term, to make sure that the given term will reference a valid term
+     * object.
+     */
+    private TermLog fixTermRef(TermLog termLog) {
+        // When lower terms are extended, the the reference might need to go lower, hence
+        // findLe. The methods which examine terms are designed to start low, possibly at the
+        // first term. Null implies that the first term should be examined, and so everything
+        // should work fine even if this method always returns null. Finding a valid term
+        // that's just lower avoids a full scan over the terms.
+        return termLog == null ? null : (TermLog) mTermLogs.floor(termLog); // findLe
     }
 
     /**
@@ -875,12 +859,7 @@ final class FileStateLog extends Latch implements StateLog {
                     return -1;
                 }
 
-                highestLog = mHighestTermLog;
-                if (highestLog != null && highestLog == mTermLogs.last()) {
-                    highestLog.captureHighest(mMetadataInfo);
-                } else {
-                    highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
-                }
+                highestLog = doCaptureHighest(mMetadataInfo, false);
 
                 if (index > mMetadataInfo.mHighestIndex) {
                     return -1;
@@ -955,15 +934,9 @@ final class FileStateLog extends Latch implements StateLog {
 
         acquireShared();
         try {
-            highestLog = mHighestTermLog;
-            if (highestLog != null && highestLog == mTermLogs.last()) {
-                highestLog.captureHighest(mMetadataInfo);
+            highestLog = doCaptureHighest(mMetadataInfo, false);
+            if (highestLog != null) {
                 highestLog.sync();
-            } else {
-                highestLog = doCaptureHighest(mMetadataInfo, highestLog, false);
-                if (highestLog != null) {
-                    highestLog.sync();
-                }
             }
         } finally {
             releaseShared();

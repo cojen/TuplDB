@@ -837,6 +837,45 @@ public class FileStateLogTest {
     }
 
     @Test
+    public void extendOldTerm() throws Exception {
+        // Searching for missing data should resume on an older term which was extended.
+
+        // Term 1 starts at 0.
+        LogWriter w1 = mLog.openWriter(0, 1, 0);
+        assertEquals(100, w1.write(new byte[100]));
+        w1.release();
+
+        // Term 2 starts at 100, but is empty so far.
+        LogWriter w2 = mLog.openWriter(1, 2, 100);
+        assertEquals(0, w2.write(new byte[0]));
+        w2.release();
+
+        LogInfo info = mLog.captureHighest();
+        assertEquals(2, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+
+        RangeResult result = new RangeResult();
+        long contigIndex = mLog.checkForMissingData(Long.MAX_VALUE, result);
+        assertEquals(100, contigIndex);
+        assertEquals(0, result.mRanges.size());
+
+        // Term 3 starts at 150, and forces term 1 to extend.
+        LogWriter w3 = mLog.openWriter(1, 3, 150);
+        assertEquals(100, w3.write(new byte[100]));
+        w3.release();
+
+        info = mLog.captureHighest();
+        assertEquals(1, info.mTerm);
+        assertEquals(100, info.mHighestIndex);
+
+        result = new RangeResult();
+        contigIndex = mLog.checkForMissingData(contigIndex, result);
+        assertEquals(100, contigIndex);
+        assertEquals(1, result.mRanges.size());
+        assertEquals(new Range(100, 150), result.mRanges.get(0));
+    }
+
+    @Test
     public void raftFig7() throws Exception {
         // Tests the scenarios shown in figure 7 of the Raft paper.
 
