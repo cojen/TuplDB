@@ -530,19 +530,20 @@ public class FileStateLogTest {
         writer.release();
 
         // Reopen without sync. All data for second term is gone, but the first term remains.
+        // The second term definition will be recovered, because defineTermLog syncs metadata.
         mLog.close();
         mLog = new FileStateLog(mBase);
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(prevTerm, info.mTerm);
+        assertEquals(term, info.mTerm);
         assertEquals(1000, info.mHighestIndex);
         assertEquals(0, info.mCommitIndex);
         assertFalse(mLog.checkCandidate(1)); // doesn't match 123
         assertTrue(mLog.checkCandidate(123));
 
-        // Last term must always be opened without an end index.
-        verifyLog(mLog, 0, msg1, 0);
+        // Reading from first term reaches EOF, because the second term exists.
+        verifyLog(mLog, 0, msg1, -1);
 
         term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
@@ -918,6 +919,41 @@ public class FileStateLogTest {
 
         assertNull(mLog.openWriter(1, 5, 200));
         assertNull(mLog.openWriter(1, 5, 250));
+    }
+
+    @Test
+    public void rollbackHighest() throws Exception {
+        // When a conflicting term rolls back the highest index, this should be reflected in
+        // the metadata as well.
+
+        // Term 1 starts at 0.
+        long term = mLog.incrementCurrentTerm(1, 123);
+        LogWriter w1 = mLog.openWriter(0, term, 0);
+        assertEquals(100, w1.write(new byte[100]));
+        w1.release();
+
+        // Term 2 starts at 100.
+        term = mLog.incrementCurrentTerm(1, 123);
+        LogWriter w2 = mLog.openWriter(w1.term(), term, 100);
+        assertEquals(100, w2.write(new byte[100]));
+        w2.release();
+
+        // Sync the highest index.
+        assertEquals(200, mLog.captureHighest().mHighestIndex);
+        mLog.sync();
+
+        // Term 3 replaces term 2 and extends term 1.
+        term = mLog.incrementCurrentTerm(1, 123);
+        LogWriter w3 = mLog.openWriter(w1.term(), term, 150);
+        assertEquals(0, w3.write(new byte[0]));
+        w3.release();
+
+        mLog.close();
+        mLog = new FileStateLog(mBase);
+
+        LogInfo info = mLog.captureHighest();
+        assertEquals(w1.term(), info.mTerm);
+        assertEquals(100, info.mHighestIndex);
     }
 
     @Test

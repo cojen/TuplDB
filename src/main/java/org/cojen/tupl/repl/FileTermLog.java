@@ -406,11 +406,11 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public boolean hasCommit(long index) {
+    public long potentialCommitIndex() {
         acquireShared();
-        boolean result = mLogCommitIndex > index;
+        long index = mLogCommitIndex;
         releaseShared();
-        return result;
+        return index;
     }
 
     @Override
@@ -617,16 +617,12 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public long finishTerm(long endIndex) {
-        long commitIndex;
+    public void finishTerm(long endIndex) {
         List<Delayed> removedTasks;
 
         acquireExclusive();
         try {
-            // Pass along the commit index as provided by the leader, which might not be
-            // appliable yet.
-            commitIndex = mLogCommitIndex;
-
+            long commitIndex = mLogCommitIndex;
             if (endIndex < commitIndex && commitIndex > mLogStartIndex) {
                 throw new IllegalStateException
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
@@ -634,7 +630,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (endIndex >= mLogEndIndex) {
                 mLogEndIndex = endIndex;
-                return commitIndex;
+                return;
             }
 
             for (LKey<Segment> key : mSegments) {
@@ -685,8 +681,6 @@ final class FileTermLog extends Latch implements TermLog {
         for (Delayed task : removedTasks) {
             task.run(WAIT_TERM_END);
         }
-
-        return commitIndex;
     }
 
     @Override
