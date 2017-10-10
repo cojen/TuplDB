@@ -48,7 +48,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.function.BiConsumer;
 import java.util.function.ObjLongConsumer;
+
+import java.util.logging.Level;
 
 import java.util.zip.Checksum;
 
@@ -74,6 +77,7 @@ final class GroupFile extends Latch {
 
     */
 
+    private final BiConsumer<Level, String> mEventListener;
     private final File mFile;
     private final SocketAddress mLocalMemberAddress;
     private final long mGroupId;
@@ -90,7 +94,8 @@ final class GroupFile extends Latch {
      * @return null if file doesn't exist and create is false
      * @throws IllegalStateException if local member address doesn't match the file
      */
-    public static GroupFile open(File file, SocketAddress localMemberAddress, boolean create)
+    public static GroupFile open(BiConsumer<Level, String> eventListener,
+                                 File file, SocketAddress localMemberAddress, boolean create)
         throws IOException
     {
         if (file == null || localMemberAddress == null) {
@@ -99,10 +104,12 @@ final class GroupFile extends Latch {
 
         RandomAccessFile raf = openFile(file);
 
-        return raf == null && !create ? null : new GroupFile(file, localMemberAddress, raf);
+        return raf == null && !create ? null
+            : new GroupFile(eventListener, file, localMemberAddress, raf);
     }
 
-    private GroupFile(File file, SocketAddress localMemberAddress, RandomAccessFile raf)
+    private GroupFile(BiConsumer<Level, String> eventListener,
+                      File file, SocketAddress localMemberAddress, RandomAccessFile raf)
         throws IOException
     {
         mFile = file;
@@ -116,6 +123,8 @@ final class GroupFile extends Latch {
             } finally {
                 releaseExclusive();
             }
+            // Don't publish events during file parsing.
+            mEventListener = eventListener;
         } else {
             // Create the file.
 
@@ -131,7 +140,49 @@ final class GroupFile extends Latch {
 
             // Version is bumped to 1 as a side-effect.
             persist();
+
+            mEventListener = eventListener;
+            localAddedEvent();
         }
+    }
+
+    private void event(Level level, String message) {
+        if (mEventListener != null) {
+            try {
+                mEventListener.accept(level, message);
+            } catch (Throwable e) {
+                // Ignore.
+            }
+        }
+    }
+
+    private void localAddedEvent() {
+        event(Level.INFO, "Local member added: " + mLocalMemberRole);
+    }
+
+    private void peerAddedEvent(Peer peer) {
+        event(Level.INFO, "Remote member added: " + peer.mAddress + ", " + peer.mRole);
+    }
+
+    private void localRoleChangeEvent(Role from) {
+        if (from == null) {
+            localAddedEvent();
+        } else {
+            event(Level.INFO, "Local member role changed: " + from + " to " + mLocalMemberRole);
+        }
+    }
+
+    private void peerRoleChangeEvent(Role from, Peer to) {
+        if (from == null) {
+            peerAddedEvent(to);
+        } else {
+            event(Level.INFO, "Remote member role changed: " + to.mAddress + ", "
+                  + from + " to " + to.mRole);
+        }
+    }
+
+    private void peerRemoveEvent(Peer peer) {
+        event(Level.INFO, "Remote member removed: " + peer.mAddress + ", " + peer.mRole);
     }
 
     /**
@@ -254,12 +305,17 @@ final class GroupFile extends Latch {
                 }
             } else if (newPeer == null || oldPeer.mMemberId < newPeer.mMemberId) {
                 // Remove old peer.
+                peerRemoveEvent(oldPeer);
                 oldIt.remove();
                 oldPeer = null;
                 continue;
             } else if (oldPeer.mMemberId == newPeer.mMemberId) {
                 // Update existing peer.
-                oldPeer.mRole = newPeer.mRole;
+                Role currentRole = oldPeer.mRole;
+                if (currentRole != newPeer.mRole) {
+                    oldPeer.mRole = newPeer.mRole;
+                    peerRoleChangeEvent(currentRole, oldPeer);
+                }
                 oldPeer = null;
                 newPeer = null;
                 continue;
@@ -267,12 +323,19 @@ final class GroupFile extends Latch {
 
             // Add new peer.
             mPeerSet.add(newPeer);
+            peerAddedEvent(newPeer);
             newPeer = null;
         }
 
         mVersion = version;
+
         mLocalMemberId = localMemberId;
-        mLocalMemberRole = localMemberRole;
+
+        Role currentRole = mLocalMemberRole;
+        if (currentRole != localMemberRole) {
+            mLocalMemberRole = localMemberRole;
+            localRoleChangeEvent(currentRole);
+        }
 
         return groupId;
     }
@@ -684,6 +747,8 @@ final class GroupFile extends Latch {
                 throw e;
             }
 
+            peerAddedEvent(peer);
+
             return peer;
         }
 
@@ -698,6 +763,8 @@ final class GroupFile extends Latch {
             mLocalMemberRole = null;
             throw e;
         }
+
+        localAddedEvent();
 
         return null;
     }
@@ -793,6 +860,8 @@ final class GroupFile extends Latch {
                     mLocalMemberRole = existingRole;
                     throw e;
                 }
+
+                localRoleChangeEvent(existingRole);
             }
 
             return true;
@@ -819,6 +888,8 @@ final class GroupFile extends Latch {
                 existing.mRole = existingRole;
                 throw e;
             }
+
+            peerRoleChangeEvent(existingRole, existing);
         }
     }
 
@@ -945,6 +1016,8 @@ final class GroupFile extends Latch {
             peers.add(existing);
             throw e;
         }
+
+        peerRemoveEvent(existing);
 
         return true;
     }
