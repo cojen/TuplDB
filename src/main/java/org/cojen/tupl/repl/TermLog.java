@@ -60,9 +60,16 @@ interface TermLog extends LKey<TermLog>, Closeable {
     boolean compact(long startIndex) throws IOException;
 
     /**
-     * @return true if the highest index is the same as the start
+     * @return true if the commit index is higher than the start index
      */
-    boolean isEmpty();
+    default boolean hasCommit() {
+        return hasCommit(startIndex());
+    }
+
+    /**
+     * @return true if the commit index is higher than the given index
+     */
+    boolean hasCommit(long index);
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.

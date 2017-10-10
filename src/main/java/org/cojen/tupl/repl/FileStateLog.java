@@ -669,7 +669,7 @@ final class FileStateLog extends Latch implements StateLog {
                         break;
                     }
                     // Skip empty conflicting terms.
-                    if (termLog.isEmpty()) {
+                    if (!termLog.hasCommit()) {
                         key = termLog; // update key for truncation
                         termLog = (TermLog) mTermLogs.lower(termLog); // findLt
                     } else {
@@ -684,7 +684,7 @@ final class FileStateLog extends Latch implements StateLog {
                     break defineTermLog;
                 }
 
-                if (term < actualTerm) {
+                if (term < actualTerm || termLog.hasCommit(index)) {
                     termLog = null;
                     break defineTermLog;
                 }
@@ -729,7 +729,6 @@ final class FileStateLog extends Latch implements StateLog {
                 while (it.hasNext()) {
                     termLog = (TermLog) it.next();
                     if (termLog.startIndex() < index) {
-                        assert termLog.isEmpty();
                         termLog.finishTerm(termLog.startIndex());
                     } else {
                         termLog.finishTerm(index);
