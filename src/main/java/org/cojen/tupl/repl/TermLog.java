@@ -60,16 +60,23 @@ interface TermLog extends LKey<TermLog>, Closeable {
     boolean compact(long startIndex) throws IOException;
 
     /**
-     * @return true if the commit index is higher than the start index
+     * Returns the potential index, which isn't appliable until the highest index reaches it.
+     */
+    long potentialCommitIndex();
+
+    /**
+     * @return true if the potential commit index is higher than the start index
      */
     default boolean hasCommit() {
         return hasCommit(startIndex());
     }
 
     /**
-     * @return true if the commit index is higher than the given index
+     * @return true if the potential commit index is higher than the given index
      */
-    boolean hasCommit(long index);
+    default boolean hasCommit(long index) {
+        return potentialCommitIndex() > index;
+    }
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.
@@ -77,7 +84,8 @@ interface TermLog extends LKey<TermLog>, Closeable {
     long endIndex();
 
     /**
-     * Copies into all relevant fields of the given info object, for the highest index.
+     * Copies into all relevant fields of the given info object, for the highest index. The
+     * commit index provided is appliable.
      */
     void captureHighest(LogInfo info);
 
@@ -112,7 +120,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * @return the commit index; might be higher than what's appliable
      * @throws IllegalStateException if the given index is lower than the commit index
      */
-    long finishTerm(long endIndex);
+    void finishTerm(long endIndex);
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest

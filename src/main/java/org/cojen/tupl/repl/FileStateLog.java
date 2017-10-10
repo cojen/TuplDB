@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
 import java.util.TreeMap;
 
 import java.util.regex.Matcher;
@@ -697,48 +698,40 @@ final class FileStateLog extends Latch implements StateLog {
                     continue;
                 }
 
-                // Persist metadata before truncating any terms.
+                // Proceed to define a new term, and to delete conflicting terms.
 
-                // FIXME: The the key. See next FIXME.
-                if (index > termLog.startIndex()) {
-                    termLog.sync();
-                    termLog.captureHighest(mMetadataInfo);
-                    if (mMetadataInfo.mHighestIndex > index) {
-                        mMetadataInfo.mHighestIndex = index;
-                    }
-                    syncMetadata(termLog);
-                } else {
-                    // FIXME: Go lower than the key. It determines the surviving highest.
-                    TermLog prevTermLog = (TermLog) mTermLogs.lower(termLog); // findLt
-                    if (prevTermLog == null) {
-                        mMetadataInfo.mTerm = termLog.term();
-                        mMetadataInfo.mHighestIndex = index;
-                    } else {
-                        prevTermLog.captureHighest(mMetadataInfo);
-                    }
-                    syncMetadata(prevTermLog);
-                }
+                SortedSet<LKey<TermLog>> toDelete = mTermLogs.tailSet(key); // viewGe
+                toDelete = new ConcurrentSkipListSet<>(toDelete); // need a copy, not a view
+                mTermLogs.removeAll(toDelete);
 
-                long commitIndex = termLog.finishTerm(index);
-
-                // Truncate and remove all conflicting term logs. Iterator might see the term
-                // log just finished, facilitating its removal. Double finishing is harmless.
-
-                Iterator<LKey<TermLog>> it = mTermLogs.tailSet(key).iterator(); // viewGe
-                while (it.hasNext()) {
-                    termLog = (TermLog) it.next();
-                    termLog.finishTerm(termLog.startIndex());
-                    it.remove();
-                }
-
-                termLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, commitIndex);
-
-                mTermLogs.add(termLog);
+                final TermLog newTermLog = FileTermLog.newTerm
+                    (mWorker, mBase, prevTerm, term, index, termLog.potentialCommitIndex());
+                mTermLogs.add(newTermLog);
 
                 mHighestTermLog = fixTermRef(mHighestTermLog);
                 mCommitTermLog = fixTermRef(mCommitTermLog);
                 mContigTermLog = fixTermRef(mContigTermLog);
 
+                // Same as doSync, except without re-acquiring any latches.
+                {
+                    TermLog highestLog = doCaptureHighest(mMetadataInfo, false);
+                    highestLog.sync();
+                    syncMetadata(highestLog);
+                }
+
+                // Can safely finish terms now that the metadata doesn't refer to them.
+
+                termLog.finishTerm(index);
+
+                // Delete all conflicting term logs. Iterator might see the term log just
+                // finished, facilitating its deletion. Double finishing is harmless.
+                Iterator<LKey<TermLog>> it = toDelete.iterator();
+                while (it.hasNext()) {
+                    termLog = (TermLog) it.next();
+                    termLog.finishTerm(termLog.startIndex());
+                }
+
+                termLog = newTermLog;
                 break defineTermLog;
             }
 
