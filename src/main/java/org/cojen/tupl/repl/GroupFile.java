@@ -112,6 +112,7 @@ final class GroupFile extends Latch {
                       File file, SocketAddress localMemberAddress, RandomAccessFile raf)
         throws IOException
     {
+        mEventListener = eventListener;
         mFile = file;
         mLocalMemberAddress = localMemberAddress;
         mPeerSet = new ConcurrentSkipListSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
@@ -123,8 +124,6 @@ final class GroupFile extends Latch {
             } finally {
                 releaseExclusive();
             }
-            // Don't publish events during file parsing.
-            mEventListener = eventListener;
         } else {
             // Create the file.
 
@@ -141,7 +140,6 @@ final class GroupFile extends Latch {
             // Version is bumped to 1 as a side-effect.
             persist();
 
-            mEventListener = eventListener;
             localAddedEvent();
         }
     }
