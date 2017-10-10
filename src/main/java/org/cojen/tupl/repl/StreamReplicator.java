@@ -96,9 +96,9 @@ public interface StreamReplicator extends DirectReplicator {
             base.getParentFile().mkdirs();
         }
 
-        return Controller.open(new FileStateLog(base), groupToken,
+        return Controller.open(config.mEventListener,
+                               new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
-                               config.mEventListener,
                                localAddress, listenAddress, config.mLocalRole,
                                seeds, config.mLocalSocket);
     }

@@ -72,11 +72,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
+    private final BiConsumer<Level, String> mEventListener;
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
-
-    private final BiConsumer<Level, String> mEventListener;
 
     private final LatchCondition mSyncCommitCondition;
 
@@ -121,27 +120,27 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     /**
     * @param localSocket optional; used for testing
      */
-    static Controller open(StateLog log, long groupToken, File groupFile,
-                           BiConsumer<Level, String> eventListener,
+    static Controller open(BiConsumer<Level, String> eventListener,
+                           StateLog log, long groupToken, File groupFile,
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
-        GroupFile gf = GroupFile.open(groupFile, localAddress, seeds.isEmpty());
-        Controller con = new Controller(log, groupToken, gf, eventListener);
+        GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, seeds.isEmpty());
+        Controller con = new Controller(eventListener, log, groupToken, gf);
         con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         return con;
     }
 
-    private Controller(StateLog log, long groupToken, GroupFile gf,
-                       BiConsumer<Level, String> eventListener)
+    private Controller(BiConsumer<Level, String> eventListener,
+                       StateLog log, long groupToken, GroupFile gf)
         throws IOException
     {
+        mEventListener = eventListener;
         mStateLog = log;
         mScheduler = new Scheduler();
         mChanMan = new ChannelManager(mScheduler, groupToken, gf == null ? 0 : gf.groupId());
         mGroupFile = gf;
-        mEventListener = eventListener;
         mSyncCommitCondition = new LatchCondition();
     }
 
@@ -161,7 +160,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Need to join the group.
 
                 GroupJoiner joiner = new GroupJoiner
-                    (groupFile, mChanMan.getGroupToken(), localAddress, listenAddress);
+                    (mEventListener, groupFile, mChanMan.getGroupToken(),
+                     localAddress, listenAddress);
 
                 joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
 
@@ -521,14 +521,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (quickCommit) {
             mScheduler.execute(this::affirmLeadership);
-        }
-
-        roleChangeEvent(oldRole, newRole);
-    }
-
-    private void roleChangeEvent(Role oldRole, Role newRole) {
-        if (oldRole != newRole && newRole != null) {
-            event(Level.INFO, "Local member role changed: " + oldRole + " to " + newRole);
         }
     }
 
@@ -1919,8 +1911,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 requestChannel.groupVersion(this, mGroupFile.version());
             }
         }
-
-        roleChangeEvent(oldRole, newRole);
 
         return null;
     }
