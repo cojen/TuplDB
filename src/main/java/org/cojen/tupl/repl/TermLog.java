@@ -112,7 +112,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * @return the commit index; might be higher than what's appliable
      * @throws IllegalStateException if the given index is lower than the commit index
      */
-    long finishTerm(long endIndex) throws IOException;
+    long finishTerm(long endIndex);
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest
