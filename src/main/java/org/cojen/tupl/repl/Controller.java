@@ -1609,8 +1609,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         releaseExclusive();
 
         if (first) {
-            event(Level.INFO, "Remote member is the leader: newTerm=" + term + ", address="
-                  + from.peer().mAddress);
+            event(Level.INFO, "Remote member is the leader: " + from.peer().mAddress +
+                  ", newTerm=" + term);
         }
 
         return true;
