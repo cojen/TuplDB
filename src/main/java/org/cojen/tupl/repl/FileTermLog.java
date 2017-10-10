@@ -617,7 +617,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public long finishTerm(long endIndex) throws IOException {
+    public long finishTerm(long endIndex) {
         long commitIndex;
         List<Delayed> removedTasks;
 

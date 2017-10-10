@@ -721,18 +721,13 @@ final class FileStateLog extends Latch implements StateLog {
 
                 long commitIndex = termLog.finishTerm(index);
 
-                // Truncate and remove all conflicting term logs. Iterator might start with the
-                // term log just finished, facilitating its removal. Finishing again at the
-                // same index is harmless.
+                // Truncate and remove all conflicting term logs. Iterator might see the term
+                // log just finished, facilitating its removal. Double finishing is harmless.
 
                 Iterator<LKey<TermLog>> it = mTermLogs.tailSet(key).iterator(); // viewGe
                 while (it.hasNext()) {
                     termLog = (TermLog) it.next();
-                    if (termLog.startIndex() < index) {
-                        termLog.finishTerm(termLog.startIndex());
-                    } else {
-                        termLog.finishTerm(index);
-                    }
+                    termLog.finishTerm(termLog.startIndex());
                     it.remove();
                 }
 
