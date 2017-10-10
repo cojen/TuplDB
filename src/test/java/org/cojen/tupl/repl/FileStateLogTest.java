@@ -99,6 +99,7 @@ public class FileStateLogTest {
         LogWriter writer = mLog.openWriter(11, 15, 3000);
         writer.write(new byte[1]);
         writer.release();
+        mLog.commit(writer.index());
 
         // Previous term conflict.
         assertFalse(mLog.defineTerm(10, 16, 4000));
@@ -873,6 +874,50 @@ public class FileStateLogTest {
         assertEquals(100, contigIndex);
         assertEquals(1, result.mRanges.size());
         assertEquals(new Range(100, 150), result.mRanges.get(0));
+    }
+
+    @Test
+    public void replaceNonCommitted() throws Exception {
+        // Allow new terms to replace conflicting terms which aren't committed.
+
+        // Term 1 starts at 0.
+        LogWriter w1 = mLog.openWriter(0, 1, 0);
+        assertEquals(100, w1.write(new byte[100]));
+        w1.release();
+
+        // Term 2 starts at 100.
+        LogWriter w2 = mLog.openWriter(1, 2, 100);
+        assertEquals(100, w2.write(new byte[100]));
+        w2.release();
+
+        // Term 3 starts at 200.
+        LogWriter w3 = mLog.openWriter(2, 3, 200);
+        assertEquals(100, w3.write(new byte[100]));
+        w3.release();
+
+        LogInfo info = mLog.captureHighest();
+        assertEquals(3, info.mTerm);
+        assertEquals(300, info.mHighestIndex);
+
+        // Term 4 replaces term 2 and 3, and it also extends term 1.
+        LogWriter w4 = mLog.openWriter(1, 4, 200);
+        assertEquals(100, w4.write(new byte[100]));
+        w4.release();
+
+        info = mLog.captureHighest();
+        assertEquals(4, info.mTerm);
+        assertEquals(300, info.mHighestIndex);
+
+        // Commit term 4, and now it cannot be replaced.
+        mLog.commit(250);
+
+        info = mLog.captureHighest();
+        assertEquals(4, info.mTerm);
+        assertEquals(300, info.mHighestIndex);
+        assertEquals(250, info.mCommitIndex);
+
+        assertNull(mLog.openWriter(1, 5, 200));
+        assertNull(mLog.openWriter(1, 5, 250));
     }
 
     @Test

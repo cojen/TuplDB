@@ -406,9 +406,9 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public boolean isEmpty() {
+    public boolean hasCommit(long index) {
         acquireShared();
-        boolean result = mLogHighestIndex <= mLogStartIndex;
+        boolean result = mLogCommitIndex > index;
         releaseShared();
         return result;
     }
