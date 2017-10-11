@@ -42,6 +42,9 @@ import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.repl.DatabaseReplicator;
+import org.cojen.tupl.repl.ReplicatorConfig;
+
 import static org.cojen.tupl.Utils.*;
 
 /**
@@ -77,6 +80,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     int mPageSize;
     Boolean mDirectPageAccess;
     boolean mCachePriming;
+    ReplicatorConfig mReplConfig;
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
@@ -362,10 +366,21 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Enable replication by providing a {@link ReplicationManager} instance.
+     * Enable replication using the given configuration. The base file and event listener are
+     * set automatically for the given config object, when the database is opened.
+     */
+    public DatabaseConfig replicate(ReplicatorConfig config) {
+        mReplConfig = config;
+        mReplManager = null;
+        return this;
+    }
+
+    /**
+     * Enable replication with an explicit {@link ReplicationManager} instance.
      */
     public DatabaseConfig replicate(ReplicationManager manager) {
         mReplManager = manager;
+        mReplConfig = null;
         return this;
     }
 
@@ -614,6 +629,35 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     final Database open(boolean destroy, InputStream restore) throws IOException {
+        boolean openedReplicator = false;
+
+        if (mReplConfig != null && mBaseFile != null && mReplManager == null) {
+            if (mEventListener != null) {
+                mReplConfig.eventListener(new ReplicationEventListener(mEventListener));
+            }
+            mReplConfig.baseFilePath(mBaseFile.getPath() + ".repl");
+            mReplConfig.createFilePath(mMkdirs);
+            mReplManager = DatabaseReplicator.open(mReplConfig);
+            openedReplicator = true;
+        }
+
+        try {
+            return doOpen(destroy, restore);
+        } catch (Throwable e) {
+            if (openedReplicator) {
+                try {
+                    mReplManager.close();
+                } catch (Throwable e2) {
+                    suppress(e, e2);
+                }
+                mReplManager = null;
+            }
+
+            throw e;
+        }
+    }
+
+    private Database doOpen(boolean destroy, InputStream restore) throws IOException {
         if (!destroy && restore == null && mReplManager != null) shouldRestore: {
             // If no data files exist, attempt to restore from a peer.
 
@@ -629,7 +673,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
             }
 
             // ReplicationManager returns null if no restore should be performed.
-            restore = mReplManager.restoreRequest();
+            restore = mReplManager.restoreRequest(mEventListener);
         }
 
         Method m;

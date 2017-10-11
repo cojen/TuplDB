@@ -31,6 +31,8 @@ import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -152,12 +154,14 @@ public class FileTermLogTest {
         mLog.finishTerm(index);
         assertEquals(index, mLog.endIndex());
 
+        /* Extending the term is allowed, because conflicting empty terms can be removed.
         try {
             mLog.finishTerm(index + 1);
             fail();
         } catch (IllegalStateException e) {
             // Expected.
         }
+        */
 
         // Cannot write past end.
         if (reopen) {
@@ -384,7 +388,7 @@ public class FileTermLogTest {
                             assertEquals((byte) rnd2.nextInt(), buf[j]);
                         }
                         if (compact) {
-                            mLog.compact(reader.index(), true);
+                            mLog.compact(reader.index());
                         }
                     }
 
@@ -419,7 +423,7 @@ public class FileTermLogTest {
             assertEquals(index, info.mHighestIndex);
 
             long commitIndex = index + (rnd.nextInt(1000) - 500);
-            if (commitIndex >= 0) {
+            if (commitIndex >= 0 && i < (100000 - 1)) {
                 mLog.commit(commitIndex);
             }
         }
@@ -436,11 +440,12 @@ public class FileTermLogTest {
         assertEquals(index, mLog.endIndex());
         r.join();
 
-        assertEquals(index, r.mTotal);
         Throwable ex = r.mEx;
         if (ex != null) {
             throw ex;
         }
+
+        assertEquals(index, r.mTotal);
     }
 
     @Test
@@ -598,23 +603,34 @@ public class FileTermLogTest {
         TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
             TestUtils.sleep(1000);
             try {
-                mLog.finishTerm(findex);
+                LogWriter w = mLog.openWriter(findex);
+                int rem = 100 - msg3.length;
+                byte[] b = new byte[(int) (findex + rem)]; 
+                for (int i=0; i<b.length; i++) {
+                    b[i] = (byte) (i + 1);
+                }
+                write(w, b);
+                mLog.finishTerm(findex + rem);
             } catch (IOException e) {
                 Utils.uncaught(e);
             }
         }));
 
-        waiter = new Waiter(index + 1, upon);
+        waiter = new Waiter(index + 101, upon);
         waiter.begin();
         assertEquals(-1, waiter.waitForResult(-1));
 
         // Verify that everything is read back properly, with no blocking.
         byte[] complete = concat(msg1, msg2, msg3);
-        byte[] buf = new byte[100];
+        byte[] buf = new byte[complete.length + 100 - msg3.length];
         LogReader reader = mLog.openReader(0);
         int amt = reader.read(buf, 0, buf.length);
+        assertEquals(buf.length, amt);
         reader.release();
-        TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, amt));
+        TestUtils.fastAssertArrayEquals(complete, Arrays.copyOf(buf, complete.length));
+        for (int i=0; i<(100 - msg3.length); i++) {
+            assertEquals((byte) (i + 1), buf[i + complete.length]);
+        }
     }
 
     @Test
@@ -995,7 +1011,7 @@ public class FileTermLogTest {
 
         long commitIndex = 1_500_000;
         mLog.commit(commitIndex);
-        mLog.compact(commitIndex, true);
+        mLog.compact(commitIndex);
 
         LogReader reader = mLog.openReader(0);
         try {
@@ -1034,10 +1050,48 @@ public class FileTermLogTest {
 
         long commitIndex2 = 4_000_000;
         mLog.commit(commitIndex2);
-        mLog.compact(commitIndex2, true);
+        mLog.compact(commitIndex2);
 
         assertEquals(0, writer.write(b));
         writer.release();
+    }
+
+    @Test
+    public void commitBoostHighest() throws Exception {
+        // Commit should advance the highest index in some cases, because not all writes are
+        // expected to provide a highest index. Replies for missing data don't provide a
+        // highest index, and then the term might end before the leader writes again.
+
+        LogWriter writer = mLog.openWriter(0);
+        write(writer, new byte[100], 0);
+        writer.release();
+
+        AtomicReference<Object> result = new AtomicReference<>();
+
+        Thread stuckReader = TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                byte[] buf = new byte[1000];
+                LogReader reader = mLog.openReader(0);
+                result.set(reader.read(buf));
+            } catch (Throwable e) {
+                result.set(e);
+            }
+        }));
+
+        assertNull(result.get());
+
+        mLog.commit(200);
+        mLog.finishTerm(200);
+
+        byte[] buf = new byte[1000];
+
+        LogReader reader = mLog.openReader(0);
+        int amt = reader.read(buf);
+        assertEquals(100, amt);
+        reader.release();
+
+        stuckReader.join();
+        assertEquals(100, result.get());
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {

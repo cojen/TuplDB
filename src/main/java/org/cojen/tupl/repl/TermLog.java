@@ -55,14 +55,28 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * be lower than what was requested, dependent on how much data could be truncated. As a
      * side-effect of calling this method, the previous term might be updated.
      *
-     * @param true if all segements can be deleted, even the last one
+     * @return true if compaction attempt was full and all segments were deleted
      */
-    void compact(long startIndex, boolean all) throws IOException;
+    boolean compact(long startIndex) throws IOException;
 
     /**
-     * @return true if log has no segments
+     * Returns the potential index, which isn't appliable until the highest index reaches it.
      */
-    boolean isEmpty();
+    long potentialCommitIndex();
+
+    /**
+     * @return true if the potential commit index is higher than the start index
+     */
+    default boolean hasCommit() {
+        return hasCommit(startIndex());
+    }
+
+    /**
+     * @return true if the potential commit index is higher than the given index
+     */
+    default boolean hasCommit(long index) {
+        return potentialCommitIndex() > index;
+    }
 
     /**
      * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.
@@ -70,7 +84,8 @@ interface TermLog extends LKey<TermLog>, Closeable {
     long endIndex();
 
     /**
-     * Copies into all relevant fields of the given info object, for the highest index.
+     * Copies into all relevant fields of the given info object, for the highest index. The
+     * commit index provided is appliable.
      */
     void captureHighest(LogInfo info);
 
@@ -102,11 +117,10 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * Set the end index for this term instance, truncating all higher data. The highest index
      * will also be set, if the given index is within the contiguous region of data.
      *
-     * @return the commit index
+     * @return the commit index; might be higher than what's appliable
      * @throws IllegalStateException if the given index is lower than the commit index
-     * @throws IllegalStateException if the term is already finished at a lower index
      */
-    long finishTerm(long endIndex) throws IOException;
+    void finishTerm(long endIndex);
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest

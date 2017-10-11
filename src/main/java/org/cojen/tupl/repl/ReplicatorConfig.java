@@ -29,6 +29,10 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
+import java.util.function.BiConsumer;
+
+import java.util.logging.Level;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -50,6 +54,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     ServerSocket mLocalSocket;
     Role mLocalRole;
     Set<SocketAddress> mSeeds;
+    transient BiConsumer<Level, String> mEventListener;
 
     public ReplicatorConfig() {
         createFilePath(true);
@@ -202,6 +207,14 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             mSeeds = new HashSet<>();
         }
         mSeeds.add(addr);
+        return this;
+    }
+
+    /**
+     * Set a listener which receives notifications of actions being performed by the replicator.
+     */
+    public ReplicatorConfig eventListener(BiConsumer<Level, String> listener) {
+        mEventListener = listener;
         return this;
     }
 

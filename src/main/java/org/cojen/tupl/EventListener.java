@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.util.logging.Level;
+
 /**
  * Listener which receives notifications of actions being performed by the
  * database. Implementations must not suspend the calling thread or throw any
@@ -31,4 +33,44 @@ public interface EventListener {
      * @param args arguments for message
      */
     public void notify(EventType type, String message, Object... args);
+
+    public default boolean isObserved(EventType type) {
+        return isObserved(type.category) && isObserved(type.level);
+    }
+
+    public default boolean isObserved(EventType.Category category) {
+        return true;
+    }
+
+    public default boolean isObserved(Level level) {
+        return true;
+    }
+
+    /**
+     * Returns a filtered listener which only observes the given event categories.
+     */
+    public default EventListener observe(EventType.Category... categories) {
+        return AllowEventListener.make(this, categories);
+    }
+
+    /**
+     * Returns a filtered listener which only observes the given event levels.
+     */
+    public default EventListener observe(Level... levels) {
+        return AllowEventListener.make(this, levels);
+    }
+
+    /**
+     * Returns a filtered listener which never observes the given event categories.
+     */
+    public default EventListener ignore(EventType.Category... categories) {
+        return DisallowEventListener.make(this, categories);
+    }
+
+    /**
+     * Returns a filtered listener which never observes the given event levels.
+     */
+    public default EventListener ignore(Level... levels) {
+        return DisallowEventListener.make(this, levels);
+    }
 }

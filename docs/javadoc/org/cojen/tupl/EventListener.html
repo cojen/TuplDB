@@ -18,8 +18,8 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6};
-var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
+var methods = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":18};
+var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
@@ -49,7 +49,7 @@ var activeTableTab = "activeTableTab";
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../index.html?org/cojen/tupl/EventListener.html" target="_top">Frames</a></li>
@@ -104,7 +104,7 @@ var activeTableTab = "activeTableTab";
 </dl>
 <dl>
 <dt>All Known Implementing Classes:</dt>
-<dd><a href="../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dd>
+<dd><a href="../../../org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a>, <a href="../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dd>
 </dl>
 <hr>
 <br>
@@ -129,16 +129,52 @@ var activeTableTab = "activeTableTab";
 </a>
 <h3>Method Summary</h3>
 <table class="memberSummary" border="0" cellpadding="3" cellspacing="0" summary="Method Summary table, listing methods, and an explanation">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colLast" scope="col">Method and Description</th>
 </tr>
 <tr id="i0" class="altColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#ignore-org.cojen.tupl.EventType.Category...-">ignore</a></span>(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</code>
+<div class="block">Returns a filtered listener which never observes the given event categories.</div>
+</td>
+</tr>
+<tr id="i1" class="rowColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#ignore-java.util.logging.Level...-">ignore</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</code>
+<div class="block">Returns a filtered listener which never observes the given event levels.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
+<td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#isObserved-org.cojen.tupl.EventType.Category-">isObserved</a></span>(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>&nbsp;category)</code>&nbsp;</td>
+</tr>
+<tr id="i3" class="rowColor">
+<td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#isObserved-org.cojen.tupl.EventType-">isObserved</a></span>(<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type)</code>&nbsp;</td>
+</tr>
+<tr id="i4" class="altColor">
+<td class="colFirst"><code>default boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#isObserved-java.util.logging.Level-">isObserved</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>&nbsp;level)</code>&nbsp;</td>
+</tr>
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify</a></span>(<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type,
       <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;message,
       <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>...&nbsp;args)</code>&nbsp;</td>
+</tr>
+<tr id="i6" class="altColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#observe-org.cojen.tupl.EventType.Category...-">observe</a></span>(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</code>
+<div class="block">Returns a filtered listener which only observes the given event categories.</div>
+</td>
+</tr>
+<tr id="i7" class="rowColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventListener.html#observe-java.util.logging.Level...-">observe</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</code>
+<div class="block">Returns a filtered listener which only observes the given event levels.</div>
+</td>
 </tr>
 </table>
 </li>
@@ -158,7 +194,7 @@ var activeTableTab = "activeTableTab";
 <a name="notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>notify</h4>
 <pre>void&nbsp;notify(<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type,
@@ -169,6 +205,73 @@ var activeTableTab = "activeTableTab";
 <dd><code>message</code> - event message format</dd>
 <dd><code>args</code> - arguments for message</dd>
 </dl>
+</li>
+</ul>
+<a name="isObserved-org.cojen.tupl.EventType-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isObserved</h4>
+<pre>default&nbsp;boolean&nbsp;isObserved(<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type)</pre>
+</li>
+</ul>
+<a name="isObserved-org.cojen.tupl.EventType.Category-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isObserved</h4>
+<pre>default&nbsp;boolean&nbsp;isObserved(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>&nbsp;category)</pre>
+</li>
+</ul>
+<a name="isObserved-java.util.logging.Level-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isObserved</h4>
+<pre>default&nbsp;boolean&nbsp;isObserved(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>&nbsp;level)</pre>
+</li>
+</ul>
+<a name="observe-org.cojen.tupl.EventType.Category...-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>observe</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;observe(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</pre>
+<div class="block">Returns a filtered listener which only observes the given event categories.</div>
+</li>
+</ul>
+<a name="observe-java.util.logging.Level...-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>observe</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;observe(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</pre>
+<div class="block">Returns a filtered listener which only observes the given event levels.</div>
+</li>
+</ul>
+<a name="ignore-org.cojen.tupl.EventType.Category...-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>ignore</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;ignore(<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</pre>
+<div class="block">Returns a filtered listener which never observes the given event categories.</div>
+</li>
+</ul>
+<a name="ignore-java.util.logging.Level...-">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>ignore</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;ignore(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</pre>
+<div class="block">Returns a filtered listener which never observes the given event levels.</div>
 </li>
 </ul>
 </li>
@@ -199,7 +302,7 @@ var activeTableTab = "activeTableTab";
 <div class="subNav">
 <ul class="navList">
 <li><a href="../../../org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
+<li><a href="../../../org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
 </ul>
 <ul class="navList">
 <li><a href="../../../index.html?org/cojen/tupl/EventListener.html" target="_top">Frames</a></li>

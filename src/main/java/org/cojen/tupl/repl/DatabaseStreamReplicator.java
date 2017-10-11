@@ -37,6 +37,7 @@ import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
@@ -52,6 +53,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  */
 final class DatabaseStreamReplicator implements DatabaseReplicator {
     private static final long ENCODING = 7944834171105125288L;
+    private static final long RESTORE_EVENT_RATE_MILLIS = 5000;
 
     private final StreamReplicator mRepl;
 
@@ -93,16 +95,13 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public InputStream restoreRequest() throws IOException {
+    public InputStream restoreRequest(EventListener listener) throws IOException {
         Map<String, String> options = Collections.singletonMap("checksum", "CRC32C");
         SnapshotReceiver receiver = mRepl.restore(options);
 
         if (receiver == null) {
             return null;
         }
-
-        // TODO: Try to switch local role to OBSERVER, in case member was already in the group
-        // as NORMAL or STANDBY, but it shouldn't become the leader during the restore.
 
         InputStream in;
 
@@ -118,6 +117,20 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                     throw new IOException("Unknown checksum option: " + checksumOption);
                 }
             }
+
+            long length = receiver.length();
+
+            if (listener != null && length >= 0 && (mRepl instanceof Controller)) {
+                Scheduler scheduler = ((Controller) mRepl).scheduler();
+                RestoreInputStream rin = new RestoreInputStream(in);
+                in = rin;
+
+                listener.notify(EventType.REPLICATION_RESTORE,
+                                "Receiving snapshot: %1$,d bytes from %2$s",
+                                length, receiver.senderAddress());
+
+                scheduler.schedule(new ProgressTask(listener, scheduler, rin, length));
+            }
         } catch (Throwable e) {
             Utils.closeQuietly(receiver);
             throw e;
@@ -126,8 +139,76 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         return in;
     }
 
+    private static final class ProgressTask extends Delayed {
+        private final EventListener mListener;
+        private final RestoreInputStream mRestore;
+        private final long mLength;
+        private final Scheduler mScheduler;
+
+        private long mLastTimeMillis = Long.MIN_VALUE;
+        private long mLastReceived;
+
+        ProgressTask(EventListener listener, Scheduler scheduler,
+                     RestoreInputStream in, long length)
+        {
+            super(0);
+            mListener = listener;
+            mScheduler = scheduler;
+            mRestore = in;
+            mLength = length;
+        }
+
+        @Override
+        protected void doRun(long counter) {
+            if (mRestore.isFinished()) {
+                return;
+            }
+
+            long now = System.currentTimeMillis();
+
+            long received = mRestore.received();
+            double percent = 100.0 * (received / (double) mLength);
+            long progess = received - mLastReceived;
+
+            if (mLastTimeMillis != Long.MIN_VALUE) {
+                double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
+                String format = "Receiving snapshot: %1$1.3f%%";
+                if (rate == 0) {
+                    mListener.notify(EventType.REPLICATION_RESTORE, format, percent);
+                } else {
+                    format += "  rate: %2$,d bytes/s  remaining: ~%3$s";
+                    long remainingSeconds = (long) ((mLength - received) / rate);
+                    mListener.notify
+                        (EventType.REPLICATION_RESTORE, format,
+                         percent, (long) rate, remainingDuration(remainingSeconds));
+                }
+            }
+
+            mCounter = now + RESTORE_EVENT_RATE_MILLIS;
+
+            mLastTimeMillis = now;
+            mLastReceived = received;
+
+            mScheduler.schedule(this);
+        }
+
+        private static String remainingDuration(long seconds) {
+            if (seconds < (60 * 2)) {
+                return seconds + "s";
+            } else if (seconds < (60 * 60 * 2)) {
+                return (seconds / 60) + "m";
+            } else if (seconds < (60 * 60 * 24 * 2)) {
+                return (seconds / (60 * 60)) + "h";
+            } else {
+                return (seconds / (60 * 60 * 24)) + "d";
+            }
+        }
+    }
+
     @Override
     public void start(long position) throws IOException {
+        System.out.println("start: " + position);
+
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }
@@ -313,6 +394,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         @Override
         public long position() {
             return mWriter.index();
+        }
+
+        @Override
+        public long confirmedPosition() {
+            return mWriter.commitIndex();
         }
 
         @Override

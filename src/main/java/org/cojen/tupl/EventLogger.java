@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,55 +17,46 @@
 
 package org.cojen.tupl;
 
-import java.io.PrintStream;
+import java.util.logging.Logger;
+import java.util.logging.LogRecord;
 
 /**
- * Event listener implementation which prints events to an output stream.
+ * Event listener implementation which passes events to a {@link Logger logger}.
  *
  * @author Brian S O'Neill
  */
-public class EventPrinter implements EventListener {
-    private final PrintStream mOut;
+public final class EventLogger implements EventListener {
+    private final Logger mLogger;
 
     /**
-     * Prints events to standard out.
+     * Passes events to the global logger.
      */
-    public EventPrinter() {
-        this(System.out);
+    public EventLogger() {
+        this(Logger.getGlobal());
     }
 
     /**
-     * Prints events to the given stream.
+     * Passes events to the given logger.
      */
-    public EventPrinter(PrintStream out) {
-        if (out == null) {
+    public EventLogger(Logger logger) {
+        if (logger == null) {
             throw null;
         }
-        mOut = out;
+        mLogger = logger;
     }
 
     @Override
     public void notify(EventType type, String message, Object... args) {
         try {
-            mOut.println(type.category + ": " + String.format(message, args));
+            if (mLogger.isLoggable(type.level)) {
+                String msg = type.category + ": " + String.format(message, args);
+                LogRecord record = new LogRecord(type.level, msg);
+                record.setSourceClassName(null);
+                record.setSourceMethodName(null);
+                mLogger.log(record);
+            }
         } catch (Throwable e) {
             // Ignore, and so this listener is safe for the caller.
         }
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof EventPrinter) {
-            return mOut.equals(((EventPrinter) obj).mOut);
-        }
-        return false;
-    }
-
-    @Override
-    public int hashCode() {
-        return mOut.hashCode();
     }
 }

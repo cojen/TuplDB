@@ -51,10 +51,11 @@ public interface ReplicationManager extends Closeable {
      * snapshot from a replication peer. If null is returned, the database will try to start
      * reading replication data at the lowest position.
      *
+     * @param listener optional restore event listener
      * @return null if no snapshot could be found
      * @throws IOException if a snapshot was found, but requesting it failed
      */
-    default InputStream restoreRequest() throws IOException {
+    default InputStream restoreRequest(EventListener listener) throws IOException {
         return null;
     }
 
@@ -127,6 +128,11 @@ public interface ReplicationManager extends Closeable {
          * the leader.
          */
         long position();
+
+        /**
+         * Returns the current confirmed log position.
+         */
+        long confirmedPosition();
 
         /**
          * Invokes the given callback upon a leadership change. Callback should be invoked at

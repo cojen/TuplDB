@@ -487,6 +487,9 @@ public interface Database extends CauseCloseable, Flushable {
      * Flushes all committed transactions, but not durably. Transactions committed with {@link
      * DurabilityMode#NO_FLUSH no-flush} effectively become {@link DurabilityMode#NO_SYNC
      * no-sync} durable.
+     *
+     * <p>When the database is replicated, the no-flush mode is identical to the no-sync mode.
+     * Calling this method on a replicated database has no effect.
      */
     @Override
     public abstract void flush() throws IOException;
@@ -495,6 +498,12 @@ public interface Database extends CauseCloseable, Flushable {
      * Durably flushes all committed transactions. Transactions committed with {@link
      * DurabilityMode#NO_FLUSH no-flush} and {@link DurabilityMode#NO_SYNC no-sync} effectively
      * become {@link DurabilityMode#SYNC sync} durable.
+     *
+     * <p>When the database is replicated, no-flush and no-sync transactions commit
+     * asynchronously, and this method doesn't wait for them to be fully committed. The
+     * transaction must use the {@link DurabilityMode#SYNC sync} mode when commit assurance is
+     * required, and then this method can be called afterwards to acheive a stronger durability
+     * guarantee.
      */
     public abstract void sync() throws IOException;
 

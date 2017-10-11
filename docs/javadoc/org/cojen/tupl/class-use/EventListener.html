@@ -111,8 +111,47 @@
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code>class&nbsp;</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></span></code>
+<div class="block">Event listener implementation which passes events to a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging"><code>logger</code></a>.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>class&nbsp;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></span></code>
 <div class="block">Event listener implementation which prints events to an output stream.</div>
+</td>
+</tr>
+</tbody>
+</table>
+<table class="useSummary" border="0" cellpadding="3" cellspacing="0" summary="Use table, listing methods, and an explanation">
+<caption><span>Methods in <a href="../../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a> that return <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Method and Description</th>
+</tr>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventListener.html#ignore-org.cojen.tupl.EventType.Category...-">ignore</a></span>(<a href="../../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</code>
+<div class="block">Returns a filtered listener which never observes the given event categories.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventListener.html#ignore-java.util.logging.Level...-">ignore</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</code>
+<div class="block">Returns a filtered listener which never observes the given event levels.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventListener.html#observe-org.cojen.tupl.EventType.Category...-">observe</a></span>(<a href="../../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</code>
+<div class="block">Returns a filtered listener which only observes the given event categories.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>default <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<td class="colLast"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/EventListener.html#observe-java.util.logging.Level...-">observe</a></span>(<a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging">Level</a>...&nbsp;levels)</code>
+<div class="block">Returns a filtered listener which only observes the given event levels.</div>
 </td>
 </tr>
 </tbody>
@@ -148,6 +187,22 @@
 <tr class="altColor">
 <td class="colFirst"><code>static interface&nbsp;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></span></code>&nbsp;</td>
+</tr>
+</tbody>
+</table>
+<table class="useSummary" border="0" cellpadding="3" cellspacing="0" summary="Use table, listing methods, and an explanation">
+<caption><span>Methods in <a href="../../../../org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a> with parameters of type <a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colLast" scope="col">Method and Description</th>
+</tr>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colLast"><span class="typeNameLabel">ReplicationManager.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest-org.cojen.tupl.EventListener-">restoreRequest</a></span>(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code>
+<div class="block">Called when the database is created, in an attempt to retrieve an existing database
+ snapshot from a replication peer.</div>
+</td>
 </tr>
 </tbody>
 </table>
