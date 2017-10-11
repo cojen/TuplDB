@@ -21,9 +21,9 @@ import java.io.IOException;
 
 /**
  * Message-oriented replication interface, which is a bit easier to use than {@link
- * StreamReplicator}. Although it has slightly higher overhead, control message passing is
- * handled automatically. Replicas are still required to be reading in order for control
- * messages to be processed, however.
+ * StreamReplicator}. Although this replicator has slightly higher overhead, control message
+ * passing is handled automatically. Replicas are still required to be reading in order for
+ * control messages to be processed, however.
  *
  * @author Brian S O'Neill
  * @see StreamReplicator
