@@ -100,6 +100,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mGrantsRemaining;
     private int mElectionValidated;
     private long mValidatedTerm;
+    private long mLeaderCommitIndex;
 
     private LogWriter mLeaderLogWriter;
     private ReplWriter mLeaderReplWriter;
@@ -226,7 +227,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (mLocalMode != MODE_FOLLOWER && mGroupFile.localMemberRole() != Role.NORMAL) {
             // Step down as leader or candidate.
-            toFollower();
+            toFollower("local role changed");
         }
 
         // Wake up syncCommit waiters which are stuck because removed peers aren't responding.
@@ -904,8 +905,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
         try {
             if (mLocalMode == MODE_LEADER) {
-                // FIXME: If commit index is lagging behind and not moving, switch to follower.
-                // This isn't in the Raft algorithm, but it really should be.
                 doAffirmLeadership();
                 return;
             }
@@ -919,7 +918,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (mLocalMode == MODE_CANDIDATE) {
                 // Abort current election and start a new one.
-                toFollower();
+                toFollower("election timed out");
             }
 
             mLeaderReplyChannel = null;
@@ -983,30 +982,51 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Caller must acquire exclusive latch, which is released by this method.
     private void doAffirmLeadership() {
-        Channel[] peerChannels = mAllChannels;
-        LogWriter writer = mLeaderLogWriter;
-        releaseExclusive();
+        LogWriter writer;
+        long highestIndex, commitIndex;
 
-        if (writer == null) {
-            // Not leader anymore.
-            return;
+        try {
+            writer = mLeaderLogWriter;
+
+            if (writer == null) {
+                // Not the leader anymore.
+                return;
+            }
+
+            mStateLog.captureHighest(writer);
+            highestIndex = writer.mHighestIndex;
+            commitIndex = writer.mCommitIndex;
+
+            if (commitIndex >= highestIndex || commitIndex > mLeaderCommitIndex) {
+                mElectionValidated = 1;
+                mLeaderCommitIndex = commitIndex;
+            } else if (mElectionValidated >= 0) {
+                mElectionValidated--;
+            } else {
+                toFollower("commit index is stalled");
+                return;
+            }
+        } finally {
+            releaseExclusive();
         }
+
+        Channel[] peerChannels = mAllChannels;
 
         long prevTerm = writer.prevTerm();
         long term = writer.term();
         long index = writer.index();
-
-        mStateLog.captureHighest(writer);
-        long highestIndex = writer.mHighestIndex;
-        long commitIndex = writer.mCommitIndex;
 
         for (Channel peerChan : peerChannels) {
             peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, EMPTY_DATA);
         }
     }
 
-    // Caller must hold exclusive latch.
-    private void toFollower() {
+    /**
+     * Caller must hold exclusive latch.
+     *
+     * @param reason pass null if term incremented
+     */
+    private void toFollower(String reason) {
         final int originalMode = mLocalMode;
 
         if (originalMode != MODE_FOLLOWER) {
@@ -1021,15 +1041,27 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderReplWriter.deactivate();
             }
 
+            StringBuilder b = new StringBuilder("Local member ");
+
             if (originalMode == MODE_LEADER) {
                 if (mSkipMissingDataTask) {
                     mSkipMissingDataTask = false;
                     scheduleMissingDataTask();
                 }
-                event(Level.INFO, "Local member leadership lost: newTerm=" + mCurrentTerm);
+                b.append("leadership");
             } else {
-                event(Level.INFO, "Local member candidacy lost: newTerm=" + mCurrentTerm);
+                b.append("candidacy");
             }
+
+            b.append(" lost: ");
+
+            if (reason == null) {
+                b.append("newTerm=").append(mCurrentTerm);
+            } else {
+                b.append(reason);
+            }
+
+            event(Level.INFO, b.toString());
         }
     }
 
@@ -1235,7 +1267,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mCurrentTerm = currentTerm = mStateLog.checkCurrentTerm(term);
 
             if (currentTerm > originalTerm) {
-                toFollower();
+                toFollower(null);
             }
 
             if (currentTerm >= originalTerm && !isBehind(highestTerm, highestIndex)) {
@@ -1267,6 +1299,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
 
         final long originalTerm = mCurrentTerm;
+        String reason;
 
         if (term < 0 && (term &= ~(1L << 63)) == originalTerm) {
             // Vote granted.
@@ -1282,6 +1315,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toLeader(term, info.mHighestIndex);
                 return true;
             }
+
+            reason = "stale vote reply";
         } else {
             // Vote denied.
 
@@ -1298,9 +1333,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 releaseExclusive();
                 return true;
             }
+
+            reason = "vote denied";
         }
 
-        toFollower();
+        toFollower(reason);
         releaseExclusive();
         return true;
     }
@@ -1328,6 +1365,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
             return;
         }
+
+        // Don't give up leadership too soon once elected. After a few initial calls to
+        // electionTask, the validation check which ensures that the commit index is advancing
+        // will have stabilized.
+        mElectionValidated = 5;
 
         doAffirmLeadership();
     }
@@ -1377,7 +1419,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (term > originalTerm) {
                 mCurrentTerm = mStateLog.checkCurrentTerm(term);
                 if (mCurrentTerm > originalTerm) {
-                    toFollower();
+                    toFollower(null);
                 }
             }
         } finally {
@@ -1589,7 +1631,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         releaseExclusive();
                         return true;
                     }
-                    toFollower();
+                    toFollower(null);
                 } catch (Throwable e) {
                     releaseExclusive();
                     throw e;
@@ -1637,7 +1679,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 if (mCurrentTerm > originalTerm) {
-                    toFollower();
+                    toFollower(null);
                 } else {
                     // Cannot commit on behalf of older terms.
                 }
