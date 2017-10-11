@@ -17,7 +17,10 @@
 
 package org.cojen.tupl.repl;
 
+import java.io.InputStream;
 import java.io.InterruptedIOException;
+import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * Defines a collection of remote asynchronous methods. Method invocations are permitted to
@@ -41,6 +44,11 @@ interface Channel {
     default int waitForConnection(int timeoutMillis) throws InterruptedIOException {
         return timeoutMillis;
     }
+
+    /**
+     * Called when an unknown operation was received.
+     */
+    void unknown(Channel from, int op);
 
     /**
      * @return false if not sent or processed
@@ -172,4 +180,21 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean groupVersionReply(Channel from, long groupVersion);
+
+    /**
+     * Request the current group file, if the version is higher.
+     *
+     * @param groupVersion requestor group version, which can be ignored
+     * @return false if not sent or processed
+     */
+    boolean groupFile(Channel from, long groupVersion) throws IOException;
+
+    /**
+     * Sender-side passes null for the InputStream and receives an OutputStream to write into.
+     * Receiver-side implementation receives an InputStream to read from and returns null.
+     *
+     * @param in pass to GroupFile.readFrom
+     * @return stream to pass to GroupFile.writeTo; is null if cannot send at the moment
+     */
+    OutputStream groupFileReply(Channel from, InputStream in) throws IOException;
 }

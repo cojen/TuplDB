@@ -468,6 +468,10 @@
 <dd>
 <div class="block">Commits and exits all transaction scopes.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#commitIndex--">commitIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dd>
+<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#compact-long-">compact(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
 <div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>
@@ -542,6 +546,10 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ConfirmationTimeoutException.html#ConfirmationTimeoutException-long-">ConfirmationTimeoutException(long)</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmedPosition--">confirmedPosition()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
+<dd>
+<div class="block">Returns the current confirmed log position.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd--">confirmEnd()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
 <dd>
 <div class="block">Blocks until the leadership end is confirmed.</div>
@@ -1022,6 +1030,8 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#equals-java.lang.Object-">equals(Object)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventPrinter.html#equals-java.lang.Object-">equals(Object)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#equals-java.lang.Object-">equals(Object)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#eventListener-org.cojen.tupl.EventListener-">eventListener(EventListener)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
@@ -1033,6 +1043,22 @@
 <dd>
 <div class="block">Listener which receives notifications of actions being performed by the
  database.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#eventListener-java.util.function.BiConsumer-">eventListener(BiConsumer&lt;Level, String&gt;)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
+<dd>
+<div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
+</dd>
+<dt><a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventLogger</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Event listener implementation which passes events to a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging"><code>logger</code></a>.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#EventLogger--">EventLogger()</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
+<dd>
+<div class="block">Passes events to the global logger.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#EventLogger-java.util.logging.Logger-">EventLogger(Logger)</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
+<dd>
+<div class="block">Passes events to the given logger.</div>
 </dd>
 <dt><a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventPrinter</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -1395,6 +1421,8 @@
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#hashCode--">hashCode()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventPrinter.html#hashCode--">hashCode()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#hashCode--">hashCode()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#hasQueuedThreads--">hasQueuedThreads()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -1409,6 +1437,14 @@
 </a>
 <h2 class="title">I</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#ignore-org.cojen.tupl.EventType.Category...-">ignore(EventType.Category...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>
+<div class="block">Returns a filtered listener which never observes the given event categories.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#ignore-java.util.logging.Level...-">ignore(Level...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>
+<div class="block">Returns a filtered listener which never observes the given event levels.</div>
+</dd>
 <dt><a href="org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl"><span class="typeNameLink">IllegalUpgradeException</span></a> - Exception in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Thrown when attempting to acquire an upgradable or exclusive lock when a
@@ -1592,6 +1628,12 @@
 <dd>
 <div class="block">Returns true if the current transaction scope is nested.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#isObserved-org.cojen.tupl.EventType-">isObserved(EventType)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#isObserved-org.cojen.tupl.EventType.Category-">isObserved(EventType.Category)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#isObserved-java.util.logging.Level-">isObserved(Level)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#isReadOnly--">isReadOnly()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#isReadOnly--">isReadOnly()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
@@ -2120,6 +2162,8 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EventPrinter.html#notify-org.cojen.tupl.EventType-java.lang.String-java.lang.Object...-">notify(EventType, String, Object...)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl">EventPrinter</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#notifyDrop-org.cojen.tupl.Index-">notifyDrop(Index)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
@@ -2136,6 +2180,14 @@
 </a>
 <h2 class="title">O</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#observe-org.cojen.tupl.EventType.Category...-">observe(EventType.Category...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>
+<div class="block">Returns a filtered listener which only observes the given event categories.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/EventListener.html#observe-java.util.logging.Level...-">observe(Level...)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
+<dd>
+<div class="block">Returns a filtered listener which only observes the given event levels.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#obtain--">obtain()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#open-org.cojen.tupl.DatabaseConfig-">open(DatabaseConfig)</a></span> - Static method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
@@ -2439,9 +2491,13 @@
 <dd>
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.repl.ReplicatorConfig-">replicate(ReplicatorConfig)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Enable replication using the given configuration.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.ext.ReplicationManager-">replicate(ReplicationManager)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
-<div class="block">Enable replication by providing a <a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
+<div class="block">Enable replication with an explicit <a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
 </dd>
 <dt><a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>
@@ -2509,7 +2565,7 @@
 <div class="block">Restore from a <a href="org/cojen/tupl/Database.html#beginSnapshot--"><code>snapshot</code></a>, into the data files defined by the given
  configuration.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#restoreRequest--">restoreRequest()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#restoreRequest-org.cojen.tupl.EventListener-">restoreRequest(EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer.</div>

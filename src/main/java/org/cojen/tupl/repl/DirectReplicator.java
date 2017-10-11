@@ -179,6 +179,11 @@ public interface DirectReplicator extends Replicator {
      */
     public static interface Writer extends Accessor {
         /**
+         * Returns the current term commit index, which might be lower than the start index.
+         */
+        long commitIndex();
+
+        /**
          * Blocks until the commit index reaches the given index.
          *
          * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}

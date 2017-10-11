@@ -36,6 +36,10 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
+import java.util.function.BiConsumer;
+
+import java.util.logging.Level;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -47,6 +51,7 @@ import org.cojen.tupl.io.Utils;
 class GroupJoiner {
     static final int OP_NOP = 0, OP_ERROR = 1, OP_ADDRESS = 2, OP_JOINED = 3;
 
+    private final BiConsumer<Level, String> mEventListener;
     private final File mFile;
     private final long mGroupToken;
     private final SocketAddress mLocalAddress;
@@ -68,9 +73,10 @@ class GroupJoiner {
      * @param groupFile file to store GroupFile contents
      * @param listenAddress optional
      */
-    GroupJoiner(File groupFile, long groupToken,
+    GroupJoiner(BiConsumer<Level, String> eventListener, File groupFile, long groupToken,
                 SocketAddress localAddress, SocketAddress listenAddress)
     {
+        mEventListener = eventListener;
         mFile = groupFile;
         mGroupToken = groupToken;
         mLocalAddress = localAddress;
@@ -252,7 +258,7 @@ class GroupJoiner {
                 try (FileOutputStream out = new FileOutputStream(mFile)) {
                     in.drainTo(out);
                 }
-                mGroupFile = GroupFile.open(mFile, mLocalAddress, false);
+                mGroupFile = GroupFile.open(mEventListener, mFile, mLocalAddress, false);
             } else if (op == OP_ERROR) {
                 throw new JoinException(ErrorCodes.toString(in.readByte()));
             }

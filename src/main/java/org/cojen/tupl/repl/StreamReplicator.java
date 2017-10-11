@@ -31,7 +31,7 @@ import java.util.function.Consumer;
 
 /**
  * Low-level replication interface, which recives messages in a non-delineated stream.
- * Applications using this interfaces are responsible for encoding messages such that they can
+ * Applications using this interface are responsible for encoding messages such that they can
  * be properly separated. Consider an application which writes these two messages (inside the
  * quotes): {@code ["hello", "world"]}. The messages might be read back as {@code ["hello",
  * "world"]}, {@code ["helloworld"]}, {@code ["he", "llowor", "ld"]}, etc.
@@ -96,7 +96,8 @@ public interface StreamReplicator extends DirectReplicator {
             base.getParentFile().mkdirs();
         }
 
-        return Controller.open(new FileStateLog(base), groupToken,
+        return Controller.open(config.mEventListener,
+                               new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
                                localAddress, listenAddress, config.mLocalRole,
                                seeds, config.mLocalSocket);

@@ -195,20 +195,12 @@ final class ReplRedoController extends ReplRedoWriter {
         if (metadata) {
             try {
                 long pos;
-                {
-                    ReplRedoWriter redo = mTxnRedoWriter;
-                    ReplicationManager.Writer writer = redo.mReplWriter;
-
-                    if (writer == null) {
-                        pos = mEngine.decodePosition();
-                    } else {
-                        redo.acquireShared();
-                        pos = redo.mLastCommitPos;
-                        redo.releaseShared();
-                        writer.confirm(pos);
-                    }
+                ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
+                if (writer == null) {
+                    pos = mEngine.decodePosition();
+                } else {
+                    pos = writer.confirmedPosition();
                 }
-
                 mEngine.mManager.syncConfirm(pos);
                 return;
             } catch (IOException e) {
