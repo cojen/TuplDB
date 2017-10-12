@@ -64,8 +64,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int MISSING_DELAY_LOW_MILLIS = 400, MISSING_DELAY_HIGH_MILLIS = 600;
     private static final int SYNC_COMMIT_RETRY_MILLIS = 100;
     private static final int CONNECT_TIMEOUT_MILLIS = 500;
-    private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 2000;
-    private static final int JOIN_TIMEOUT_MILLIS = 2000;
+    private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 5000;
+    private static final int JOIN_TIMEOUT_MILLIS = 5000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
 
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2;
