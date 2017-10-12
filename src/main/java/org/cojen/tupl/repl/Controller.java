@@ -145,9 +145,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mSyncCommitCondition = new LatchCondition();
     }
 
-    /**
-     * @param localSocket optional; used for testing
-     */
     private void init(File groupFile,
                       SocketAddress localAddress, SocketAddress listenAddress,
                       Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
@@ -170,15 +167,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mChanMan.setGroupId(mGroupFile.groupId());
             }
 
-            long localMemberId = mGroupFile.localMemberId();
-
-            if (localSocket == null) {
-                mChanMan.setLocalMemberId(localMemberId, listenAddress);
-            } else {
-                mChanMan.setLocalMemberId(localMemberId, localSocket);
-            }
+            mChanMan.setLocalMemberId(mGroupFile.localMemberId(), localSocket);
 
             refreshPeerSet();
+        } catch (Throwable e) {
+            closeQuietly(localSocket);
+            closeQuietly(this);
+            throw e;
         } finally {
             releaseExclusive();
         }

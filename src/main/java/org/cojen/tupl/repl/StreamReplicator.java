@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.SocketAddress;
 
 import java.util.Collections;
@@ -78,12 +79,21 @@ public interface StreamReplicator extends DirectReplicator {
         }
 
         SocketAddress listenAddress = config.mListenAddress;
+        ServerSocket localSocket = config.mLocalSocket;
+
         if (listenAddress == null) {
             listenAddress = localAddress;
             if (listenAddress instanceof InetSocketAddress) {
                 int port = ((InetSocketAddress) listenAddress).getPort();
                 listenAddress = new InetSocketAddress(port);
             }
+        }
+
+        if (localSocket == null) {
+            // Attempt to bind the socket early, failing if the port is in use. This prevents
+            // joining the group early, which can cause an existing member's role to be
+            // downgraded to observer.
+            localSocket = ChannelManager.newServerSocket(listenAddress);
         }
 
         Set<SocketAddress> seeds = config.mSeeds;
@@ -100,7 +110,7 @@ public interface StreamReplicator extends DirectReplicator {
                                new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
                                localAddress, listenAddress, config.mLocalRole,
-                               seeds, config.mLocalSocket);
+                               seeds, localSocket);
     }
 
     /**
