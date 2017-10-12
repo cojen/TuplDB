@@ -68,6 +68,10 @@ public interface StreamReplicator extends DirectReplicator {
             throw new IllegalArgumentException("No base file configured");
         }
 
+        if (base.isDirectory()) {
+            throw new IllegalArgumentException("Base file is a directory: " + base);
+        }
+
         long groupToken = config.mGroupToken;
         if (groupToken == 0) {
             throw new IllegalArgumentException("No group token configured");
