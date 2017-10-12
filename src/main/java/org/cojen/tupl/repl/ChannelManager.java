@@ -129,12 +129,18 @@ final class ChannelManager {
     }
 
     /**
-     * Set the local member id to a non-zero value, which cannot be changed later.
+     * Creates and binds a server socket, which can be passed to the setLocalMemberId method.
      */
-    synchronized void setLocalMemberId(long localMemberId, SocketAddress listenAddress)
-        throws IOException
-    {
-        setLocalMemberId(localMemberId, listenAddress, null);
+    static ServerSocket newServerSocket(SocketAddress listenAddress) throws IOException {
+        ServerSocket ss = new ServerSocket();
+        try {
+            ss.setReuseAddress(true);
+            ss.bind(listenAddress);
+            return ss;
+        } catch (Throwable e) {
+            closeQuietly(ss);
+            throw e;
+        }
     }
 
     /**
@@ -143,34 +149,12 @@ final class ChannelManager {
     synchronized void setLocalMemberId(long localMemberId, ServerSocket ss)
         throws IOException
     {
-        setLocalMemberId(localMemberId, null, ss);
-    }
-
-    /**
-     * Set the local member id to a non-zero value, which cannot be changed later.
-     */
-    private synchronized void setLocalMemberId(long localMemberId,
-                                               SocketAddress listenAddress, ServerSocket ss)
-        throws IOException
-    {
-        if (localMemberId == 0 || ((listenAddress == null) == (ss == null))) {
+        if (localMemberId == 0 || ss == null) {
             throw new IllegalArgumentException();
         }
         if (mLocalMemberId != 0) {
             throw new IllegalStateException();
         }
-
-        if (listenAddress != null) {
-            try {
-                ss = new ServerSocket();
-                ss.setReuseAddress(true);
-                ss.bind(listenAddress);
-            } catch (Throwable e) {
-                closeQuietly(ss);
-                throw e;
-            }
-        }
-
         mLocalMemberId = localMemberId;
         mServerSocket = ss;
     }
