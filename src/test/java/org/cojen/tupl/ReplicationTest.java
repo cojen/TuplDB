@@ -38,6 +38,11 @@ public class ReplicationTest {
         org.junit.runner.JUnitCore.main(ReplicationTest.class.getName());
     }
 
+    protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
+        config.directPageAccess(false);
+        return config;
+    }
+
     @Before
     public void createTempDbs() throws Exception {
         mReplicaMan = new SocketReplicationManager(null, 0);
@@ -47,11 +52,12 @@ public class ReplicationTest {
         mLeaderHandler = new Handler();
 
         DatabaseConfig config = new DatabaseConfig()
-            .directPageAccess(false)
             .minCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customTransactionHandler(mLeaderHandler)
             .replicate(mLeaderMan);
+
+        config = decorate(config);
 
         mLeader = newTempDatabase(getClass(), config);
 
