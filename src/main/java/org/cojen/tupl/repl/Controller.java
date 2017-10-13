@@ -1003,7 +1003,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             commitIndex = writer.mCommitIndex;
 
             if (commitIndex >= highestIndex || commitIndex > mLeaderCommitIndex) {
-                mElectionValidated = 1;
+                // Minimum validation value is 1, but boost it to avoiding stalling too soon.
+                mElectionValidated = 5;
                 mLeaderCommitIndex = commitIndex;
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
@@ -1370,11 +1371,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
             return;
         }
-
-        // Don't give up leadership too soon once elected. After a few initial calls to
-        // electionTask, the validation check which ensures that the commit index is advancing
-        // will have stabilized.
-        mElectionValidated = 5;
 
         doAffirmLeadership();
     }
