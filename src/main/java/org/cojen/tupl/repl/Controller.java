@@ -266,6 +266,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             scheduleMissingDataTask();
 
             mChanMan.joinAcceptor(this::requestJoin);
+
+            acquireExclusive();
+            boolean quickElection = mConsensusChannels.length == 0;
+            mElectionValidated = quickElection ? -1 : 1;
+            releaseExclusive();
+
+            if (quickElection) {
+                // Lone member can become leader immediately.
+                doElectionTask();
+            }
         }
 
         if (receiver == null) {
