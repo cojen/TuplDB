@@ -1003,7 +1003,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             commitIndex = writer.mCommitIndex;
 
             if (commitIndex >= highestIndex || commitIndex > mLeaderCommitIndex) {
-                // Minimum validation value is 1, but boost it to avoiding stalling too soon.
+                // Smallest validation value is 1, but boost it to avoiding stalling too soon.
                 mElectionValidated = 5;
                 mLeaderCommitIndex = commitIndex;
             } else if (mElectionValidated >= 0) {
