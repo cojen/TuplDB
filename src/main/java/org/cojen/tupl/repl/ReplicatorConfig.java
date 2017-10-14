@@ -197,6 +197,35 @@ public class ReplicatorConfig implements Cloneable, Serializable {
      * replicator for the first time without any seeds indicates that a new replication group
      * is to be formed. If the local member is already in a group, the seeds are ignored.
      *
+     * @throws IllegalArgumentException if addressString is null or malformed
+     */
+    public ReplicatorConfig addSeed(String addressString) throws UnknownHostException {
+        if (addressString == null) {
+            throw new IllegalArgumentException();
+        }
+        SocketAddress addr = GroupFile.parseSocketAddress(addressString);
+        if (addr == null) {
+            throw new IllegalArgumentException("Malformed address: " + addressString);
+        }
+        return addSeed(addr);
+    }
+
+    /**
+     * Add a remote member address for allowing the local member to join the group. Opening a
+     * replicator for the first time without any seeds indicates that a new replication group
+     * is to be formed. If the local member is already in a group, the seeds are ignored.
+     *
+     * @throws IllegalArgumentException if hostname is null
+     */
+    public ReplicatorConfig addSeed(String hostname, int port) {
+        return addSeed(new InetSocketAddress(hostname, port));
+    }
+
+    /**
+     * Add a remote member address for allowing the local member to join the group. Opening a
+     * replicator for the first time without any seeds indicates that a new replication group
+     * is to be formed. If the local member is already in a group, the seeds are ignored.
+     *
      * @throws IllegalArgumentException if address is null
      */
     public ReplicatorConfig addSeed(SocketAddress addr) {

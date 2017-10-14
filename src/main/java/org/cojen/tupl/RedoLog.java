@@ -309,7 +309,8 @@ final class RedoLog extends RedoWriter {
      * @return null if non-durable
      */
     private static File fileFor(File base, long logId) {
-        return base == null ? null : new File(base.getPath() + ".redo." + logId);
+        return base == null ? null : new File
+            (base.getPath() + LocalDatabase.REDO_FILE_SUFFIX + logId);
     }
 
     @Override
