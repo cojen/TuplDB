@@ -44,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
+import java.util.function.Supplier;
 
 import java.util.logging.Level;
 
@@ -842,10 +843,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         scheduleMissingDataTask();
     }
 
-    private void requestMissingData(long startIndex, long endIndex) {
+    private void requestMissingData(final long startIndex, final long endIndex) {
+        event(Level.FINE, () -> "Requesting missing data: [" + startIndex + ", " + endIndex + ')');
+
         // FIXME: Need a way to abort outstanding requests.
 
         long remaining = endIndex - startIndex;
+        long index = startIndex;
 
         // Distribute the request among the channels at random.
 
@@ -866,7 +870,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             while (true) {
                 Channel channel = channels[selected];
 
-                if (channel.queryData(this, startIndex, startIndex + amt)) {
+                if (channel.queryData(this, index, index + amt)) {
                     break;
                 }
 
@@ -883,7 +887,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            startIndex += amt;
+            index += amt;
             remaining -= amt;
         }
     }
@@ -1244,6 +1248,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (mEventListener != null) {
             try {
                 mEventListener.accept(level, message);
+            } catch (Throwable e) {
+                // Ignore.
+            }
+        }
+    }
+
+    private void event(Level level, Supplier<String> message) {
+        if (mEventListener != null) {
+            try {
+                mEventListener.accept(level, message.get());
             } catch (Throwable e) {
                 // Ignore.
             }
