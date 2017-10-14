@@ -4732,6 +4732,7 @@ final class LocalDatabase extends AbstractDatabase {
                 header = p_calloc(mPageDb.pageSize());
                 resume = false;
                 if (masterUndoLog != null) {
+                    // TODO: Thrown when closed? After storage device was full.
                     throw new AssertionError();
                 }
             }

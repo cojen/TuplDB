@@ -631,7 +631,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
     final Database open(boolean destroy, InputStream restore) throws IOException {
         boolean openedReplicator = false;
 
-        if (mReplConfig != null && mBaseFile != null && mReplManager == null) {
+        if (mReplConfig != null && mReplManager == null
+            && mBaseFile != null && !mBaseFile.isDirectory())
+        {
             if (mEventListener != null) {
                 mReplConfig.eventListener(new ReplicationEventListener(mEventListener));
             }

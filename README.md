@@ -7,6 +7,7 @@ Tupl is a high-performance, concurrent, transactional, scalable, low-level embed
 
 * [Javadocs](http://tupl.cojen.org/javadoc/org/cojen/tupl/package-summary.html)
 * [FAQ](https://github.com/cojen/Tupl/wiki/FAQ)
+* [Replication](https://github.com/cojen/Tupl/wiki/Replication)
 
 Tupl can be used directly, or it can be used for implementing a high-level database. Tupl is
 powerful enough for supporting all the requirements of relational SQL databases as well as
