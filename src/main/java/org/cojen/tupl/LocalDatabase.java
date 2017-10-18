@@ -721,6 +721,11 @@ final class LocalDatabase extends AbstractDatabase {
 
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
+                    if (mEventListener != null) {
+                        mEventListener.notify(EventType.REPLICATION_DEBUG,
+                                              "Starting at: %1$d", redoPos);
+                    }
+
                     rm.start(redoPos);
 
                     if (mReadOnly) {
