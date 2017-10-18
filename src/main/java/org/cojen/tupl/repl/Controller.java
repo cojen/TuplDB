@@ -975,7 +975,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } else {
             releaseExclusive();
 
-            event(Level.INFO, "Local member is a candidate: newTerm=" + term + ", highestTerm=" +
+            event(Level.INFO, "Local member is a candidate: term=" + term + ", highestTerm=" +
                   info.mTerm + ", highestIndex=" + info.mHighestIndex);
 
             for (Channel peerChan : peerChannels) {
@@ -1066,7 +1066,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             b.append(" lost: ");
 
             if (reason == null) {
-                b.append("newTerm=").append(mCurrentTerm);
+                b.append("term=").append(mCurrentTerm);
             } else {
                 b.append(reason);
             }
@@ -1365,7 +1365,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long index) {
         try {
-            event(Level.INFO, "Local member is the leader: newTerm=" + term + ", index=" + index);
+            event(Level.INFO, "Local member is the leader: term=" + term + ", index=" + index);
 
             long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
 
@@ -1667,7 +1667,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (first) {
             event(Level.INFO, "Remote member is the leader: " + from.peer().mAddress +
-                  ", newTerm=" + term);
+                  ", term=" + term);
         }
 
         return true;
