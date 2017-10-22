@@ -616,7 +616,8 @@ final class _TreeValueBlob extends AbstractBlob {
                     return 0;
                 }
 
-                int newLoc = updateLengthField(frame, page, fHeaderLoc, endPos);
+                int newLoc = updateLengthField(frame, fHeaderLoc, endPos);
+                page = node.mPage;
 
                 if (newLoc < 0) {
                     // FIXME: Expand length field; what if inline is too big? Need to make sure
@@ -644,9 +645,6 @@ final class _TreeValueBlob extends AbstractBlob {
                     loc += 2 + ((header >> 1) & 0x06);
                 }
 
-                // Due to compaction. FIXME: messy, this is
-                page = node.mPage;
-
                 // Note: vHeaderLoc is now wrong. Any code below this point cannot use it.
 
                 if ((header & 0x01) == 0) {
@@ -664,7 +662,8 @@ final class _TreeValueBlob extends AbstractBlob {
                         break extend;
                     }
 
-                    newLoc = extendFragmentedValue(node, mCursor.mTree, nodePos, growth * 6, true);
+                    newLoc = extendFragmentedValue(frame, growth * 6, true);
+                    page = node.mPage;
 
                     if (newLoc >= 0) {
                         int delta = newLoc - fHeaderLoc;
@@ -672,13 +671,9 @@ final class _TreeValueBlob extends AbstractBlob {
                         //fHeaderLoc = newLoc;
                         // Note: fHeaderLoc is now wrong. Any code below this point
                         // cannot use it.
-                        // Due to compaction. FIXME: messy, this is
-                        page = node.mPage;
                         break extend;
                     }
 
-                    // FIXME: messy, this is
-                    page = node.mPage;
                     newLoc = ~newLoc;
                     header = p_byteGet(page, newLoc);
                     int delta = newLoc - fHeaderLoc;
@@ -787,12 +782,14 @@ final class _TreeValueBlob extends AbstractBlob {
     }
 
     /**
+     * As a side effect of calling this method, the page referenced by the node can change.
+     *
      * @param loc fragmented value header location
      * @return new value location (after header), negated if converted to indirect format
      */
-    private int updateLengthField(_CursorFrame frame, long page, int loc, long len)
-        throws IOException
-    {
+    private int updateLengthField(_CursorFrame frame, int loc, long len) throws IOException {
+        long page = frame.mNode.mPage;
+
         int growth;
         int header = p_byteGet(page, loc);
 
@@ -823,13 +820,8 @@ final class _TreeValueBlob extends AbstractBlob {
             return loc;
         }
 
-        _Node node = frame.mNode;
-        int nodePos = frame.mNodePos;
-
-        int newLoc = extendFragmentedValue(node, mCursor.mTree, nodePos, growth, false);
-
-        // FIXME: messy, this is
-        page = node.mPage;
+        int newLoc = extendFragmentedValue(frame, growth, false);
+        page = frame.mNode.mPage;
 
         if (newLoc < 0) {
             loc = ~newLoc;
@@ -1029,15 +1021,18 @@ final class _TreeValueBlob extends AbstractBlob {
      * Attempt to extend a fragmented leaf value. Caller must ensure that value is fragmented.
      * If extending at the tail, growth region is filled with zeros.
      *
-     * @param pos position as provided by binarySearch; must be positive
+     * As a side effect of calling this method, the page referenced by the node can change.
+     *
      * @param growth value length increase
      * @param tail true if growth is at tail end of value
      * @return new value location (after header), negated if converted to indirect format
      */
-    private int extendFragmentedValue(final _Node node, final _Tree tree, final int pos,
+    private int extendFragmentedValue(final _CursorFrame frame,
                                       final long growth, final boolean tail)
         throws IOException
     {
+        final _Node node = frame.mNode;
+
         // FIXME: allow split
         long avail = node.availableLeafBytes() - growth;
         if (avail < 0) {
@@ -1048,7 +1043,7 @@ final class _TreeValueBlob extends AbstractBlob {
         int searchVecStart = node.searchVecStart();
 
         long page = node.mPage;
-        int entryLoc = p_ushortGetLE(page, searchVecStart + pos);
+        int entryLoc = p_ushortGetLE(page, searchVecStart + frame.mNodePos);
 
         int loc = entryLoc;
 
@@ -1078,6 +1073,8 @@ final class _TreeValueBlob extends AbstractBlob {
         int retMask = 0;
 
         int newValueLen = _Node.calculateFragmentedValueLength(value.length + igrowth);
+
+        final _Tree tree = mCursor.mTree;
 
         if ((key.length + newValueLen) > tree.mDatabase.mMaxFragmentedEntrySize) {
             // Too big, and so value encoding must be modified.
@@ -1169,10 +1166,10 @@ final class _TreeValueBlob extends AbstractBlob {
 
         // Note: As an optimization, search vector can be left as-is for new entry. Full delete
         // is simpler and re-uses existing code.
+        final int pos = frame.mNodePos;
         node.finishDeleteLeafEntry(pos, loc - entryLoc);
 
-        // TODO: need frame for rebalancing to work
-        entryLoc = node.createLeafEntry(null, tree, pos, key.length + newValueLen);
+        entryLoc = node.createLeafEntry(frame, tree, pos, key.length + newValueLen);
 
         if (entryLoc < 0) {
             // FIXME: allow split or convert to indirect
