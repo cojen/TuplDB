@@ -166,13 +166,6 @@ final class TrimmedView implements View {
         return mSource.lockCheck(txn, applyPrefix(key));
     }
 
-    /*
-    @Override
-    public Stream newStream() {
-        return new TrimmedStream(this, mSource.newStream());
-    }
-    */
-
     @Override
     public View viewGe(byte[] key) {
         return new TrimmedView(mSource.viewGe(applyPrefix(key)), mPrefix, mTrim);

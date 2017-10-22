@@ -236,6 +236,11 @@
 <div class="block">Support for capturing a snapshot (hot backup) of the database, while
  still allowing concurrent modifications.</div>
 </dd>
+<dt><a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Blob</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Provides access to database values without requiring that they be fully loaded or stored in
+ a single operation.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#BOGUS">BOGUS</a></span> - Static variable in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Transaction instance which isn't a transaction at all.</div>
@@ -337,7 +342,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl"><span class="typeNameLink">CipherCrypto</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Crypto implementation which uses <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> and defaults to the AES algorithm with a
+<div class="block">Crypto implementation which uses <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> and defaults to the AES algorithm with a
  128-bit key.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#CipherCrypto--">CipherCrypto()</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
@@ -346,7 +351,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#CipherCrypto-byte:A-">CipherCrypto(byte[])</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Construct with an existing key, which is wrapped with <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec"><code>SecretKeySpec</code></a>.</div>
+<div class="block">Construct with an existing key, which is wrapped with <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec"><code>SecretKeySpec</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#CipherCrypto-javax.crypto.SecretKey-">CipherCrypto(SecretKey)</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
@@ -364,6 +369,10 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#clone--">clone()</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Closes the Blob, but does not flush any OutputStream instances.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Closes the database, ensuring durability of committed transactions.</div>
@@ -1020,7 +1029,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryConsumer</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Represents an operation that accepts a key and value, just like a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function"><code>BiConsumer</code></a>.</div>
+<div class="block">Represents an operation that accepts a key and value, just like a <a href="http://docs.oracle.com/javase/7/docs/api/java/util/function.BiConsumer.html?is-external=true" title="class or interface in java.util"><code>BiConsumer</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#entryCount">entryCount</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
@@ -1030,7 +1039,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryFunction</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Represents an operation that applies a key and value, just like a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function"><code>BiFunction</code></a>.</div>
+<div class="block">Represents an operation that applies a key and value, just like a <a href="http://docs.oracle.com/javase/7/docs/api/java/util/function.BiFunction.html?is-external=true" title="class or interface in java.util"><code>BiFunction</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.Stats.html#equals-java.lang.Object-">equals(Object)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
@@ -1054,7 +1063,7 @@
 </dd>
 <dt><a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventLogger</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Event listener implementation which passes events to a <a href="http://docs.oracle.com/javase/8/docs/api/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging"><code>logger</code></a>.</div>
+<div class="block">Event listener implementation which passes events to a <a href="http://docs.oracle.com/javase/7/docs/api/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging"><code>logger</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/EventLogger.html#EventLogger--">EventLogger()</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></dt>
 <dd>
@@ -1547,12 +1556,12 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-">initCipher(Cipher, int, SecretKey)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, generating a random initialization
+<div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, generating a random initialization
  vector.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-javax.crypto.spec.IvParameterSpec-">initCipher(Cipher, int, SecretKey, IvParameterSpec)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, using the given initialization
+<div class="block">Called to initialize a new or re-used <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, using the given initialization
  vector.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#inputStream--">inputStream()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
@@ -1766,6 +1775,10 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#leaderNotify-java.lang.Runnable-">leaderNotify(Runnable)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
 <dd>
 <div class="block">Invokes the given callback upon a leadership change.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#length--">length()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Returns the total length of the value accessed by the Blob.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#length--">length()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
@@ -2028,7 +2041,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newCipher-java.lang.String-">newCipher(String)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to instantiate all <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> instances, with the given transformation.</div>
+<div class="block">Called to instantiate all <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> instances, with the given transformation.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newCursor-org.cojen.tupl.Transaction-">newCursor(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>&nbsp;</dd>
@@ -2044,11 +2057,27 @@
 <dd>
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newInputStream-long-">newInputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newInputStream-long-int-">newInputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/CRC32C.html#newInstance--">newInstance()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/CRC32C.html" title="class in org.cojen.tupl.io">CRC32C</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newOutputStream-long-">newOutputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newOutputStream-long-int-">newOutputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newPageCipher--">newPageCipher()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
+<div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting database pages,
  using the fixed instance <a href="org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newReader-long-boolean-">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
@@ -2069,7 +2098,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newStreamCipher--">newStreamCipher()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
+<div class="block">Called to instantiate a <a href="http://docs.oracle.com/javase/7/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
  the fixed instance <a href="org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#newTemporaryIndex--">newTemporaryIndex()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
@@ -2151,6 +2180,13 @@
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  the given limit key.</div>
 </dd>
+<dt><a href="org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">NoSuchValueException</span></a> - Exception in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Thrown when reading from a <a href="org/cojen/tupl/Blob.html#newInputStream-long-"><code>blob</code></a>, for a value which doesn't
+ exist.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/NoSuchValueException.html#NoSuchValueException--">NoSuchValueException()</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl">NoSuchValueException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#NOT_LOADED">NOT_LOADED</a></span> - Static variable in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Empty marker which indicates that value exists but has not been <a href="org/cojen/tupl/Cursor.html#load--"><code>loaded</code></a>.</div>
@@ -2214,6 +2250,20 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#openBlob--">openBlob()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Returns a value accessor for the current entry, which permits values to be much larger
+ than what can fit in main memory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#openBlob-org.cojen.tupl.Transaction-byte:A-">openBlob(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns a value accessor for the given key, which permits values to be much larger than
+ what can fit in main memory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#openBlob--">openBlob()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Returns an unmodifiable blob by default.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#openIndex-byte:A-">openIndex(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2356,6 +2406,10 @@
 <dd>
 <div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from
  a uniform distribution.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#read-long-byte:A-int-int-">read(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Read from the value, starting from any position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#read-byte:A-int-int-">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
@@ -2632,6 +2686,10 @@
 <dd>
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
  exclusively by checkpoints.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#setLength-long-">setLength(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Extends or truncates the value accessed by the Blob.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#setLength-long-">setLength(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
@@ -3384,6 +3442,10 @@ the order they are declared.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#WrappedCursor-C-">WrappedCursor(C)</a></span> - Constructor for class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#write-long-byte:A-int-int-">write(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dd>
+<div class="block">Write into the value, starting from any position.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Writer.html#write-byte:A-int-int-long-">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
 <dd>
 <div class="block">Fully writes the given data, returning a potential confirmation position.</div>

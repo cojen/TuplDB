@@ -24,10 +24,9 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
-@Ignore
-public class StreamDirectTest extends StreamTest {
+public class BlobDirectTest extends BlobTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(StreamDirectTest.class.getName());
+        org.junit.runner.JUnitCore.main(BlobDirectTest.class.getName());
     }
 
     @Before

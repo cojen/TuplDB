@@ -316,14 +316,12 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     }
 
     /**
-     * Returns an unmodifiable stream by default.
+     * Returns an unmodifiable blob by default.
      */
-    /*
     @Override
-    public Stream newStream() {
-        return new UnmodifiableStream(source.newStream());
+    public Blob openBlob() {
+        return new UnmodifiableBlob(source.openBlob());
     }
-    */
 
     /**
      * {@inheritDoc}

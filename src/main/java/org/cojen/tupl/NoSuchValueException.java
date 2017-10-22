@@ -18,12 +18,12 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when reading from a {@link Stream#newInputStream stream}, for a value which doesn't
+ * Thrown when reading from a {@link Blob#newInputStream blob}, for a value which doesn't
  * exist.
  *
  * @author Brian S O'Neill
  */
-/*public*/ class NoSuchValueException extends DatabaseException {
+public class NoSuchValueException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
     public NoSuchValueException() {

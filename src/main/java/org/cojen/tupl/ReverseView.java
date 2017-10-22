@@ -111,6 +111,11 @@ final class ReverseView implements View {
     }
 
     @Override
+    public Blob openBlob(Transaction txn, byte[] key) throws IOException {
+        return mSource.openBlob(txn, key);
+    }
+
+    @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         return mSource.touch(txn, key);
     }
@@ -161,13 +166,6 @@ final class ReverseView implements View {
     public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
         return mSource.lockCheck(txn, key);
     }
-
-    /*
-    @Override
-    public Stream newStream() {
-        return mSource.newStream();
-    }
-    */
 
     @Override
     public View viewGe(byte[] key) {

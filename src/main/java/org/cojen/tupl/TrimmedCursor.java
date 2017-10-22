@@ -252,12 +252,10 @@ final class TrimmedCursor implements Cursor {
         mSource.commit(value);
     }
 
-    /*
     @Override
-    public Stream newStream() {
-        return new TrimmedStream(mView, mSource.newStream());
+    public Blob openBlob() {
+        return mSource.openBlob();
     }
-    */
 
     @Override
     public Cursor copy() {

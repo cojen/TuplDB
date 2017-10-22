@@ -505,18 +505,6 @@ final class TransformedCursor implements Cursor {
         mValue = tvalue;
     }
 
-    /*
-    @Override
-    public Stream newStream() {
-        Cursor c = mSource;
-        if (mKey == null && c.key() != null) {
-            c = c.copy();
-            c.reset();
-        }
-        return new TransformedStream(c.newStream(), mTransformer);
-    }
-    */
-
     @Override
     public Cursor copy() {
         TransformedCursor copy = new TransformedCursor(mSource.copy(), mTransformer);
