@@ -139,7 +139,6 @@ public class BlobTest {
         readFragmented(false, true);
     }
 
-    @Ignore // FIXME
     @Test
     public void readFragmented3() throws Exception {
         readFragmented(true, false);
@@ -200,7 +199,7 @@ public class BlobTest {
 
             blob.close();
 
-            //ix.delete(null, key);
+            ix.delete(null, key);
         }
     }
 
@@ -241,7 +240,7 @@ public class BlobTest {
 
             blob.close();
 
-            //ix.delete(null, key);
+            ix.delete(null, key);
         }
     }
 
