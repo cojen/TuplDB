@@ -228,12 +228,10 @@ final class ReverseCursor implements Cursor {
         mSource.commit(value);
     }
 
-    /*
     @Override
-    public Stream newStream() {
-        return mSource.newStream();
+    public Blob openBlob() {
+        return mSource.openBlob();
     }
-    */
 
     @Override
     public Cursor copy() {

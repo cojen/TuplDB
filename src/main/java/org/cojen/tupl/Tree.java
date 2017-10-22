@@ -540,6 +540,14 @@ class Tree implements View, Index {
     }
 
     @Override
+    public Blob openBlob(Transaction txn, byte[] key) throws IOException {
+        TreeCursor c = newCursor(txn);
+        c.autoload(false);
+        c.find(key);
+        return c.toBlob();
+    }
+
+    @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         LocalTransaction local = check(txn);
 
@@ -609,15 +617,6 @@ class Tree implements View, Index {
     public final LockResult lockCheck(Transaction txn, byte[] key) {
         return check(txn).lockCheck(mId, key);
     }
-
-    /*
-    @Override
-    public Stream newStream() {
-        TreeCursor cursor = newCursor();
-        cursor.autoload(false);
-        return new TreeValueStream(cursor);
-    }
-    */
 
     @Override
     public View viewGe(byte[] key) {

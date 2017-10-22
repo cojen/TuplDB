@@ -22,21 +22,12 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * Provides random and stream-oriented access to database values. Stream instances can only be
- * safely used by one thread at a time, and they must be {@link #close closed} when no longer
- * needed. Instances can be exchanged by threads, as long as a happens-before relationship is
- * established. Without proper exclusion, multiple threads interacting with a Stream instance
- * may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see View#newStream View.newStream
  */
-abstract class AbstractStream implements Stream {
-    // Used by InputStream and OutputStream implementation to detect if Stream was closed.
+abstract class AbstractBlob implements Blob {
+    // Used by InputStream and OutputStream implementation to detect if Blob was closed.
     Object mIoState;
-
-    AbstractStream() {
-    }
 
     @Override
     public final int read(long pos, byte[] buf, int off, int len) throws IOException {
@@ -85,7 +76,7 @@ abstract class AbstractStream implements Stream {
     }
 
     @Override
-    public final void close() throws IOException {
+    public final void close() {
         mIoState = null;
         doClose();
     }
@@ -107,7 +98,7 @@ abstract class AbstractStream implements Stream {
      */
     abstract void checkOpen();
 
-    abstract void doClose() throws IOException;
+    abstract void doClose();
 
     /**
      * @throws NullPointerException if buf is null
@@ -134,7 +125,7 @@ abstract class AbstractStream implements Stream {
      */
     final void ioCheckOpen(Object ioState) {
         if (ioState != mIoState) {
-            throw new IllegalStateException("Stream closed");
+            throw new IllegalStateException("Blob closed");
         }
     }
 
@@ -149,7 +140,7 @@ abstract class AbstractStream implements Stream {
 
         In(Object ioState, long pos, byte[] buffer) {
             if (ioState == null) {
-                AbstractStream.this.mIoState = ioState = this;
+                AbstractBlob.this.mIoState = ioState = this;
             }
             mIoState = ioState;
             mPos = pos;
@@ -170,7 +161,7 @@ abstract class AbstractStream implements Stream {
             }
 
             long pos = mPos;
-            int amt = AbstractStream.this.doRead(pos, buf, 0, buf.length);
+            int amt = AbstractBlob.this.doRead(pos, buf, 0, buf.length);
 
             if (amt <= 0) {
                 if (amt < 0) {
@@ -216,7 +207,7 @@ abstract class AbstractStream implements Stream {
             doRead: {
                 // Bypass buffer if parameter is large enough.
                 while (len >= buf.length) {
-                    amt = AbstractStream.this.doRead(mPos, b, off, len);
+                    amt = AbstractBlob.this.doRead(mPos, b, off, len);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -230,7 +221,7 @@ abstract class AbstractStream implements Stream {
 
                 // Read into buffer and copy to parameter.
                 while (true) {
-                    amt = AbstractStream.this.doRead(mPos, buf, 0, buf.length);
+                    amt = AbstractBlob.this.doRead(mPos, buf, 0, buf.length);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -298,12 +289,12 @@ abstract class AbstractStream implements Stream {
 
         @Override
         public int available() {
-            return mIoState == AbstractStream.this.mIoState ? (mEnd - mStart) : 0;
+            return mIoState == AbstractBlob.this.mIoState ? (mEnd - mStart) : 0;
         }
 
         @Override
         public void close() throws IOException {
-            AbstractStream.this.ioClose(mIoState);
+            AbstractBlob.this.ioClose(mIoState);
         }
     }
 
@@ -317,7 +308,7 @@ abstract class AbstractStream implements Stream {
 
         Out(Object ioState, long pos, byte[] buffer) {
             if (ioState == null) {
-                AbstractStream.this.mIoState = ioState = this;
+                AbstractBlob.this.mIoState = ioState = this;
             }
             mIoState = ioState;
             mPos = pos;
@@ -340,7 +331,7 @@ abstract class AbstractStream implements Stream {
 
             try {
                 if (end >= buf.length) {
-                    AbstractStream.this.doWrite(mPos, buf, 0, end);
+                    AbstractBlob.this.doWrite(mPos, buf, 0, end);
                     mPos += end;
                     end = 0;
                 }
@@ -370,7 +361,7 @@ abstract class AbstractStream implements Stream {
                 len -= avail;
                 avail = buf.length;
                 try {
-                    AbstractStream.this.doWrite(mPos, buf, 0, avail);
+                    AbstractBlob.this.doWrite(mPos, buf, 0, avail);
                 } catch (Throwable e) {
                     mEnd = avail;
                     throw e;
@@ -384,7 +375,7 @@ abstract class AbstractStream implements Stream {
                 mEnd = 0;
             }
 
-            AbstractStream.this.doWrite(mPos, b, off, len);
+            AbstractBlob.this.doWrite(mPos, b, off, len);
             mPos += len;
         }
 
@@ -396,16 +387,16 @@ abstract class AbstractStream implements Stream {
 
         @Override
         public void close() throws IOException {
-            if (mIoState == AbstractStream.this.mIoState) {
+            if (mIoState == AbstractBlob.this.mIoState) {
                 doFlush();
-                AbstractStream.this.ioClose(mIoState);
+                AbstractBlob.this.ioClose(mIoState);
             }
         }
 
         private void doFlush() throws IOException {
             int end = mEnd;
             if (end > 0) {
-                AbstractStream.this.doWrite(mPos, mBuffer, 0, end);
+                AbstractBlob.this.doWrite(mPos, mBuffer, 0, end);
                 mPos += end;
                 mEnd = 0;
             }

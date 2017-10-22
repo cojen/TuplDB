@@ -3722,14 +3722,20 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    /*
     @Override
-    public final Stream newStream() {
+    public final Blob openBlob() {
         TreeCursor copy = copyNoValue();
         copy.mKeyOnly = true;
-        return new TreeValueStream(copy);
+        return new TreeValueBlob(copy);
     }
-    */
+
+    /**
+     * Caller must ensure that cursor is positioned and then discard the cursor reference after
+     * calling this method.
+     */
+    final Blob toBlob() {
+        return new TreeValueBlob(this);
+    }
 
     @Override
     public final TreeCursor copy() {
@@ -3905,17 +3911,17 @@ class TreeCursor implements CauseCloseable, Cursor {
                     int nodePos = frame.mNodePos;
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
                         int pLen = pageSize(node.mPage);
-                        TreeValueStream stream = new TreeValueStream(this);
+                        TreeValueBlob blob = new TreeValueBlob(this);
                         long pos = 0;
                         while (true) {
-                            int result = stream.compactCheck(frame, pos, highestNodeId);
+                            int result = blob.compactCheck(frame, pos, highestNodeId);
                             if (result < 0) {
                                 break;
                             }
                             if (result > 0) {
                                 node.releaseShared();
                                 node = null;
-                                stream.doWrite(pos, TreeValueStream.TOUCH_VALUE, 0, 0);
+                                blob.doWrite(pos, TreeValueBlob.TOUCH_VALUE, 0, 0);
                                 frame = leafSharedNotSplit();
                                 node = frame.mNode;
                                 if (node.mId > highestNodeId) {

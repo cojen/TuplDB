@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -25,14 +26,16 @@ import java.io.OutputStream;
  *
  * @author Brian S O'Neill
  */
-final class UnmodifiableStream extends WrappedStream {
-    UnmodifiableStream(Stream source) {
-        super(source);
+final class UnmodifiableBlob implements Blob {
+    private final Blob mSource;
+
+    UnmodifiableBlob(Blob source) {
+        mSource = source;
     }
 
     @Override
-    public LockResult open(Transaction txn, byte[] key) throws IOException {
-        return mSource.open(txn, key);
+    public long length() throws IOException {
+        return mSource.length();
     }
 
     @Override
@@ -41,8 +44,23 @@ final class UnmodifiableStream extends WrappedStream {
     }
 
     @Override
+    public int read(long pos, byte[] buf, int off, int len) throws IOException {
+        return mSource.read(pos, buf, off, len);
+    }
+
+    @Override
     public void write(long pos, byte[] buf, int off, int len) throws IOException {
         throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public InputStream newInputStream(long pos) throws IOException {
+        return mSource.newInputStream(pos);
+    }
+
+    @Override
+    public InputStream newInputStream(long pos, int bufferSize) throws IOException {
+        return mSource.newInputStream(pos, bufferSize);
     }
 
     @Override
@@ -53,5 +71,10 @@ final class UnmodifiableStream extends WrappedStream {
     @Override
     public OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
         throw new UnmodifiableViewException();
+    }
+
+    @Override
+    public void close() {
+        mSource.close();
     }
 }

@@ -581,15 +581,15 @@ public interface Cursor {
     //public void append(byte[] data) throws IOException;
 
     /**
-     * Returns an opened stream at the cursor's current position, or an unopened stream if the
-     * cursor is unpositioned. When using a cursor for opening streams, {@link #autoload
-     * autoload} should be disabled.
+     * Returns a value accessor for the current entry, which permits values to be much larger
+     * than what can fit in main memory. When using a cursor for opening blobs, {@link
+     * #autoload autoload} should be disabled.
+     *
+     * @throws UnpositionedCursorException if position is undefined at invocation time
      */
-    /*
-    public default Stream newStream() {
+    public default Blob openBlob() {
         throw new UnsupportedOperationException();
     }
-    */
 
     /**
      * Returns a new independent Cursor, positioned where this one is, and
