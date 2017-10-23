@@ -305,6 +305,125 @@ public class BlobTest {
     }
 
     @Test
+    public void extendExisting() throws Exception {
+        int[] from = {
+            0, 100, 200, 1000, 2000, 10000, 100_000, 10_000_000, 100_000_000
+        };
+
+        long[] to = {
+            0, 101, 201, 1001, 2001, 10001, 100_001, 10_000_001, 100_000_001,
+            10_000_000_000L
+        };
+
+        for (int fromLen : from) {
+            for (long toLen : to) {
+                if (toLen > fromLen) {
+                    try {
+                        extendExisting(fromLen, toLen, true);
+                    } catch (Throwable e) {
+                        e.printStackTrace(System.out);
+                        throw e;
+                    }
+                }
+            }
+        }
+    }
+
+    private void extendExisting(int fromLen, long toLen, boolean fullCheck) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 8675309 + fromLen + toLen;
+        Random rnd = new Random(seed);
+
+        byte[] key = "hello".getBytes();
+
+        byte[] initial = new byte[fromLen];
+
+        for (int i=0; i<fromLen; i++) {
+            initial[i] = (byte) rnd.nextInt();
+        }
+
+        ix.store(Transaction.BOGUS, key, initial);
+        initial = null;
+
+        Blob blob = ix.openBlob(Transaction.BOGUS, key);
+
+        blob.setLength(toLen);
+
+        assertEquals(toLen, blob.length());
+
+        if (toLen < 10_000_000) {
+            byte[] resulting = ix.load(Transaction.BOGUS, key);
+            assertEquals(toLen, resulting.length);
+
+            rnd = new Random(seed);
+
+            for (int i=0; i<fromLen; i++) {
+                if (resulting[i] != (byte) rnd.nextInt()) {
+                    fail();
+                }
+            }
+
+            for (int i=fromLen; i<toLen; i++) {
+                if (resulting[i] != 0) {
+                    fail();
+                }
+            }
+        } else {
+            InputStream in = blob.newInputStream(0, 10_000);
+
+            rnd = new Random(seed);
+
+            for (int i=0; i<fromLen; i++) {
+                int a = in.read();
+                if (a < 0 || ((byte) a) != (byte) rnd.nextInt()) {
+                    fail(i + ", " + a);
+                }
+            }
+
+            if (!fullCheck) {
+                if (in.read() == -1) {
+                    fail();
+                }
+            } else {
+                byte[] buf = new byte[101];
+
+                for (long i=fromLen; i<toLen; ) {
+                    Arrays.fill(buf, (byte) 1);
+
+                    int amt = in.read(buf);
+
+                    if (amt <= 0) {
+                        fail(i + ", " + amt);
+                    }
+
+                    for (int j=0; j<amt; j++) {
+                        if (buf[j] != 0) {
+                            fail(i + ", " + j + ", " + buf[j]);
+                        }
+                    }
+
+                    i += amt;
+                }
+
+                if (in.read() != -1) {
+                    fail();
+                }
+            }
+        }
+
+        blob.close();
+
+        ix.delete(Transaction.BOGUS, key);
+    }
+
+    @Test
+    public void superExtendExisting() throws Exception {
+        // Original code would erroneously cast a very large long to an int.
+        extendExisting(1000, 185_000_000_000L, false);
+    }
+
+    @Test
     public void truncateNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase
