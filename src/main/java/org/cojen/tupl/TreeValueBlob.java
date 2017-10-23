@@ -797,7 +797,7 @@ final class TreeValueBlob extends AbstractBlob {
                 p_shortPutLE(page, loc + 1, (int) len);
                 return loc;
             }
-            growth = (len < (1L << (4 * 8))) ? 2 : ((len < (1L << (6 * 8))) ? 2 : 4);
+            growth = (len < (1L << (4 * 8))) ? 2 : ((len < (1L << (6 * 8))) ? 4 : 6);
             break;
         case 1: // (4 byte length field)
             if (len < (1L << (4 * 8))) {
@@ -1032,12 +1032,13 @@ final class TreeValueBlob extends AbstractBlob {
         final Node node = frame.mNode;
 
         // FIXME: allow split
+        /*
         long avail = node.availableLeafBytes() - growth;
         if (avail < 0) {
             throw new Error("split 1: " + node.availableLeafBytes() + ", " + growth);
         }
+        */
 
-        int igrowth = (int) growth;
         int searchVecStart = node.searchVecStart();
 
         /*P*/ byte[] page = node.mPage;
@@ -1068,13 +1069,17 @@ final class TreeValueBlob extends AbstractBlob {
             loc += len;
         }
 
+        final Tree tree = mCursor.mTree;
         int retMask = 0;
 
-        int newValueLen = Node.calculateFragmentedValueLength(value.length + igrowth);
+        int igrowth;
+        int newValueLen;
 
-        final Tree tree = mCursor.mTree;
-
-        if ((key.length + newValueLen) > tree.mDatabase.mMaxFragmentedEntrySize) {
+        if (growth > 65536 || // largest possible node size
+            (key.length + (newValueLen = Node.calculateFragmentedValueLength
+                           (value.length + (igrowth = (int) growth))))
+            > tree.mDatabase.mMaxFragmentedEntrySize)
+        {
             // Too big, and so value encoding must be modified.
             final int header = value[0];
 
@@ -1158,8 +1163,8 @@ final class TreeValueBlob extends AbstractBlob {
                 throw new Error("head");
             }
 
-            newValueLen = Node.calculateFragmentedValueLength(value.length);
             igrowth = 0;
+            newValueLen = Node.calculateFragmentedValueLength(value.length);
         }
 
         // Note: As an optimization, search vector can be left as-is for new entry. Full delete
