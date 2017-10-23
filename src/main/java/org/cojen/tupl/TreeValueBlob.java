@@ -616,10 +616,10 @@ final class TreeValueBlob extends AbstractBlob {
                     return 0;
                 }
 
-                int newLoc = updateLengthField(frame, fHeaderLoc, endPos);
+                loc = updateLengthField(frame, fHeaderLoc, endPos);
                 page = node.mPage;
 
-                if (newLoc < 0) {
+                if (loc < 0) {
                     // FIXME: Expand length field; what if inline is too big? Need to make sure
                     // that if two max entries exist in the node that split still works. Might
                     // only be a problem with large keys and internal nodes.
@@ -631,14 +631,13 @@ final class TreeValueBlob extends AbstractBlob {
                     // easily repaired is about 6000 bytes. If converting to indirect doesn't
                     // free up space, then a simple delete and re-insert might be fine.
 
-                    loc = ~newLoc;
+                    loc = ~loc;
                     fHeaderLoc = loc;
                     header = p_byteGet(page, loc++);
                     // Advance past the value length field.
                     loc += 2 + ((header >> 1) & 0x06);
-                } else if (newLoc != fHeaderLoc) { // FIXME: might not have moved!
-                    // FIXME: looks the same as above...
-                    loc = newLoc;
+                } else {
+                    // FIXME: duplicate code as above
                     fHeaderLoc = loc;
                     header = p_byteGet(page, loc++);
                     // Advance past the value length field.
@@ -662,7 +661,7 @@ final class TreeValueBlob extends AbstractBlob {
                         break extend;
                     }
 
-                    newLoc = extendFragmentedValue(frame, growth * 6, true);
+                    int newLoc = extendFragmentedValue(frame, growth * 6, true);
                     page = node.mPage;
 
                     if (newLoc >= 0) {
