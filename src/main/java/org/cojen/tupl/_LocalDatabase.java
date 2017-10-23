@@ -676,7 +676,7 @@ final class _LocalDatabase extends AbstractDatabase {
             mMaxFragmentedEntrySize = (pageSize - _Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
             // Limit the maximum key size to allow enough room for a fragmented value. It might
-            // require up to 11 bytes for fragment encoding (when length is >= 65536), and tho
+            // require up to 11 bytes for fragment encoding (when length is >= 65536), and
             // additional bytes are required for the value header inside the tree node.
             mMaxKeySize = Math.min(16383, mMaxFragmentedEntrySize - (2 + 11));
 
