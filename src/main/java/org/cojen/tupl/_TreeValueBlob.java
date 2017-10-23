@@ -416,8 +416,7 @@ final class _TreeValueBlob extends AbstractBlob {
                     } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                         // Writing over the entire value.
                         try {
-                            // TODO: need frame for rebalancing to work
-                            node.updateLeafValue(null, mCursor.mTree, nodePos, 0, b);
+                            node.updateLeafValue(frame, mCursor.mTree, nodePos, 0, b);
                         } catch (IOException e) {
                             node.releaseExclusive();
                             throw e;
