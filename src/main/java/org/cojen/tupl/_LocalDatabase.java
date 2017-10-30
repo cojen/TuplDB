@@ -35,6 +35,8 @@ import java.io.OutputStreamWriter;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import java.math.BigInteger;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
@@ -4045,6 +4047,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
+                    // FIXME: Support zero levels.
                     int levels = calculateInodeLevels(vlength);
                     _Node inode = allocDirtyFragmentNode();
                     try {
@@ -4123,7 +4126,7 @@ final class _LocalDatabase extends AbstractDatabase {
         level--;
         long levelCap = levelCap(level);
 
-        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+        int childNodeCount = childNodeCount(vlength, levelCap);
 
         int poffset = 0;
         try {
@@ -4156,6 +4159,23 @@ final class _LocalDatabase extends AbstractDatabase {
             // but the rest are not.
             p_clear(page, poffset, pageSize(page));
         }
+    }
+
+    /**
+     * Determine the multi-level fragmented value child node count, at a specific level.
+     */
+    private static int childNodeCount(long vlength, long levelCap) {
+        int count = (int) ((vlength + (levelCap - 1)) / levelCap);
+        if (count < 0) {
+            // Overflowed.
+            count = childNodeCountOverflow(vlength, levelCap);
+        }
+        return count;
+    }
+
+    private static int childNodeCountOverflow(long vlength, long levelCap) {
+        return BigInteger.valueOf(vlength).add(BigInteger.valueOf(levelCap - 1))
+            .divide(BigInteger.valueOf(levelCap)).intValue();
     }
 
     /**
@@ -4286,8 +4306,9 @@ final class _LocalDatabase extends AbstractDatabase {
             if (inodeId != 0) {
                 _Node inode = nodeMapLoadFragment(inodeId);
                 pagesRead++;
+                // FIXME: Support zero levels.
                 int levels = calculateInodeLevels(vLen);
-                pagesRead += readMultilevelFragments(levels, inode, value, 0, vLen);
+                pagesRead += readMultilevelFragments(levels, inode, value, vOff, vLen);
             }
         }
 
@@ -4316,7 +4337,7 @@ final class _LocalDatabase extends AbstractDatabase {
             level--;
             long levelCap = levelCap(level);
 
-            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+            int childNodeCount = childNodeCount(vlength, levelCap);
 
             for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
                 long childNodeId = p_uint48GetLE(page, poffset);
@@ -4404,6 +4425,7 @@ final class _LocalDatabase extends AbstractDatabase {
             long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
                 _Node inode = removeInode(inodeId);
+                // FIXME: Support zero levels.
                 int levels = calculateInodeLevels(vLen);
                 deleteMultilevelFragments(levels, inode, vLen);
             }
@@ -4422,7 +4444,7 @@ final class _LocalDatabase extends AbstractDatabase {
         long levelCap = levelCap(level);
 
         // Copy all child node ids and release parent latch early.
-        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+        int childNodeCount = childNodeCount(vlength, levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
             childNodeIds[i] = p_uint48GetLE(page, poffset);
