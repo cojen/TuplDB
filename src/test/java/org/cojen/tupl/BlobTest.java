@@ -311,8 +311,7 @@ public class BlobTest {
         };
 
         long[] to = {
-            0, 101, 201, 1001, 2001, 10001, 100_001, 10_000_001, 100_000_001,
-            10_000_000_000L
+            0, 101, 201, 1001, 5000, 10001, 100_001, 10_000_001, 100_000_001, 10_000_000_000L
         };
 
         for (int fromLen : from) {
@@ -327,6 +326,17 @@ public class BlobTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void extendExistingInlcudingInline() throws Exception {
+        // Test with various initial sizes which have some inline content encoded.
+
+        extendExisting(513, 514, true);
+        extendExisting(513, 1000, true);
+        extendExisting(513, 10_000, true);
+        extendExisting(513, 100_000, true);
+        extendExisting(600, 100_000, true);
     }
 
     private void extendExisting(int fromLen, long toLen, boolean fullCheck) throws Exception {
@@ -359,8 +369,9 @@ public class BlobTest {
             rnd = new Random(seed);
 
             for (int i=0; i<fromLen; i++) {
-                if (resulting[i] != (byte) rnd.nextInt()) {
-                    fail();
+                byte expect = (byte) rnd.nextInt();
+                if (resulting[i] != expect) {
+                    fail("fail: " + i + ", " + expect + ", " + resulting[i]);
                 }
             }
 
@@ -414,6 +425,8 @@ public class BlobTest {
 
         blob.close();
 
+        assertTrue(ix.verify(null));
+
         ix.delete(Transaction.BOGUS, key);
     }
 
@@ -421,6 +434,9 @@ public class BlobTest {
     public void superExtendExisting() throws Exception {
         // Original code would erroneously cast a very large long to an int.
         extendExisting(1000, 185_000_000_000L, false);
+
+        // Original code would overflow.
+        extendExisting(1000, Long.MAX_VALUE, false);
     }
 
     @Test

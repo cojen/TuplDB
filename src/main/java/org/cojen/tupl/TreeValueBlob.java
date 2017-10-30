@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.math.BigInteger;
+
 import java.util.Arrays;
 
 import static org.cojen.tupl.PageOps.*;
@@ -173,52 +175,51 @@ final class TreeValueBlob extends AbstractBlob {
         // Skip the key.
         loc += Node.keyLengthAtLoc(page, loc);
 
-        int header = p_byteGet(page, loc++);
-        if (header >= 0) {
+        int vHeader = p_byteGet(page, loc++);
+        if (vHeader >= 0) {
             // Not fragmented.
-            return pos >= header ? -1 : 0;
+            return pos >= vHeader ? -1 : 0;
         }
 
         int len;
-        if ((header & 0x20) == 0) {
-            len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
-        } else if (header != -1) {
-            len = 1 + (((header & 0x0f) << 16)
+        if ((vHeader & 0x20) == 0) {
+            len = 1 + (((vHeader & 0x1f) << 8) | p_ubyteGet(page, loc++));
+        } else if (vHeader != -1) {
+            len = 1 + (((vHeader & 0x0f) << 16)
                        | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
         } else {
             // ghost
             return -1;
         }
 
-        if ((header & Node.ENTRY_FRAGMENTED) == 0) {
+        if ((vHeader & Node.ENTRY_FRAGMENTED) == 0) {
             // Not fragmented.
             return pos >= len ? -1 : 0;
         }
 
-        // Read the fragment header, as described by the Database.fragment method.
-        header = p_byteGet(page, loc++);
+        // Read the fragment header, as described by the LocalDatabase.fragment method.
 
-        final long vLen = LocalDatabase.decodeFullFragmentedValueLength(header, page, loc);
+        final int fHeader = p_byteGet(page, loc++);
+        final long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
 
-        if (pos >= vLen) {
+        if (pos >= fLen) {
             return -1;
         }
 
-        // Advance past the value length field.
-        loc += 2 + ((header >> 1) & 0x06);
+        loc = skipFragmentedLengthField(loc, fHeader);
 
-        if ((header & 0x02) != 0) {
+        if ((fHeader & 0x02) != 0) {
             // Inline content.
-            final int inLen = p_ushortGetLE(page, loc);
-            if (pos < inLen) {
+            final int fInline = p_ushortGetLE(page, loc);
+            if (pos < fInline) {
                 // Positioned within inline content.
                 return 0;
             }
-            pos -= inLen;
-            loc = loc + 2 + inLen;
+            pos -= fInline;
+            loc = loc + 2 + fInline;
         }
 
-        if ((header & 0x01) == 0) {
+        if ((fHeader & 0x01) == 0) {
             // Direct pointers.
             loc += (((int) pos) / pageSize(page)) * 6;
             final long fNodeId = p_uint48GetLE(page, loc);
@@ -234,7 +235,8 @@ final class TreeValueBlob extends AbstractBlob {
         }
 
         Node inode = mDatabase.nodeMapLoadFragment(inodeId);
-        int level = mDatabase.calculateInodeLevels(vLen);
+        // FIXME: Support zero levels.
+        int level = mDatabase.calculateInodeLevels(fLen);
 
         while (true) {
             level--;
@@ -261,497 +263,509 @@ final class TreeValueBlob extends AbstractBlob {
      * @return applicable only to OP_LENGTH and OP_READ
      */
     @SuppressWarnings("fallthrough")
-    private long action(final CursorFrame frame,
-                        final int op, long pos, final byte[] b, int bOff, int bLen)
+    private long action(CursorFrame frame, int op, long pos, byte[] b, int bOff, int bLen)
         throws IOException
     {
-        Node node = frame.mNode;
+        while (true) {
+            Node node = frame.mNode;
 
-        int nodePos = frame.mNodePos;
-        if (nodePos < 0) {
-            // Value doesn't exist.
+            int nodePos = frame.mNodePos;
+            if (nodePos < 0) {
+                // Value doesn't exist.
 
-            if (op <= OP_READ) {
-                // Handle OP_LENGTH and OP_READ.
-                return -1;
+                if (op <= OP_READ) {
+                    // Handle OP_LENGTH and OP_READ.
+                    return -1;
+                }
+
+                // Handle OP_SET_LENGTH and OP_WRITE.
+
+                if (b == TOUCH_VALUE) {
+                    return 0;
+                }
+
+                // Method releases latch if an exception is thrown.
+                node = mCursor.insertBlank(frame, node, pos + bLen);
+
+                if (bLen <= 0) {
+                    return 0;
+                }
+
+                // Fallthrough and complete the write operation. Need to re-assign nodePos,
+                // because the insert operation changed it.
+                nodePos = frame.mNodePos;
             }
 
-            // Handle OP_SET_LENGTH and OP_WRITE.
+            /*P*/ byte[] page = node.mPage;
+            int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
 
-            if (b == TOUCH_VALUE) {
-                return 0;
-            }
+            final int kHeaderLoc = loc;
 
-            // Method releases latch if an exception is thrown.
-            node = mCursor.insertBlank(frame, node, pos + bLen);
+            // Skip the key.
+            loc += Node.keyLengthAtLoc(page, loc);
 
-            if (bLen <= 0) {
-                return 0;
-            }
+            final int vHeaderLoc; // location of raw value header
+            final int vHeader;    // header byte of raw value
+            final int vLen;       // length of raw value sans header
 
-            // Fallthrough and complete the write operation. Need to re-assign nodePos, because
-            // the insert operation changed it.
-            nodePos = frame.mNodePos;
-        }
+            vHeaderLoc = loc;
+            vHeader = p_byteGet(page, loc++);
 
-        /*P*/ byte[] page = node.mPage;
-        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
-        // Skip the key.
-        loc += Node.keyLengthAtLoc(page, loc);
-
-        int vHeaderLoc = loc;
-        long vLen;
-
-        int header = p_byteGet(page, loc++);
-        nf: {
-            if (header >= 0) {
-                vLen = header;
-            } else {
-                int len;
-                if ((header & 0x20) == 0) {
-                    len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
-                } else if (header != -1) {
-                    len = 1 + (((header & 0x0f) << 16)
-                               | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+            nf: {
+                if (vHeader >= 0) {
+                    vLen = vHeader;
                 } else {
-                    // ghost
-                    if (op <= OP_READ) {
-                        // Handle OP_LENGTH and OP_READ.
-                        return -1;
+                    if ((vHeader & 0x20) == 0) {
+                        vLen = 1 + (((vHeader & 0x1f) << 8) | p_ubyteGet(page, loc++));
+                    } else if (vHeader != -1) {
+                        vLen = 1 + (((vHeader & 0x0f) << 16)
+                                    | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+                    } else {
+                        // ghost
+                        if (op <= OP_READ) {
+                            // Handle OP_LENGTH and OP_READ.
+                            return -1;
+                        }
+
+                        if (b == TOUCH_VALUE) {
+                            return 0;
+                        }
+
+                        // FIXME: write ops; create the value
+                        node.releaseExclusive();
+                        throw null;
                     }
 
+                    if ((vHeader & Node.ENTRY_FRAGMENTED) != 0) {
+                        // Value is fragmented.
+                        break nf;
+                    }
+                }
+
+                // Operate against a non-fragmented value.
+
+                switch (op) {
+                case OP_LENGTH: default:
+                    return vLen;
+
+                case OP_READ:
+                    if (bLen <= 0 || pos >= vLen) {
+                        bLen = 0;
+                    } else {
+                        bLen = Math.min((int) (vLen - pos), bLen);
+                        p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
+                    }
+                    return bLen;
+
+                case OP_SET_LENGTH:
+                    if (pos <= vLen) {
+                        // Truncate length. 
+
+                        int newLen = (int) pos;
+                        int oldLen = (int) vLen;
+                        int garbageAccum = oldLen - newLen;
+
+                        shift: {
+                            final int vLoc;
+                            final int vShift;
+
+                            if (newLen <= 127) {
+                                p_bytePut(page, vHeaderLoc, newLen);
+                                if (oldLen <= 127) {
+                                    break shift;
+                                } else if (oldLen <= 8192) {
+                                    vLoc = vHeaderLoc + 2;
+                                    vShift = 1;
+                                } else {
+                                    vLoc = vHeaderLoc + 3;
+                                    vShift = 2;
+                                }
+                            } else if (newLen <= 8192) {
+                                p_bytePut(page, vHeaderLoc, 0x80 | ((newLen - 1) >> 8));
+                                p_bytePut(page, vHeaderLoc + 1, newLen - 1);
+                                if (oldLen <= 8192) {
+                                    break shift;
+                                } else {
+                                    vLoc = vHeaderLoc + 3;
+                                    vShift = 1;
+                                }
+                            } else {
+                                p_bytePut(page, vHeaderLoc, 0xa0 | ((newLen - 1) >> 16));
+                                p_bytePut(page, vHeaderLoc + 1, (newLen - 1) >> 8);
+                                p_bytePut(page, vHeaderLoc + 2, newLen - 1);
+                                break shift;
+                            }
+
+                            garbageAccum += vShift;
+                            p_copy(page, vLoc, page, vLoc - vShift, newLen);
+                        }
+
+                        node.garbage(node.garbage() + garbageAccum);
+                        return 0;
+                    }
+
+                    // Break out for length increase, by appending an empty value.
+                    break;
+
+                case OP_WRITE:
                     if (b == TOUCH_VALUE) {
                         return 0;
                     }
 
-                    // FIXME: write ops; create the value
-                    node.releaseExclusive();
-                    throw null;
+                    if (pos < vLen) {
+                        final long end = pos + bLen;
+                        if (end <= vLen) {
+                            // Writing within existing value region.
+                            p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
+                            return 0;
+                        } else if (pos == 0 && bOff == 0 && bLen == b.length) {
+                            // Writing over the entire value.
+                            try {
+                                node.updateLeafValue(frame, mCursor.mTree, nodePos, 0, b);
+                            } catch (IOException e) {
+                                node.releaseExclusive();
+                                throw e;
+                            }
+                            return 0;
+                        } else {
+                            // Write the overlapping region, and then append the rest.
+                            int len = (int) (vLen - pos);
+                            p_copyFromArray(b, bOff, page, (int) (loc + pos), len);
+                            pos = vLen;
+                            bOff += len;
+                            bLen -= len;
+                        }
+                    }
+
+                    // Break out for append.
+                    break;
                 }
 
-                if ((header & Node.ENTRY_FRAGMENTED) != 0) {
-                    // Value is fragmented.
-                    break nf;
+                // This point is reached for appending to a non-fragmented value. There's all
+                // kinds of optimizations that can be performed here, but keep things
+                // simple. Delete the old value, insert a blank value, and then update it.
+
+                byte[] oldValue = new byte[vLen];
+                p_copyToArray(page, loc, oldValue, 0, oldValue.length);
+
+                node.deleteLeafEntry(nodePos);
+                frame.mNodePos = ~nodePos;
+
+                // Method releases latch if an exception is thrown.
+                mCursor.insertBlank(frame, node, pos + bLen);
+
+                op = OP_WRITE;
+
+                if (bLen <= 0) {
+                    pos = 0;
+                    b = oldValue;
+                    bOff = 0;
+                    bLen = oldValue.length;
+                } else {
+                    action(frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
                 }
 
-                vLen = len;
+                continue;
             }
 
-            // Operate against a non-fragmented value.
+            // Operate against a fragmented value. First read the fragment header, as described
+            // by the LocalDatabase.fragment method.
+
+            int fHeaderLoc; // location of fragmented value header
+            int fHeader;    // header byte of fragmented value
+            long fLen;      // length of fragmented value (when fully reconstructed)
+
+            fHeaderLoc = loc;
+            fHeader = p_byteGet(page, loc++);
+
+            switch ((fHeader >> 2) & 0x03) {
+            default:
+                fLen = p_ushortGetLE(page, loc);
+                break;
+            case 1:
+                fLen = p_intGetLE(page, loc) & 0xffffffffL;
+                break;
+            case 2:
+                fLen = p_uint48GetLE(page, loc);
+                break;
+            case 3:
+                fLen = p_longGetLE(page, loc);
+                if (fLen < 0) {
+                    node.release(op > OP_READ);
+                    throw new LargeValueException(fLen);
+                }
+                break;
+            }
+
+            loc = skipFragmentedLengthField(loc, fHeader);
 
             switch (op) {
             case OP_LENGTH: default:
-                return vLen;
+                return fLen;
 
-            case OP_READ:
-                if (bLen <= 0 || pos >= vLen) {
-                    bLen = 0;
-                } else {
-                    bLen = Math.min((int) (vLen - pos), bLen);
-                    p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
+            case OP_READ: try {
+                if (bLen <= 0 || pos >= fLen) {
+                    return 0;
                 }
-                return bLen;
+
+                bLen = (int) Math.min(fLen - pos, bLen);
+                final int total = bLen;
+
+                if ((fHeader & 0x02) != 0) {
+                    // Inline content.
+                    final int fInline = p_ushortGetLE(page, loc);
+                    loc += 2;
+                    final int amt = (int) (fInline - pos);
+                    if (amt <= 0) {
+                        // Not reading any inline content.
+                        pos -= fInline;
+                    } else if (bLen <= amt) {
+                        p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
+                        return bLen;
+                    } else {
+                        p_copyToArray(page, (int) (loc + pos), b, bOff, amt);
+                        bLen -= amt;
+                        bOff += amt;
+                        pos = 0;
+                    }
+                    loc += fInline;
+                }
+
+                if ((fHeader & 0x01) == 0) {
+                    // Direct pointers.
+                    final int ipos = (int) pos;
+                    loc += (ipos / pageSize(page)) * 6;
+                    int fNodeOff = ipos % pageSize(page);
+                    while (true) {
+                        final int amt = Math.min(bLen, pageSize(page) - fNodeOff);
+                        final long fNodeId = p_uint48GetLE(page, loc);
+                        if (fNodeId == 0) {
+                            // Reading a sparse value.
+                            Arrays.fill(b, bOff, bOff + amt, (byte) 0);
+                        } else {
+                            final Node fNode = mDatabase.nodeMapLoadFragment(fNodeId);
+                            p_copyToArray(fNode.mPage, fNodeOff, b, bOff, amt);
+                            fNode.releaseShared();
+                        }
+                        bLen -= amt;
+                        if (bLen <= 0) {
+                            return total;
+                        }
+                        bOff += amt;
+                        loc += 6;
+                        fNodeOff = 0;
+                    }
+                }
+
+                // Indirect pointers.
+
+                final long inodeId = p_uint48GetLE(page, loc);
+                if (inodeId == 0) {
+                    // Reading a sparse value.
+                    Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
+                } else {
+                    LocalDatabase db = mDatabase;
+                    final Node inode = db.nodeMapLoadFragment(inodeId);
+                    // FIXME: Support zero levels.
+                    final int levels = db.calculateInodeLevels(fLen);
+                    readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+                }
+
+                return total;
+            } catch (IOException e) {
+                node.releaseShared();
+                throw e;
+            }
 
             case OP_SET_LENGTH:
-                if (pos <= vLen) {
-                    // Truncate length. 
-
-                    int newLen = (int) pos;
-                    int oldLen = (int) vLen;
-                    int garbageAccum = oldLen - newLen;
-
-                    shift: {
-                        final int vLoc;
-                        final int vShift;
-
-                        if (newLen <= 127) {
-                            p_bytePut(page, vHeaderLoc, newLen);
-                            if (oldLen <= 127) {
-                                break shift;
-                            } else if (oldLen <= 8192) {
-                                vLoc = vHeaderLoc + 2;
-                                vShift = 1;
-                            } else {
-                                vLoc = vHeaderLoc + 3;
-                                vShift = 2;
-                            }
-                        } else if (newLen <= 8192) {
-                            p_bytePut(page, vHeaderLoc, 0x80 | ((newLen - 1) >> 8));
-                            p_bytePut(page, vHeaderLoc + 1, newLen - 1);
-                            if (oldLen <= 8192) {
-                                break shift;
-                            } else {
-                                vLoc = vHeaderLoc + 3;
-                                vShift = 1;
-                            }
-                        } else {
-                            p_bytePut(page, vHeaderLoc, 0xa0 | ((newLen - 1) >> 16));
-                            p_bytePut(page, vHeaderLoc + 1, (newLen - 1) >> 8);
-                            p_bytePut(page, vHeaderLoc + 2, newLen - 1);
-                            break shift;
-                        }
-
-                        garbageAccum += vShift;
-                        p_copy(page, vLoc, page, vLoc - vShift, newLen);
-                    }
-
-                    node.garbage(node.garbage() + garbageAccum);
-                    return 0;
-                }
-
-                // Break out for length increase, by appending an empty value.
-                break;
-
-            case OP_WRITE:
-                if (b == TOUCH_VALUE) {
-                    return 0;
-                }
-
-                if (pos < vLen) {
-                    final long end = pos + bLen;
-                    if (end <= vLen) {
-                        // Writing within existing value region.
-                        p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
+                long endPos = pos + bLen;
+                if (endPos <= fLen) {
+                    if (endPos == fLen) {
                         return 0;
-                    } else if (pos == 0 && bOff == 0 && bLen == b.length) {
-                        // Writing over the entire value.
-                        try {
-                            node.updateLeafValue(frame, mCursor.mTree, nodePos, 0, b);
-                        } catch (IOException e) {
-                            node.releaseExclusive();
-                            throw e;
-                        }
-                        return 0;
-                    } else {
-                        // Write the overlapping region, and then append the rest.
-                        int len = (int) (vLen - pos);
-                        p_copyFromArray(b, bOff, page, (int) (loc + pos), len);
-                        pos = vLen;
-                        bOff += len;
-                        bLen -= len;
                     }
-                }
-
-                // Break out for append.
-                break;
-            }
-
-            // This point is reached for appending to a non-fragmented value. There's all kinds
-            // of optimizations that can be performed here, but keep things simple. Delete the
-            // old value, insert a blank value, and then update it.
-
-            byte[] oldValue = new byte[(int) vLen];
-            p_copyToArray(page, loc, oldValue, 0, oldValue.length);
-
-            node.deleteLeafEntry(nodePos);
-            frame.mNodePos = ~nodePos;
-
-            // Method releases latch if an exception is thrown.
-            mCursor.insertBlank(frame, node, pos + bLen);
-
-            action(frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
-
-            if (bLen > 0) {
-                action(frame, OP_WRITE, pos, b, bOff, bLen);
-            }
-
-            return 0;
-        }
-
-        // Operate against a fragmented value. First read the fragment header, as described by
-        // the Database.fragment method.
-        int fHeaderLoc = loc;
-        header = p_byteGet(page, loc++);
-
-        switch ((header >> 2) & 0x03) {
-        default:
-            vLen = p_ushortGetLE(page, loc);
-            break;
-        case 1:
-            vLen = p_intGetLE(page, loc) & 0xffffffffL;
-            break;
-        case 2:
-            vLen = p_uint48GetLE(page, loc);
-            break;
-        case 3:
-            vLen = p_longGetLE(page, loc);
-            if (vLen < 0) {
-                if (op <= OP_READ) {
-                    node.releaseShared();
-                } else {
+                    // FIXME: truncate
                     node.releaseExclusive();
+                    throw null;
                 }
-                throw new LargeValueException(vLen);
-            }
-            break;
-        }
+                // Fall through to extend the length.
 
-        // Advance past the value length field.
-        loc += 2 + ((header >> 1) & 0x06);
+            case OP_WRITE: try {
+                endPos = pos + bLen;
 
-        switch (op) {
-        case OP_LENGTH: default:
-            return vLen;
+                int fInline = 0;
+                if ((fHeader & 0x02) != 0) {
+                    // Inline content.
+                    fInline = p_ushortGetLE(page, loc);
+                    loc += 2;
+                    final long amt = fInline - pos;
+                    if (amt > 0) {
+                        if (bLen <= amt) {
+                            // Only writing inline content.
+                            p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
+                            return 0;
+                        }
+                        // Write just the inline region, and then never touch it again if
+                        // continued to the outermost loop.
+                        p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) amt);
+                        bLen -= amt;
+                        bOff += amt;
+                        pos = fInline;
+                    }
+                    // Move location to first page pointer.
+                    loc += fInline;
+                }
 
-        case OP_READ: try {
-            if (bLen <= 0 || pos >= vLen) {
-                return 0;
-            }
+                if (endPos <= fLen) {
+                    // Value doesn't need to be extended.
 
-            bLen = (int) Math.min(vLen - pos, bLen);
-            final int total = bLen;
+                    if (bLen == 0 && b != TOUCH_VALUE) {
+                        return 0;
+                    }
 
-            if ((header & 0x02) != 0) {
-                // Inline content.
-                final int inLen = p_ushortGetLE(page, loc);
-                loc += 2;
-                final int amt = (int) (inLen - pos);
-                if (amt <= 0) {
-                    // Not reading any inline content.
-                    pos -= inLen;
-                } else if (bLen <= amt) {
-                    p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
-                    return bLen;
+                    if ((fHeader & 0x01) != 0) {
+                        // Indirect pointers.
+
+                        pos -= fInline; // safe to update now that outermost loop won't continue
+                        fLen -= fInline;
+
+                        final Node inode = prepareMultilevelWrite(page, loc);
+
+                        // FIXME: Support zero levels.
+                        final int levels = mDatabase.calculateInodeLevels(fLen);
+                        writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+
+                        return 0;
+                    }
                 } else {
-                    p_copyToArray(page, (int) (loc + pos), b, bOff, amt);
-                    bLen -= amt;
-                    bOff += amt;
-                    pos = 0;
-                }
-                loc += inLen;
-            }
-
-            if ((header & 0x01) == 0) {
-                // Direct pointers.
-                final int ipos = (int) pos;
-                loc += (ipos / pageSize(page)) * 6;
-                int fNodeOff = ipos % pageSize(page);
-                while (true) {
-                    final int amt = Math.min(bLen, pageSize(page) - fNodeOff);
-                    final long fNodeId = p_uint48GetLE(page, loc);
-                    if (fNodeId == 0) {
-                        // Reading a sparse value.
-                        Arrays.fill(b, bOff, bOff + amt, (byte) 0);
-                    } else {
-                        final Node fNode = mDatabase.nodeMapLoadFragment(fNodeId);
-                        p_copyToArray(fNode.mPage, fNodeOff, b, bOff, amt);
-                        fNode.releaseShared();
-                    }
-                    bLen -= amt;
-                    if (bLen <= 0) {
-                        return total;
-                    }
-                    bOff += amt;
-                    loc += 6;
-                    fNodeOff = 0;
-                }
-            }
-
-            // Indirect pointers.
-
-            final long inodeId = p_uint48GetLE(page, loc);
-            if (inodeId == 0) {
-                // Reading a sparse value.
-                Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
-            } else {
-                LocalDatabase db = mDatabase;
-                final Node inode = db.nodeMapLoadFragment(inodeId);
-                final int levels = db.calculateInodeLevels(vLen);
-                readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
-            }
-
-            return total;
-        } catch (IOException e) {
-            node.releaseShared();
-            throw e;
-        }
-
-        case OP_SET_LENGTH:
-            long endPos = pos + bLen;
-            if (endPos <= vLen) {
-                if (endPos == vLen) {
-                    return 0;
-                }
-                // FIXME: truncate
-                node.releaseExclusive();
-                throw null;
-            }
-            // Fall through to extend length.
-
-        case OP_WRITE: try {
-            endPos = pos + bLen;
-
-            int inlineLen = 0;
-            if ((header & 0x02) != 0) {
-                // Inline content.
-                inlineLen = p_ushortGetLE(page, loc);
-                loc += 2;
-                final long amt = inlineLen - pos;
-                if (amt <= 0) {
-                    // Not writing any inline content.
-                    pos -= inlineLen;
-                } else if (bLen <= amt) {
-                    p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
-                    return 0;
-                } else {
-                    p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) amt);
-                    bLen -= amt;
-                    bOff += amt;
-                    pos = 0;
-                }
-                // FIXME: needs to be re-applied when loc is re-assigned
-                loc += inlineLen;
-                // FIXME: later
-                // vLen -= inLen;
-            }
-
-            if (endPos <= vLen) {
-                if (bLen == 0 & b != TOUCH_VALUE) {
-                    return 0;
-                }
-            } else extend: {
-                if (b == TOUCH_VALUE) {
-                    // Don't extend the value.
-                    return 0;
-                }
-
-                loc = updateLengthField(frame, fHeaderLoc, endPos);
-                page = node.mPage;
-
-                if (loc < 0) {
-                    // FIXME: Expand length field; what if inline is too big? Need to make sure
-                    // that if two max entries exist in the node that split still works. Might
-                    // only be a problem with large keys and internal nodes.
-                    // mMaxFragmentedEntrySize is 2037. Enough space can be reclaimed by
-                    // removing one pointer. If indirect this is not possible, and also not
-                    // possible if one direct pointer. The Database.fragment method must limit
-                    // the inline content in these two cases. Note that it doesn't inline when
-                    // creating with indirect pointers. However, the magic size that cannot be
-                    // easily repaired is about 6000 bytes. If converting to indirect doesn't
-                    // free up space, then a simple delete and re-insert might be fine.
-
-                    loc = ~loc;
-                    fHeaderLoc = loc;
-                    header = p_byteGet(page, loc++);
-                    // Advance past the value length field.
-                    loc += 2 + ((header >> 1) & 0x06);
-                } else {
-                    // FIXME: duplicate code as above
-                    fHeaderLoc = loc;
-                    header = p_byteGet(page, loc++);
-                    // Advance past the value length field.
-                    loc += 2 + ((header >> 1) & 0x06);
-                }
-
-                // Note: vHeaderLoc is now wrong. Any code below this point cannot use it.
-
-                if ((header & 0x01) == 0) {
-                    // Extend value with direct pointers.
-
-                    long growth;
-                    {
-                        long p = pageSize(page);
-                        growth = ((endPos + p - 1) / p) - ((vLen + p - 1) / p);
+                    if (b == TOUCH_VALUE) {
+                        // Don't extend the value.
+                        return 0;
                     }
 
-                    vLen = endPos;
+                    // Extend the value.
 
-                    if (growth <= 0) {
-                        break extend;
+                    int fieldGrowth = lengthFieldGrowth(fHeader, endPos);
+
+                    if (fieldGrowth > 0) {
+                        // FIXME: Fix exception handling.
+                        tryIncreaseLengthField
+                            (frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc, fieldGrowth);
+                        continue;
                     }
 
-                    int newLoc = extendFragmentedValue(frame, growth * 6, true);
-                    page = node.mPage;
+                    if ((fHeader & 0x01) != 0) {
+                        // Extend the value with indirect pointers.
 
-                    if (newLoc >= 0) {
+                        pos -= fInline; // safe to update now that outermost loop won't continue
+
+                        // FIXME: update length later (after inode allocations)
+                        updateLengthField(page, fHeaderLoc, endPos);
+
+                        Node inode = prepareMultilevelWrite(page, loc);
+
+                        // Levels required before extending...
+                        int levels = mDatabase.calculateInodeLevels(fLen - fInline);
+
+                        // Compare to new full indirect length.
+                        long newLen = endPos - fInline;
+
+                        if (mDatabase.levelCap(levels) < newLen) {
+                            // Need to add more inode levels.
+                            int newLevels = mDatabase.calculateInodeLevels(newLen);
+                            if (newLevels <= levels) {
+                                throw new AssertionError();
+                            }
+
+                            // FIXME: alloc all first; delete if an exception
+                            do {
+                                Node upper = mDatabase.allocDirtyFragmentNode();
+                                /*P*/ byte[] upage = upper.mPage;
+                                p_int48PutLE(upage, 0, inode.mId);
+                                inode.releaseExclusive();
+                                // Zero-fill the rest.
+                                p_clear(upage, 6, pageSize(upage));
+                                inode = upper;
+                                levels++;
+                            } while (newLevels > levels);
+
+                            p_int48PutLE(page, loc, inode.mId);
+                        }
+
+                        writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+
+                        return 0;
+                    }
+
+                    // Extend the value with direct pointers.
+
+                    long ptrGrowth = directPointerGrowth(page, fLen - fInline, endPos - fInline);
+
+                    if (ptrGrowth > 0) {
+                        // FIXME: Fix exception handling.
+                        int newLoc = tryExtendDirect
+                            (frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc, ptrGrowth * 6);
+
+                        // Note: vHeaderLoc is now wrong and cannot be used.
+
+                        if (newLoc < 0) {
+                            // Format conversion or latch re-acquisition.
+                            continue;
+                        }
+
+                        // Page reference might have changed.
+                        page = node.mPage;
+
+                        // Fix broken location variables that are still required.
                         int delta = newLoc - fHeaderLoc;
                         loc += delta;
-                        //fHeaderLoc = newLoc;
-                        // Note: fHeaderLoc is now wrong. Any code below this point
-                        // cannot use it.
-                        break extend;
+
+                        fHeaderLoc = newLoc;
                     }
 
-                    newLoc = ~newLoc;
-                    header = p_byteGet(page, newLoc);
-                    int delta = newLoc - fHeaderLoc;
-                    loc += delta;
-
-                    break extend;
+                    updateLengthField(page, fHeaderLoc, endPos);
                 }
 
-                // Extend value with indirect pointers.
-
-                Node inode = prepareMultilevelWrite(page, loc);
-
-                // Levels required before extending...
-                int levels = mDatabase.calculateInodeLevels(vLen - inlineLen);
-
-                // Compare to new full indirect length.
-                vLen = endPos - inlineLen;
-
-                if (mDatabase.levelCap(levels) < vLen) {
-                    // Need to add more inode levels.
-                    int newLevels = mDatabase.calculateInodeLevels(vLen);
-                    if (newLevels <= levels) {
-                        throw new AssertionError();
-                    }
-
-                    do {
-                        Node upper = mDatabase.allocDirtyFragmentNode();
-                        /*P*/ byte[] upage = upper.mPage;
-                        p_int48PutLE(upage, 0, inode.mId);
-                        inode.releaseExclusive();
-                        // Zero-fill the rest.
-                        p_clear(upage, 6, pageSize(upage));
-                        inode = upper;
-                        levels++;
-                    } while (newLevels > levels);
-
-                    p_int48PutLE(page, loc, inode.mId);
-                }
-
-                writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
-
-                return 0;
-            }
-
-            vLen -= inlineLen;
-
-            if ((header & 0x01) == 0) {
                 // Direct pointers.
+
+                pos -= fInline; // safe to update now that outermost loop won't continue
+
                 final int ipos = (int) pos;
                 loc += (ipos / pageSize(page)) * 6;
                 int fNodeOff = ipos % pageSize(page);
+
                 while (true) {
                     final int amt = Math.min(bLen, pageSize(page) - fNodeOff);
                     final long fNodeId = p_uint48GetLE(page, loc);
                     if (fNodeId == 0) {
-                        // Writing into a sparse value. Allocate a node and point to it.
-                        final Node fNode = mDatabase.allocDirtyFragmentNode();
-                        try {
-                            p_int48PutLE(page, loc, fNode.mId);
+                        if (amt > 0) {
+                            // Writing into a sparse value. Allocate a node and point to it.
+                            final Node fNode = mDatabase.allocDirtyFragmentNode();
+                            try {
+                                p_int48PutLE(page, loc, fNode.mId);
 
-                            // Now write to the new page, zero-filling the gaps.
-                            /*P*/ byte[] fNodePage = fNode.mPage;
-                            p_clear(fNodePage, 0, fNodeOff);
-                            p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
-                            p_clear(fNodePage, fNodeOff + amt, pageSize(fNodePage));
-                        } finally {
-                            fNode.releaseExclusive();
+                                // Now write to the new page, zero-filling the gaps.
+                                /*P*/ byte[] fNodePage = fNode.mPage;
+                                p_clear(fNodePage, 0, fNodeOff);
+                                p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
+                                p_clear(fNodePage, fNodeOff + amt, pageSize(fNodePage));
+                            } finally {
+                                fNode.releaseExclusive();
+                            }
                         }
                     } else {
-                        // Obtain node from cache, or read it only for partial write.
-                        LocalDatabase db = mDatabase;
-                        final Node fNode =
-                            db.nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize(page));
-                        try {
-                            if (db.markFragmentDirty(fNode)) {
-                                p_int48PutLE(page, loc, fNode.mId);
+                        if (amt > 0 || b == TOUCH_VALUE) {
+                            // Obtain node from cache, or read it only for partial write.
+                            LocalDatabase db = mDatabase;
+                            final Node fNode = db
+                                .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize(page));
+                            try {
+                                if (db.markFragmentDirty(fNode)) {
+                                    p_int48PutLE(page, loc, fNode.mId);
+                                }
+                                p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
+                            } finally {
+                                fNode.releaseExclusive();
                             }
-                            p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
-                        } finally {
-                            fNode.releaseExclusive();
                         }
                     }
                     bLen -= amt;
@@ -762,89 +776,12 @@ final class TreeValueBlob extends AbstractBlob {
                     loc += 6;
                     fNodeOff = 0;
                 }
+            } catch (IOException e) {
+                node.releaseExclusive();
+                throw e;
             }
-
-            // Indirect pointers.
-
-            final Node inode = prepareMultilevelWrite(page, loc);
-
-            final int levels = mDatabase.calculateInodeLevels(vLen);
-            writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
-
-            return 0;
-        } catch (IOException e) {
-            node.releaseExclusive();
-            throw e;
+            } // end switch(op)
         }
-        } // end switch(op)
-    }
-
-    /**
-     * As a side effect of calling this method, the page referenced by the node can change.
-     *
-     * @param loc fragmented value header location
-     * @return new value location (after header), negated if converted to indirect format
-     */
-    private int updateLengthField(CursorFrame frame, int loc, long len) throws IOException {
-        /*P*/ byte[] page = frame.mNode.mPage;
-
-        int growth;
-        int header = p_byteGet(page, loc);
-
-        switch ((header >> 2) & 0x03) {
-        default: // (2 byte length field)
-            if (len < (1L << (2 * 8))) {
-                p_shortPutLE(page, loc + 1, (int) len);
-                return loc;
-            }
-            growth = (len < (1L << (4 * 8))) ? 2 : ((len < (1L << (6 * 8))) ? 4 : 6);
-            break;
-        case 1: // (4 byte length field)
-            if (len < (1L << (4 * 8))) {
-                p_intPutLE(page, loc + 1, (int) len);
-                return loc;
-            }
-            growth = (len < (1L << (6 * 8))) ? 2 : 4;
-            break;
-        case 2: // (6 byte length field)
-            if (len < (1L << (6 * 8))) {
-                p_int48PutLE(page, loc + 1, len);
-                return loc;
-            }
-            growth = 2;
-            break;
-        case 3: // (8 byte length field)
-            p_longPutLE(page, loc + 1, len);
-            return loc;
-        }
-
-        int newLoc = extendFragmentedValue(frame, growth, false);
-        page = frame.mNode.mPage;
-
-        if (newLoc < 0) {
-            loc = ~newLoc;
-            header |= 0x01; // now indirect
-        } else {
-            loc = newLoc;
-        }
-
-        // Clear only the field size bits.
-        header &= ~0b0000_1100;
-
-        if (len < (1L << (4 * 8))) {
-            header |= 0x04; // ff = 1 (4 byte length field)
-            p_intPutLE(page, loc + 1, (int) len);
-        } else if (len < (1L << (6 * 8))) {
-            header |= 0x08; // ff = 2 (6 byte length field)
-            p_int48PutLE(page, loc + 1, len);
-        } else {
-            header |= 0x0c; // ff = 3 (8 byte length field)
-            p_longPutLE(page, loc + 1, len);
-        }
-
-        p_bytePut(page, loc, header);
-
-        return newLoc;
     }
 
     /**
@@ -1016,124 +953,296 @@ final class TreeValueBlob extends AbstractBlob {
     }
 
     /**
-     * Attempt to extend a fragmented leaf value. Caller must ensure that value is fragmented.
-     * If extending at the tail, growth region is filled with zeros.
+     * Returns the amount of bytes which must be added to the length field for the given
+     * length.
      *
-     * As a side effect of calling this method, the page referenced by the node can change.
-     *
-     * @param growth value length increase
-     * @param tail true if growth is at tail end of value
-     * @return new value location (after header), negated if converted to indirect format
+     * @param fHeader header byte of fragmented value
+     * @param fLen new fragmented value length
+     * @return 0, 2, 4, or 6
      */
-    private int extendFragmentedValue(final CursorFrame frame,
-                                      final long growth, final boolean tail)
+    private static int lengthFieldGrowth(int fHeader, long fLen) {
+        int growth = 0;
+
+        switch ((fHeader >> 2) & 0x03) {
+        case 0: // (2 byte length field)
+            if (fLen < (1L << (2 * 8))) {
+                break;
+            }
+            growth = 2;
+        case 1: // (4 byte length field)
+            if (fLen < (1L << (4 * 8))) {
+                break;
+            }
+            growth += 2;
+        case 2: // (6 byte length field)
+            if (fLen < (1L << (6 * 8))) {
+                break;
+            }
+            growth += 2;
+        }
+
+        return growth;
+    }
+
+    /**
+     * Updates the fragmented value length, blindly assuming that the field is large enough.
+     *
+     * @param fHeaderLoc location of fragmented value header
+     * @param fLen new fragmented value length
+     */
+    private static void updateLengthField(/*P*/ byte[] page, int fHeaderLoc, long fLen) {
+        int fHeader = p_byteGet(page, fHeaderLoc);
+
+        switch ((fHeader >> 2) & 0x03) {
+        case 0: // (2 byte length field)
+            p_shortPutLE(page, fHeaderLoc + 1, (int) fLen);
+            break;
+        case 1: // (4 byte length field)
+            p_intPutLE(page, fHeaderLoc + 1, (int) fLen);
+            break;
+        case 2: // (6 byte length field)
+            p_int48PutLE(page, fHeaderLoc + 1, fLen);
+            break;
+        default: // (8 byte length field)
+            p_longPutLE(page, fHeaderLoc + 1, fLen);
+            break;
+        }
+    }
+
+    /**
+     * Attempt to increase the size of the fragmented length field, for supporting larger
+     * sizes. If not enough space exists to increase the size, the value format is converted
+     * and the field size doesn't change.
+     *
+     * As a side effect of calling this method, the page referenced by the node can change when
+     * a non-negative value is returned. Also, any locations within the page may changed.
+     * Caller should always continue from the beginning after calling this method.
+     *
+     * The node latch is released if an exception is thrown.
+     *
+     * @param frame latched exclusive and dirtied
+     * @param kHeaderLoc location of key header
+     * @param vHeaderLoc location of raw value header
+     * @param vLen length of raw value sans header
+     * @param fHeaderLoc location of fragmented value header
+     * @param growth amount of zero bytes to add to the length field (2, 4, or 6)
+     */
+    private int tryIncreaseLengthField(final CursorFrame frame, final int kHeaderLoc,
+                                       final int vHeaderLoc, final int vLen,
+                                       final int fHeaderLoc, final long growth)
         throws IOException
     {
+        final int fOffset = fHeaderLoc - kHeaderLoc;
+        final long newEntryLen = fOffset + vLen + growth;
         final Node node = frame.mNode;
 
-        // FIXME: allow split
-        /*
-        long avail = node.availableLeafBytes() - growth;
-        if (avail < 0) {
-            throw new Error("split 1: " + node.availableLeafBytes() + ", " + growth);
-        }
-        */
-
-        int searchVecStart = node.searchVecStart();
-
-        /*P*/ byte[] page = node.mPage;
-        int entryLoc = p_ushortGetLE(page, searchVecStart + frame.mNodePos);
-
-        int loc = entryLoc;
-
-        final byte[] key; // encoded key
-        {
-            final int len = Node.keyLengthAtLoc(page, loc);
-            key = new byte[len];
-            p_copyToArray(page, loc, key, 0, len);
-            loc += len;
-        }
-
-        byte[] value; // unencoded value
-        {
-            final int len;
-            final int header = p_byteGet(page, loc++);
-            if ((header & 0x20) == 0) {
-                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
-            } else {
-                len = 1 + (((header & 0x0f) << 16)
-                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
-            }
-            value = new byte[len];
-            p_copyToArray(page, loc, value, 0, value.length);
-            loc += len;
+        if (newEntryLen > mDatabase.mMaxFragmentedEntrySize) {
+            compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
+            return -1;
         }
 
         final Tree tree = mCursor.mTree;
-        int retMask = 0;
 
-        int igrowth;
-        int newValueLen;
+        try {
+            final int igrowth = (int) growth;
+            final byte[] newValue = new byte[vLen + igrowth];
+            final /*P*/ byte[] page = node.mPage;
 
-        if (growth > 65536 || // largest possible node size
-            (key.length + (newValueLen = Node.calculateFragmentedValueLength
-                           (value.length + (igrowth = (int) growth))))
-            > tree.mDatabase.mMaxFragmentedEntrySize)
-        {
-            // Too big, and so value encoding must be modified.
-            final int header = value[0];
+            // Update the header with the new field size.
+            int fHeader = p_byteGet(page, fHeaderLoc);
+            newValue[0] = (byte) (fHeader + (igrowth << 1));
 
-            if ((header & 0x01) != 0) {
-                // FIXME: Already indirect and too much inline content (caused by length field
-                // increase).
-                throw new Error("too big and indirect: " + header);
+            // Copy the length field.
+            int srcLoc = fHeaderLoc + 1;
+            int fieldLen = skipFragmentedLengthField(0, fHeader);
+            p_copyToArray(page, srcLoc, newValue, 1, fieldLen);
+
+            // Copy the rest.
+            srcLoc += fieldLen;
+            int dstLoc = 1 + fieldLen + igrowth;
+            p_copyToArray(page, srcLoc, newValue, dstLoc, newValue.length - dstLoc);
+
+            // Clear the fragmented bit so that the update method doesn't delete the pages.
+            p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
+
+            // The fragmented bit is set again by this call.
+            node.updateLeafValue(frame, tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw e;
+        }
+
+        if (node.mSplit != null) {
+            // Releases latch if an exception is thrown.
+            tree.finishSplit(frame, node);
+            // Finishing the split causes the node latch to be re-acquired, so start over.
+            return -2;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Returns the amount of direct pointers to be added, which is <= 0 if none.
+     */
+    private long directPointerGrowth(/*P*/ byte[] page, long oldLen, long newLen) {
+        long p = pageSize(page);
+        long oldCount = (oldLen + p - 1) / p;
+        long newCount = (newLen + p - 1) / p;
+
+        long growth = newCount - oldCount;
+
+        if (growth <= 0 && newCount <= 0) {
+            // Overflow.
+            newCount = BigInteger.valueOf(newLen).add(BigInteger.valueOf(p - 1))
+                .subtract(BigInteger.ONE).divide(BigInteger.valueOf(p))
+                .longValue();
+            growth = newCount - oldCount;
+        }
+
+        return growth;
+    }
+
+    /**
+     * Attempt to add bytes to a fragmented value which uses the direct format. If not enough
+     * space exists to add direct pointers, the value format is converted and no new pointers
+     * are added.
+     *
+     * As a side effect of calling this method, the page referenced by the node can change when
+     * a non-negative value is returned. Also, any locations within the page may changed.
+     * Specifically kHeaderLoc, vHeaderLoc, and fHeaderLoc. All will have moved by the same
+     * amount as fHeaderLoc.
+     *
+     * The node latch is released if an exception is thrown.
+     *
+     * @param frame latched exclusive and dirtied
+     * @param kHeaderLoc location of key header
+     * @param vHeaderLoc location of raw value header
+     * @param vLen length of raw value sans header
+     * @param fHeaderLoc location of fragmented value header
+     * @param growth amount of zero bytes to append
+     * @return updated fHeaderLoc, or negative if caller must continue from the beginning
+     * (caused by format conversion or latch re-acquisition)
+     */
+    private int tryExtendDirect(final CursorFrame frame, final int kHeaderLoc,
+                                final int vHeaderLoc, final int vLen,
+                                final int fHeaderLoc, final long growth)
+        throws IOException
+    {
+        final int fOffset = fHeaderLoc - kHeaderLoc;
+        final long newEntryLen = fOffset + vLen + growth;
+        final Node node = frame.mNode;
+
+        if (newEntryLen > mDatabase.mMaxFragmentedEntrySize) {
+            compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
+            return -1;
+        }
+
+        final Tree tree = mCursor.mTree;
+
+        try {
+            final byte[] newValue = new byte[vLen + (int) growth];
+            final /*P*/ byte[] page = node.mPage;
+            p_copyToArray(page, fHeaderLoc, newValue, 0, vLen);
+
+            // Clear the fragmented bit so that the update method doesn't delete the pages.
+            p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
+
+            // The fragmented bit is set again by this call.
+            node.updateLeafValue(frame, tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw e;
+        }
+
+        if (node.mSplit != null) {
+            // Releases latch if an exception is thrown.
+            tree.finishSplit(frame, node);
+            // Finishing the split causes the node latch to be re-acquired, so start over.
+            return -2;
+        }
+
+        return p_ushortGetLE(node.mPage, node.searchVecStart() + frame.mNodePos) + fOffset;
+    }
+
+    /**
+     * @param loc location of fragmented length field
+     * @return location of inline content length field or first pointer
+     */
+    private static int skipFragmentedLengthField(int loc, int fHeader) {
+        return loc + 2 + ((fHeader >> 1) & 0x06);
+    }
+
+    /**
+     * Compacts a fragmented value of direct pointers. Either its inline content is moved
+     * completely, or the value is converted to indirect format.
+     *
+     * The node latch is released if an exception is thrown.
+     *
+     * @param node latched exclusive and dirtied
+     * @param vHeaderLoc location of raw value header
+     * @param vLen length of raw value sans header
+     * @param fHeaderLoc location of fragmented value header
+     */
+    private void compactDirectFormat(final Node node,
+                                     final int vHeaderLoc, final int vLen, final int fHeaderLoc)
+        throws IOException
+    {
+        // FIXME: If inline content is at least 6 bytes, then move all inline content and keep
+        // direct format for now. Else, convert to indirect and move all inline content.
+        // Because indirect format isn't currently created with inline content, and the earlier
+        // conversion moved it, no inline content should exist at this point.
+
+        final /*P*/ byte[] page = node.mPage;
+
+        int loc = fHeaderLoc;
+        final int fHeader = p_byteGet(page, loc++);
+        final long fLen = LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
+
+        loc = skipFragmentedLengthField(loc, fHeader);
+
+        final int fInline;
+        if ((fHeader & 0x02) == 0) {
+            fInline = 0;
+        } else {
+            fInline = p_ushortGetLE(page, loc);
+            loc = loc + 2 + fInline;
+        }
+
+        // At this point, loc is at the first direct pointer.
+
+        int tailLen = fHeaderLoc + vLen - loc; // length of all the direct pointers, in bytes
+
+        int levels = mDatabase.calculateInodeLevels(fLen - fInline);
+
+        if (levels > 0) {
+            Node[] inodes = new Node[levels];
+
+            try {
+                for (int i=0; i<inodes.length; i++) {
+                    inodes[i] = mDatabase.allocDirtyFragmentNode();
+                }
+            } catch (Throwable e) {
+                node.releaseExclusive();
+
+                for (Node inode : inodes) {
+                    if (inode != null) {
+                        mDatabase.deleteNode(inode, true);
+                    }
+                }
+
+                throw e;
             }
-
-            long vLen;
-            int off;
-
-            switch ((header >> 2) & 0x03) {
-            default:
-                vLen = decodeUnsignedShortLE(value, 1);
-                off = 3;
-                break;
-            case 1:
-                vLen = decodeIntLE(value, 1) & 0xffffffffL;
-                off = 5;
-                break;
-            case 2:
-                vLen = decodeUnsignedInt48LE(value, 1);
-                off = 7;
-                break;
-            case 3:
-                vLen = decodeLongLE(value, 1);
-                off = 9;
-                break;
-            }
-
-            // FIXME: need length and offset and skip inline
-            int levels = tree.mDatabase.calculateInodeLevels(vLen);
-
-            if (levels <= 0) {
-                // FIXME: Too much inline content.
-                throw new Error("too big and direct: " + header + ", " + levels);
-            }
-
-            if ((header & 0x02) != 0) {
-                // Skip over inline content.
-                off += decodeUnsignedShortLE(value, off);
-            }
-
-            Node inode = tree.mDatabase.allocDirtyFragmentNode();
 
             // Copy direct pointers to inode.
+            Node inode = inodes[--levels];
             /*P*/ byte[] ipage = inode.mPage;
-            p_copyFromArray(value, off, ipage, 0, value.length - off);
+            p_copy(page, loc, ipage, 0, tailLen);
             // Zero-fill the rest.
-            p_clear(ipage, value.length - off, pageSize(ipage));
+            p_clear(ipage, tailLen, pageSize(ipage));
 
-            while (--levels != 0) {
-                Node upper = tree.mDatabase.allocDirtyFragmentNode();
+            while (levels > 0) {
+                Node upper = inodes[--levels];
                 /*P*/ byte[] upage = upper.mPage;
                 p_int48PutLE(upage, 0, inode.mId);
                 inode.releaseExclusive();
@@ -1142,63 +1251,31 @@ final class TreeValueBlob extends AbstractBlob {
                 inode = upper;
             }
 
-            // Trim value of direct pointers and convert to indirect.
-            byte[] ivalue = new byte[off + 6];
-            // Copy header and inline content.
-            System.arraycopy(value, 0, ivalue, 0, off);
-            // Indirect format.
-            ivalue[0] |= 0x01;
-            // Indirect pointer.
-            encodeInt48LE(ivalue, off, inode.mId);
-
+            // Reference the root inode.
+            p_int48PutLE(page, loc, inode.mId);
             inode.releaseExclusive();
-
-            // Negative result indicates that node is now indirect.
-            retMask = ~0;
-
-            value = ivalue;
-
-            if (!tail) {
-                // FIXME: tail yes, head no. Growth must be honored for head.
-                throw new Error("head");
-            }
-
-            igrowth = 0;
-            newValueLen = Node.calculateFragmentedValueLength(value.length);
         }
 
-        // Note: As an optimization, search vector can be left as-is for new entry. Full delete
-        // is simpler and re-uses existing code.
-        final int pos = frame.mNodePos;
-        node.finishDeleteLeafEntry(pos, loc - entryLoc);
+        // Switch to indirect format.
+        p_bytePut(page, fHeaderLoc, fHeader | 0x01);
 
-        entryLoc = node.createLeafEntry(frame, tree, pos, key.length + newValueLen);
-
-        if (entryLoc < 0) {
-            // FIXME: allow split or convert to indirect
-            throw new Error("split 2");
+        // Update the raw value length.
+        int shrinkage = tailLen - 6;
+        int newLen = vLen - shrinkage - 1; // minus one as required by field encoding
+        int header = p_byteGet(page, vHeaderLoc);
+        if ((header & 0x20) == 0) {
+            // Field length is 1..8192.
+            p_bytePut(page, vHeaderLoc, (header & 0xe0) | (newLen >> 8));
+            p_bytePut(page, vHeaderLoc + 1, newLen);
         } else {
-            // Node might have been compacted, so a capture a fresh page reference.
-            page = node.mPage;
-
-            p_copyFromArray(key, 0, page, entryLoc, key.length);
-            entryLoc += key.length;
-
-            entryLoc = Node.encodeLeafValueHeader
-                (page, Node.ENTRY_FRAGMENTED, value.length + igrowth, entryLoc);
-
-            // Copy existing value.
-            if (tail) {
-                p_copyFromArray(value, 0, page, entryLoc, value.length);
-                int valueLoc = entryLoc + value.length;
-                // Zero fill the extended region.
-                p_clear(page, valueLoc, valueLoc + igrowth);
-            } else {
-                p_copyFromArray(value, 0, page, entryLoc + igrowth, value.length);
-            }
+            // Field length is 1..1048576.
+            p_bytePut(page, vHeaderLoc, (header & 0xf0) | (newLen >> 16));
+            p_bytePut(page, vHeaderLoc + 1, newLen >> 8);
+            p_bytePut(page, vHeaderLoc + 2, newLen);
         }
 
-        return entryLoc ^ retMask;
+        // Update the garbage field.
+        node.garbage(node.garbage() + shrinkage);
     }
 
     private int pageSize(/*P*/ byte[] page) {
