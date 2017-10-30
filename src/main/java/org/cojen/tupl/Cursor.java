@@ -569,17 +569,6 @@ public interface Cursor {
         ViewUtils.commit(this, value);
     }
 
-    //public int read(LockResult[] result,int start,byte[] b, int off, int len) throws IOException;
-
-    /**
-     * Appends data to the current entry's value, creating it if necessary.
-     *
-     * @param data non-null data to append
-     * @throws NullPointerException if data is null
-     * @throws UnpositionedCursorException if position is undefined at invocation time
-     */
-    //public void append(byte[] data) throws IOException;
-
     /**
      * Returns a value accessor for the current entry, which permits values to be much larger
      * than what can fit in main memory. When using a cursor for opening blobs, {@link
