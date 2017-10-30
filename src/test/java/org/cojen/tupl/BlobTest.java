@@ -559,6 +559,12 @@ public class BlobTest {
         } catch (NoSuchValueException e) {
         }
 
+        try {
+            in.read(new byte[1]);
+            fail();
+        } catch (NoSuchValueException e) {
+        }
+
         in.close();
 
         try {

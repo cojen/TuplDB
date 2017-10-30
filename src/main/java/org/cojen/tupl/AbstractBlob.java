@@ -241,16 +241,16 @@ abstract class AbstractBlob implements Blob {
                 }
             }
 
-            amt = off - initialOff;
+            int actual = off - initialOff;
 
-            if (amt <= 0) {
+            if (actual <= 0) {
                 if (amt < 0) {
                     throw new NoSuchValueException();
                 }
                 return -1;
             }
 
-            return amt;
+            return actual;
         }
 
         @Override
