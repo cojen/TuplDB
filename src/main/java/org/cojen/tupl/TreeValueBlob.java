@@ -144,7 +144,7 @@ final class TreeValueBlob extends AbstractBlob {
     }
 
     @Override
-    void doClose() {
+    public void close() {
         mCursor.reset();
     }
 
