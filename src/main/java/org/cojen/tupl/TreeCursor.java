@@ -33,7 +33,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class TreeCursor implements CauseCloseable, Cursor {
+class TreeCursor extends AbstractBlob implements CauseCloseable, Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -3723,18 +3723,108 @@ class TreeCursor implements CauseCloseable, Cursor {
     }
 
     @Override
-    public final Blob openBlob() {
-        TreeCursor copy = copyNoValue();
-        copy.mKeyOnly = true;
-        return new TreeValueBlob(copy);
+    public final Blob blob() {
+        return this;
     }
 
-    /**
-     * Caller must ensure that cursor is positioned and then discard the cursor reference after
-     * calling this method.
-     */
-    final Blob toBlob() {
-        return new TreeValueBlob(this);
+    // Blob method
+    @Override
+    public final long length() throws IOException {
+        CursorFrame frame;
+        try {
+            frame = leafSharedNotSplit();
+        } catch (IllegalStateException e) {
+            blobCheckOpen();
+            throw e;
+        }
+
+        long result = TreeValueBlob.action(this, frame, TreeValueBlob.OP_LENGTH, 0, null, 0, 0);
+        frame.mNode.releaseShared();
+        return result;
+    }
+
+    // Blob method
+    @Override
+    public final void setLength(long length) throws IOException {
+        // FIXME: txn undo/redo
+        try {
+            if (length < 0) {
+                store(null);
+                return;
+            }
+
+            final CursorFrame leaf = leafExclusive();
+
+            final CommitLock.Shared shared = commitLock(leaf);
+            try {
+                notSplitDirty(leaf);
+                TreeValueBlob.action
+                    (this, leaf, TreeValueBlob.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
+                leaf.mNode.releaseExclusive();
+            } finally {
+                shared.release();
+            }
+        } catch (IllegalStateException e) {
+            blobCheckOpen();
+            throw e;
+        }
+    }
+
+    @Override
+    final int blobRead(long pos, byte[] buf, int off, int len) throws IOException {
+        CursorFrame frame;
+        try {
+            frame = leafSharedNotSplit();
+        } catch (IllegalStateException e) {
+            blobCheckOpen();
+            throw e;
+        }
+
+        int result = (int) TreeValueBlob.action
+            (this, frame, TreeValueBlob.OP_READ, pos, buf, off, len);
+        frame.mNode.releaseShared();
+        return result;
+    }
+
+    @Override
+    final void blobWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        // FIXME: txn undo/redo
+        try {
+            final CursorFrame leaf = leafExclusive();
+
+            final CommitLock.Shared shared = commitLock(leaf);
+            try {
+                notSplitDirty(leaf);
+                TreeValueBlob.action(this, leaf, TreeValueBlob.OP_WRITE, pos, buf, off, len);
+                leaf.mNode.releaseExclusive();
+            } finally {
+                shared.release();
+            }
+        } catch (IllegalStateException e) {
+            blobCheckOpen();
+            throw e;
+        }
+    }
+
+    @Override
+    final int blobStreamBufferSize(int bufferSize) {
+        if (bufferSize <= 1) {
+            if (bufferSize < 0) {
+                bufferSize = mTree.mDatabase.mPageSize;
+            } else {
+                bufferSize = 1;
+            }
+        } else if (bufferSize >= 65536) {
+            bufferSize = 65536;
+        }
+        return bufferSize;
+    }
+
+    @Override
+    final void blobCheckOpen() {
+        if (mKey == null) {
+            throw new IllegalStateException("Blob closed");
+        }
     }
 
     @Override
@@ -3911,7 +4001,6 @@ class TreeCursor implements CauseCloseable, Cursor {
                     int nodePos = frame.mNodePos;
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
                         int pLen = pageSize(node.mPage);
-                        TreeValueBlob blob = new TreeValueBlob(this);
                         long pos = 0;
                         while (true) {
                             int result = TreeValueBlob.compactCheck(frame, pos, highestNodeId);
@@ -3921,7 +4010,7 @@ class TreeCursor implements CauseCloseable, Cursor {
                             if (result > 0) {
                                 node.releaseShared();
                                 node = null;
-                                blob.doWrite(pos, TreeValueBlob.TOUCH_VALUE, 0, 0);
+                                blobWrite(pos, TreeValueBlob.TOUCH_VALUE, 0, 0);
                                 frame = leafSharedNotSplit();
                                 node = frame.mNode;
                                 if (node.mId > highestNodeId) {

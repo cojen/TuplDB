@@ -111,11 +111,6 @@ final class ReverseView implements View {
     }
 
     @Override
-    public Blob openBlob(Transaction txn, byte[] key) throws IOException {
-        return mSource.openBlob(txn, key);
-    }
-
-    @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         return mSource.touch(txn, key);
     }

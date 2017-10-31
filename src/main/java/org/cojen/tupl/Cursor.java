@@ -572,12 +572,12 @@ public interface Cursor extends Closeable {
 
     /**
      * Returns a value accessor for the current entry, which permits values to be much larger
-     * than what can fit in main memory. When using a cursor for opening blobs, {@link
-     * #autoload autoload} should be disabled.
-     *
-     * @throws UnpositionedCursorException if position is undefined at invocation time
+     * than what can fit in main memory. When using the Blob interface, {@link #autoload
+     * autoload} should be disabled. Blob instances are linked to the Cursor, and so closing
+     * either of them will close both. Repositioning the Cursor also changes the value that the
+     * Blob is accessing.
      */
-    public default Blob openBlob() {
+    public default Blob blob() {
         throw new UnsupportedOperationException();
     }
 

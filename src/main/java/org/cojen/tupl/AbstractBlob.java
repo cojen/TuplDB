@@ -32,7 +32,7 @@ abstract class AbstractBlob implements Blob {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        return doRead(pos, buf, off, len);
+        return blobRead(pos, buf, off, len);
     }
 
     @Override
@@ -41,7 +41,7 @@ abstract class AbstractBlob implements Blob {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        doWrite(pos, buf, off, len);
+        blobWrite(pos, buf, off, len);
     }
 
     @Override
@@ -54,8 +54,8 @@ abstract class AbstractBlob implements Blob {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
-        checkOpen();
-        return new In(pos, new byte[selectBufferSize(bufferSize)]);
+        blobCheckOpen();
+        return new In(pos, new byte[blobStreamBufferSize(bufferSize)]);
     }
 
     @Override
@@ -68,13 +68,13 @@ abstract class AbstractBlob implements Blob {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
-        checkOpen();
-        return new Out(pos, new byte[selectBufferSize(bufferSize)]);
+        blobCheckOpen();
+        return new Out(pos, new byte[blobStreamBufferSize(bufferSize)]);
     }
 
-    abstract int doRead(long pos, byte[] buf, int off, int len) throws IOException;
+    abstract int blobRead(long pos, byte[] buf, int off, int len) throws IOException;
 
-    abstract void doWrite(long pos, byte[] buf, int off, int len) throws IOException;
+    abstract void blobWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Return an appropriate buffer size, using the given size suggestion.
@@ -82,12 +82,12 @@ abstract class AbstractBlob implements Blob {
      * @param bufferSize buffer size hint; -1 if a default size should be used
      * @return actual size; must be greater than zero
      */
-    abstract int selectBufferSize(int bufferSize);
+    abstract int blobStreamBufferSize(int bufferSize);
 
     /**
      * @throws IllegalStateException if closed
      */
-    abstract void checkOpen();
+    abstract void blobCheckOpen();
 
     /**
      * @throws NullPointerException if buf is null
@@ -122,7 +122,7 @@ abstract class AbstractBlob implements Blob {
             }
 
             long pos = mPos;
-            int amt = AbstractBlob.this.doRead(pos, buf, 0, buf.length);
+            int amt = AbstractBlob.this.blobRead(pos, buf, 0, buf.length);
 
             if (amt <= 0) {
                 if (amt < 0) {
@@ -167,7 +167,7 @@ abstract class AbstractBlob implements Blob {
             doRead: {
                 // Bypass buffer if parameter is large enough.
                 while (len >= buf.length) {
-                    amt = AbstractBlob.this.doRead(mPos, b, off, len);
+                    amt = AbstractBlob.this.blobRead(mPos, b, off, len);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -181,7 +181,7 @@ abstract class AbstractBlob implements Blob {
 
                 // Read into buffer and copy to parameter.
                 while (true) {
-                    amt = AbstractBlob.this.doRead(mPos, buf, 0, buf.length);
+                    amt = AbstractBlob.this.blobRead(mPos, buf, 0, buf.length);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -291,7 +291,7 @@ abstract class AbstractBlob implements Blob {
 
             try {
                 if (end >= buf.length) {
-                    AbstractBlob.this.doWrite(mPos, buf, 0, end);
+                    AbstractBlob.this.blobWrite(mPos, buf, 0, end);
                     mPos += end;
                     end = 0;
                 }
@@ -320,7 +320,7 @@ abstract class AbstractBlob implements Blob {
                 len -= avail;
                 avail = buf.length;
                 try {
-                    AbstractBlob.this.doWrite(mPos, buf, 0, avail);
+                    AbstractBlob.this.blobWrite(mPos, buf, 0, avail);
                 } catch (Throwable e) {
                     mEnd = avail;
                     throw e;
@@ -334,7 +334,7 @@ abstract class AbstractBlob implements Blob {
                 mEnd = 0;
             }
 
-            AbstractBlob.this.doWrite(mPos, b, off, len);
+            AbstractBlob.this.blobWrite(mPos, b, off, len);
             mPos += len;
         }
 
@@ -356,7 +356,7 @@ abstract class AbstractBlob implements Blob {
         private void doFlush(byte[] buf) throws IOException {
             int end = mEnd;
             if (end > 0) {
-                AbstractBlob.this.doWrite(mPos, buf, 0, end);
+                AbstractBlob.this.blobWrite(mPos, buf, 0, end);
                 mPos += end;
                 mEnd = 0;
             }
