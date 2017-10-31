@@ -389,32 +389,6 @@ public interface View {
     }
 
     /**
-     * Returns a value accessor for the given key, which permits values to be much larger than
-     * what can fit in main memory.
-     *
-     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
-     * must not be modified after calling this method.
-     *
-     * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
-     * READ_COMMITTED} locking behavior
-     * @param key non-null key
-     * @return non-null value accessor
-     * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * @throws ViewConstraintException if key is not allowed
-     */
-    public default Blob openBlob(Transaction txn, byte[] key) throws IOException {
-        Cursor c = newCursor(txn);
-        try {
-            c.autoload(false);
-            c.find(key);
-            return c.openBlob();
-        } finally {
-            c.reset();
-        }
-    }
-
-    /**
      * Touch the given key as if calling {@link #load load}, but instead only acquiring any
      * necessary locks. Method may return {@link LockResult#UNOWNED UNOWNED} if the key isn't
      * supported by this view, or if the transaction {@link LockMode} doesn't retain locks.

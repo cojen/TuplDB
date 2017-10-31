@@ -241,6 +241,15 @@
 <div class="block">Provides access to database values without requiring that they be fully loaded or stored in
  a single operation.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#blob--">blob()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Returns a value accessor for the current entry, which permits values to be much larger
+ than what can fit in main memory.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#blob--">blob()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Returns an unmodifiable blob by default.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#BOGUS">BOGUS</a></span> - Static variable in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Transaction instance which isn't a transaction at all.</div>
@@ -2258,20 +2267,6 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#openBlob--">openBlob()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
-<dd>
-<div class="block">Returns a value accessor for the current entry, which permits values to be much larger
- than what can fit in main memory.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#openBlob-org.cojen.tupl.Transaction-byte:A-">openBlob(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
-<dd>
-<div class="block">Returns a value accessor for the given key, which permits values to be much larger than
- what can fit in main memory.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#openBlob--">openBlob()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
-<dd>
-<div class="block">Returns an unmodifiable blob by default.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#openIndex-byte:A-">openIndex(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>

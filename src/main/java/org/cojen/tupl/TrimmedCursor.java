@@ -253,8 +253,8 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
-    public Blob openBlob() {
-        return mSource.openBlob();
+    public Blob blob() {
+        return mSource.blob();
     }
 
     @Override

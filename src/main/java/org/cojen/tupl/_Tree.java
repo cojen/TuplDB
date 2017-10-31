@@ -540,14 +540,6 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public Blob openBlob(Transaction txn, byte[] key) throws IOException {
-        _TreeCursor c = newCursor(txn);
-        c.autoload(false);
-        c.find(key);
-        return c.toBlob();
-    }
-
-    @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         _LocalTransaction local = check(txn);
 

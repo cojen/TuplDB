@@ -319,8 +319,8 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * Returns an unmodifiable blob by default.
      */
     @Override
-    public Blob openBlob() {
-        return new UnmodifiableBlob(source.openBlob());
+    public Blob blob() {
+        return new UnmodifiableBlob(source.blob());
     }
 
     /**
