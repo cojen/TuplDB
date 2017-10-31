@@ -132,6 +132,14 @@ abstract class SubView implements View {
     }
 
     @Override
+    public Blob openBlob(Transaction txn, byte[] key) throws IOException {
+        if (inRange(key)) {
+            return mSource.openBlob(txn, key);
+        }
+        throw fail();
+    }
+
+    @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         return inRange(key) ? mSource.touch(txn, key) : LockResult.UNOWNED;
     }
