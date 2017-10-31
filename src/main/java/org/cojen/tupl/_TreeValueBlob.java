@@ -39,14 +39,12 @@ final class _TreeValueBlob extends AbstractBlob {
     static final byte[] TOUCH_VALUE = new byte[0];
 
     private final _TreeCursor mCursor;
-    private final _LocalDatabase mDatabase;
 
     /**
      * @param cursor positioned or unpositioned cursor, not autoloading
      */
     _TreeValueBlob(_TreeCursor cursor) {
         mCursor = cursor;
-        mDatabase = cursor.mTree.mDatabase;
     }
 
     @Override
@@ -59,7 +57,7 @@ final class _TreeValueBlob extends AbstractBlob {
             throw e;
         }
 
-        long result = action(frame, OP_LENGTH, 0, null, 0, 0);
+        long result = action(mCursor, frame, OP_LENGTH, 0, null, 0, 0);
         frame.mNode.releaseShared();
         return result;
     }
@@ -78,7 +76,7 @@ final class _TreeValueBlob extends AbstractBlob {
             final CommitLock.Shared shared = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
-                action(leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
+                action(mCursor, leaf, OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
                 leaf.mNode.releaseExclusive();
             } finally {
                 shared.release();
@@ -99,7 +97,7 @@ final class _TreeValueBlob extends AbstractBlob {
             throw e;
         }
 
-        int result = (int) action(frame, OP_READ, pos, buf, off, len);
+        int result = (int) action(mCursor, frame, OP_READ, pos, buf, off, len);
         frame.mNode.releaseShared();
         return result;
     }
@@ -113,7 +111,7 @@ final class _TreeValueBlob extends AbstractBlob {
             final CommitLock.Shared shared = mCursor.commitLock(leaf);
             try {
                 mCursor.notSplitDirty(leaf);
-                action(leaf, OP_WRITE, pos, buf, off, len);
+                action(mCursor, leaf, OP_WRITE, pos, buf, off, len);
                 leaf.mNode.releaseExclusive();
             } finally {
                 shared.release();
@@ -128,7 +126,7 @@ final class _TreeValueBlob extends AbstractBlob {
     int selectBufferSize(int bufferSize) {
         if (bufferSize <= 1) {
             if (bufferSize < 0) {
-                bufferSize = mDatabase.mPageSize;
+                bufferSize = mCursor.mTree.mDatabase.mPageSize;
             } else {
                 bufferSize = 1;
             }
@@ -159,7 +157,7 @@ final class _TreeValueBlob extends AbstractBlob {
      * @return -1 if position is too high, 0 if no compaction required, or 1 if any nodes are
      * in the compaction zone
      */
-    int compactCheck(final _CursorFrame frame, long pos, final long highestNodeId)
+    static int compactCheck(final _CursorFrame frame, long pos, final long highestNodeId)
         throws IOException
     {
         final _Node node = frame.mNode;
@@ -219,9 +217,11 @@ final class _TreeValueBlob extends AbstractBlob {
             loc = loc + 2 + fInline;
         }
 
+        _LocalDatabase db = node.getDatabase();
+
         if ((fHeader & 0x01) == 0) {
             // Direct pointers.
-            loc += (((int) pos) / pageSize(page)) * 6;
+            loc += (((int) pos) / pageSize(db, page)) * 6;
             final long fNodeId = p_uint48GetLE(page, loc);
             return fNodeId > highestNodeId ? 1 : 0; 
         }
@@ -234,13 +234,13 @@ final class _TreeValueBlob extends AbstractBlob {
             return 0;
         }
 
-        _Node inode = mDatabase.nodeMapLoadFragment(inodeId);
+        _Node inode = db.nodeMapLoadFragment(inodeId);
         // FIXME: Support zero levels.
-        int level = mDatabase.calculateInodeLevels(fLen);
+        int level = db.calculateInodeLevels(fLen);
 
         while (true) {
             level--;
-            long levelCap = mDatabase.levelCap(level);
+            long levelCap = db.levelCap(level);
             long childNodeId = p_uint48GetLE(inode.mPage, ((int) (pos / levelCap)) * 6);
             inode.releaseShared();
             if (childNodeId > highestNodeId) {
@@ -249,7 +249,7 @@ final class _TreeValueBlob extends AbstractBlob {
             if (level <= 0 || childNodeId == 0) {
                 return 0;
             }
-            inode = mDatabase.nodeMapLoadFragment(childNodeId);
+            inode = db.nodeMapLoadFragment(childNodeId);
             pos %= levelCap;
         }
     }
@@ -263,7 +263,8 @@ final class _TreeValueBlob extends AbstractBlob {
      * @return applicable only to OP_LENGTH and OP_READ
      */
     @SuppressWarnings("fallthrough")
-    private long action(_CursorFrame frame, int op, long pos, byte[] b, int bOff, int bLen)
+    private static long action(_TreeCursor cursor, _CursorFrame frame, int op,
+                               long pos, byte[] b, int bOff, int bLen)
         throws IOException
     {
         while (true) {
@@ -285,7 +286,7 @@ final class _TreeValueBlob extends AbstractBlob {
                 }
 
                 // Method releases latch if an exception is thrown.
-                node = mCursor.insertBlank(frame, node, pos + bLen);
+                node = cursor.insertBlank(frame, node, pos + bLen);
 
                 if (bLen <= 0) {
                     return 0;
@@ -421,7 +422,7 @@ final class _TreeValueBlob extends AbstractBlob {
                         } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                             // Writing over the entire value.
                             try {
-                                node.updateLeafValue(frame, mCursor.mTree, nodePos, 0, b);
+                                node.updateLeafValue(frame, cursor.mTree, nodePos, 0, b);
                             } catch (IOException e) {
                                 node.releaseExclusive();
                                 throw e;
@@ -452,7 +453,7 @@ final class _TreeValueBlob extends AbstractBlob {
                 frame.mNodePos = ~nodePos;
 
                 // Method releases latch if an exception is thrown.
-                mCursor.insertBlank(frame, node, pos + bLen);
+                cursor.insertBlank(frame, node, pos + bLen);
 
                 op = OP_WRITE;
 
@@ -462,7 +463,7 @@ final class _TreeValueBlob extends AbstractBlob {
                     bOff = 0;
                     bLen = oldValue.length;
                 } else {
-                    action(frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
+                    action(cursor, frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
                 }
 
                 continue;
@@ -531,19 +532,22 @@ final class _TreeValueBlob extends AbstractBlob {
                     loc += fInline;
                 }
 
+                final _LocalDatabase db = node.getDatabase();
+
                 if ((fHeader & 0x01) == 0) {
                     // Direct pointers.
                     final int ipos = (int) pos;
-                    loc += (ipos / pageSize(page)) * 6;
-                    int fNodeOff = ipos % pageSize(page);
+                    final int pageSize = pageSize(db, page);
+                    loc += (ipos / pageSize) * 6;
+                    int fNodeOff = ipos % pageSize;
                     while (true) {
-                        final int amt = Math.min(bLen, pageSize(page) - fNodeOff);
+                        final int amt = Math.min(bLen, pageSize - fNodeOff);
                         final long fNodeId = p_uint48GetLE(page, loc);
                         if (fNodeId == 0) {
                             // Reading a sparse value.
                             Arrays.fill(b, bOff, bOff + amt, (byte) 0);
                         } else {
-                            final _Node fNode = mDatabase.nodeMapLoadFragment(fNodeId);
+                            final _Node fNode = db.nodeMapLoadFragment(fNodeId);
                             p_copyToArray(fNode.mPage, fNodeOff, b, bOff, amt);
                             fNode.releaseShared();
                         }
@@ -564,11 +568,10 @@ final class _TreeValueBlob extends AbstractBlob {
                     // Reading a sparse value.
                     Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
                 } else {
-                    _LocalDatabase db = mDatabase;
                     final _Node inode = db.nodeMapLoadFragment(inodeId);
                     // FIXME: Support zero levels.
                     final int levels = db.calculateInodeLevels(fLen);
-                    readMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+                    readMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
                 }
 
                 return total;
@@ -615,6 +618,9 @@ final class _TreeValueBlob extends AbstractBlob {
                     loc += fInline;
                 }
 
+                final _LocalDatabase db;
+                final int pageSize;
+
                 if (endPos <= fLen) {
                     // Value doesn't need to be extended.
 
@@ -622,20 +628,24 @@ final class _TreeValueBlob extends AbstractBlob {
                         return 0;
                     }
 
+                    db = node.getDatabase();
+
                     if ((fHeader & 0x01) != 0) {
                         // Indirect pointers.
 
                         pos -= fInline; // safe to update now that outermost loop won't continue
                         fLen -= fInline;
 
-                        final _Node inode = prepareMultilevelWrite(page, loc);
+                        final _Node inode = prepareMultilevelWrite(db, page, loc);
 
                         // FIXME: Support zero levels.
-                        final int levels = mDatabase.calculateInodeLevels(fLen);
+                        final int levels = db.calculateInodeLevels(fLen);
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                         return 0;
                     }
+
+                    pageSize = pageSize(db, page);
                 } else {
                     if (b == TOUCH_VALUE) {
                         // Don't extend the value.
@@ -648,10 +658,12 @@ final class _TreeValueBlob extends AbstractBlob {
 
                     if (fieldGrowth > 0) {
                         // FIXME: Fix exception handling.
-                        tryIncreaseLengthField
-                            (frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc, fieldGrowth);
+                        tryIncreaseLengthField(cursor, frame, kHeaderLoc, vHeaderLoc, vLen,
+                                               fHeaderLoc, fieldGrowth);
                         continue;
                     }
+
+                    db = node.getDatabase();
 
                     if ((fHeader & 0x01) != 0) {
                         // Extend the value with indirect pointers.
@@ -661,29 +673,31 @@ final class _TreeValueBlob extends AbstractBlob {
                         // FIXME: update length later (after inode allocations)
                         updateLengthField(page, fHeaderLoc, endPos);
 
-                        _Node inode = prepareMultilevelWrite(page, loc);
+                        _Node inode = prepareMultilevelWrite(db, page, loc);
 
                         // Levels required before extending...
-                        int levels = mDatabase.calculateInodeLevels(fLen - fInline);
+                        int levels = db.calculateInodeLevels(fLen - fInline);
 
                         // Compare to new full indirect length.
                         long newLen = endPos - fInline;
 
-                        if (mDatabase.levelCap(levels) < newLen) {
+                        if (db.levelCap(levels) < newLen) {
                             // Need to add more inode levels.
-                            int newLevels = mDatabase.calculateInodeLevels(newLen);
+                            int newLevels = db.calculateInodeLevels(newLen);
                             if (newLevels <= levels) {
                                 throw new AssertionError();
                             }
 
+                            pageSize = pageSize(db, page);
+
                             // FIXME: alloc all first; delete if an exception
                             do {
-                                _Node upper = mDatabase.allocDirtyFragmentNode();
+                                _Node upper = db.allocDirtyFragmentNode();
                                 long upage = upper.mPage;
                                 p_int48PutLE(upage, 0, inode.mId);
                                 inode.releaseExclusive();
                                 // Zero-fill the rest.
-                                p_clear(upage, 6, pageSize(upage));
+                                p_clear(upage, 6, pageSize);
                                 inode = upper;
                                 levels++;
                             } while (newLevels > levels);
@@ -698,12 +712,15 @@ final class _TreeValueBlob extends AbstractBlob {
 
                     // Extend the value with direct pointers.
 
-                    long ptrGrowth = directPointerGrowth(page, fLen - fInline, endPos - fInline);
+                    pageSize = pageSize(db, page);
+
+                    long ptrGrowth = directPointerGrowth
+                        (pageSize, fLen - fInline, endPos - fInline);
 
                     if (ptrGrowth > 0) {
                         // FIXME: Fix exception handling.
-                        int newLoc = tryExtendDirect
-                            (frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc, ptrGrowth * 6);
+                        int newLoc = tryExtendDirect(cursor, frame, kHeaderLoc, vHeaderLoc, vLen,
+                                                     fHeaderLoc, ptrGrowth * 6);
 
                         // Note: vHeaderLoc is now wrong and cannot be used.
 
@@ -730,16 +747,16 @@ final class _TreeValueBlob extends AbstractBlob {
                 pos -= fInline; // safe to update now that outermost loop won't continue
 
                 final int ipos = (int) pos;
-                loc += (ipos / pageSize(page)) * 6;
-                int fNodeOff = ipos % pageSize(page);
+                loc += (ipos / pageSize) * 6;
+                int fNodeOff = ipos % pageSize;
 
                 while (true) {
-                    final int amt = Math.min(bLen, pageSize(page) - fNodeOff);
+                    final int amt = Math.min(bLen, pageSize - fNodeOff);
                     final long fNodeId = p_uint48GetLE(page, loc);
                     if (fNodeId == 0) {
                         if (amt > 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
-                            final _Node fNode = mDatabase.allocDirtyFragmentNode();
+                            final _Node fNode = db.allocDirtyFragmentNode();
                             try {
                                 p_int48PutLE(page, loc, fNode.mId);
 
@@ -747,7 +764,7 @@ final class _TreeValueBlob extends AbstractBlob {
                                 long fNodePage = fNode.mPage;
                                 p_clear(fNodePage, 0, fNodeOff);
                                 p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
-                                p_clear(fNodePage, fNodeOff + amt, pageSize(fNodePage));
+                                p_clear(fNodePage, fNodeOff + amt, pageSize);
                             } finally {
                                 fNode.releaseExclusive();
                             }
@@ -755,9 +772,8 @@ final class _TreeValueBlob extends AbstractBlob {
                     } else {
                         if (amt > 0 || b == TOUCH_VALUE) {
                             // Obtain node from cache, or read it only for partial write.
-                            _LocalDatabase db = mDatabase;
                             final _Node fNode = db
-                                .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize(page));
+                                .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
                             try {
                                 if (db.markFragmentDirty(fNode)) {
                                     p_int48PutLE(page, loc, fNode.mId);
@@ -790,14 +806,14 @@ final class _TreeValueBlob extends AbstractBlob {
      * @param inode shared latched parent inode; always released by this method
      * @param b slice of complete value being reconstructed
      */
-    private void readMultilevelFragments(long pos, int level, _Node inode,
-                                         byte[] b, int bOff, int bLen)
+    private static void readMultilevelFragments(_LocalDatabase db, long pos, int level, _Node inode,
+                                                byte[] b, int bOff, int bLen)
         throws IOException
     {
         try {
             long page = inode.mPage;
             level--;
-            long levelCap = mDatabase.levelCap(level);
+            long levelCap = db.levelCap(level);
 
             int firstChild = (int) (pos / levelCap);
             int lastChild = (int) ((pos + bLen - 1) / levelCap);
@@ -815,12 +831,12 @@ final class _TreeValueBlob extends AbstractBlob {
                     // Reading a sparse value.
                     Arrays.fill(b, bOff, bOff + len, (byte) 0);
                 } else {
-                    _Node childNode = mDatabase.nodeMapLoadFragment(childNodeId);
+                    _Node childNode = db.nodeMapLoadFragment(childNodeId);
                     if (level <= 0) {
                         p_copyToArray(childNode.mPage, (int) ppos, b, bOff, len);
                         childNode.releaseShared();
                     } else {
-                        readMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                        readMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
                     }
                 }
                 bLen -= len;
@@ -840,7 +856,9 @@ final class _TreeValueBlob extends AbstractBlob {
      * @param loc location of root inode in the page
      * @return dirtied root inode with exclusive latch held
      */
-    private _Node prepareMultilevelWrite(long page, int loc) throws IOException {
+    private static _Node prepareMultilevelWrite(_LocalDatabase db, long page, int loc)
+        throws IOException
+    {
         final _Node inode;
 
         setPtr: {
@@ -848,10 +866,9 @@ final class _TreeValueBlob extends AbstractBlob {
 
             if (inodeId == 0) {
                 // Writing into a sparse value. Allocate a node and point to it.
-                inode = mDatabase.allocDirtyFragmentNode();
-                p_clear(inode.mPage, 0, pageSize(inode.mPage));
+                inode = db.allocDirtyFragmentNode();
+                p_clear(inode.mPage, 0, pageSize(db, inode.mPage));
             } else {
-                _LocalDatabase db = mDatabase;
                 inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
                 try {
                     if (!db.markFragmentDirty(inode)) {
@@ -876,11 +893,11 @@ final class _TreeValueBlob extends AbstractBlob {
      * @param inode exclusively latched parent inode; always released by this method
      * @param value slice of complete value being written
      */
-    private void writeMultilevelFragments(long pos, int level, _Node inode,
-                                          byte[] b, int bOff, int bLen)
+    private static void writeMultilevelFragments(long pos, int level, _Node inode,
+                                                 byte[] b, int bOff, int bLen)
         throws IOException
     {
-        final _LocalDatabase db = mDatabase;
+        final _LocalDatabase db = inode.getDatabase();
 
         try {
             long page = inode.mPage;
@@ -899,17 +916,19 @@ final class _TreeValueBlob extends AbstractBlob {
                 int len = (int) Math.min(levelCap - ppos, bLen);
                 int off = (int) ppos;
 
+                final int pageSize = pageSize(db, page);
+
                 final _Node childNode;
                 setPtr: {
                     long childNodeId = p_uint48GetLE(page, poffset);
-                    boolean partial = level > 0 | off > 0 | len < pageSize(page);
+                    boolean partial = level > 0 | off > 0 | len < pageSize;
 
                     if (childNodeId == 0) {
                         // Writing into a sparse value. Allocate a node and point to it.
                         childNode = db.allocDirtyFragmentNode();
                         if (partial) {
                             // New page must be zero-filled.
-                            p_clear(childNode.mPage, 0, pageSize(childNode.mPage));
+                            p_clear(childNode.mPage, 0, pageSize);
                         }
                     } else {
                         // Obtain node from cache, or read it only for partial write.
@@ -1027,21 +1046,22 @@ final class _TreeValueBlob extends AbstractBlob {
      * @param fHeaderLoc location of fragmented value header
      * @param growth amount of zero bytes to add to the length field (2, 4, or 6)
      */
-    private int tryIncreaseLengthField(final _CursorFrame frame, final int kHeaderLoc,
-                                       final int vHeaderLoc, final int vLen,
-                                       final int fHeaderLoc, final long growth)
+    private static int tryIncreaseLengthField(final _TreeCursor cursor, final _CursorFrame frame,
+                                              final int kHeaderLoc,
+                                              final int vHeaderLoc, final int vLen,
+                                              final int fHeaderLoc, final long growth)
         throws IOException
     {
         final int fOffset = fHeaderLoc - kHeaderLoc;
         final long newEntryLen = fOffset + vLen + growth;
         final _Node node = frame.mNode;
 
-        if (newEntryLen > mDatabase.mMaxFragmentedEntrySize) {
+        if (newEntryLen > node.getDatabase().mMaxFragmentedEntrySize) {
             compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
             return -1;
         }
 
-        final _Tree tree = mCursor.mTree;
+        final _Tree tree = cursor.mTree;
 
         try {
             final int igrowth = (int) growth;
@@ -1085,17 +1105,16 @@ final class _TreeValueBlob extends AbstractBlob {
     /**
      * Returns the amount of direct pointers to be added, which is <= 0 if none.
      */
-    private long directPointerGrowth(long page, long oldLen, long newLen) {
-        long p = pageSize(page);
-        long oldCount = (oldLen + p - 1) / p;
-        long newCount = (newLen + p - 1) / p;
+    private static long directPointerGrowth(long pageSize, long oldLen, long newLen) {
+        long oldCount = (oldLen + pageSize - 1) / pageSize;
+        long newCount = (newLen + pageSize - 1) / pageSize;
 
         long growth = newCount - oldCount;
 
         if (growth <= 0 && newCount <= 0) {
             // Overflow.
-            newCount = BigInteger.valueOf(newLen).add(BigInteger.valueOf(p - 1))
-                .subtract(BigInteger.ONE).divide(BigInteger.valueOf(p))
+            newCount = BigInteger.valueOf(newLen).add(BigInteger.valueOf(pageSize - 1))
+                .subtract(BigInteger.ONE).divide(BigInteger.valueOf(pageSize))
                 .longValue();
             growth = newCount - oldCount;
         }
@@ -1124,21 +1143,22 @@ final class _TreeValueBlob extends AbstractBlob {
      * @return updated fHeaderLoc, or negative if caller must continue from the beginning
      * (caused by format conversion or latch re-acquisition)
      */
-    private int tryExtendDirect(final _CursorFrame frame, final int kHeaderLoc,
-                                final int vHeaderLoc, final int vLen,
-                                final int fHeaderLoc, final long growth)
+    private static int tryExtendDirect(final _TreeCursor cursor, final _CursorFrame frame,
+                                       final int kHeaderLoc,
+                                       final int vHeaderLoc, final int vLen,
+                                       final int fHeaderLoc, final long growth)
         throws IOException
     {
         final int fOffset = fHeaderLoc - kHeaderLoc;
         final long newEntryLen = fOffset + vLen + growth;
         final _Node node = frame.mNode;
 
-        if (newEntryLen > mDatabase.mMaxFragmentedEntrySize) {
+        if (newEntryLen > node.getDatabase().mMaxFragmentedEntrySize) {
             compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
             return -1;
         }
 
-        final _Tree tree = mCursor.mTree;
+        final _Tree tree = cursor.mTree;
 
         try {
             final byte[] newValue = new byte[vLen + (int) growth];
@@ -1184,8 +1204,9 @@ final class _TreeValueBlob extends AbstractBlob {
      * @param vLen length of raw value sans header
      * @param fHeaderLoc location of fragmented value header
      */
-    private void compactDirectFormat(final _Node node,
-                                     final int vHeaderLoc, final int vLen, final int fHeaderLoc)
+    private static void compactDirectFormat(final _Node node,
+                                            final int vHeaderLoc, final int vLen,
+                                            final int fHeaderLoc)
         throws IOException
     {
         // FIXME: If inline content is at least 6 bytes, then move all inline content and keep
@@ -1213,21 +1234,22 @@ final class _TreeValueBlob extends AbstractBlob {
 
         int tailLen = fHeaderLoc + vLen - loc; // length of all the direct pointers, in bytes
 
-        int levels = mDatabase.calculateInodeLevels(fLen - fInline);
+        _LocalDatabase db = node.getDatabase();
+        int levels = db.calculateInodeLevels(fLen - fInline);
 
         if (levels > 0) {
             _Node[] inodes = new _Node[levels];
 
             try {
                 for (int i=0; i<inodes.length; i++) {
-                    inodes[i] = mDatabase.allocDirtyFragmentNode();
+                    inodes[i] = db.allocDirtyFragmentNode();
                 }
             } catch (Throwable e) {
                 node.releaseExclusive();
 
                 for (_Node inode : inodes) {
                     if (inode != null) {
-                        mDatabase.deleteNode(inode, true);
+                        db.deleteNode(inode, true);
                     }
                 }
 
@@ -1239,7 +1261,7 @@ final class _TreeValueBlob extends AbstractBlob {
             long ipage = inode.mPage;
             p_copy(page, loc, ipage, 0, tailLen);
             // Zero-fill the rest.
-            p_clear(ipage, tailLen, pageSize(ipage));
+            p_clear(ipage, tailLen, pageSize(db, ipage));
 
             while (levels > 0) {
                 _Node upper = inodes[--levels];
@@ -1247,7 +1269,7 @@ final class _TreeValueBlob extends AbstractBlob {
                 p_int48PutLE(upage, 0, inode.mId);
                 inode.releaseExclusive();
                 // Zero-fill the rest.
-                p_clear(upage, 6, pageSize(upage));
+                p_clear(upage, 6, pageSize(db, upage));
                 inode = upper;
             }
 
@@ -1278,11 +1300,11 @@ final class _TreeValueBlob extends AbstractBlob {
         node.garbage(node.garbage() + shrinkage);
     }
 
-    private int pageSize(long page) {
+    private static int pageSize(_LocalDatabase db, long page) {
         /*P*/ // [
         // return page.length;
         /*P*/ // |
-        return mDatabase.pageSize();
+        return db.pageSize();
         /*P*/ // ]
     }
 }

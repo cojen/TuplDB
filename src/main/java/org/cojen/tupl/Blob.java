@@ -63,7 +63,7 @@ public interface Blob extends Closeable {
      * @param pos start position to read from
      * @param buf buffer to read into
      * @param off buffer start offset
-     * @param len maximum amount to read
+     * @param len requested amount to read
      * @return actual amount read, which is less than requested only if the end was reached, or
      * -1 if the value doesn't exist
      * @throws IllegalArgumentException if position is negative
@@ -79,7 +79,7 @@ public interface Blob extends Closeable {
      * @param pos start position to write to
      * @param buf buffer to write from
      * @param off buffer start offset
-     * @param len maximum length to write
+     * @param len amount to write
      * @throws IllegalArgumentException if position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
