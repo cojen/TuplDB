@@ -33,6 +33,7 @@ import java.io.OutputStream;
  * interacting with a Blob instance may cause database corruption.
  *
  * @author Brian S O'Neill
+ * @see View#openBlob View.openBlob
  * @see Cursor#blob Cursor.blob
  */
 public interface Blob extends Closeable {
