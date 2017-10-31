@@ -55,6 +55,7 @@ public class BlobTest {
 
     static Blob openBlob(View view, Transaction txn, byte[] key) throws IOException {
         Cursor c = view.newCursor(txn);
+        c.autoload(false);
         c.find(key);
         return c.blob();
     }
