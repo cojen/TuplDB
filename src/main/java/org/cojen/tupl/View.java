@@ -395,8 +395,7 @@ public interface View {
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
      *
-     * @param txn optional transaction; pass null for {@link LockMode#READ_COMMITTED
-     * READ_COMMITTED} locking behavior
+     * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
      * @return non-null value accessor
      * @throws NullPointerException if key is null
