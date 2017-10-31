@@ -26,9 +26,6 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  */
 abstract class AbstractBlob implements Blob {
-    // Used by InputStream and OutputStream implementation to detect if Blob was closed.
-    Object mIoState;
-
     @Override
     public final int read(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
@@ -58,7 +55,7 @@ abstract class AbstractBlob implements Blob {
             throw new IllegalArgumentException();
         }
         checkOpen();
-        return new In(mIoState, pos, new byte[selectBufferSize(bufferSize)]);
+        return new In(pos, new byte[selectBufferSize(bufferSize)]);
     }
 
     @Override
@@ -72,13 +69,7 @@ abstract class AbstractBlob implements Blob {
             throw new IllegalArgumentException();
         }
         checkOpen();
-        return new Out(mIoState, pos, new byte[selectBufferSize(bufferSize)]);
-    }
-
-    @Override
-    public final void close() {
-        mIoState = null;
-        doClose();
+        return new Out(pos, new byte[selectBufferSize(bufferSize)]);
     }
 
     abstract int doRead(long pos, byte[] buf, int off, int len) throws IOException;
@@ -98,8 +89,6 @@ abstract class AbstractBlob implements Blob {
      */
     abstract void checkOpen();
 
-    abstract void doClose();
-
     /**
      * @throws NullPointerException if buf is null
      * @throws IndexOutOfBoundsException if off or len are out of bound
@@ -110,48 +99,20 @@ abstract class AbstractBlob implements Blob {
         }
     }
 
-    /**
-     * Called by InputStream and OutputStream implementation.
-     */
-    final void ioClose(Object ioState) throws IOException {
-        if (ioState == mIoState) {
-            mIoState = null;
-            doClose();
-        }
-    }
-
-    /**
-     * Called by InputStream and OutputStream implementation.
-     */
-    final void ioCheckOpen(Object ioState) {
-        if (ioState != mIoState) {
-            throw new IllegalStateException("Blob closed");
-        }
-    }
-
     final class In extends InputStream {
-        private final Object mIoState;
-
         private long mPos;
-
-        private final byte[] mBuffer;
+        private byte[] mBuffer;
         private int mStart;
         private int mEnd;
 
-        In(Object ioState, long pos, byte[] buffer) {
-            if (ioState == null) {
-                AbstractBlob.this.mIoState = ioState = this;
-            }
-            mIoState = ioState;
+        In(long pos, byte[] buffer) {
             mPos = pos;
             mBuffer = buffer;
         }
 
         @Override
         public int read() throws IOException {
-            ioCheckOpen(mIoState);
-
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int start = mStart;
             if (start < mEnd) {
                 mPos++;
@@ -179,9 +140,8 @@ abstract class AbstractBlob implements Blob {
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
             boundsCheck(b, off, len);
-            ioCheckOpen(mIoState);
 
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int start = mStart;
             int amt = mEnd - start;
 
@@ -255,7 +215,7 @@ abstract class AbstractBlob implements Blob {
 
         @Override
         public long skip(long n) throws IOException {
-            ioCheckOpen(mIoState);
+            checkStreamOpen();
 
             if (n <= 0) {
                 return 0;
@@ -289,37 +249,37 @@ abstract class AbstractBlob implements Blob {
 
         @Override
         public int available() {
-            return mIoState == AbstractBlob.this.mIoState ? (mEnd - mStart) : 0;
+            return mBuffer == null ? 0 : (mEnd - mStart);
         }
 
         @Override
         public void close() throws IOException {
-            AbstractBlob.this.ioClose(mIoState);
+            mBuffer = null;
+            AbstractBlob.this.close();
+        }
+
+        private byte[] checkStreamOpen() {
+            byte[] buf = mBuffer;
+            if (buf == null) {
+                throw new IllegalStateException("Stream closed");
+            }
+            return buf;
         }
     }
 
     final class Out extends OutputStream {
-        private final Object mIoState;
-
         private long mPos;
-
-        private final byte[] mBuffer;
+        private byte[] mBuffer;
         private int mEnd;
 
-        Out(Object ioState, long pos, byte[] buffer) {
-            if (ioState == null) {
-                AbstractBlob.this.mIoState = ioState = this;
-            }
-            mIoState = ioState;
+        Out(long pos, byte[] buffer) {
             mPos = pos;
             mBuffer = buffer;
         }
 
         @Override
         public void write(int b) throws IOException {
-            ioCheckOpen(mIoState);
-
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int end = mEnd;
 
             if (end >= buf.length) {
@@ -343,9 +303,8 @@ abstract class AbstractBlob implements Blob {
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
             boundsCheck(b, off, len);
-            ioCheckOpen(mIoState);
 
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int end = mEnd;
             int avail = buf.length - end;
 
@@ -381,25 +340,34 @@ abstract class AbstractBlob implements Blob {
 
         @Override
         public void flush() throws IOException {
-            ioCheckOpen(mIoState);
-            doFlush();
+            doFlush(checkStreamOpen());
         }
 
         @Override
         public void close() throws IOException {
-            if (mIoState == AbstractBlob.this.mIoState) {
-                doFlush();
-                AbstractBlob.this.ioClose(mIoState);
+            byte[] buf = mBuffer;
+            if (buf != null) {
+                doFlush(buf);
+                mBuffer = null;
             }
+            AbstractBlob.this.close();
         }
 
-        private void doFlush() throws IOException {
+        private void doFlush(byte[] buf) throws IOException {
             int end = mEnd;
             if (end > 0) {
-                AbstractBlob.this.doWrite(mPos, mBuffer, 0, end);
+                AbstractBlob.this.doWrite(mPos, buf, 0, end);
                 mPos += end;
                 mEnd = 0;
             }
+        }
+
+        private byte[] checkStreamOpen() {
+            byte[] buf = mBuffer;
+            if (buf == null) {
+                throw new IllegalStateException("Stream closed");
+            }
+            return buf;
         }
     }
 }
