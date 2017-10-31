@@ -373,6 +373,10 @@
 <dd>
 <div class="block">Closes the Blob, but does not flush any OutputStream instances.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Closes the database, ensuring durability of committed transactions.</div>
@@ -411,6 +415,10 @@
 <dd>
 <div class="block">Can be called by another thread to abort the snapshot, causing any
  thread in the writeTo method to throw an exception.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#close--">close()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
 </dd>
 <dt><a href="org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ClosedIndexException</span></a> - Exception in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -2586,7 +2594,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
-<div class="block">Resets Cursor and moves it to an undefined position.</div>
+<div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
@@ -2598,7 +2606,7 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#reset--">reset()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
-<div class="block">Resets Cursor and moves it to an undefined position.</div>
+<div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#restore-java.util.Map-">restore(Map&lt;String, String&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>

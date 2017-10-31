@@ -520,6 +520,11 @@ final class TransformedCursor implements Cursor {
         mSource.reset();
     }
 
+    @Override
+    public void close() {
+        reset();
+    }
+
     private byte[] inverseTransformKey(final byte[] tkey) {
         Utils.keyCheck(tkey);
         return mTransformer.inverseTransformKey(tkey);

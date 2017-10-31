@@ -529,6 +529,11 @@ abstract class MergeCursor implements Cursor {
         mSecond.reset();
     }
 
+    @Override
+    public void close() {
+        reset();
+    }
+
     /**
      * Called by select method when the first value must be selected and the corresponding
      * second value doesn't exist. This cursor's key and value is set as a side effect.

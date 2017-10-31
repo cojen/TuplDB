@@ -330,4 +330,12 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     public void reset() {
         source.reset();
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void close() {
+        source.close();
+    }
 }

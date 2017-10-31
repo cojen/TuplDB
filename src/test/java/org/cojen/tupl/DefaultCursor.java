@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Cursor implementation used to test the default methods Cursor.
+ * Cursor implementation used to test the default methods of the Cursor interface.
  *
  * @author Brian S O'Neill
  */
@@ -123,5 +123,10 @@ class DefaultCursor implements Cursor {
     @Override
     public void reset() {
         mSource.reset();
+    }
+
+    @Override
+    public void close() {
+        mSource.close();
     }
 }

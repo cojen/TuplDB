@@ -242,4 +242,9 @@ final class ReverseCursor implements Cursor {
     public void reset() {
         mSource.reset();
     }
+
+    @Override
+    public void close() {
+        mSource.close();
+    }
 }

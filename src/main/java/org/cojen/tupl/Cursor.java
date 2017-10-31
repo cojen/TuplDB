@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.Comparator;
@@ -43,7 +44,7 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  * @see View#newCursor View.newCursor
  */
-public interface Cursor {
+public interface Cursor extends Closeable {
     /**
      * Empty marker which indicates that value exists but has not been {@link
      * #load loaded}.
@@ -588,8 +589,15 @@ public interface Cursor {
     public Cursor copy();
 
     /**
-     * Resets Cursor and moves it to an undefined position. The key and value references are
-     * also cleared.
+     * Resets the Cursor and moves it to an undefined position. The key and value references
+     * are set to null.
      */
     public void reset();
+
+    /**
+     * Equivalent to the reset method, which moves the Cursor to an undefined position. The
+     * Cursor is re-opened automatically if positioned again.
+     */
+    @Override
+    public void close();
 }
