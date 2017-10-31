@@ -270,7 +270,7 @@ extends <a href="http://docs.oracle.com/javase/7/docs/api/java/io/Closeable.html
 <dd><code>pos</code> - start position to read from</dd>
 <dd><code>buf</code> - buffer to read into</dd>
 <dd><code>off</code> - buffer start offset</dd>
-<dd><code>len</code> - maximum amount to read</dd>
+<dd><code>len</code> - requested amount to read</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>actual amount read, which is less than requested only if the end was reached, or
  -1 if the value doesn't exist</dd>
@@ -300,7 +300,7 @@ extends <a href="http://docs.oracle.com/javase/7/docs/api/java/io/Closeable.html
 <dd><code>pos</code> - start position to write to</dd>
 <dd><code>buf</code> - buffer to write from</dd>
 <dd><code>off</code> - buffer start offset</dd>
-<dd><code>len</code> - maximum length to write</dd>
+<dd><code>len</code> - amount to write</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="http://docs.oracle.com/javase/7/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
 <dd><code><a href="http://docs.oracle.com/javase/7/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>

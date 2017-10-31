@@ -3914,7 +3914,7 @@ class _TreeCursor implements CauseCloseable, Cursor {
                         _TreeValueBlob blob = new _TreeValueBlob(this);
                         long pos = 0;
                         while (true) {
-                            int result = blob.compactCheck(frame, pos, highestNodeId);
+                            int result = _TreeValueBlob.compactCheck(frame, pos, highestNodeId);
                             if (result < 0) {
                                 break;
                             }
