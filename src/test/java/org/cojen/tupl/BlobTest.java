@@ -569,6 +569,27 @@ public class BlobTest {
     }
 
     @Test
+    public void fieldIncreaseToIndirect() throws Exception {
+        // Start with a specially crafted length, which when increased to use a 4-byte field,
+        // forces removal of inline content. Since this is a black-box test, one way to be
+        // certain that the conversion happened is by running a debugger.
+
+        Index ix = mDb.openIndex("test");
+        byte[] key = "hello".getBytes();
+        byte[] value = new byte[19460];
+        ix.store(Transaction.BOGUS, key, value);
+
+        byte[] value2 = new byte[70000];
+        new Random(12345678).nextBytes(value2);
+
+        Blob blob = ix.openBlob(Transaction.BOGUS, key);
+        blob.write(0, value2, 0, value2.length);
+        blob.close();
+
+        fastAssertArrayEquals(value2, ix.load(null, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
