@@ -542,6 +542,33 @@ public class BlobTest {
     }
 
     @Test
+    public void replaceGhost() throws Exception {
+        Index ix = mDb.openIndex("test");
+        byte[] key = "hello".getBytes();
+        byte[] value1 = "world".getBytes();
+        byte[] value2 = "world!".getBytes();
+
+        ix.store(null, key, value1);
+
+        Transaction txn = mDb.newTransaction();
+        // Creates a ghost, which is deleted after the transaction commits.
+        ix.store(txn, key, null);
+        assertNull(ix.load(txn, key));
+
+        // Sneakily replace the ghost.
+        Blob blob = ix.openBlob(Transaction.BOGUS, key);
+        blob.write(0, value2, 0, value2.length);
+
+        fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
+
+        // Commit won't finish the delete, because a value now exists.
+        txn.commit();
+        txn.reset();
+
+        fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 

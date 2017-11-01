@@ -202,8 +202,8 @@ final class TreeValueBlob {
             vHeaderLoc = loc;
             vHeader = p_byteGet(page, loc++);
 
-            nf: {
-                if (vHeader >= 0) {
+            nonFrag: {
+                decodeLen: if (vHeader >= 0) {
                     vLen = vHeader;
                 } else {
                     if ((vHeader & 0x20) == 0) {
@@ -222,14 +222,30 @@ final class TreeValueBlob {
                             return 0;
                         }
 
-                        // FIXME: write ops; create the value
-                        node.releaseExclusive();
-                        throw null;
+                        // Replace the ghost with an empty value.
+
+                        try {
+                            node.updateLeafValue(frame, cursor.mTree, nodePos, 0, EMPTY_BYTES);
+                        } catch (IOException e) {
+                            node.releaseExclusive();
+                            throw e;
+                        }
+
+                        if (node.mSplit != null) {
+                            // Releases latch if an exception is thrown.
+                            cursor.mTree.finishSplit(frame, node);
+                            // Finishing the split causes the node latch to be re-acquired, so
+                            // start over.
+                            continue;
+                        }
+
+                        vLen = 0;
+                        break decodeLen;
                     }
 
                     if ((vHeader & Node.ENTRY_FRAGMENTED) != 0) {
                         // Value is fragmented.
-                        break nf;
+                        break nonFrag;
                     }
                 }
 
