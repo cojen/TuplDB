@@ -3814,8 +3814,6 @@ class _TreeCursor extends AbstractBlob implements CauseCloseable, Cursor {
             } else {
                 bufferSize = 1;
             }
-        } else if (bufferSize >= 65536) {
-            bufferSize = 65536;
         }
         return bufferSize;
     }
