@@ -125,7 +125,6 @@ final class TreeValueBlob {
         }
 
         Node inode = db.nodeMapLoadFragment(inodeId);
-        // FIXME: Support zero levels.
         int level = db.calculateInodeLevels(fLen);
 
         while (true) {
@@ -226,7 +225,7 @@ final class TreeValueBlob {
 
                         try {
                             node.updateLeafValue(frame, cursor.mTree, nodePos, 0, EMPTY_BYTES);
-                        } catch (IOException e) {
+                        } catch (Throwable e) {
                             node.releaseExclusive();
                             throw e;
                         }
@@ -329,7 +328,7 @@ final class TreeValueBlob {
                             // Writing over the entire value.
                             try {
                                 node.updateLeafValue(frame, cursor.mTree, nodePos, 0, b);
-                            } catch (IOException e) {
+                            } catch (Throwable e) {
                                 node.releaseExclusive();
                                 throw e;
                             }
@@ -475,13 +474,12 @@ final class TreeValueBlob {
                     Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
                 } else {
                     final Node inode = db.nodeMapLoadFragment(inodeId);
-                    // FIXME: Support zero levels.
                     final int levels = db.calculateInodeLevels(fLen);
                     readMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
                 }
 
                 return total;
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 node.releaseShared();
                 throw e;
             }
@@ -544,12 +542,11 @@ final class TreeValueBlob {
 
                         final Node inode = prepareMultilevelWrite(db, page, loc);
 
-                        // FIXME: Support zero levels.
                         final int levels = db.calculateInodeLevels(fLen);
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                         return 0;
-                    } catch (IOException e) {
+                    } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
                     }
@@ -616,7 +613,7 @@ final class TreeValueBlob {
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                         return 0;
-                    } catch (IOException e) {
+                    } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
                     }
@@ -701,7 +698,7 @@ final class TreeValueBlob {
                     bOff += amt;
                     loc += 6;
                     fNodeOff = 0;
-                } catch (IOException e) {
+                } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
                 }
@@ -966,7 +963,7 @@ final class TreeValueBlob {
         final Node node = frame.mNode;
 
         if (newEntryLen > node.getDatabase().mMaxFragmentedEntrySize) {
-            compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
+            compactDirectFormat(cursor, frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc);
             return -1;
         }
 
@@ -1063,7 +1060,7 @@ final class TreeValueBlob {
         final Node node = frame.mNode;
 
         if (newEntryLen > node.getDatabase().mMaxFragmentedEntrySize) {
-            compactDirectFormat(node, vHeaderLoc, vLen, fHeaderLoc);
+            compactDirectFormat(cursor, frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc);
             return -1;
         }
 
@@ -1104,7 +1101,8 @@ final class TreeValueBlob {
 
     /**
      * Compacts a fragmented value of direct pointers. Either its inline content is moved
-     * completely, or the value is converted to indirect format.
+     * completely, or the value is converted to indirect format. Caller should always continue
+     * from the beginning after calling this method.
      *
      * The node latch is released if an exception is thrown.
      *
@@ -1113,16 +1111,13 @@ final class TreeValueBlob {
      * @param vLen length of raw value sans header
      * @param fHeaderLoc location of fragmented value header
      */
-    private static void compactDirectFormat(final Node node,
+    private static void compactDirectFormat(final TreeCursor cursor, final CursorFrame frame,
+                                            final int kHeaderLoc,
                                             final int vHeaderLoc, final int vLen,
                                             final int fHeaderLoc)
         throws IOException
     {
-        // FIXME: If inline content is at least 6 bytes, then move all inline content and keep
-        // direct format for now. Else, convert to indirect and move all inline content.
-        // Because indirect format isn't currently created with inline content, and the earlier
-        // conversion moved it, no inline content should exist at this point.
-
+        final Node node = frame.mNode;
         final /*P*/ byte[] page = node.mPage;
 
         int loc = fHeaderLoc;
@@ -1141,57 +1136,134 @@ final class TreeValueBlob {
 
         // At this point, loc is at the first direct pointer.
 
-        int tailLen = fHeaderLoc + vLen - loc; // length of all the direct pointers, in bytes
+        final int tailLen = fHeaderLoc + vLen - loc; // length of all the direct pointers, in bytes
 
-        LocalDatabase db = node.getDatabase();
-        int levels = db.calculateInodeLevels(fLen - fInline);
+        final LocalDatabase db = node.getDatabase();
+        final int pageSize = pageSize(db, page);
+        final int shrinkage;
 
-        if (levels > 0) {
-            Node[] inodes = new Node[levels];
+        if (fInline > 0) {
+            // Move all inline content into the fragment pages, and keep the direct format for
+            // now. This avoids pathological cases where so much inline content exists that
+            // converting to indirect format doesn't shrink the value. It also means that
+            // inline content should never exist when using the indirect format, because the
+            // initial store of a large value never creates inline content when indirect.
+
+            if (fInline < 4) {
+                // Cannot add a new direct pointer, because there's no room for it in the
+                // current entry. So reconstruct the full value and update it.
+                byte[] newValue;
+                try {
+                    byte[] fullValue = db.reconstruct(page, fHeaderLoc, vLen);
+                    int max = db.mMaxFragmentedEntrySize - (vHeaderLoc - kHeaderLoc);
+                    // Encode it this time without any inline content.
+                    newValue = db.fragment(fullValue, fullValue.length, max, 0);
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
+
+                try {
+                    node.updateLeafValue(frame, cursor.mTree, frame.mNodePos,
+                                         Node.ENTRY_FRAGMENTED, newValue);
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
+
+                if (node.mSplit != null) {
+                    // Releases latch if an exception is thrown.
+                    cursor.mTree.finishSplit(frame, node);
+                }
+
+                return;
+            }
+
+            Node leftNode;
+            Node rightNode = null;
 
             try {
-                for (int i=0; i<inodes.length; i++) {
-                    inodes[i] = db.allocDirtyFragmentNode();
-                }
+                // FIXME: Handle inline encoding when no new node is required, caused by
+                // truncation. With fLen, determine amount of pages required: (fLen + ps - 1) / ps
+                rightNode = db.allocDirtyFragmentNode();
+                p_clear(rightNode.mPage, fInline, pageSize);
+                shrinkage = 2 + fInline - 6;
+                leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInline, rightNode);
             } catch (Throwable e) {
-                node.releaseExclusive();
-
-                for (Node inode : inodes) {
-                    if (inode != null) {
-                        db.deleteNode(inode, true);
-                    }
+                if (rightNode != null) {
+                    db.deleteNode(rightNode, true);
                 }
-
+                node.releaseExclusive();
                 throw e;
             }
 
-            // Copy direct pointers to inode.
-            Node inode = inodes[--levels];
-            /*P*/ byte[] ipage = inode.mPage;
-            p_copy(page, loc, ipage, 0, tailLen);
-            // Zero-fill the rest.
-            p_clear(ipage, tailLen, pageSize(db, ipage));
+            // Move the inline content in place now that room has been made.
+            p_copy(page, loc - fInline, leftNode.mPage, 0, fInline);
+            leftNode.releaseExclusive();
 
-            while (levels > 0) {
-                Node upper = inodes[--levels];
-                /*P*/ byte[] upage = upper.mPage;
-                p_int48PutLE(upage, 0, inode.mId);
-                inode.releaseExclusive();
-                // Zero-fill the rest.
-                p_clear(upage, 6, pageSize(db, upage));
-                inode = upper;
+            // Shift page contents over inline content and inline length header.
+            p_copy(page, loc, page, loc - fInline - 2, tailLen);
+
+            if (rightNode != null) {
+                // Reference the new node.
+                p_int48PutLE(page, loc - fInline - 2 + tailLen, rightNode.mId);
             }
 
-            // Reference the root inode.
-            p_int48PutLE(page, loc, inode.mId);
-            inode.releaseExclusive();
+            // Clear the inline length field.
+            p_bytePut(page, fHeaderLoc, fHeader & ~0x02);
+        } else {
+            // Convert to indirect format.
+
+            int levels = db.calculateInodeLevels(fLen - fInline);
+
+            if (levels > 0) {
+                Node[] inodes = new Node[levels];
+
+                try {
+                    for (int i=0; i<inodes.length; i++) {
+                        inodes[i] = db.allocDirtyFragmentNode();
+                    }
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+
+                    for (Node inode : inodes) {
+                        if (inode != null) {
+                            db.deleteNode(inode, true);
+                        }
+                    }
+
+                    throw e;
+                }
+
+                // Copy direct pointers to inode.
+                Node inode = inodes[--levels];
+                /*P*/ byte[] ipage = inode.mPage;
+                p_copy(page, loc, ipage, 0, tailLen);
+                // Zero-fill the rest.
+                p_clear(ipage, tailLen, pageSize);
+
+                while (levels > 0) {
+                    Node upper = inodes[--levels];
+                    /*P*/ byte[] upage = upper.mPage;
+                    p_int48PutLE(upage, 0, inode.mId);
+                    inode.releaseExclusive();
+                    // Zero-fill the rest.
+                    p_clear(upage, 6, pageSize);
+                    inode = upper;
+                }
+
+                // Reference the root inode.
+                p_int48PutLE(page, loc, inode.mId);
+                inode.releaseExclusive();
+            }
+
+            // Switch to indirect format.
+            p_bytePut(page, fHeaderLoc, fHeader | 0x01);
+
+            shrinkage = tailLen - 6;
         }
 
-        // Switch to indirect format.
-        p_bytePut(page, fHeaderLoc, fHeader | 0x01);
-
         // Update the raw value length.
-        int shrinkage = tailLen - 6;
         int newLen = vLen - shrinkage - 1; // minus one as required by field encoding
         int header = p_byteGet(page, vHeaderLoc);
         if ((header & 0x20) == 0) {
@@ -1207,6 +1279,63 @@ final class TreeValueBlob {
 
         // Update the garbage field.
         node.garbage(node.garbage() + shrinkage);
+    }
+
+    /**
+     * Shift the entire contents of a direct-format fragmented value to the right. All fragment
+     * node latches are released if an exception is thrown.
+     *
+     * @param startLoc first direct pointer location
+     * @param endLoc last direct pointer location (exclusive)
+     * @param amount shift amount in bytes
+     * @param dstNode optional rightmost fragment node to shift into, latched exclusively
+     * @return leftmost fragment node, latched exclusively
+     */
+    private static Node shiftDirectRight(LocalDatabase db, final /*P*/ byte[] page,
+                                         int startLoc, int endLoc, int amount,
+                                         Node dstNode)
+        throws IOException
+    {
+        // First make sure all the fragment nodes are dirtied, in case of an exception.
+
+        Node[] fNodes = new Node[(endLoc - startLoc) / 6];
+
+        try {
+            for (int i = 0, loc = startLoc; loc < endLoc; i++, loc += 6) {
+                Node fNode = db.nodeMapLoadFragmentExclusive(p_uint48GetLE(page, loc), true);
+                fNodes[i] = fNode;
+                if (db.markFragmentDirty(fNode)) {
+                    p_int48PutLE(page, loc, fNode.mId);
+                }
+            }
+        } catch (Throwable e) {
+            for (Node fNode : fNodes) {
+                if (fNode != null) {
+                    fNode.releaseExclusive();
+                }
+            }
+
+            if (dstNode != null) {
+                dstNode.releaseExclusive();
+            }
+
+            throw e;
+        }
+
+        final int pageSize = pageSize(db, page);
+
+        for (int i = fNodes.length; --i >= 0; ) {
+            Node fNode = fNodes[i];
+            /*P*/ byte[] fPage = fNode.mPage;
+            if (dstNode != null) {
+                p_copy(fPage, pageSize - amount, dstNode.mPage, 0, amount);
+                dstNode.releaseExclusive();
+            }
+            p_copy(fPage, 0, fPage, amount, pageSize - amount);
+            dstNode = fNode;
+        }
+
+        return dstNode;
     }
 
     private static int pageSize(LocalDatabase db, /*P*/ byte[] page) {

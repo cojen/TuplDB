@@ -3856,6 +3856,12 @@ final class LocalDatabase extends AbstractDatabase {
         return fragment(key, key.length, mMaxKeySize);
     }
 
+    final byte[] fragment(final byte[] value, final long vlength, int max)
+        throws IOException
+    {
+        return fragment(value, vlength, max, 65535);
+    }
+
     /**
      * Breakup a large value into separate pages, returning a new value which
      * encodes the page references. Caller must hold commit lock.
@@ -3872,9 +3878,10 @@ final class LocalDatabase extends AbstractDatabase {
      * @param value can be null if value is all zeros
      * @param max maximum allowed size for returned byte array; must not be
      * less than 11 (can be 9 if full value length is < 65536)
+     * @param maxInline maximum allowed inline size; must not be more than 65535
      * @return null if max is too small
      */
-    byte[] fragment(final byte[] value, final long vlength, int max)
+    final byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
         throws IOException
     {
         final int pageSize = mPageSize;
@@ -3906,7 +3913,7 @@ final class LocalDatabase extends AbstractDatabase {
 
         byte[] newValue;
         final int inline; // length of inline field size
-        if (remainder <= max && remainder < 65536
+        if (remainder <= max && remainder <= maxInline
             && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
         {
             // Remainder fits inline, minimizing internal fragmentation. All
@@ -4047,7 +4054,6 @@ final class LocalDatabase extends AbstractDatabase {
                     // Value is sparse, so just store a null pointer.
                     encodeInt48LE(newValue, offset, 0);
                 } else {
-                    // FIXME: Support zero levels.
                     int levels = calculateInodeLevels(vlength);
                     Node inode = allocDirtyFragmentNode();
                     try {
@@ -4306,7 +4312,6 @@ final class LocalDatabase extends AbstractDatabase {
             if (inodeId != 0) {
                 Node inode = nodeMapLoadFragment(inodeId);
                 pagesRead++;
-                // FIXME: Support zero levels.
                 int levels = calculateInodeLevels(vLen);
                 pagesRead += readMultilevelFragments(levels, inode, value, vOff, vLen);
             }
@@ -4425,7 +4430,6 @@ final class LocalDatabase extends AbstractDatabase {
             long inodeId = p_uint48GetLE(fragmented, off);
             if (inodeId != 0) {
                 Node inode = removeInode(inodeId);
-                // FIXME: Support zero levels.
                 int levels = calculateInodeLevels(vLen);
                 deleteMultilevelFragments(levels, inode, vLen);
             }
