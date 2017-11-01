@@ -498,7 +498,7 @@ final class TreeValueBlob {
                 }
                 // Fall through to extend the length.
 
-            case OP_WRITE: try {
+            case OP_WRITE:
                 endPos = pos + bLen;
 
                 int fInline = 0;
@@ -536,7 +536,7 @@ final class TreeValueBlob {
 
                     db = node.getDatabase();
 
-                    if ((fHeader & 0x01) != 0) {
+                    if ((fHeader & 0x01) != 0) try {
                         // Indirect pointers.
 
                         pos -= fInline; // safe to update now that outermost loop won't continue
@@ -549,6 +549,9 @@ final class TreeValueBlob {
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                         return 0;
+                    } catch (IOException e) {
+                        node.releaseExclusive();
+                        throw e;
                     }
 
                     pageSize = pageSize(db, page);
@@ -563,7 +566,6 @@ final class TreeValueBlob {
                     int fieldGrowth = lengthFieldGrowth(fHeader, endPos);
 
                     if (fieldGrowth > 0) {
-                        // FIXME: Fix exception handling.
                         tryIncreaseLengthField(cursor, frame, kHeaderLoc, vHeaderLoc, vLen,
                                                fHeaderLoc, fieldGrowth);
                         continue;
@@ -571,7 +573,7 @@ final class TreeValueBlob {
 
                     db = node.getDatabase();
 
-                    if ((fHeader & 0x01) != 0) {
+                    if ((fHeader & 0x01) != 0) try {
                         // Extend the value with indirect pointers.
 
                         pos -= fInline; // safe to update now that outermost loop won't continue
@@ -614,6 +616,9 @@ final class TreeValueBlob {
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
                         return 0;
+                    } catch (IOException e) {
+                        node.releaseExclusive();
+                        throw e;
                     }
 
                     // Extend the value with direct pointers.
@@ -624,7 +629,6 @@ final class TreeValueBlob {
                         (pageSize, fLen - fInline, endPos - fInline);
 
                     if (ptrGrowth > 0) {
-                        // FIXME: Fix exception handling.
                         int newLoc = tryExtendDirect(cursor, frame, kHeaderLoc, vHeaderLoc, vLen,
                                                      fHeaderLoc, ptrGrowth * 6);
 
@@ -656,7 +660,7 @@ final class TreeValueBlob {
                 loc += (ipos / pageSize) * 6;
                 int fNodeOff = ipos % pageSize;
 
-                while (true) {
+                while (true) try {
                     final int amt = Math.min(bLen, pageSize - fNodeOff);
                     final long fNodeId = p_uint48GetLE(page, loc);
                     if (fNodeId == 0) {
@@ -697,11 +701,10 @@ final class TreeValueBlob {
                     bOff += amt;
                     loc += 6;
                     fNodeOff = 0;
+                } catch (IOException e) {
+                    node.releaseExclusive();
+                    throw e;
                 }
-            } catch (IOException e) {
-                node.releaseExclusive();
-                throw e;
-            }
             } // end switch(op)
         }
     }
