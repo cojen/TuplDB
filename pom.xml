@@ -22,7 +22,7 @@
   <licenses>
     <license>
       <name>Apache License Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
@@ -100,7 +100,7 @@
             <javadocVersion>1.8</javadocVersion>
             <detectJavaApiLink>true</detectJavaApiLink>
             <links>
-              <link>http://docs.oracle.com/javase/8/docs/api</link>
+              <link>https://docs.oracle.com/javase/8/docs/api</link>
             </links>
             <author>false</author>
             <nodeprecatedlist>true</nodeprecatedlist>
@@ -222,7 +222,7 @@
               <javadocVersion>1.8</javadocVersion>
               <detectJavaApiLink>true</detectJavaApiLink>
               <links>
-                <link>http://docs.oracle.com/javase/8/docs/api</link>
+                <link>https://docs.oracle.com/javase/8/docs/api</link>
               </links>
               <author>false</author>
               <nodeprecatedlist>true</nodeprecatedlist>
