@@ -27,7 +27,7 @@ import java.io.OutputStream;
  */
 abstract class AbstractBlob implements Blob {
     @Override
-    public final int read(long pos, byte[] buf, int off, int len) throws IOException {
+    public final int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
@@ -36,7 +36,7 @@ abstract class AbstractBlob implements Blob {
     }
 
     @Override
-    public final void write(long pos, byte[] buf, int off, int len) throws IOException {
+    public final void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
@@ -45,12 +45,12 @@ abstract class AbstractBlob implements Blob {
     }
 
     @Override
-    public final InputStream newInputStream(long pos) throws IOException {
-        return newInputStream(pos, -1);
+    public final InputStream newValueInputStream(long pos) throws IOException {
+        return newValueInputStream(pos, -1);
     }
 
     @Override
-    public final InputStream newInputStream(long pos, int bufferSize) throws IOException {
+    public final InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
@@ -59,12 +59,12 @@ abstract class AbstractBlob implements Blob {
     }
 
     @Override
-    public final OutputStream newOutputStream(long pos) throws IOException {
-        return newOutputStream(pos, -1);
+    public final OutputStream newValueOutputStream(long pos) throws IOException {
+        return newValueOutputStream(pos, -1);
     }
 
     @Override
-    public final OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
+    public final OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
@@ -237,7 +237,7 @@ abstract class AbstractBlob implements Blob {
             }
 
             long pos = mPos;
-            long newPos = Math.min(pos + n, length());
+            long newPos = Math.min(pos + n, valueLength());
 
             if (newPos > pos) {
                 mPos = newPos;

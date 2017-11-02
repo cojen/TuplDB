@@ -143,58 +143,58 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#length--">length</a></span>()</code>
-<div class="block">Returns the total length of the value accessed by the Blob.</div>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newValueInputStream-long-">newValueInputStream</a></span>(long&nbsp;pos)</code>
+<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newInputStream-long-">newInputStream</a></span>(long&nbsp;pos)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newValueInputStream-long-int-">newValueInputStream</a></span>(long&nbsp;pos,
+                   int&nbsp;bufferSize)</code>
 <div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newInputStream-long-int-">newInputStream</a></span>(long&nbsp;pos,
-              int&nbsp;bufferSize)</code>
-<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newValueOutputStream-long-">newValueOutputStream</a></span>(long&nbsp;pos)</code>
+<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newOutputStream-long-">newOutputStream</a></span>(long&nbsp;pos)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newValueOutputStream-long-int-">newValueOutputStream</a></span>(long&nbsp;pos,
+                    int&nbsp;bufferSize)</code>
 <div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
 </td>
 </tr>
 <tr id="i5" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#newOutputStream-long-int-">newOutputStream</a></span>(long&nbsp;pos,
-               int&nbsp;bufferSize)</code>
-<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#setValueLength-long-">setValueLength</a></span>(long&nbsp;length)</code>
+<div class="block">Extends or truncates the value accessed by the Blob.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
-<td class="colFirst"><code>int</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#read-long-byte:A-int-int-">read</a></span>(long&nbsp;pos,
-    byte[]&nbsp;buf,
-    int&nbsp;off,
-    int&nbsp;len)</code>
-<div class="block">Read from the value, starting from any position.</div>
+<td class="colFirst"><code>long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#valueLength--">valueLength</a></span>()</code>
+<div class="block">Returns the total length of the value accessed by the Blob.</div>
 </td>
 </tr>
 <tr id="i7" class="rowColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#setLength-long-">setLength</a></span>(long&nbsp;length)</code>
-<div class="block">Extends or truncates the value accessed by the Blob.</div>
+<td class="colFirst"><code>int</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#valueRead-long-byte:A-int-int-">valueRead</a></span>(long&nbsp;pos,
+         byte[]&nbsp;buf,
+         int&nbsp;off,
+         int&nbsp;len)</code>
+<div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#write-long-byte:A-int-int-">write</a></span>(long&nbsp;pos,
-     byte[]&nbsp;buf,
-     int&nbsp;off,
-     int&nbsp;len)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Blob.html#valueWrite-long-byte:A-int-int-">valueWrite</a></span>(long&nbsp;pos,
+          byte[]&nbsp;buf,
+          int&nbsp;off,
+          int&nbsp;len)</code>
 <div class="block">Write into the value, starting from any position.</div>
 </td>
 </tr>
@@ -213,14 +213,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="length--">
+<a name="valueLength--">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>length</h4>
-<pre>long&nbsp;length()
-     throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>valueLength</h4>
+<pre>long&nbsp;valueLength()
+          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the total length of the value accessed by the Blob.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -231,14 +231,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="setLength-long-">
+<a name="setValueLength-long-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>setLength</h4>
-<pre>void&nbsp;setLength(long&nbsp;length)
-        throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>setValueLength</h4>
+<pre>void&nbsp;setValueLength(long&nbsp;length)
+             throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Extends or truncates the value accessed by the Blob. When extended, the new portion of
  the value is zero-filled.</div>
 <dl>
@@ -251,17 +251,17 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="read-long-byte:A-int-int-">
+<a name="valueRead-long-byte:A-int-int-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>read</h4>
-<pre>int&nbsp;read(long&nbsp;pos,
-         byte[]&nbsp;buf,
-         int&nbsp;off,
-         int&nbsp;len)
-  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>valueRead</h4>
+<pre>int&nbsp;valueRead(long&nbsp;pos,
+              byte[]&nbsp;buf,
+              int&nbsp;off,
+              int&nbsp;len)
+       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Read from the value, starting from any position. The full requested amount of bytes are
  read, unless the end is reached. A return value of -1 indicates that the value doesn't
  exist at all, even when the requested amount is zero.</div>
@@ -282,17 +282,17 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="write-long-byte:A-int-int-">
+<a name="valueWrite-long-byte:A-int-int-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>write</h4>
-<pre>void&nbsp;write(long&nbsp;pos,
-           byte[]&nbsp;buf,
-           int&nbsp;off,
-           int&nbsp;len)
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>valueWrite</h4>
+<pre>void&nbsp;valueWrite(long&nbsp;pos,
+                byte[]&nbsp;buf,
+                int&nbsp;off,
+                int&nbsp;len)
+         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Write into the value, starting from any position. Value is extended when writing past
  the end, even if the written amount is zero.</div>
 <dl>
@@ -310,14 +310,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="newInputStream-long-">
+<a name="newValueInputStream-long-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>newInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newInputStream(long&nbsp;pos)
-                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>newValueInputStream</h4>
+<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos)
+                         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from this Blob. When the
  InputStream is closed, it closes the Blob too. The InputStream is bound to the Blob, and
  so only one thread can access either at a time.
@@ -336,15 +336,15 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="newInputStream-long-int-">
+<a name="newValueInputStream-long-int-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>newInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newInputStream(long&nbsp;pos,
-                           int&nbsp;bufferSize)
-                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>newValueInputStream</h4>
+<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos,
+                                int&nbsp;bufferSize)
+                         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from this Blob. When the
  InputStream is closed, it closes the Blob too. The InputStream is bound to the Blob, and
  so only one thread can access either at a time.
@@ -365,14 +365,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="newOutputStream-long-">
+<a name="newValueOutputStream-long-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>newOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newOutputStream(long&nbsp;pos)
-                      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>newValueOutputStream</h4>
+<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos)
+                           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to this Blob. When the
  OutputStream is closed, it closes the Blob too. The OutputStream is bound to the Blob,
  and so only one thread can access either at a time.</div>
@@ -388,15 +388,15 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </dl>
 </li>
 </ul>
-<a name="newOutputStream-long-int-">
+<a name="newValueOutputStream-long-int-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>newOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newOutputStream(long&nbsp;pos,
-                             int&nbsp;bufferSize)
-                      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>newValueOutputStream</h4>
+<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos,
+                                  int&nbsp;bufferSize)
+                           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to this Blob. When the
  OutputStream is closed, it closes the Blob too. The OutputStream is bound to the Blob,
  and so only one thread can access either at a time.</div>

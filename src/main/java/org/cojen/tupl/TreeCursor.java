@@ -3729,7 +3729,7 @@ class TreeCursor extends AbstractBlob implements CauseCloseable, Cursor {
 
     // Blob method
     @Override
-    public final long length() throws IOException {
+    public final long valueLength() throws IOException {
         CursorFrame frame;
         try {
             frame = leafSharedNotSplit();
@@ -3745,7 +3745,7 @@ class TreeCursor extends AbstractBlob implements CauseCloseable, Cursor {
 
     // Blob method
     @Override
-    public final void setLength(long length) throws IOException {
+    public final void setValueLength(long length) throws IOException {
         // FIXME: txn undo/redo
         try {
             if (length < 0) {
