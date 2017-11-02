@@ -599,8 +599,14 @@ final class TreeValue {
                                 try {
                                     newNodes[i] = db.allocDirtyFragmentNode();
                                 } catch (Throwable e) {
-                                    while (--i >= 0) {
-                                        db.deleteNode(newNodes[i], true);
+                                    try {
+                                        // Clean up the mess.
+                                        while (--i >= 0) {
+                                            db.deleteNode(newNodes[i], true);
+                                        }
+                                    } catch (Throwable e2) {
+                                        suppress(e, e2);
+                                        db.close(e);
                                     }
                                     throw e;
                                 }
@@ -1196,8 +1202,14 @@ final class TreeValue {
                 leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInline, rightNode);
             } catch (Throwable e) {
                 node.releaseExclusive();
-                if (rightNode != null) {
-                    db.deleteNode(rightNode, true);
+                try {
+                    // Clean up the mess.
+                    if (rightNode != null) {
+                        db.deleteNode(rightNode, true);
+                    }
+                } catch (Throwable e2) {
+                    suppress(e, e2);
+                    db.close(e);
                 }
                 throw e;
             }
@@ -1229,8 +1241,14 @@ final class TreeValue {
                         inodes[i] = db.allocDirtyFragmentNode();
                     } catch (Throwable e) {
                         node.releaseExclusive();
-                        while (--i >= 0) {
-                            db.deleteNode(inodes[i], true);
+                        try {
+                            // Clean up the mess.
+                            while (--i >= 0) {
+                                db.deleteNode(inodes[i], true);
+                            }
+                        } catch (Throwable e2) {
+                            suppress(e, e2);
+                            db.close(e);
                         }
                         throw e;
                     }
