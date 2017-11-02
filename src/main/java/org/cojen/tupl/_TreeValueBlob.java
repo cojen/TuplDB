@@ -38,6 +38,8 @@ final class _TreeValueBlob {
     // Touches a fragment without extending the value length. Used for file compaction.
     static final byte[] TOUCH_VALUE = new byte[0];
 
+    private _TreeValueBlob() {}
+
     /**
      * Determine if any fragment nodes at the given position are outside the compaction zone.
      *
@@ -799,7 +801,7 @@ final class _TreeValueBlob {
      * @param inode exclusively latched parent inode; always released by this method
      * @param value slice of complete value being written
      */
-    private static void writeMultilevelFragments(long pos, int level, _Node inode,
+    private static void writeMultilevelFragments(long pos, int level, final _Node inode,
                                                  byte[] b, int bOff, int bLen)
         throws IOException
     {
@@ -868,10 +870,6 @@ final class _TreeValueBlob {
                 // Remaining writes begin at the start of the page.
                 ppos = 0;
             }
-        } catch (Throwable e) {
-            // Panic.
-            db.close(e);
-            throw e;
         } finally {
             inode.releaseExclusive();
         }
@@ -1190,10 +1188,10 @@ final class _TreeValueBlob {
                 shrinkage = 2 + fInline - 6;
                 leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInline, rightNode);
             } catch (Throwable e) {
+                node.releaseExclusive();
                 if (rightNode != null) {
                     db.deleteNode(rightNode, true);
                 }
-                node.releaseExclusive();
                 throw e;
             }
 
@@ -1282,8 +1280,7 @@ final class _TreeValueBlob {
     }
 
     /**
-     * Shift the entire contents of a direct-format fragmented value to the right. All fragment
-     * node latches are released if an exception is thrown.
+     * Shift the entire contents of a direct-format fragmented value to the right.
      *
      * @param startLoc first direct pointer location
      * @param endLoc last direct pointer location (exclusive)
@@ -1314,11 +1311,6 @@ final class _TreeValueBlob {
                     fNode.releaseExclusive();
                 }
             }
-
-            if (dstNode != null) {
-                dstNode.releaseExclusive();
-            }
-
             throw e;
         }
 
