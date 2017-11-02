@@ -3964,9 +3964,14 @@ final class _LocalDatabase extends AbstractDatabase {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess.
-                            while ((poffset -= 6) >= (offset + inline + remainder)) {
-                                deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                            try {
+                                // Clean up the mess.
+                                while ((poffset -= 6) >= (offset + inline + remainder)) {
+                                    deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                }
+                            } catch (Throwable e2) {
+                                suppress(e, e2);
+                                close(e);
                             }
                         }
                         throw e;
@@ -4037,9 +4042,14 @@ final class _LocalDatabase extends AbstractDatabase {
                             if (!e.isRecoverable()) {
                                 close(e);
                             } else {
-                                // Clean up the mess.
-                                while ((poffset -= 6) >= offset) {
-                                    deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                try {
+                                    // Clean up the mess.
+                                    while ((poffset -= 6) >= offset) {
+                                        deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                    }
+                                } catch (Throwable e2) {
+                                    suppress(e, e2);
+                                    close(e);
                                 }
                             }
                             throw e;
@@ -4064,10 +4074,15 @@ final class _LocalDatabase extends AbstractDatabase {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess. Note that inode is still latched here,
-                            // because writeMultilevelFragments never releases it. The call to
-                            // deleteMultilevelFragments always releases the inode latch.
-                            deleteMultilevelFragments(levels, inode, vlength);
+                            try {
+                                // Clean up the mess. Note that inode is still latched here,
+                                // because writeMultilevelFragments never releases it. The call to
+                                // deleteMultilevelFragments always releases the inode latch.
+                                deleteMultilevelFragments(levels, inode, vlength);
+                            } catch (Throwable e2) {
+                                suppress(e, e2);
+                                close(e);
+                            }
                         }
                         throw e;
                     } catch (Throwable e) {
