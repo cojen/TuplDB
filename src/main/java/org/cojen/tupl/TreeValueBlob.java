@@ -577,9 +577,6 @@ final class TreeValueBlob {
 
                         pos -= fInline; // safe to update now that outermost loop won't continue
 
-                        // FIXME: update length later (after inode allocations)
-                        updateLengthField(page, fHeaderLoc, endPos);
-
                         Node inode = prepareMultilevelWrite(db, page, loc);
 
                         // Levels required before extending...
@@ -597,20 +594,33 @@ final class TreeValueBlob {
 
                             pageSize = pageSize(db, page);
 
-                            // FIXME: alloc all first; delete if an exception
-                            do {
-                                Node upper = db.allocDirtyFragmentNode();
+                            Node[] newNodes = new Node[newLevels - levels];
+                            for (int i=0; i<newNodes.length; i++) {
+                                try {
+                                    newNodes[i] = db.allocDirtyFragmentNode();
+                                } catch (Throwable e) {
+                                    while (--i >= 0) {
+                                        db.deleteNode(newNodes[i], true);
+                                    }
+                                    throw e;
+                                }
+                            }
+
+                            for (Node upper : newNodes) {
                                 /*P*/ byte[] upage = upper.mPage;
                                 p_int48PutLE(upage, 0, inode.mId);
                                 inode.releaseExclusive();
                                 // Zero-fill the rest.
                                 p_clear(upage, 6, pageSize);
                                 inode = upper;
-                                levels++;
-                            } while (newLevels > levels);
+                            }
+
+                            levels = newLevels;
 
                             p_int48PutLE(page, loc, inode.mId);
                         }
+
+                        updateLengthField(page, fHeaderLoc, endPos);
 
                         writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
 
@@ -768,29 +778,26 @@ final class TreeValueBlob {
         throws IOException
     {
         final Node inode;
+        final long inodeId = p_uint48GetLE(page, loc);
 
-        setPtr: {
-            final long inodeId = p_uint48GetLE(page, loc);
-
-            if (inodeId == 0) {
-                // Writing into a sparse value. Allocate a node and point to it.
-                inode = db.allocDirtyFragmentNode();
-                p_clear(inode.mPage, 0, pageSize(db, inode.mPage));
-            } else {
-                inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
-                try {
-                    if (!db.markFragmentDirty(inode)) {
-                        // Already dirty, so no need to update the pointer.
-                        break setPtr;
-                    }
-                } catch (Throwable e) {
-                    inode.releaseExclusive();
-                    throw e;
+        if (inodeId == 0) {
+            // Writing into a sparse value. Allocate a node and point to it.
+            inode = db.allocDirtyFragmentNode();
+            p_clear(inode.mPage, 0, pageSize(db, inode.mPage));
+        } else {
+            inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
+            try {
+                if (!db.markFragmentDirty(inode)) {
+                    // Already dirty, so no need to update the pointer.
+                    return inode;
                 }
+            } catch (Throwable e) {
+                inode.releaseExclusive();
+                throw e;
             }
-
-            p_int48PutLE(page, loc, inode.mId);
         }
+
+        p_int48PutLE(page, loc, inode.mId);
 
         return inode;
     }
@@ -1217,20 +1224,16 @@ final class TreeValueBlob {
             if (levels > 0) {
                 Node[] inodes = new Node[levels];
 
-                try {
-                    for (int i=0; i<inodes.length; i++) {
+                for (int i=0; i<inodes.length; i++) {
+                    try {
                         inodes[i] = db.allocDirtyFragmentNode();
-                    }
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-
-                    for (Node inode : inodes) {
-                        if (inode != null) {
-                            db.deleteNode(inode, true);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        while (--i >= 0) {
+                            db.deleteNode(inodes[i], true);
                         }
+                        throw e;
                     }
-
-                    throw e;
                 }
 
                 // Copy direct pointers to inode.
