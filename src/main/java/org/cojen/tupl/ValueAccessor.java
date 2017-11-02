@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -23,22 +23,16 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * Provides access to database values without requiring that they be fully loaded or stored in
- * a single operation. A "BLOB" is a "Binary Large OBject", and this interface permits values
- * to be much larger than what can fit in main memory.
- *
- * <p>Blob instances can only be safely used by one thread at a time, and they must be {@link
- * #close closed} when no longer needed. Instances can be exchanged by threads, as long as a
- * happens-before relationship is established.  Without proper exclusion, multiple threads
- * interacting with a Blob instance may cause database corruption.
+ * Accesses database values without requiring that they be fully loaded or stored in a single
+ * operation. This interface permits values to be larger than what can fit in main memory.
+ * When using a {@link Cursor cursor} to access values, {@link Cursor#autoload(boolean)
+ * autoload} should be disabled to prevent values from being fully loaded automatically
  *
  * @author Brian S O'Neill
- * @see View#openBlob View.openBlob
- * @see Cursor#blob Cursor.blob
  */
-public interface Blob extends Closeable {
+public interface ValueAccessor extends Closeable {
     /**
-     * Returns the total length of the value accessed by the Blob.
+     * Returns the total length of the accessed value.
      *
      * @return value length or -1 if it doesn't exist
      * @throws IllegalStateException if closed
@@ -46,10 +40,10 @@ public interface Blob extends Closeable {
     public long valueLength() throws IOException;
 
     /**
-     * Extends or truncates the value accessed by the Blob. When extended, the new portion of
-     * the value is zero-filled.
+     * Extends or truncates the accessed value. When extended, the new portion of the value is
+     * zero-filled.
      *
-     * @param length new value length; negative length deletes the value
+     * @param length new value length; a negative length deletes the value
      * @throws IllegalArgumentException if length is too large
      * @throws IllegalStateException if closed
      */
@@ -88,9 +82,9 @@ public interface Blob extends Closeable {
     public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
-     * Returns a new buffered InputStream instance, which reads from this Blob. When the
-     * InputStream is closed, it closes the Blob too. The InputStream is bound to the Blob, and
-     * so only one thread can access either at a time.
+     * Returns a new buffered InputStream instance, which reads from the value. When the
+     * InputStream is closed, it closes the accessor too. The InputStream is bound to the
+     * accessor, and so only one thread can access either at a time.
      *
      * <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
      * Reading from a value which doesn't exist causes a {@link NoSuchValueException} to be
@@ -103,9 +97,9 @@ public interface Blob extends Closeable {
     public InputStream newValueInputStream(long pos) throws IOException;
 
     /**
-     * Returns a new buffered InputStream instance, which reads from this Blob. When the
-     * InputStream is closed, it closes the Blob too. The InputStream is bound to the Blob, and
-     * so only one thread can access either at a time.
+     * Returns a new buffered InputStream instance, which reads from the value. When the
+     * InputStream is closed, it closes the accessor too. The InputStream is bound to the
+     * accessor, and so only one thread can access either at a time.
      *
      * <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
      * Reading from a value which doesn't exist causes a {@link NoSuchValueException} to be
@@ -120,9 +114,9 @@ public interface Blob extends Closeable {
     public InputStream newValueInputStream(long pos, int bufferSize) throws IOException;
 
     /**
-     * Returns a new buffered OutputStream instance, which writes to this Blob. When the
-     * OutputStream is closed, it closes the Blob too. The OutputStream is bound to the Blob,
-     * and so only one thread can access either at a time.
+     * Returns a new buffered OutputStream instance, which writes to the value. When the
+     * OutputStream is closed, it closes the accessor too. The OutputStream is bound to the
+     * accessor, and so only one thread can access either at a time.
      *
      * @param pos start position to write to
      * @return buffered unsynchronized OutputStream
@@ -132,9 +126,9 @@ public interface Blob extends Closeable {
     public OutputStream newValueOutputStream(long pos) throws IOException;
 
     /**
-     * Returns a new buffered OutputStream instance, which writes to this Blob. When the
-     * OutputStream is closed, it closes the Blob too. The OutputStream is bound to the Blob,
-     * and so only one thread can access either at a time.
+     * Returns a new buffered OutputStream instance, which writes to the value. When the
+     * OutputStream is closed, it closes the accessor too. The OutputStream is bound to the
+     * accessor, and so only one thread can access either at a time.
      *
      * @param pos start position to write to
      * @param bufferSize requested buffer size; actual size may differ
@@ -145,7 +139,7 @@ public interface Blob extends Closeable {
     public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException;
 
     /**
-     * Closes the Blob, but does not flush any OutputStream instances.
+     * Closes the accessor, but doesn't flush any OutputStream instances.
      */
     @Override
     public void close();

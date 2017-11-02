@@ -18,8 +18,8 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when reading from a {@link Blob#newValueInputStream blob}, for a value which doesn't
- * exist.
+ * Thrown when reading from an accessor {@link ValueAccessor#newValueInputStream stream}, for a
+ * value which doesn't exist.
  *
  * @author Brian S O'Neill
  */

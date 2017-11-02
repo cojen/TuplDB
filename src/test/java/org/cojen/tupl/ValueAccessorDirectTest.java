@@ -24,9 +24,9 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
-public class BlobDirectTest extends BlobTest {
+public class ValueAccessorDirectTest extends ValueAccessorTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(BlobDirectTest.class.getName());
+        org.junit.runner.JUnitCore.main(ValueAccessorDirectTest.class.getName());
     }
 
     @Before

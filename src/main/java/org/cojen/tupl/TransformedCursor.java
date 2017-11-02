@@ -28,7 +28,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * @author Brian S O'Neill
  */
-final class TransformedCursor implements Cursor {
+final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     private final Cursor mSource;
     private final Transformer mTransformer;
 
@@ -523,6 +523,36 @@ final class TransformedCursor implements Cursor {
     @Override
     public void close() {
         reset();
+    }
+
+    @Override
+    public long valueLength() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void setValueLength(long length) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    int doValueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    int valueStreamBufferSize(int bufferSize) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    void valueCheckOpen() {
+        throw new UnsupportedOperationException();
     }
 
     private byte[] inverseTransformKey(final byte[] tkey) {

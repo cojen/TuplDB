@@ -34,9 +34,9 @@ import static org.cojen.tupl.TestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class BlobTest {
+public class ValueAccessorTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(BlobTest.class.getName());
+        org.junit.runner.JUnitCore.main(ValueAccessorTest.class.getName());
     }
 
     @Before
@@ -57,36 +57,36 @@ public class BlobTest {
     public void readMissing() throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(-1, blob.valueLength());
+        ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
+        assertEquals(-1, accessor.valueLength());
 
         try {
-            blob.valueRead(0, null, 0, 0);
+            accessor.valueRead(0, null, 0, 0);
             fail();
         } catch (NullPointerException e) {
         }
 
         try {
-            blob.valueRead(0, new byte[0], 0, 10);
+            accessor.valueRead(0, new byte[0], 0, 10);
             fail();
         } catch (IndexOutOfBoundsException e) {
         }
 
-        assertEquals(-1, blob.valueRead(0, new byte[0], 0, 0));
-        assertEquals(-1, blob.valueRead(0, new byte[10], 0, 5));
-        assertEquals(-1, blob.valueRead(0, new byte[10], 1, 5));
-        assertEquals(-1, blob.valueRead(10, new byte[10], 1, 5));
+        assertEquals(-1, accessor.valueRead(0, new byte[0], 0, 0));
+        assertEquals(-1, accessor.valueRead(0, new byte[10], 0, 5));
+        assertEquals(-1, accessor.valueRead(0, new byte[10], 1, 5));
+        assertEquals(-1, accessor.valueRead(10, new byte[10], 1, 5));
 
-        blob.close();
+        accessor.close();
 
         try {
-            blob.valueLength();
+            accessor.valueLength();
             fail();
         } catch (IllegalStateException e) {
         }
 
         try {
-            blob.valueRead(0, new byte[0], 0, 0);
+            accessor.valueRead(0, new byte[0], 0, 0);
             fail();
         } catch (IllegalStateException e) {
         }
@@ -96,38 +96,38 @@ public class BlobTest {
     public void readEmpty() throws Exception {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), new byte[0]);
-        Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(0, blob.valueLength());
+        ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
+        assertEquals(0, accessor.valueLength());
 
         byte[] buf = new byte[5];
-        assertEquals(0, blob.valueRead(0, buf, 0, 5));
-        assertEquals(0, blob.valueRead(1, buf, 2, 3));
-        assertEquals(0, blob.valueRead(5, buf, 0, 5));
-        assertEquals(0, blob.valueRead(500, buf, 0, 5));
+        assertEquals(0, accessor.valueRead(0, buf, 0, 5));
+        assertEquals(0, accessor.valueRead(1, buf, 2, 3));
+        assertEquals(0, accessor.valueRead(5, buf, 0, 5));
+        assertEquals(0, accessor.valueRead(500, buf, 0, 5));
 
-        blob.close();
+        accessor.close();
     }
 
     @Test
     public void readSmall() throws Exception {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), "value".getBytes());
-        Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(5, blob.valueLength());
+        ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
+        assertEquals(5, accessor.valueLength());
 
         byte[] buf = new byte[5];
-        assertEquals(5, blob.valueRead(0, buf, 0, 5));
+        assertEquals(5, accessor.valueRead(0, buf, 0, 5));
         fastAssertArrayEquals("value".getBytes(), buf);
 
-        assertEquals(3, blob.valueRead(1, buf, 2, 3));
+        assertEquals(3, accessor.valueRead(1, buf, 2, 3));
         assertEquals('a', (char) buf[2]);
         assertEquals('l', (char) buf[3]);
         assertEquals('u', (char) buf[4]);
 
-        assertEquals(0, blob.valueRead(5, buf, 0, 5));
-        assertEquals(0, blob.valueRead(500, buf, 0, 5));
+        assertEquals(0, accessor.valueRead(5, buf, 0, 5));
+        assertEquals(0, accessor.valueRead(500, buf, 0, 5));
 
-        blob.close();
+        accessor.close();
     }
 
     @Test
@@ -157,40 +157,40 @@ public class BlobTest {
             byte[] value = randomStr(rnd, length);
 
             if (useWrite) {
-                Blob blob = ix.openBlob(null, key);
+                ValueAccessor accessor = ix.newAccessor(null, key);
                 if (setLength) {
-                    blob.setValueLength(length);
+                    accessor.setValueLength(length);
                 }
                 for (int j=0; j<length; j+=50) {
-                    blob.valueWrite(j, value, j, 50);
+                    accessor.valueWrite(j, value, j, 50);
                 }
-                blob.close();
+                accessor.close();
             } else {
                 if (setLength) {
-                    Blob blob = ix.openBlob(null, key);
-                    blob.setValueLength(length);
-                    blob.close();
+                    ValueAccessor accessor = ix.newAccessor(null, key);
+                    accessor.setValueLength(length);
+                    accessor.close();
                 }
                 ix.store(null, key, value);
             }
 
-            Blob blob = ix.openBlob(null, key);
+            ValueAccessor accessor = ix.newAccessor(null, key);
 
-            assertEquals(length, blob.valueLength());
+            assertEquals(length, accessor.valueLength());
 
             byte[] buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
-            assertEquals(0, blob.valueRead(length, buf, 10, 0));
+            assertEquals(0, accessor.valueRead(length, buf, 10, 0));
 
             // Attempt to read past the end.
-            assertEquals(0, blob.valueRead(length, buf, 10, 10));
+            assertEquals(0, accessor.valueRead(length, buf, 10, 10));
 
             // Read many different slices, extending beyond as well.
 
             for (int start=0; start<length; start += 3) {
                 for (int end=start; end<length+2; end += 7) {
-                    int amt = blob.valueRead(start, buf, 1, end - start);
+                    int amt = accessor.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
                     int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
@@ -198,7 +198,7 @@ public class BlobTest {
                 }
             }
 
-            blob.close();
+            accessor.close();
 
             ix.delete(null, key);
         }
@@ -217,21 +217,21 @@ public class BlobTest {
             byte[] value = randomStr(rnd, length);
             ix.store(null, key, value);
 
-            Blob blob = ix.openBlob(null, key);
+            ValueAccessor accessor = ix.newAccessor(null, key);
 
             byte[] buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
-            assertEquals(0, blob.valueRead(length, buf, 10, 0));
+            assertEquals(0, accessor.valueRead(length, buf, 10, 0));
 
             // Attempt to read past the end.
-            assertEquals(0, blob.valueRead(length, buf, 10, 10));
+            assertEquals(0, accessor.valueRead(length, buf, 10, 10));
 
             // Read many different slices, extending beyond as well.
 
             for (int start=0; start<length; start += 311) {
                 for (int end=start; end<length+2; end += (512 + 256)) {
-                    int amt = blob.valueRead(start, buf, 1, end - start);
+                    int amt = accessor.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
                     int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
@@ -239,7 +239,7 @@ public class BlobTest {
                 }
             }
 
-            blob.close();
+            accessor.close();
 
             ix.delete(null, key);
         }
@@ -262,15 +262,15 @@ public class BlobTest {
 
         for (int i=0; i<100000; i+=100) {
             byte[] key = "key".getBytes();
-            Blob blob = ix.openBlob(null, key);
+            ValueAccessor accessor = ix.newAccessor(null, key);
 
             if (useWrite) {
-                blob.valueWrite(i, key, 0, 0);
+                accessor.valueWrite(i, key, 0, 0);
             } else {
-                blob.setValueLength(i);
+                accessor.setValueLength(i);
             }
 
-            assertEquals(i, blob.valueLength());
+            assertEquals(i, accessor.valueLength());
 
             byte[] value = ix.load(null, key);
             assertNotNull(value);
@@ -282,14 +282,14 @@ public class BlobTest {
             Arrays.fill(buf, 0, buf.length, (byte) 55);
 
             if (i == 0) {
-                int amt = blob.valueRead(0, buf, 1, 100);
+                int amt = accessor.valueRead(0, buf, 1, 100);
                 assertEquals(0, amt);
             } else {
                 if (i == 100) {
-                    int amt = blob.valueRead(0, buf, 1, 100);
+                    int amt = accessor.valueRead(0, buf, 1, 100);
                     assertEquals(100, amt);
                 } else {
-                    int amt = blob.valueRead(100, buf, 1, 100);
+                    int amt = accessor.valueRead(100, buf, 1, 100);
                     assertEquals(100, amt);
                 }
                 assertEquals(55, buf[0]);
@@ -300,7 +300,7 @@ public class BlobTest {
             }
 
             ix.delete(null, key);
-            assertEquals(-1, blob.valueLength());
+            assertEquals(-1, accessor.valueLength());
             assertNull(ix.load(null, key));
         }
     }
@@ -357,11 +357,11 @@ public class BlobTest {
         ix.store(Transaction.BOGUS, key, initial);
         initial = null;
 
-        Blob blob = ix.openBlob(Transaction.BOGUS, key);
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
-        blob.setValueLength(toLen);
+        accessor.setValueLength(toLen);
 
-        assertEquals(toLen, blob.valueLength());
+        assertEquals(toLen, accessor.valueLength());
 
         if (toLen < 10_000_000) {
             byte[] resulting = ix.load(Transaction.BOGUS, key);
@@ -382,7 +382,7 @@ public class BlobTest {
                 }
             }
         } else {
-            InputStream in = blob.newValueInputStream(0, 10_000);
+            InputStream in = accessor.newValueInputStream(0, 10_000);
 
             rnd = new Random(seed);
 
@@ -424,7 +424,7 @@ public class BlobTest {
             }
         }
 
-        blob.close();
+        accessor.close();
 
         assertTrue(ix.verify(null));
 
@@ -468,9 +468,9 @@ public class BlobTest {
 
         ix.store(null, key, value);
 
-        Blob blob = ix.openBlob(null, key);
-        blob.setValueLength(to);
-        blob.close();
+        ValueAccessor accessor = ix.newAccessor(null, key);
+        accessor.setValueLength(to);
+        accessor.close();
 
         byte[] truncated = ix.load(null, key);
         assertEquals(to, truncated.length);
@@ -521,9 +521,9 @@ public class BlobTest {
             byte[] sub = new byte[size - left + right];
             rnd.nextBytes(sub);
 
-            Blob blob = ix.openBlob(null, key);
-            blob.valueWrite(left, sub, 0, sub.length);
-            blob.close();
+            ValueAccessor accessor = ix.newAccessor(null, key);
+            accessor.valueWrite(left, sub, 0, sub.length);
+            accessor.close();
 
             byte[] expect;
             if (sub.length <= value.length) {
@@ -556,8 +556,8 @@ public class BlobTest {
         assertNull(ix.load(txn, key));
 
         // Sneakily replace the ghost.
-        Blob blob = ix.openBlob(Transaction.BOGUS, key);
-        blob.valueWrite(0, value2, 0, value2.length);
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(0, value2, 0, value2.length);
 
         fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
 
@@ -582,9 +582,9 @@ public class BlobTest {
         byte[] value2 = new byte[70000];
         new Random(12345678).nextBytes(value2);
 
-        Blob blob = ix.openBlob(Transaction.BOGUS, key);
-        blob.valueWrite(0, value2, 0, value2.length);
-        blob.close();
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(0, value2, 0, value2.length);
+        accessor.close();
 
         fastAssertArrayEquals(value2, ix.load(null, key));
     }
@@ -599,8 +599,8 @@ public class BlobTest {
         byte[] key = "input".getBytes();
         byte[] value = randomStr(rnd, 100000);
 
-        Blob blob = ix.openBlob(null, key);
-        InputStream in = blob.newValueInputStream(0, 101);
+        ValueAccessor accessor = ix.newAccessor(null, key);
+        InputStream in = accessor.newValueInputStream(0, 101);
 
         try {
             in.read();
@@ -624,8 +624,8 @@ public class BlobTest {
 
         ix.store(null, key, value);
 
-        blob = ix.openBlob(null, key);
-        in = blob.newValueInputStream(0, 101);
+        accessor = ix.newAccessor(null, key);
+        in = accessor.newValueInputStream(0, 101);
 
         for (int i=0; i<value.length; i++) {
             assertEquals(value[i], in.read());
@@ -643,8 +643,8 @@ public class BlobTest {
 
         assertEquals(0, in.available());
 
-        blob = ix.openBlob(null, key);
-        in = blob.newValueInputStream(0, 10);
+        accessor = ix.newAccessor(null, key);
+        in = accessor.newValueInputStream(0, 10);
 
         byte[] buf = new byte[0];
         assertEquals(0, in.read(buf));
@@ -678,8 +678,8 @@ public class BlobTest {
         byte[] key = "output".getBytes();
         byte[] value = randomStr(rnd, 100000);
 
-        Blob blob = ix.openBlob(null, key);
-        OutputStream out = blob.newValueOutputStream(0, 101);
+        ValueAccessor accessor = ix.newAccessor(null, key);
+        OutputStream out = accessor.newValueOutputStream(0, 101);
 
         out.close();
 
@@ -689,10 +689,10 @@ public class BlobTest {
         } catch (IllegalStateException e) {
         }
 
-        blob = ix.openBlob(null, key);
-        blob.setValueLength(value.length);
+        accessor = ix.newAccessor(null, key);
+        accessor.setValueLength(value.length);
 
-        out = blob.newValueOutputStream(0, 20);
+        out = accessor.newValueOutputStream(0, 20);
 
         for (int i=0; i<value.length; ) {
             byte[] buf = new byte[Math.min(value.length - i, rnd.nextInt(21) + 1)];
@@ -712,10 +712,10 @@ public class BlobTest {
         } catch (IllegalStateException e) {
         }
 
-        blob = ix.openBlob(null, key);
+        accessor = ix.newAccessor(null, key);
 
         byte[] actual = new byte[value.length];
-        int amt = blob.valueRead(0, actual, 0, actual.length);
+        int amt = accessor.valueRead(0, actual, 0, actual.length);
 
         assertEquals(amt, actual.length);
 
@@ -726,10 +726,10 @@ public class BlobTest {
         key = "output2".getBytes();
         value = randomStr(rnd, 100000);
 
-        blob = ix.openBlob(null, key);
-        blob.setValueLength(value.length);
+        accessor = ix.newAccessor(null, key);
+        accessor.setValueLength(value.length);
 
-        out = blob.newValueOutputStream(0, 20);
+        out = accessor.newValueOutputStream(0, 20);
 
         for (int i=0; i<value.length; i++) {
             out.write(value[i]);
@@ -738,7 +738,7 @@ public class BlobTest {
         out.flush();
 
         actual = new byte[value.length];
-        amt = blob.valueRead(0, actual, 0, actual.length);
+        amt = accessor.valueRead(0, actual, 0, actual.length);
 
         assertEquals(amt, actual.length);
 
