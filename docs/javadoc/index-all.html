@@ -236,20 +236,6 @@
 <div class="block">Support for capturing a snapshot (hot backup) of the database, while
  still allowing concurrent modifications.</div>
 </dd>
-<dt><a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Blob</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
-<dd>
-<div class="block">Provides access to database values without requiring that they be fully loaded or stored in
- a single operation.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#blob--">blob()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
-<dd>
-<div class="block">Returns a value accessor for the current entry, which permits values to be much larger
- than what can fit in main memory.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#blob--">blob()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
-<dd>
-<div class="block">Returns an unmodifiable blob by default.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#BOGUS">BOGUS</a></span> - Static variable in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Transaction instance which isn't a transaction at all.</div>
@@ -378,10 +364,6 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#clone--">clone()</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
-<dd>
-<div class="block">Closes the Blob, but does not flush any OutputStream instances.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
@@ -424,6 +406,10 @@
 <dd>
 <div class="block">Can be called by another thread to abort the snapshot, causing any
  thread in the writeTo method to throw an exception.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#close--">close()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
+<dd>
+<div class="block">Closes the accessor, but doesn't flush any OutputStream instances.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#close--">close()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
@@ -2052,6 +2038,11 @@
 <dd>
 <div class="block">Counts the current transaction scope nesting level.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-">newAccessor(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns a value accessor for the given key, which permits values to be larger than what
+ can fit in main memory.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newCipher-java.lang.String-">newCipher(String)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to instantiate all <a href="https://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> instances, with the given transformation.</div>
@@ -2119,21 +2110,37 @@
 <dd>
 <div class="block">Returns a new updater over this view.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newValueInputStream-long-">newValueInputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-">newValueInputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
-<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
+<div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newValueInputStream-long-int-">newValueInputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-int-">newValueInputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
-<div class="block">Returns a new buffered InputStream instance, which reads from this Blob.</div>
+<div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newValueOutputStream-long-">newValueOutputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#newValueInputStream-long-">newValueInputStream(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
-<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
+<div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#newValueOutputStream-long-int-">newValueOutputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#newValueInputStream-long-int-">newValueInputStream(long, int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
-<div class="block">Returns a new buffered OutputStream instance, which writes to this Blob.</div>
+<div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-">newValueOutputStream(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
+<dd>
+<div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-int-">newValueOutputStream(long, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
+<dd>
+<div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#newValueOutputStream-long-">newValueOutputStream(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#newValueOutputStream-long-int-">newValueOutputStream(long, int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newWriter--">newWriter()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
@@ -2195,8 +2202,8 @@
 </dd>
 <dt><a href="org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">NoSuchValueException</span></a> - Exception in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Thrown when reading from a <a href="org/cojen/tupl/Blob.html#newValueInputStream-long-"><code>blob</code></a>, for a value which doesn't
- exist.</div>
+<div class="block">Thrown when reading from an accessor <a href="org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-"><code>stream</code></a>, for a
+ value which doesn't exist.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/NoSuchValueException.html#NoSuchValueException--">NoSuchValueException()</a></span> - Constructor for exception org.cojen.tupl.<a href="org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl">NoSuchValueException</a></dt>
 <dd>&nbsp;</dd>
@@ -2263,11 +2270,6 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#openBlob-org.cojen.tupl.Transaction-byte:A-">openBlob(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
-<dd>
-<div class="block">Returns a value accessor for the given key, which permits values to be much larger than
- what can fit in main memory.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#openIndex-byte:A-">openIndex(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2705,9 +2707,13 @@
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#setPageCount-long-">setPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#setValueLength-long-">setValueLength(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#setValueLength-long-">setValueLength(long)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
-<div class="block">Extends or truncates the value accessed by the Blob.</div>
+<div class="block">Extends or truncates the accessed value.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#setValueLength-long-">setValueLength(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#SHARED">SHARED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
@@ -3224,15 +3230,24 @@
 <div class="block">Returns an uncopied reference to the current value, which might be null
  or <a href="org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </dd>
+<dt><a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">ValueAccessor</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
+ operation.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#valueBytes">valueBytes</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.Stats.html#valueBytes--">valueBytes()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>
 <div class="block">Returns the estimated amount of bytes occupied by values in the index.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#valueLength--">valueLength()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#valueLength--">valueLength()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
-<div class="block">Returns the total length of the value accessed by the Blob.</div>
+<div class="block">Returns the total length of the accessed value.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#valueLength--">valueLength()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Returns the total length of the accessed value.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DurabilityMode.html#valueOf-java.lang.String-">valueOf(String)</a></span> - Static method in enum org.cojen.tupl.<a href="org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a></dt>
 <dd>
@@ -3274,7 +3289,11 @@
 <dd>
 <div class="block">Returns the enum constant of this type with the specified name.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#valueRead-long-byte:A-int-int-">valueRead(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#valueRead-long-byte:A-int-int-">valueRead(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
+<dd>
+<div class="block">Read from the value, starting from any position.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#valueRead-long-byte:A-int-int-">valueRead(long, byte[], int, int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>
 <div class="block">Read from the value, starting from any position.</div>
 </dd>
@@ -3328,9 +3347,13 @@ the order they are declared.</div>
 <div class="block">Returns an array containing the constants of this enum type, in
 the order they are declared.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/Blob.html#valueWrite-long-byte:A-int-int-">valueWrite(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Blob.html" title="interface in org.cojen.tupl">Blob</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ValueAccessor.html#valueWrite-long-byte:A-int-int-">valueWrite(long, byte[], int, int)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></dt>
 <dd>
 <div class="block">Write into the value, starting from any position.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#valueWrite-long-byte:A-int-int-">valueWrite(long, byte[], int, int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
 </dd>
 <dt><a href="org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">VerificationObserver</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>

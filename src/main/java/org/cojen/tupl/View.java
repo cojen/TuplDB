@@ -101,6 +101,32 @@ public interface View {
     }
 
     /**
+     * Returns a value accessor for the given key, which permits values to be larger than what
+     * can fit in main memory.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
+     * must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for auto-commit mode
+     * @param key non-null key
+     * @return non-null value accessor
+     * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if key is not allowed
+     */
+    public default ValueAccessor newAccessor(Transaction txn, byte[] key) throws IOException {
+        Cursor c = newCursor(txn);
+        try {
+            c.autoload(false);
+            c.find(key);
+            return c;
+        } catch (Throwable e) {
+            Utils.closeQuietly(c);
+            throw e;
+        }
+    }
+
+    /**
      * Returns a new transaction which is compatible with this view. If the provided durability
      * mode is null, a default mode is selected.
      *
@@ -386,32 +412,6 @@ public interface View {
      */
     public default boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
         return update(txn, key, value, null);
-    }
-
-    /**
-     * Returns a value accessor for the given key, which permits values to be much larger than
-     * what can fit in main memory.
-     *
-     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
-     * must not be modified after calling this method.
-     *
-     * @param txn optional transaction; pass null for auto-commit mode
-     * @param key non-null key
-     * @return non-null value accessor
-     * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
-     * @throws ViewConstraintException if key is not allowed
-     */
-    public default Blob openBlob(Transaction txn, byte[] key) throws IOException {
-        Cursor c = newCursor(txn);
-        try {
-            c.autoload(false);
-            c.find(key);
-            return c.blob();
-        } catch (Throwable e) {
-            Utils.closeQuietly(c);
-            throw e;
-        }
     }
 
     /**

@@ -27,18 +27,18 @@ import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * Core TreeCursor Blob implementation.
+ * Core TreeCursor ValueAccessor implementation.
  *
  * @author Brian S O'Neill
  */
-final class TreeValueBlob {
+final class TreeValue {
     // Op ordinals are relevant.
     static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
 
     // Touches a fragment without extending the value length. Used for file compaction.
     static final byte[] TOUCH_VALUE = new byte[0];
 
-    private TreeValueBlob() {}
+    private TreeValue() {}
 
     /**
      * Determine if any fragment nodes at the given position are outside the compaction zone.

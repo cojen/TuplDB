@@ -44,7 +44,7 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  * @see View#newCursor View.newCursor
  */
-public interface Cursor extends Closeable {
+public interface Cursor extends ValueAccessor, Closeable {
     /**
      * Empty marker which indicates that value exists but has not been {@link
      * #load loaded}.
@@ -568,17 +568,6 @@ public interface Cursor extends Closeable {
      */
     public default void commit(byte[] value) throws IOException {
         ViewUtils.commit(this, value);
-    }
-
-    /**
-     * Returns a value accessor for the current entry, which permits values to be much larger
-     * than what can fit in main memory. When using the Blob interface, {@link #autoload
-     * autoload} should be disabled. Blob instances are linked to the Cursor, and so closing
-     * either of them will close both. Repositioning the Cursor also changes the value that the
-     * Blob is accessing.
-     */
-    public default Blob blob() {
-        throw new UnsupportedOperationException();
     }
 
     /**
