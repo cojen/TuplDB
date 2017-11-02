@@ -34,42 +34,42 @@ final class UnmodifiableBlob implements Blob {
     }
 
     @Override
-    public long length() throws IOException {
-        return mSource.length();
+    public long valueLength() throws IOException {
+        return mSource.valueLength();
     }
 
     @Override
-    public void setLength(long length) throws IOException {
+    public void setValueLength(long length) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public int read(long pos, byte[] buf, int off, int len) throws IOException {
-        return mSource.read(pos, buf, off, len);
+    public int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        return mSource.valueRead(pos, buf, off, len);
     }
 
     @Override
-    public void write(long pos, byte[] buf, int off, int len) throws IOException {
+    public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public InputStream newInputStream(long pos) throws IOException {
-        return mSource.newInputStream(pos);
+    public InputStream newValueInputStream(long pos) throws IOException {
+        return mSource.newValueInputStream(pos);
     }
 
     @Override
-    public InputStream newInputStream(long pos, int bufferSize) throws IOException {
-        return mSource.newInputStream(pos, bufferSize);
+    public InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
+        return mSource.newValueInputStream(pos, bufferSize);
     }
 
     @Override
-    public OutputStream newOutputStream(long pos) throws IOException {
+    public OutputStream newValueOutputStream(long pos) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     @Override
-    public OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
+    public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
         throw new UnmodifiableViewException();
     }
 

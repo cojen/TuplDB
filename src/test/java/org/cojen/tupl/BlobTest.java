@@ -58,35 +58,35 @@ public class BlobTest {
         Index ix = mDb.openIndex("test");
 
         Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(-1, blob.length());
+        assertEquals(-1, blob.valueLength());
 
         try {
-            blob.read(0, null, 0, 0);
+            blob.valueRead(0, null, 0, 0);
             fail();
         } catch (NullPointerException e) {
         }
 
         try {
-            blob.read(0, new byte[0], 0, 10);
+            blob.valueRead(0, new byte[0], 0, 10);
             fail();
         } catch (IndexOutOfBoundsException e) {
         }
 
-        assertEquals(-1, blob.read(0, new byte[0], 0, 0));
-        assertEquals(-1, blob.read(0, new byte[10], 0, 5));
-        assertEquals(-1, blob.read(0, new byte[10], 1, 5));
-        assertEquals(-1, blob.read(10, new byte[10], 1, 5));
+        assertEquals(-1, blob.valueRead(0, new byte[0], 0, 0));
+        assertEquals(-1, blob.valueRead(0, new byte[10], 0, 5));
+        assertEquals(-1, blob.valueRead(0, new byte[10], 1, 5));
+        assertEquals(-1, blob.valueRead(10, new byte[10], 1, 5));
 
         blob.close();
 
         try {
-            blob.length();
+            blob.valueLength();
             fail();
         } catch (IllegalStateException e) {
         }
 
         try {
-            blob.read(0, new byte[0], 0, 0);
+            blob.valueRead(0, new byte[0], 0, 0);
             fail();
         } catch (IllegalStateException e) {
         }
@@ -97,13 +97,13 @@ public class BlobTest {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), new byte[0]);
         Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(0, blob.length());
+        assertEquals(0, blob.valueLength());
 
         byte[] buf = new byte[5];
-        assertEquals(0, blob.read(0, buf, 0, 5));
-        assertEquals(0, blob.read(1, buf, 2, 3));
-        assertEquals(0, blob.read(5, buf, 0, 5));
-        assertEquals(0, blob.read(500, buf, 0, 5));
+        assertEquals(0, blob.valueRead(0, buf, 0, 5));
+        assertEquals(0, blob.valueRead(1, buf, 2, 3));
+        assertEquals(0, blob.valueRead(5, buf, 0, 5));
+        assertEquals(0, blob.valueRead(500, buf, 0, 5));
 
         blob.close();
     }
@@ -113,19 +113,19 @@ public class BlobTest {
         Index ix = mDb.openIndex("test");
         ix.store(null, "key".getBytes(), "value".getBytes());
         Blob blob = ix.openBlob(null, "key".getBytes());
-        assertEquals(5, blob.length());
+        assertEquals(5, blob.valueLength());
 
         byte[] buf = new byte[5];
-        assertEquals(5, blob.read(0, buf, 0, 5));
+        assertEquals(5, blob.valueRead(0, buf, 0, 5));
         fastAssertArrayEquals("value".getBytes(), buf);
 
-        assertEquals(3, blob.read(1, buf, 2, 3));
+        assertEquals(3, blob.valueRead(1, buf, 2, 3));
         assertEquals('a', (char) buf[2]);
         assertEquals('l', (char) buf[3]);
         assertEquals('u', (char) buf[4]);
 
-        assertEquals(0, blob.read(5, buf, 0, 5));
-        assertEquals(0, blob.read(500, buf, 0, 5));
+        assertEquals(0, blob.valueRead(5, buf, 0, 5));
+        assertEquals(0, blob.valueRead(500, buf, 0, 5));
 
         blob.close();
     }
@@ -159,16 +159,16 @@ public class BlobTest {
             if (useWrite) {
                 Blob blob = ix.openBlob(null, key);
                 if (setLength) {
-                    blob.setLength(length);
+                    blob.setValueLength(length);
                 }
                 for (int j=0; j<length; j+=50) {
-                    blob.write(j, value, j, 50);
+                    blob.valueWrite(j, value, j, 50);
                 }
                 blob.close();
             } else {
                 if (setLength) {
                     Blob blob = ix.openBlob(null, key);
-                    blob.setLength(length);
+                    blob.setValueLength(length);
                     blob.close();
                 }
                 ix.store(null, key, value);
@@ -176,21 +176,21 @@ public class BlobTest {
 
             Blob blob = ix.openBlob(null, key);
 
-            assertEquals(length, blob.length());
+            assertEquals(length, blob.valueLength());
 
             byte[] buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
-            assertEquals(0, blob.read(length, buf, 10, 0));
+            assertEquals(0, blob.valueRead(length, buf, 10, 0));
 
             // Attempt to read past the end.
-            assertEquals(0, blob.read(length, buf, 10, 10));
+            assertEquals(0, blob.valueRead(length, buf, 10, 10));
 
             // Read many different slices, extending beyond as well.
 
             for (int start=0; start<length; start += 3) {
                 for (int end=start; end<length+2; end += 7) {
-                    int amt = blob.read(start, buf, 1, end - start);
+                    int amt = blob.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
                     int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
@@ -222,16 +222,16 @@ public class BlobTest {
             byte[] buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
-            assertEquals(0, blob.read(length, buf, 10, 0));
+            assertEquals(0, blob.valueRead(length, buf, 10, 0));
 
             // Attempt to read past the end.
-            assertEquals(0, blob.read(length, buf, 10, 10));
+            assertEquals(0, blob.valueRead(length, buf, 10, 10));
 
             // Read many different slices, extending beyond as well.
 
             for (int start=0; start<length; start += 311) {
                 for (int end=start; end<length+2; end += (512 + 256)) {
-                    int amt = blob.read(start, buf, 1, end - start);
+                    int amt = blob.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
                     int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
@@ -265,12 +265,12 @@ public class BlobTest {
             Blob blob = ix.openBlob(null, key);
 
             if (useWrite) {
-                blob.write(i, key, 0, 0);
+                blob.valueWrite(i, key, 0, 0);
             } else {
-                blob.setLength(i);
+                blob.setValueLength(i);
             }
 
-            assertEquals(i, blob.length());
+            assertEquals(i, blob.valueLength());
 
             byte[] value = ix.load(null, key);
             assertNotNull(value);
@@ -282,14 +282,14 @@ public class BlobTest {
             Arrays.fill(buf, 0, buf.length, (byte) 55);
 
             if (i == 0) {
-                int amt = blob.read(0, buf, 1, 100);
+                int amt = blob.valueRead(0, buf, 1, 100);
                 assertEquals(0, amt);
             } else {
                 if (i == 100) {
-                    int amt = blob.read(0, buf, 1, 100);
+                    int amt = blob.valueRead(0, buf, 1, 100);
                     assertEquals(100, amt);
                 } else {
-                    int amt = blob.read(100, buf, 1, 100);
+                    int amt = blob.valueRead(100, buf, 1, 100);
                     assertEquals(100, amt);
                 }
                 assertEquals(55, buf[0]);
@@ -300,7 +300,7 @@ public class BlobTest {
             }
 
             ix.delete(null, key);
-            assertEquals(-1, blob.length());
+            assertEquals(-1, blob.valueLength());
             assertNull(ix.load(null, key));
         }
     }
@@ -359,9 +359,9 @@ public class BlobTest {
 
         Blob blob = ix.openBlob(Transaction.BOGUS, key);
 
-        blob.setLength(toLen);
+        blob.setValueLength(toLen);
 
-        assertEquals(toLen, blob.length());
+        assertEquals(toLen, blob.valueLength());
 
         if (toLen < 10_000_000) {
             byte[] resulting = ix.load(Transaction.BOGUS, key);
@@ -382,7 +382,7 @@ public class BlobTest {
                 }
             }
         } else {
-            InputStream in = blob.newInputStream(0, 10_000);
+            InputStream in = blob.newValueInputStream(0, 10_000);
 
             rnd = new Random(seed);
 
@@ -469,7 +469,7 @@ public class BlobTest {
         ix.store(null, key, value);
 
         Blob blob = ix.openBlob(null, key);
-        blob.setLength(to);
+        blob.setValueLength(to);
         blob.close();
 
         byte[] truncated = ix.load(null, key);
@@ -522,7 +522,7 @@ public class BlobTest {
             rnd.nextBytes(sub);
 
             Blob blob = ix.openBlob(null, key);
-            blob.write(left, sub, 0, sub.length);
+            blob.valueWrite(left, sub, 0, sub.length);
             blob.close();
 
             byte[] expect;
@@ -557,7 +557,7 @@ public class BlobTest {
 
         // Sneakily replace the ghost.
         Blob blob = ix.openBlob(Transaction.BOGUS, key);
-        blob.write(0, value2, 0, value2.length);
+        blob.valueWrite(0, value2, 0, value2.length);
 
         fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
 
@@ -583,7 +583,7 @@ public class BlobTest {
         new Random(12345678).nextBytes(value2);
 
         Blob blob = ix.openBlob(Transaction.BOGUS, key);
-        blob.write(0, value2, 0, value2.length);
+        blob.valueWrite(0, value2, 0, value2.length);
         blob.close();
 
         fastAssertArrayEquals(value2, ix.load(null, key));
@@ -600,7 +600,7 @@ public class BlobTest {
         byte[] value = randomStr(rnd, 100000);
 
         Blob blob = ix.openBlob(null, key);
-        InputStream in = blob.newInputStream(0, 101);
+        InputStream in = blob.newValueInputStream(0, 101);
 
         try {
             in.read();
@@ -625,7 +625,7 @@ public class BlobTest {
         ix.store(null, key, value);
 
         blob = ix.openBlob(null, key);
-        in = blob.newInputStream(0, 101);
+        in = blob.newValueInputStream(0, 101);
 
         for (int i=0; i<value.length; i++) {
             assertEquals(value[i], in.read());
@@ -644,7 +644,7 @@ public class BlobTest {
         assertEquals(0, in.available());
 
         blob = ix.openBlob(null, key);
-        in = blob.newInputStream(0, 10);
+        in = blob.newValueInputStream(0, 10);
 
         byte[] buf = new byte[0];
         assertEquals(0, in.read(buf));
@@ -679,7 +679,7 @@ public class BlobTest {
         byte[] value = randomStr(rnd, 100000);
 
         Blob blob = ix.openBlob(null, key);
-        OutputStream out = blob.newOutputStream(0, 101);
+        OutputStream out = blob.newValueOutputStream(0, 101);
 
         out.close();
 
@@ -690,9 +690,9 @@ public class BlobTest {
         }
 
         blob = ix.openBlob(null, key);
-        blob.setLength(value.length);
+        blob.setValueLength(value.length);
 
-        out = blob.newOutputStream(0, 20);
+        out = blob.newValueOutputStream(0, 20);
 
         for (int i=0; i<value.length; ) {
             byte[] buf = new byte[Math.min(value.length - i, rnd.nextInt(21) + 1)];
@@ -715,7 +715,7 @@ public class BlobTest {
         blob = ix.openBlob(null, key);
 
         byte[] actual = new byte[value.length];
-        int amt = blob.read(0, actual, 0, actual.length);
+        int amt = blob.valueRead(0, actual, 0, actual.length);
 
         assertEquals(amt, actual.length);
 
@@ -727,9 +727,9 @@ public class BlobTest {
         value = randomStr(rnd, 100000);
 
         blob = ix.openBlob(null, key);
-        blob.setLength(value.length);
+        blob.setValueLength(value.length);
 
-        out = blob.newOutputStream(0, 20);
+        out = blob.newValueOutputStream(0, 20);
 
         for (int i=0; i<value.length; i++) {
             out.write(value[i]);
@@ -738,7 +738,7 @@ public class BlobTest {
         out.flush();
 
         actual = new byte[value.length];
-        amt = blob.read(0, actual, 0, actual.length);
+        amt = blob.valueRead(0, actual, 0, actual.length);
 
         assertEquals(amt, actual.length);
 

@@ -43,7 +43,7 @@ public interface Blob extends Closeable {
      * @return value length or -1 if it doesn't exist
      * @throws IllegalStateException if closed
      */
-    public long length() throws IOException;
+    public long valueLength() throws IOException;
 
     /**
      * Extends or truncates the value accessed by the Blob. When extended, the new portion of
@@ -53,7 +53,7 @@ public interface Blob extends Closeable {
      * @throws IllegalArgumentException if length is too large
      * @throws IllegalStateException if closed
      */
-    public void setLength(long length) throws IOException;
+    public void setValueLength(long length) throws IOException;
 
     /**
      * Read from the value, starting from any position. The full requested amount of bytes are
@@ -70,7 +70,7 @@ public interface Blob extends Closeable {
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      */
-    public int read(long pos, byte[] buf, int off, int len) throws IOException;
+    public int valueRead(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Write into the value, starting from any position. Value is extended when writing past
@@ -85,7 +85,7 @@ public interface Blob extends Closeable {
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
-    public void write(long pos, byte[] buf, int off, int len) throws IOException;
+    public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Blob. When the
@@ -100,7 +100,7 @@ public interface Blob extends Closeable {
      * @return buffered unsynchronized InputStream
      * @throws IllegalArgumentException if position is negative
      */
-    public InputStream newInputStream(long pos) throws IOException;
+    public InputStream newValueInputStream(long pos) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from this Blob. When the
@@ -117,7 +117,7 @@ public interface Blob extends Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public InputStream newInputStream(long pos, int bufferSize) throws IOException;
+    public InputStream newValueInputStream(long pos, int bufferSize) throws IOException;
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Blob. When the
@@ -129,7 +129,7 @@ public interface Blob extends Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public OutputStream newOutputStream(long pos) throws IOException;
+    public OutputStream newValueOutputStream(long pos) throws IOException;
 
     /**
      * Returns a new buffered OutputStream instance, which writes to this Blob. When the
@@ -142,7 +142,7 @@ public interface Blob extends Closeable {
      * @throws IllegalArgumentException if position is negative
      * @throws IllegalStateException if closed
      */
-    public OutputStream newOutputStream(long pos, int bufferSize) throws IOException;
+    public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException;
 
     /**
      * Closes the Blob, but does not flush any OutputStream instances.
