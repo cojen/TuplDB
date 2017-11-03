@@ -4434,6 +4434,8 @@ final class LocalDatabase extends AbstractDatabase {
 
         if ((header & 0x01) == 0) {
             // Direct pointers.
+            // FIXME: Delete in reverse order. If deleteFragment method fails, update the
+            // resulting value length, accounting for any inline content.
             while (len >= 6) {
                 long nodeId = p_uint48GetLE(fragmented, off);
                 off += 6;
@@ -4468,6 +4470,8 @@ final class LocalDatabase extends AbstractDatabase {
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
             childNodeIds[i] = p_uint48GetLE(page, poffset);
         }
+        // FIXME: Delete in reverse order, incrementally. If deleteNode method fails, update
+        // the resulting value length, accounting for any inline content.
         deleteNode(inode);
 
         if (level <= 0) for (long childNodeId : childNodeIds) {
