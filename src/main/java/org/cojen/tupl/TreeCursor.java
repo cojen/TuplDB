@@ -3752,7 +3752,13 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             try {
                 notSplitDirty(leaf);
                 TreeValue.action(this, leaf, TreeValue.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
-                leaf.mNode.releaseExclusive();
+                Node node = leaf.mNode;
+                if (node.shouldLeafMerge()) {
+                    // Method always release the node latch, even if an exception is thrown.
+                    mergeLeaf(leaf, node);
+                } else {
+                    node.releaseExclusive();
+                }
             } finally {
                 shared.release();
             }
@@ -4468,7 +4474,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     /**
      * Caller must hold exclusive latch, which is released by this method.
      */
-    private void mergeLeaf(final CursorFrame leaf, Node node) throws IOException {
+    void mergeLeaf(final CursorFrame leaf, Node node) throws IOException {
         final CursorFrame parentFrame = leaf.mParentFrame;
 
         if (parentFrame == null) {
