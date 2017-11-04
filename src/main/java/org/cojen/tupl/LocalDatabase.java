@@ -4505,7 +4505,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * @param nodeId can be zero
      */
-    private void deleteFragment(long nodeId) throws IOException {
+    void deleteFragment(long nodeId) throws IOException {
         if (nodeId != 0) {
             Node node = nodeMapGetAndRemove(nodeId);
             if (node != null) {

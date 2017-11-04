@@ -456,6 +456,29 @@ public class ValueAccessorTest {
         truncate(db, 20000, 10000); // 3-byte header to 3
     }
 
+    @Test
+    public void truncateFragmentedDirect() throws Exception {
+        // Test truncation of fragmented value which uses direct pointer encoding.
+
+        // Use large page to test 3-byte value header encoding.
+        Database db = newTempDatabase
+            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
+
+        truncate(db, 65536, 10);       // no inline content; two pointers to one
+        truncate(db, 65537, 10);       // 1-byte inline content; two pointers to one
+
+        truncate(db, 100_000, 99_999); // slight truncation
+        truncate(db, 100_000, 1696);   // only inline content remains
+        truncate(db, 100_000, 1695);   // inline content is reduced
+        truncate(db, 100_000, 10);     // only inline content remains
+        truncate(db, 100_000, 0);      // full truncation
+
+        truncate(db, 108_000, 9000);   // convert to normal value, 3-byte header
+
+        truncate(db, 50_000_000, 1_000_000);   // still fragmented, 2-byte header
+        truncate(db, 50_000_000, 45_000_000);  // still fragmented, 3-byte header
+    }
+
     private static void truncate(Database db, int from, int to) throws Exception {
         Index ix = db.openIndex("test");
         Random rnd = new Random(from * 31 + to);
@@ -479,7 +502,7 @@ public class ValueAccessorTest {
             assertEquals(value[i], truncated[i]);
         }
 
-        ix.verify(null);
+        assertTrue(ix.verify(null));
     }
 
     @Test
@@ -538,7 +561,7 @@ public class ValueAccessorTest {
             fastAssertArrayEquals(expect, ix.load(null, key));
         }
 
-        ix.verify(null);
+        assertTrue(ix.verify(null));
     }
 
     @Test
