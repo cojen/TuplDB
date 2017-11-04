@@ -100,13 +100,13 @@ final class _TreeValue {
 
         if ((fHeader & 0x02) != 0) {
             // Inline content.
-            final int fInline = p_ushortGetLE(page, loc);
-            if (pos < fInline) {
+            final int fInlineLen = p_ushortGetLE(page, loc);
+            if (pos < fInlineLen) {
                 // Positioned within inline content.
                 return 0;
             }
-            pos -= fInline;
-            loc = loc + 2 + fInline;
+            pos -= fInlineLen;
+            loc = loc + 2 + fInlineLen;
         }
 
         _LocalDatabase db = node.getDatabase();
@@ -421,12 +421,12 @@ final class _TreeValue {
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
-                    final int fInline = p_ushortGetLE(page, loc);
+                    final int fInlineLen = p_ushortGetLE(page, loc);
                     loc += 2;
-                    final int amt = (int) (fInline - pos);
+                    final int amt = (int) (fInlineLen - pos);
                     if (amt <= 0) {
                         // Not reading any inline content.
-                        pos -= fInline;
+                        pos -= fInlineLen;
                     } else if (bLen <= amt) {
                         p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
                         return bLen;
@@ -436,7 +436,7 @@ final class _TreeValue {
                         bOff += amt;
                         pos = 0;
                     }
-                    loc += fInline;
+                    loc += fInlineLen;
                 }
 
                 final _LocalDatabase db = node.getDatabase();
@@ -492,21 +492,81 @@ final class _TreeValue {
                     if (endPos == fLen) {
                         return 0;
                     }
-                    // FIXME: truncate
+
+                    // Truncate fragmented value.
+
+                    int fInlineLoc = loc;
+                    int fInlineLen = 0;
+
+                    if ((fHeader & 0x02) != 0) {
+                        // Inline content.
+                        fInlineLen = p_ushortGetLE(page, loc);
+                        fInlineLoc = loc + 2;
+                        loc = fInlineLoc + fInlineLen;
+                    }
+
+                    if ((fHeader & 0x01) == 0) {
+                        // Truncate direct pointers.
+
+                        _LocalDatabase db = node.getDatabase();
+                        int pageSize = pageSize(db, page);
+                        int lowLoc = loc + 6 * ((int) pointerCount(pageSize, endPos - fInlineLen));
+                        int highLoc = loc + 6 * ((int) pointerCount(pageSize, fLen - fInlineLen));
+                        int shrinkage = highLoc - lowLoc;
+
+                        if (shrinkage > 0) {
+                            do {
+                                highLoc -= 6;
+                                long nodeId = p_uint48GetLE(page, highLoc);
+                                try {
+                                    db.deleteFragment(nodeId);
+                                } catch (Throwable e) {
+                                    // Handle partial truncation.
+                                    highLoc += 6;
+                                    shrinkage -= highLoc - lowLoc;
+                                    if (shrinkage > 0) {
+                                        long remainingLen = fInlineLen
+                                            + ((highLoc - lowLoc) / 6L) * pageSize;
+                                        fHeaderLoc = truncateFragmented
+                                            (node, page, vHeaderLoc, vLen, shrinkage);
+                                        updateLengthField(page, fHeaderLoc, remainingLen);
+                                    }
+                                    throw e;
+                                }
+                            } while (highLoc > lowLoc);
+
+                            if (lowLoc == loc) {
+                                // All pointers are gone, so convert to a normal value.
+                                int newLen = (int) endPos;
+                                fragmentedToNormal(node, page, vHeaderLoc, fInlineLoc, newLen,
+                                                   shrinkage + (fInlineLen - newLen));
+                                return 0;
+                            }
+
+                            fHeaderLoc = truncateFragmented
+                                (node, page, vHeaderLoc, vLen, shrinkage);
+                        }
+
+                        updateLengthField(page, fHeaderLoc, endPos);
+                        return 0;
+                    }
+
+                    // FIXME: truncate indirect
                     node.releaseExclusive();
                     throw null;
                 }
+
                 // Fall through to extend the length.
 
             case OP_WRITE:
                 endPos = pos + bLen;
 
-                int fInline = 0;
+                int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
-                    fInline = p_ushortGetLE(page, loc);
+                    fInlineLen = p_ushortGetLE(page, loc);
                     loc += 2;
-                    final long amt = fInline - pos;
+                    final long amt = fInlineLen - pos;
                     if (amt > 0) {
                         if (bLen <= amt) {
                             // Only writing inline content.
@@ -518,10 +578,10 @@ final class _TreeValue {
                         p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) amt);
                         bLen -= amt;
                         bOff += amt;
-                        pos = fInline;
+                        pos = fInlineLen;
                     }
                     // Move location to first page pointer.
-                    loc += fInline;
+                    loc += fInlineLen;
                 }
 
                 final _LocalDatabase db;
@@ -539,8 +599,8 @@ final class _TreeValue {
                     if ((fHeader & 0x01) != 0) try {
                         // Indirect pointers.
 
-                        pos -= fInline; // safe to update now that outermost loop won't continue
-                        fLen -= fInline;
+                        pos -= fInlineLen; // safe to update now that outermost loop won't continue
+                        fLen -= fInlineLen;
 
                         final _Node inode = prepareMultilevelWrite(db, page, loc);
 
@@ -575,15 +635,15 @@ final class _TreeValue {
                     if ((fHeader & 0x01) != 0) try {
                         // Extend the value with indirect pointers.
 
-                        pos -= fInline; // safe to update now that outermost loop won't continue
+                        pos -= fInlineLen; // safe to update now that outermost loop won't continue
 
                         _Node inode = prepareMultilevelWrite(db, page, loc);
 
                         // Levels required before extending...
-                        int levels = db.calculateInodeLevels(fLen - fInline);
+                        int levels = db.calculateInodeLevels(fLen - fInlineLen);
 
                         // Compare to new full indirect length.
-                        long newLen = endPos - fInline;
+                        long newLen = endPos - fInlineLen;
 
                         if (db.levelCap(levels) < newLen) {
                             // Need to add more inode levels.
@@ -640,8 +700,8 @@ final class _TreeValue {
 
                     pageSize = pageSize(db, page);
 
-                    long ptrGrowth = directPointerGrowth
-                        (pageSize, fLen - fInline, endPos - fInline);
+                    long ptrGrowth = pointerCount(pageSize, endPos - fInlineLen)
+                        - pointerCount(pageSize, fLen - fInlineLen);
 
                     if (ptrGrowth > 0) {
                         int newLoc = tryExtendDirect(cursor, frame, kHeaderLoc, vHeaderLoc, vLen,
@@ -669,7 +729,7 @@ final class _TreeValue {
 
                 // Direct pointers.
 
-                pos -= fInline; // safe to update now that outermost loop won't continue
+                pos -= fInlineLen; // safe to update now that outermost loop won't continue
 
                 final int ipos = (int) pos;
                 loc += (ipos / pageSize) * 6;
@@ -1019,24 +1079,17 @@ final class _TreeValue {
         return 0;
     }
 
-    /**
-     * Returns the amount of direct pointers to be added, which is <= 0 if none.
-     */
-    private static long directPointerGrowth(long pageSize, long oldLen, long newLen) {
-        long oldCount = (oldLen + pageSize - 1) / pageSize;
-        long newCount = (newLen + pageSize - 1) / pageSize;
-
-        long growth = newCount - oldCount;
-
-        if (growth <= 0 && newCount <= 0) {
-            // Overflow.
-            newCount = BigInteger.valueOf(newLen).add(BigInteger.valueOf(pageSize - 1))
-                .subtract(BigInteger.ONE).divide(BigInteger.valueOf(pageSize))
-                .longValue();
-            growth = newCount - oldCount;
+    private static long pointerCount(long pageSize, long len) {
+        long count = (len + pageSize - 1) / pageSize;
+        if (count < 0) {
+            count = pointerCountOverflow(pageSize, len);
         }
+        return count;
+    }
 
-        return growth;
+    private static long pointerCountOverflow(long pageSize, long len) {
+        return BigInteger.valueOf(len).add(BigInteger.valueOf(pageSize - 1))
+            .subtract(BigInteger.ONE).divide(BigInteger.valueOf(pageSize)).longValue();
     }
 
     /**
@@ -1137,12 +1190,12 @@ final class _TreeValue {
 
         loc = skipFragmentedLengthField(loc, fHeader);
 
-        final int fInline;
+        final int fInlineLen;
         if ((fHeader & 0x02) == 0) {
-            fInline = 0;
+            fInlineLen = 0;
         } else {
-            fInline = p_ushortGetLE(page, loc);
-            loc = loc + 2 + fInline;
+            fInlineLen = p_ushortGetLE(page, loc);
+            loc = loc + 2 + fInlineLen;
         }
 
         // At this point, loc is at the first direct pointer.
@@ -1153,14 +1206,14 @@ final class _TreeValue {
         final int pageSize = pageSize(db, page);
         final int shrinkage;
 
-        if (fInline > 0) {
+        if (fInlineLen > 0) {
             // Move all inline content into the fragment pages, and keep the direct format for
             // now. This avoids pathological cases where so much inline content exists that
             // converting to indirect format doesn't shrink the value. It also means that
             // inline content should never exist when using the indirect format, because the
             // initial store of a large value never creates inline content when indirect.
 
-            if (fInline < 4) {
+            if (fInlineLen < 4) {
                 // Cannot add a new direct pointer, because there's no room for it in the
                 // current entry. So reconstruct the full value and update it.
                 byte[] newValue;
@@ -1197,9 +1250,9 @@ final class _TreeValue {
                 // FIXME: Handle inline encoding when no new node is required, caused by
                 // truncation. With fLen, determine amount of pages required: (fLen + ps - 1) / ps
                 rightNode = db.allocDirtyFragmentNode();
-                p_clear(rightNode.mPage, fInline, pageSize);
-                shrinkage = 2 + fInline - 6;
-                leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInline, rightNode);
+                p_clear(rightNode.mPage, fInlineLen, pageSize);
+                shrinkage = 2 + fInlineLen - 6;
+                leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInlineLen, rightNode);
             } catch (Throwable e) {
                 node.releaseExclusive();
                 try {
@@ -1215,15 +1268,15 @@ final class _TreeValue {
             }
 
             // Move the inline content in place now that room has been made.
-            p_copy(page, loc - fInline, leftNode.mPage, 0, fInline);
+            p_copy(page, loc - fInlineLen, leftNode.mPage, 0, fInlineLen);
             leftNode.releaseExclusive();
 
             // Shift page contents over inline content and inline length header.
-            p_copy(page, loc, page, loc - fInline - 2, tailLen);
+            p_copy(page, loc, page, loc - fInlineLen - 2, tailLen);
 
             if (rightNode != null) {
                 // Reference the new node.
-                p_int48PutLE(page, loc - fInline - 2 + tailLen, rightNode.mId);
+                p_int48PutLE(page, loc - fInlineLen - 2 + tailLen, rightNode.mId);
             }
 
             // Clear the inline length field.
@@ -1231,7 +1284,7 @@ final class _TreeValue {
         } else {
             // Convert to indirect format.
 
-            int levels = db.calculateInodeLevels(fLen - fInline);
+            int levels = db.calculateInodeLevels(fLen - fInlineLen);
 
             if (levels > 0) {
                 _Node[] inodes = new _Node[levels];
@@ -1355,6 +1408,65 @@ final class _TreeValue {
         }
 
         return dstNode;
+    }
+
+    /**
+     * Convert a fragmented value which has no pointers into a normal non-fragmented value.
+     *
+     * @param fInlineLoc location of inline content
+     * @param fInlineLen length of inline content to keep (normal value length)
+     * @param shrinkage amount of bytes freed due to pointer deletion and inline reduction
+     */
+    private static void fragmentedToNormal(final _Node node, final long page,
+                                           final int vHeaderLoc, final int fInlineLoc,
+                                           final int fInlineLen, final int shrinkage)
+    {
+        int loc = vHeaderLoc;
+
+        if (fInlineLen <= 127) {
+            p_bytePut(page, loc++, fInlineLen);
+        } else if (fInlineLen <= 8192) {
+            p_bytePut(page, loc++, 0x80 | ((fInlineLen - 1) >> 8));
+            p_bytePut(page, loc++, fInlineLen - 1);
+        } else {
+            p_bytePut(page, loc++, 0xa0 | ((fInlineLen - 1) >> 16));
+            p_bytePut(page, loc++, (fInlineLen - 1) >> 8);
+            p_bytePut(page, loc++, fInlineLen - 1);
+        }
+
+        p_copy(page, fInlineLoc, page, loc, fInlineLen);
+
+        node.garbage(node.garbage() + shrinkage + (fInlineLoc - loc));
+    }
+
+    /**
+     * Truncate the raw value which encodes a fragmented value.
+     *
+     * @return updated fHeaderLoc
+     */
+    private static int truncateFragmented(final _Node node, final long page,
+                                          final int vHeaderLoc, final int vLen, int shrinkage)
+    {
+        final int newLen = vLen - shrinkage;
+        int loc = vHeaderLoc;
+
+        if (newLen <= 8192) {
+            p_bytePut(page, loc++, 0xc0 | ((newLen - 1) >> 8));
+            p_bytePut(page, loc++, newLen - 1);
+            if (vLen > 8192) {
+                // Reduced the header size.
+                p_copy(page, loc + 1, page, loc, newLen);
+                shrinkage++;
+            }
+        } else {
+            p_bytePut(page, loc++, 0xe0 | ((newLen - 1) >> 16));
+            p_bytePut(page, loc++, (newLen - 1) >> 8);
+            p_bytePut(page, loc++, newLen - 1);
+        }
+
+        node.garbage(node.garbage() + shrinkage);
+
+        return loc;
     }
 
     private static int pageSize(_LocalDatabase db, long page) {
