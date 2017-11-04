@@ -282,6 +282,9 @@ final class FragmentedTrash {
         } else {
             /*P*/ byte[] fragmented = p_transfer(value);
             try {
+                // FIXME: If any exception, transfer back and store the partial truncation.
+                // However, the cursor node must already be dirty to prevent a failure when
+                // storing back.
                 db.deleteFragments(fragmented, 0, value.length);
                 cursor.store(null);
             } finally {
