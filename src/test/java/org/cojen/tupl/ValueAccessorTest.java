@@ -506,6 +506,45 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void truncateFragmentedDirectExtend() throws Exception {
+        Index ix = mDb.openIndex("test");
+        byte[] key = "hello".getBytes();
+
+        Random rnd = new Random(Arrays.hashCode(key));
+
+        byte[] value = new byte[50 + 512 + 512];
+        rnd.nextBytes(value);
+        // Should have inline content and two direct pointers.
+        ix.store(Transaction.BOGUS, key, value);
+
+        // Truncate: should have inline content and two direct pointers, but only one byte is
+        // used in the last page.
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.setValueLength(50 + 512 + 1);
+
+        byte[] loaded = ix.load(Transaction.BOGUS, key);
+        assertEquals(50 + 512 + 1, loaded.length);
+        for (int i=0; i<loaded.length; i++) {
+            assertTrue(value[i] == loaded[i]);
+        }
+
+        // Extend the value enough to force the inline content to move into the fragment pages.
+        int newLen = (250 / 6) * 512;
+        accessor.setValueLength(newLen);
+
+        byte[] loaded2 = ix.load(Transaction.BOGUS, key);
+        assertEquals(newLen, loaded2.length);
+        for (int i=0; i<loaded.length; i++) {
+            assertTrue(loaded[i] == loaded2[i]);
+        }
+        for (int i=loaded.length; i<loaded2.length; i++) {
+            assertEquals(0, loaded2[i]);
+        }
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase
