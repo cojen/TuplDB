@@ -510,11 +510,30 @@ final class _TreeValue {
 
                         _LocalDatabase db = node.getDatabase();
                         int pageSize = pageSize(db, page);
-                        int lowLoc = loc + 6 * ((int) pointerCount(pageSize, endPos - fInlineLen));
-                        int highLoc = loc + 6 * ((int) pointerCount(pageSize, fLen - fInlineLen));
-                        int shrinkage = highLoc - lowLoc;
+                        int oldCount = (int) pointerCount(pageSize, fLen - fInlineLen);
+                        int newCount = (int) pointerCount(pageSize, endPos - fInlineLen);
+                        int lowLoc = loc + 6 * newCount;
 
-                        if (shrinkage > 0) {
+                        long remainder = (endPos - fInlineLen) % pageSize;
+                        _Node lastNode = null;
+
+                        if (remainder > 0) {
+                            // The last highest remaining page (at lowLoc) will need to be
+                            // zero-filled up to the end. Attempt to dirty it early, in case an
+                            // exception is thrown.
+                            long lastNodeId = p_uint48GetLE(page, lowLoc - 6);
+                            if (lastNodeId != 0) {
+                                lastNode = db.nodeMapLoadFragmentExclusive(lastNodeId, true);
+                                if (db.markFragmentDirty(lastNode)) {
+                                    p_int48PutLE(page, lowLoc - 6, lastNode.mId);
+                                }
+                            }
+                        }
+
+                        if (newCount < oldCount) {
+                            int highLoc = loc + 6 * oldCount;
+                            int shrinkage = highLoc - lowLoc;
+
                             do {
                                 highLoc -= 6;
                                 long nodeId = p_uint48GetLE(page, highLoc);
@@ -522,6 +541,9 @@ final class _TreeValue {
                                     db.deleteFragment(nodeId);
                                 } catch (Throwable e) {
                                     // Handle partial truncation.
+                                    if (lastNode != null) {
+                                        lastNode.releaseExclusive();
+                                    }
                                     highLoc += 6;
                                     shrinkage -= highLoc - lowLoc;
                                     if (shrinkage > 0) {
@@ -545,6 +567,12 @@ final class _TreeValue {
 
                             fHeaderLoc = truncateFragmented
                                 (node, page, vHeaderLoc, vLen, shrinkage);
+                        }
+
+                        if (lastNode != null) {
+                            // Zero fill the end.
+                            p_clear(lastNode.mPage, (int) remainder, pageSize);
+                            lastNode.releaseExclusive();
                         }
 
                         updateLengthField(page, fHeaderLoc, endPos);
@@ -1247,11 +1275,15 @@ final class _TreeValue {
             _Node rightNode = null;
 
             try {
-                // FIXME: Handle inline encoding when no new node is required, caused by
-                // truncation. With fLen, determine amount of pages required: (fLen + ps - 1) / ps
-                rightNode = db.allocDirtyFragmentNode();
-                p_clear(rightNode.mPage, fInlineLen, pageSize);
-                shrinkage = 2 + fInlineLen - 6;
+                if (pointerCount(pageSize, fLen) * 6 <= tailLen) {
+                    // Highest node is underutilized (caused by an earlier truncation), and so
+                    // a new node isn't required.
+                    shrinkage = 2 + fInlineLen;
+                } else {
+                    rightNode = db.allocDirtyFragmentNode();
+                    p_clear(rightNode.mPage, fInlineLen, pageSize);
+                    shrinkage = 2 + fInlineLen - 6;
+                }
                 leftNode = shiftDirectRight(db, page, loc, loc + tailLen, fInlineLen, rightNode);
             } catch (Throwable e) {
                 node.releaseExclusive();
