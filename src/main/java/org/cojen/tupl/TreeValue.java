@@ -633,7 +633,7 @@ final class TreeValue {
                         final Node inode = prepareMultilevelWrite(db, page, loc);
 
                         final int levels = db.calculateInodeLevels(fLen);
-                        writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
 
                         return 0;
                     } catch (Throwable e) {
@@ -716,7 +716,7 @@ final class TreeValue {
 
                         updateLengthField(page, fHeaderLoc, endPos);
 
-                        writeMultilevelFragments(pos, levels, inode, b, bOff, bLen);
+                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
 
                         return 0;
                     } catch (Throwable e) {
@@ -818,8 +818,9 @@ final class TreeValue {
      * @param inode shared latched parent inode; always released by this method
      * @param b slice of complete value being reconstructed
      */
-    private static void readMultilevelFragments(LocalDatabase db, long pos, int level, Node inode,
-                                                byte[] b, int bOff, int bLen)
+    private static void readMultilevelFragments(final LocalDatabase db,
+                                                final long pos, int level, final Node inode,
+                                                final byte[] b, int bOff, int bLen)
         throws IOException
     {
         try {
@@ -902,12 +903,11 @@ final class TreeValue {
      * @param inode exclusively latched parent inode; always released by this method
      * @param value slice of complete value being written
      */
-    private static void writeMultilevelFragments(long pos, int level, final Node inode,
-                                                 byte[] b, int bOff, int bLen)
+    private static void writeMultilevelFragments(final LocalDatabase db,
+                                                 final long pos, int level, final Node inode,
+                                                 final byte[] b, int bOff, int bLen)
         throws IOException
     {
-        final LocalDatabase db = inode.getDatabase();
-
         try {
             /*P*/ byte[] page = inode.mPage;
             level--;
@@ -960,7 +960,7 @@ final class TreeValue {
                     p_copyFromArray(b, bOff, childNode.mPage, off, len);
                     childNode.releaseExclusive();
                 } else {
-                    writeMultilevelFragments(ppos, level, childNode, b, bOff, len);
+                    writeMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
                 }
 
                 bLen -= len;
