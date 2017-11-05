@@ -800,6 +800,7 @@ final class TreeValue {
      * @param level inode level; at least 1
      * @param inode shared latched parent inode; always released by this method
      * @param b slice of complete value being reconstructed
+     * @param bLen must be more than zero
      */
     private static void readMultilevelFragments(final LocalDatabase db,
                                                 final long pos, int level, final Node inode,
@@ -811,15 +812,12 @@ final class TreeValue {
             level--;
             long levelCap = db.levelCap(level);
 
-            int firstChild = (int) (pos / levelCap);
-            int lastChild = (int) ((pos + bLen - 1) / levelCap);
-
-            int childNodeCount = lastChild - firstChild + 1;
+            int poffset = ((int) (pos / levelCap)) * 6;
 
             // Handle a possible partial read from the first page.
             long ppos = pos % levelCap;
 
-            for (int poffset = firstChild * 6, i=0; i<childNodeCount; poffset += 6, i++) {
+            while (true) {
                 long childNodeId = p_uint48GetLE(page, poffset);
                 int len = (int) Math.min(levelCap - ppos, bLen);
 
@@ -835,11 +833,15 @@ final class TreeValue {
                         readMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
                     }
                 }
+
                 bLen -= len;
                 if (bLen <= 0) {
                     break;
                 }
+
                 bOff += len;
+                poffset += 6;
+
                 // Remaining reads begin at the start of the page.
                 ppos = 0;
             }
@@ -884,7 +886,8 @@ final class TreeValue {
      * @param pos value position being read
      * @param level inode level; at least 1
      * @param inode exclusively latched parent inode; always released by this method
-     * @param value slice of complete value being written
+     * @param b slice of complete value being written
+     * @param bLen can be zero
      */
     private static void writeMultilevelFragments(final LocalDatabase db,
                                                  final long pos, int level, final Node inode,
@@ -896,15 +899,12 @@ final class TreeValue {
             level--;
             long levelCap = db.levelCap(level);
 
-            int firstChild = (int) (pos / levelCap);
-            int lastChild = bLen == 0 ? firstChild : ((int) ((pos + bLen - 1) / levelCap));
-
-            int childNodeCount = lastChild - firstChild + 1;
+            int poffset = ((int) (pos / levelCap)) * 6;
 
             // Handle a possible partial write to the first page.
             long ppos = pos % levelCap;
 
-            for (int poffset = firstChild * 6, i=0; i<childNodeCount; poffset += 6, i++) {
+            while (true) {
                 int len = (int) Math.min(levelCap - ppos, bLen);
                 int off = (int) ppos;
 
@@ -950,7 +950,10 @@ final class TreeValue {
                 if (bLen <= 0) {
                     break;
                 }
+
                 bOff += len;
+                poffset += 6;
+
                 // Remaining writes begin at the start of the page.
                 ppos = 0;
             }
