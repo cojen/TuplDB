@@ -196,14 +196,12 @@ final class TreeValue {
             // Skip the key.
             loc += Node.keyLengthAtLoc(page, loc);
 
-            final int vHeaderLoc; // location of raw value header
-            final int vHeader;    // header byte of raw value
-            final int vLen;       // length of raw value sans header
-
-            vHeaderLoc = loc;
-            vHeader = p_byteGet(page, loc++);
+            final int vHeaderLoc = loc; // location of raw value header
+            final int vLen;             // length of raw value sans header
 
             nonFrag: {
+                final int vHeader = p_byteGet(page, loc++); // header byte of raw value
+
                 decodeLen: if (vHeader >= 0) {
                     vLen = vHeader;
                 } else {
@@ -224,22 +222,7 @@ final class TreeValue {
                         }
 
                         // Replace the ghost with an empty value.
-
-                        try {
-                            node.updateLeafValue(frame, cursor.mTree, nodePos, 0, EMPTY_BYTES);
-                        } catch (Throwable e) {
-                            node.releaseExclusive();
-                            throw e;
-                        }
-
-                        if (node.mSplit != null) {
-                            // Releases latch if an exception is thrown.
-                            cursor.mTree.finishSplit(frame, node);
-                            // Finishing the split causes the node latch to be re-acquired, so
-                            // start over.
-                            continue;
-                        }
-
+                        p_bytePut(page, vHeaderLoc, 0);
                         vLen = 0;
                         break decodeLen;
                     }

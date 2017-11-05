@@ -628,6 +628,8 @@ public class ValueAccessorTest {
         txn.reset();
 
         fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
+
+        assertTrue(ix.verify(null));
     }
 
     @Test
