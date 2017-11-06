@@ -545,6 +545,82 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void truncateFragmentedIndirect() throws Exception {
+        // Test truncation of fragmented values which use indirect pointer encoding.
+
+        truncateFragmentedIndirect(40_000, 30_000);
+        truncateFragmentedIndirect(40_000, 29_696); // newLen fully fits in pages
+        truncateFragmentedIndirect(40_448, 30_000); // oldLen fully fits
+        truncateFragmentedIndirect(40_448, 29_696);
+
+        truncateFragmentedIndirect(50_000, 40_000); // lose one indirect level
+        truncateFragmentedIndirect(50_000, 513);    // lose one indirect level
+        truncateFragmentedIndirect(50_000, 512);    // convert to direct format
+        truncateFragmentedIndirect(50_000, 1);      // convert to direct format
+        truncateFragmentedIndirect(50_000, 0);      // full truncation
+    }
+
+    private void truncateFragmentedIndirect(int oldLen, int newLen) throws Exception {
+        final long seed = 248237411;
+        Random rnd = new Random(seed);
+
+        Index ix = mDb.openIndex("test");
+        byte[] key = new byte[20];
+        rnd.nextBytes(key);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+
+        rnd = new Random(seed);
+        byte[] b = new byte[1000];
+
+        for (int i = 0; i < oldLen; i += b.length) {
+            rnd.nextBytes(b);
+            int amt;
+            if (i + b.length > oldLen) {
+                amt = oldLen - i;
+            } else {
+                amt = b.length;
+            }
+            accessor.valueWrite(i, b, 0, amt);
+        }
+
+        accessor.setValueLength(newLen);
+
+        assertEquals(newLen, accessor.valueLength());
+
+        rnd = new Random(seed);
+        byte[] b2 = new byte[b.length];
+
+        int total = 0;
+
+        for (int i = 0; i < oldLen; i += b.length) {
+            rnd.nextBytes(b);
+
+            int amt = accessor.valueRead(i, b2, 0, b2.length);
+            total += amt;
+
+            if (amt < b2.length) {
+                assertEquals(newLen, total);
+                for (int j=0; j<amt; j++) {
+                    assertEquals(b[j], b2[j]);
+                }
+                break;
+            } else {
+                fastAssertArrayEquals(b, b2);
+            }
+        }
+
+        // Extending shouldn't reveal old data.
+        accessor.setValueLength(newLen + 10);
+        assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
+        for (int j=0; j<10; j++) {
+            assertEquals(0, b2[j]);
+        }
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
         Database db = newTempDatabase

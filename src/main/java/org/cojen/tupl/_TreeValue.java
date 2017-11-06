@@ -460,7 +460,11 @@ final class _TreeValue {
                 } else {
                     final _Node inode = db.nodeMapLoadFragment(inodeId);
                     final int levels = db.calculateInodeLevels(fLen);
-                    readMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                    try {
+                        readMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                    } finally {
+                        inode.releaseShared();
+                    }
                 }
 
                 return total;
@@ -488,10 +492,11 @@ final class _TreeValue {
                         loc = fInlineLoc + fInlineLen;
                     }
 
-                    if ((fHeader & 0x01) == 0) {
+                    _LocalDatabase db = node.getDatabase();
+
+                    doTruncate: if ((fHeader & 0x01) == 0) {
                         // Truncate direct pointers.
 
-                        _LocalDatabase db = node.getDatabase();
                         int pageSize = pageSize(db, page);
                         int oldCount = (int) pointerCount(pageSize, fLen - fInlineLen);
                         int newCount = (int) pointerCount(pageSize, endPos - fInlineLen);
@@ -500,6 +505,8 @@ final class _TreeValue {
                         long remainder = (endPos - fInlineLen) % pageSize;
                         _Node lastNode = null;
 
+                        // FIXME: truncate in forward order, for simplicity and consistency
+
                         if (remainder > 0) {
                             // The last highest remaining page (at lowLoc) will need to be
                             // zero-filled up to the end. Attempt to dirty it early, in case an
@@ -507,8 +514,13 @@ final class _TreeValue {
                             long lastNodeId = p_uint48GetLE(page, lowLoc - 6);
                             if (lastNodeId != 0) {
                                 lastNode = db.nodeMapLoadFragmentExclusive(lastNodeId, true);
-                                if (db.markFragmentDirty(lastNode)) {
-                                    p_int48PutLE(page, lowLoc - 6, lastNode.mId);
+                                try {
+                                    if (db.markFragmentDirty(lastNode)) {
+                                        p_int48PutLE(page, lowLoc - 6, lastNode.mId);
+                                    }
+                                } catch (Throwable e) {
+                                    lastNode.releaseExclusive();
+                                    throw e;
                                 }
                             }
                         }
@@ -557,14 +569,86 @@ final class _TreeValue {
                             p_clear(lastNode.mPage, (int) remainder, pageSize);
                             lastNode.releaseExclusive();
                         }
+                    } else {
+                        // Truncate indirect pointers.
 
-                        updateLengthField(page, fHeaderLoc, endPos);
-                        return 0;
+                        long inodeId = p_uint48GetLE(page, loc);
+
+                        if (inodeId == 0) {
+                            break doTruncate;
+                        }
+
+                        try {
+                            _Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
+                            int levels;
+
+                            try {
+                                if (db.markFragmentDirty(inode)) {
+                                    p_int48PutLE(page, loc, inode.mId);
+                                }
+                                levels = db.calculateInodeLevels(fLen);
+                                truncateMultilevelFragments
+                                    (db, endPos, levels, inode, fLen - endPos);
+                            } catch (Throwable e) {
+                                inode.releaseExclusive();
+                                throw e;
+                            }
+
+                            final int newLevels = db.calculateInodeLevels(endPos);
+
+                            if (newLevels >= levels) {
+                                inode.releaseExclusive();
+                                break doTruncate;
+                            }
+
+                            do {
+                                long childNodeId = p_uint48GetLE(inode.mPage, 0);
+
+                                if (childNodeId == 0) {
+                                    inodeId = 0;
+                                    break;
+                                }
+
+                                _Node childNode;
+                                try {
+                                    childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
+                                } catch (Throwable e) {
+                                    inode.releaseExclusive();
+                                    // Panic.
+                                    db.close(e);
+                                    throw e;
+
+                                }
+
+                                db.deleteNode(inode);
+                                inode = childNode;
+                                inodeId = inode.mId;
+                            } while (--levels > newLevels);
+
+                            p_int48PutLE(page, loc, inodeId);
+
+                            if (newLevels <= 0) {
+                                if (endPos == 0) {
+                                    // Convert to an empty value.
+                                    p_bytePut(page, vHeaderLoc, 0);
+                                    int garbageAccum = fHeaderLoc - vHeaderLoc + vLen - 1;
+                                    node.garbage(node.garbage() + garbageAccum);
+                                    db.deleteNode(inode);
+                                    break doTruncate;
+                                }
+                                // Convert to direct pointer format.
+                                p_bytePut(page, fHeaderLoc, fHeader & ~0x01);
+                            }
+
+                            inode.releaseExclusive();
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw e;
+                        }
                     }
 
-                    // FIXME: truncate indirect
-                    node.releaseExclusive();
-                    throw null;
+                    updateLengthField(page, fHeaderLoc, endPos);
+                    return 0;
                 }
 
                 // Fall through to extend the length.
@@ -614,9 +698,12 @@ final class _TreeValue {
                         fLen -= fInlineLen;
 
                         final _Node inode = prepareMultilevelWrite(db, page, loc);
-
-                        final int levels = db.calculateInodeLevels(fLen);
-                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                        try {
+                            final int levels = db.calculateInodeLevels(fLen);
+                            writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                        } finally {
+                            inode.releaseExclusive();
+                        }
 
                         return 0;
                     } catch (Throwable e) {
@@ -699,7 +786,11 @@ final class _TreeValue {
 
                         updateLengthField(page, fHeaderLoc, endPos);
 
-                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                        try {
+                            writeMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                        } finally {
+                            inode.releaseExclusive();
+                        }
 
                         return 0;
                     } catch (Throwable e) {
@@ -798,7 +889,7 @@ final class _TreeValue {
     /**
      * @param pos value position being read
      * @param level inode level; at least 1
-     * @param inode shared latched parent inode; always released by this method
+     * @param inode shared latched parent inode; never released by this method
      * @param b slice of complete value being reconstructed
      * @param bLen must be more than zero
      */
@@ -807,46 +898,45 @@ final class _TreeValue {
                                                 final byte[] b, int bOff, int bLen)
         throws IOException
     {
-        try {
-            long page = inode.mPage;
-            level--;
-            long levelCap = db.levelCap(level);
+        long page = inode.mPage;
+        level--;
+        long levelCap = db.levelCap(level);
 
-            int poffset = ((int) (pos / levelCap)) * 6;
+        int poffset = ((int) (pos / levelCap)) * 6;
 
-            // Handle a possible partial read from the first page.
-            long ppos = pos % levelCap;
+        // Handle a possible partial read from the first page.
+        long ppos = pos % levelCap;
 
-            while (true) {
-                long childNodeId = p_uint48GetLE(page, poffset);
-                int len = (int) Math.min(levelCap - ppos, bLen);
+        while (true) {
+            long childNodeId = p_uint48GetLE(page, poffset);
+            int len = (int) Math.min(levelCap - ppos, bLen);
 
-                if (childNodeId == 0) {
-                    // Reading a sparse value.
-                    Arrays.fill(b, bOff, bOff + len, (byte) 0);
-                } else {
-                    _Node childNode = db.nodeMapLoadFragment(childNodeId);
+            if (childNodeId == 0) {
+                // Reading a sparse value.
+                Arrays.fill(b, bOff, bOff + len, (byte) 0);
+            } else {
+                _Node childNode = db.nodeMapLoadFragment(childNodeId);
+                try {
                     if (level <= 0) {
                         p_copyToArray(childNode.mPage, (int) ppos, b, bOff, len);
-                        childNode.releaseShared();
                     } else {
                         readMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
                     }
+                } finally {
+                    childNode.releaseShared();
                 }
-
-                bLen -= len;
-                if (bLen <= 0) {
-                    break;
-                }
-
-                bOff += len;
-                poffset += 6;
-
-                // Remaining reads begin at the start of the page.
-                ppos = 0;
             }
-        } finally {
-            inode.releaseShared();
+
+            bLen -= len;
+            if (bLen <= 0) {
+                break;
+            }
+
+            bOff += len;
+            poffset += 6;
+
+            // Remaining reads begin at the start of the page.
+            ppos = 0;
         }
     }
 
@@ -883,9 +973,9 @@ final class _TreeValue {
     }
 
     /**
-     * @param pos value position being read
+     * @param pos value position being written
      * @param level inode level; at least 1
-     * @param inode exclusively latched parent inode; always released by this method
+     * @param inode exclusively latched parent inode; never released by this method
      * @param b slice of complete value being written
      * @param bLen can be zero
      */
@@ -894,71 +984,140 @@ final class _TreeValue {
                                                  final byte[] b, int bOff, int bLen)
         throws IOException
     {
-        try {
-            long page = inode.mPage;
-            level--;
-            long levelCap = db.levelCap(level);
+        long page = inode.mPage;
+        level--;
+        long levelCap = db.levelCap(level);
 
-            int poffset = ((int) (pos / levelCap)) * 6;
+        int poffset = ((int) (pos / levelCap)) * 6;
 
-            // Handle a possible partial write to the first page.
-            long ppos = pos % levelCap;
+        // Handle a possible partial write to the first page.
+        long ppos = pos % levelCap;
 
-            while (true) {
-                int len = (int) Math.min(levelCap - ppos, bLen);
-                int off = (int) ppos;
+        final int pageSize = pageSize(db, page);
 
-                final int pageSize = pageSize(db, page);
+        while (true) {
+            int len = (int) Math.min(levelCap - ppos, bLen);
+            int off = (int) ppos;
 
-                final _Node childNode;
-                setPtr: {
-                    long childNodeId = p_uint48GetLE(page, poffset);
-                    boolean partial = level > 0 | off > 0 | len < pageSize;
+            final _Node childNode;
+            setPtr: {
+                long childNodeId = p_uint48GetLE(page, poffset);
+                boolean partial = level > 0 | off > 0 | len < pageSize;
 
-                    if (childNodeId == 0) {
-                        // Writing into a sparse value. Allocate a node and point to it.
-                        childNode = db.allocDirtyFragmentNode();
-                        if (partial) {
-                            // New page must be zero-filled.
-                            p_clear(childNode.mPage, 0, pageSize);
+                if (childNodeId == 0) {
+                    // Writing into a sparse value. Allocate a node and point to it.
+                    childNode = db.allocDirtyFragmentNode();
+                    if (partial) {
+                        // New page must be zero-filled.
+                        p_clear(childNode.mPage, 0, pageSize);
+                    }
+                } else {
+                    // Obtain node from cache, or read it only for partial write.
+                    childNode = db.nodeMapLoadFragmentExclusive(childNodeId, partial);
+                    try {
+                        if (!db.markFragmentDirty(childNode)) {
+                            // Already dirty, so no need to update the pointer.
+                            break setPtr;
                         }
+                    } catch (Throwable e) {
+                        childNode.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                p_int48PutLE(page, poffset, childNode.mId);
+            }
+
+            try {
+                if (level <= 0) {
+                    p_copyFromArray(b, bOff, childNode.mPage, off, len);
+                } else {
+                    writeMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
+                }
+            } finally {
+                childNode.releaseExclusive();
+            }
+
+            bLen -= len;
+            if (bLen <= 0) {
+                break;
+            }
+
+            bOff += len;
+            poffset += 6;
+
+            // Remaining writes begin at the start of the page.
+            ppos = 0;
+        }
+    }
+
+    /**
+     * @param pos value position being truncated
+     * @param level inode level; at least 1
+     * @param inode exclusively latched parent inode; never released by this method
+     * @param truncateLen full truncation length (to the end)
+     */
+    private static void truncateMultilevelFragments(final _LocalDatabase db,
+                                                    final long pos, int level, final _Node inode,
+                                                    long truncateLen)
+        throws IOException
+    {
+        long page = inode.mPage;
+        level--;
+        long levelCap = db.levelCap(level);
+
+        int poffset = ((int) (pos / levelCap)) * 6;
+
+        // Handle a possible partial truncation of the first page.
+        long ppos = pos % levelCap;
+
+        while (true) {
+            long len = Math.min(levelCap - ppos, truncateLen);
+            long childNodeId = p_uint48GetLE(page, poffset);
+
+            if (childNodeId != 0) {
+                if (ppos <= 0 || len >= levelCap) {
+                    // Full truncation of inode.
+                    if (level <= 0) {
+                        db.deleteFragment(childNodeId);
                     } else {
-                        // Obtain node from cache, or read it only for partial write.
-                        childNode = db.nodeMapLoadFragmentExclusive(childNodeId, partial);
+                        _Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                         try {
-                            if (!db.markFragmentDirty(childNode)) {
-                                // Already dirty, so no need to update the pointer.
-                                break setPtr;
-                            }
+                            truncateMultilevelFragments(db, ppos, level, childNode, len);
                         } catch (Throwable e) {
                             childNode.releaseExclusive();
                             throw e;
                         }
+                        db.deleteNode(childNode);
                     }
-
-                    p_int48PutLE(page, poffset, childNode.mId);
-                }
-
-                if (level <= 0) {
-                    p_copyFromArray(b, bOff, childNode.mPage, off, len);
-                    childNode.releaseExclusive();
+                    p_int48PutLE(page, poffset, 0);
                 } else {
-                    writeMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
+                    // Partial truncation of inode.
+                    _Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
+                    try {
+                        if (db.markFragmentDirty(childNode)) {
+                            p_int48PutLE(page, poffset, childNode.mId);
+                        }
+                        if (level <= 0) {
+                            p_clear(childNode.mPage, (int) ppos, (int) levelCap);
+                        } else {
+                            truncateMultilevelFragments(db, ppos, level, childNode, len);
+                        }
+                    } finally {
+                        childNode.releaseExclusive();
+                    }
                 }
-
-                bLen -= len;
-                if (bLen <= 0) {
-                    break;
-                }
-
-                bOff += len;
-                poffset += 6;
-
-                // Remaining writes begin at the start of the page.
-                ppos = 0;
             }
-        } finally {
-            inode.releaseExclusive();
+
+            truncateLen -= len;
+            if (truncateLen <= 0) {
+                break;
+            }
+
+            poffset += 6;
+
+            // Remaining truncates begin at the start of the page.
+            ppos = 0;
         }
     }
 
