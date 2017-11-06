@@ -3587,7 +3587,9 @@ final class _LocalDatabase extends AbstractDatabase {
                 boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
 
                 try {
-                    mPageDb.deletePage(oldId);
+                    // No need to force delete when dirtying. Caller is responsible for
+                    // cleaning up.
+                    mPageDb.deletePage(oldId, false);
                 } catch (Throwable e) {
                     // Try to undo things.
                     if (removed) {
@@ -3627,7 +3629,8 @@ final class _LocalDatabase extends AbstractDatabase {
             long oldId = node.mId;
 
             try {
-                mPageDb.deletePage(oldId);
+                // No need to force delete when dirtying. Caller is responsible for cleaning up.
+                mPageDb.deletePage(oldId, false);
             } catch (Throwable e) {
                 try {
                     mPageDb.recyclePage(newId);
@@ -3679,7 +3682,8 @@ final class _LocalDatabase extends AbstractDatabase {
             try {
                 // TODO: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
-                mPageDb.deletePage(oldId);
+                // No need to force delete when dirtying. Caller is responsible for cleaning up.
+                mPageDb.deletePage(oldId, false);
             } catch (Throwable e) {
                 // Try to undo things.
                 if (removed) {
@@ -3819,8 +3823,9 @@ final class _LocalDatabase extends AbstractDatabase {
                         // Newly reserved page was never used, so recycle it.
                         mPageDb.recyclePage(id);
                     } else {
-                        // Old data must survive until after checkpoint.
-                        mPageDb.deletePage(id);
+                        // Old data must survive until after checkpoint. Must force the delete,
+                        // because by this point, the caller can't easily clean up.
+                        mPageDb.deletePage(id, true);
                     }
                 } catch (Throwable e) {
                     // Try to undo things.
@@ -3831,6 +3836,8 @@ final class _LocalDatabase extends AbstractDatabase {
                             Utils.suppress(e, e2);
                         }
                     }
+                    // Panic.
+                    close(e);
                     throw e;
                 }
 
@@ -4510,13 +4517,20 @@ final class _LocalDatabase extends AbstractDatabase {
             _Node node = nodeMapGetAndRemove(nodeId);
             if (node != null) {
                 deleteNode(node);
-            } else if (mInitialReadState != CACHED_CLEAN) {
-                // Page was never used if nothing has ever been checkpointed.
-                mPageDb.recyclePage(nodeId);
-            } else {
-                // Page is clean if not in a _Node, and so it must survive until
-                // after the next checkpoint.
-                mPageDb.deletePage(nodeId);
+            } else try {
+                if (mInitialReadState != CACHED_CLEAN) {
+                    // Page was never used if nothing has ever been checkpointed.
+                    mPageDb.recyclePage(nodeId);
+                } else {
+                    // Page is clean if not in a _Node, and so it must survive until after the
+                    // next checkpoint. Must force the delete, because by this point, the
+                    // caller can't easily clean up.
+                    mPageDb.deletePage(nodeId, true);
+                }
+            } catch (Throwable e) {
+                // Panic.
+                close(e);
+                throw e;
             }
         }
     }
