@@ -262,14 +262,14 @@ final class _PageQueue implements IntegerRef {
                 break;
             }
             if (pageId <= upperBound) {
-                mManager.deletePage(pageId);
+                mManager.deletePage(pageId, true);
             }
             removeLock.lock();
         }
 
         long pageId = mRemoveStoppedId;
         if (pageId != 0 && pageId <= upperBound) {
-            mManager.deletePage(pageId);
+            mManager.deletePage(pageId, true);
         }
     }
 
@@ -356,7 +356,7 @@ final class _PageQueue implements IntegerRef {
         // deleted instead of used for next allocation. This ensures that no
         // important data is overwritten until after commit.
         if (oldHeadId != 0) {
-            mManager.deletePage(oldHeadId);
+            mManager.deletePage(oldHeadId, true);
         }
 
         return pageId;
@@ -377,9 +377,10 @@ final class _PageQueue implements IntegerRef {
     /**
      * Append a page which has been deleted.
      *
+     * @param force when true, never throw an IOException; OutOfMemoryError is still possible
      * @throws IllegalArgumentException if id is less than or equal to one
      */
-    void append(long id) throws IOException {
+    void append(long id, boolean force) throws IOException {
         if (id <= 1) {
             throw new IllegalArgumentException("Page id: " + id);
         }
@@ -394,10 +395,12 @@ final class _PageQueue implements IntegerRef {
                 try {
                     drainAppendHeap(appendHeap);
                 } catch (IOException e) {
-                    // Undo.
-                    appendHeap.remove(id);
-                    mAppendPageCount--;
-                    throw e;
+                    if (!force) {
+                        // Undo.
+                        appendHeap.remove(id);
+                        mAppendPageCount--;
+                        throw e;
+                    }
                 }
             }
             // If a drain is in progress, then append is called by allocPage
