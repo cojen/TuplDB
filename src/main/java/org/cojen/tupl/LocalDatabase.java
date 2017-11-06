@@ -3836,8 +3836,6 @@ final class LocalDatabase extends AbstractDatabase {
                             Utils.suppress(e, e2);
                         }
                     }
-                    // Panic.
-                    close(e);
                     throw e;
                 }
 
@@ -3852,6 +3850,8 @@ final class LocalDatabase extends AbstractDatabase {
             node.mCachedState = CACHED_CLEAN;
         } catch (Throwable e) {
             node.releaseExclusive();
+            // Panic.
+            close(e);
             throw e;
         }
 
