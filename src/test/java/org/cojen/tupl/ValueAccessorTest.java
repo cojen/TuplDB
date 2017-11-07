@@ -905,6 +905,84 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void fill() throws Exception {
+        // Fills an index with random values, in random order. Intended to exercise tree node
+        // splitting and merging.
+
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 8675309;
+        Random rnd = new Random(seed);
+
+        final byte[] buf = new byte[1000];
+
+        for (int i=0; i<100; i++) {
+            byte[] key = new byte[10 + rnd.nextInt(90)];
+            rnd.nextBytes(key);
+
+            ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+            final int length = rnd.nextInt(1_000_000);
+            int remaining = length;
+
+            try (OutputStream out = accessor.newValueOutputStream(0, 0)) {
+                while (true) {
+                    int amt = Math.min(buf.length, remaining);
+                    rnd.nextBytes(buf);
+                    out.write(buf, 0, amt);
+                    remaining -= amt;
+                    if (remaining <= 0) {
+                        assertEquals(length, accessor.valueLength());
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Verify data.
+
+        rnd = new Random(seed);
+
+        final byte[] buf2 = new byte[buf.length];
+
+        for (int i=0; i<100; i++) {
+            byte[] key = new byte[10 + rnd.nextInt(90)];
+            rnd.nextBytes(key);
+
+            ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+            final int length = rnd.nextInt(1_000_000);
+
+            assertEquals(length, accessor.valueLength());
+
+            int remaining = length;
+
+            try (InputStream in = accessor.newValueInputStream(0, 0)) {
+                while (true) {
+                    int expect = Math.min(buf.length, remaining);
+                    rnd.nextBytes(buf);
+
+                    int amt = in.read(buf2);
+                    assertEquals(expect, amt);
+
+                    if (amt == buf.length) {
+                        fastAssertArrayEquals(buf, buf2);
+                    } else {
+                        for (int j=0; j<amt; j++) {
+                            assertEquals(buf[j], buf2[j]);
+                        }
+                    }
+
+                    remaining -= amt;
+
+                    if (remaining <= 0) {
+                        assertEquals(-1, in.read(buf2));
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
