@@ -29,11 +29,8 @@ public class ValueAccessorDirectTest extends ValueAccessorTest {
         org.junit.runner.JUnitCore.main(ValueAccessorDirectTest.class.getName());
     }
 
-    @Before
     @Override
-    public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig().pageSize(512);
-        config.directPageAccess(true);
-        mDb = TestUtils.newTempDatabase(getClass(), config);
+    protected DatabaseConfig decorate(DatabaseConfig config) {
+        return config.directPageAccess(true);
     }
 }

@@ -42,7 +42,12 @@ public class ValueAccessorTest {
     @Before
     public void createTempDb() throws Exception {
         DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(512);
+        config = decorate(config);
         mDb = newTempDatabase(getClass(), config);
+    }
+
+    protected DatabaseConfig decorate(DatabaseConfig config) {
+        return config;
     }
 
     @After
@@ -340,7 +345,24 @@ public class ValueAccessorTest {
         extendExisting(600, 100_000, true);
     }
 
+    @Test
+    public void extendExistingInlcudingInlineCheckpoint() throws Exception {
+        // Test with various initial sizes which have some inline content encoded.
+
+        extendExisting(513, 514, true, true);
+        extendExisting(513, 1000, true, true);
+        extendExisting(513, 10_000, true, true);
+        extendExisting(513, 100_000, true, true);
+        extendExisting(600, 100_000, true, true);
+    }
+
     private void extendExisting(int fromLen, long toLen, boolean fullCheck) throws Exception {
+        extendExisting(fromLen, toLen, fullCheck, false);
+    }
+
+    private void extendExisting(int fromLen, long toLen, boolean fullCheck, boolean checkpoint)
+        throws Exception
+    {
         Index ix = mDb.openIndex("test");
 
         final long seed = 8675309 + fromLen + toLen;
@@ -356,6 +378,10 @@ public class ValueAccessorTest {
 
         ix.store(Transaction.BOGUS, key, initial);
         initial = null;
+
+        if (checkpoint) {
+            mDb.checkpoint();
+        }
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
@@ -443,8 +469,8 @@ public class ValueAccessorTest {
     @Test
     public void truncateNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        Database db = newTempDatabase
-            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
+        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 10, 5);     // 1-byte header to 1
         truncate(db, 200, 50);   // 2-byte header to 1
@@ -461,8 +487,8 @@ public class ValueAccessorTest {
         // Test truncation of fragmented value which uses direct pointer encoding.
 
         // Use large page to test 3-byte value header encoding.
-        Database db = newTempDatabase
-            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
+        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 65536, 10);       // no inline content; two pointers to one
         truncate(db, 65537, 10);       // 1-byte inline content; two pointers to one
@@ -558,10 +584,45 @@ public class ValueAccessorTest {
         truncateFragmentedIndirect(50_000, 512);    // convert to direct format
         truncateFragmentedIndirect(50_000, 1);      // convert to direct format
         truncateFragmentedIndirect(50_000, 0);      // full truncation
+
+        truncateFragmentedIndirect(50_000, 50_000); // no truncation
+    }
+
+    @Test
+    public void truncateFragmentedIndirectSparse() throws Exception {
+        // Test truncation of sparse fragmented values which use indirect pointer encoding.
+
+        truncateFragmentedIndirect(100_000, 99_999, true);
+        truncateFragmentedIndirect(100_000, 29_696, true); // newLen fully fits in pages
+        truncateFragmentedIndirect(100_000, 1, true);      // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true);      // full truncation
+    }
+
+    @Test
+    public void truncateFragmentedIndirectSparseWithCheckpoint() throws Exception {
+        // Test truncation of sparse fragmented values which use indirect pointer encoding.
+
+        truncateFragmentedIndirect(100_000, 99_999, true, true);
+        truncateFragmentedIndirect(100_000, 29_696, true, true); // newLen fully fits in pages
+        truncateFragmentedIndirect(100_000, 1, true, true);      // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true, true);      // full truncation
     }
 
     private void truncateFragmentedIndirect(int oldLen, int newLen) throws Exception {
-        final long seed = 248237411;
+        truncateFragmentedIndirect(oldLen, newLen, false, false);
+    }
+
+    private void truncateFragmentedIndirect(int oldLen, int newLen, boolean sparse)
+        throws Exception
+    {
+        truncateFragmentedIndirect(oldLen, newLen, sparse, false);
+    }
+
+    private void truncateFragmentedIndirect(int oldLen, int newLen,
+                                            boolean sparse, boolean checkpoint)
+        throws Exception
+    {
+        final long seed = 248237410 + oldLen + newLen;
         Random rnd = new Random(seed);
 
         Index ix = mDb.openIndex("test");
@@ -571,17 +632,26 @@ public class ValueAccessorTest {
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
         rnd = new Random(seed);
-        byte[] b = new byte[1000];
+        byte[] b = new byte[10000];
 
         for (int i = 0; i < oldLen; i += b.length) {
             rnd.nextBytes(b);
-            int amt;
-            if (i + b.length > oldLen) {
-                amt = oldLen - i;
+
+            if (sparse && rnd.nextBoolean()) {
+                Arrays.fill(b, (byte) 0);
             } else {
-                amt = b.length;
+                int amt;
+                if (i + b.length > oldLen) {
+                    amt = oldLen - i;
+                } else {
+                    amt = b.length;
+                }
+                accessor.valueWrite(i, b, 0, amt);
             }
-            accessor.valueWrite(i, b, 0, amt);
+        }
+
+        if (checkpoint) {
+            mDb.checkpoint();
         }
 
         accessor.setValueLength(newLen);
@@ -595,6 +665,10 @@ public class ValueAccessorTest {
 
         for (int i = 0; i < oldLen; i += b.length) {
             rnd.nextBytes(b);
+
+            if (sparse && rnd.nextBoolean()) {
+                Arrays.fill(b, (byte) 0);
+            }
 
             int amt = accessor.valueRead(i, b2, 0, b2.length);
             total += amt;
@@ -621,10 +695,36 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void truncateFragmentedIndirectBlank() throws Exception {
+        // Test truncation of blank fragmented value which uses indirect pointer encoding.
+
+        Index ix = mDb.openIndex("test");
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, "hello".getBytes());
+
+        accessor.setValueLength(100_000_000_000L);
+        assertEquals(100_000_000_000L, accessor.valueLength());
+        accessor.setValueLength(0);
+        assertEquals(0, accessor.valueLength());
+        assertEquals(0, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
+
+        accessor.setValueLength(100_000_000_000L);
+        assertEquals(100_000_000_000L, accessor.valueLength());
+        accessor.setValueLength(1);
+        assertEquals(1, accessor.valueLength());
+        assertEquals(1, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
+
+        accessor.setValueLength(100_000_000_000L);
+        assertEquals(100_000_000_000L, accessor.valueLength());
+        accessor.setValueLength(1000);
+        assertEquals(1000, accessor.valueLength());
+        assertEquals(1000, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
+    }
+
+    @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        Database db = newTempDatabase
-            (getClass(), new DatabaseConfig().directPageAccess(false).pageSize(32768));
+        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        Database db = newTempDatabase(getClass(), decorate(config));
 
         writeNonFragmented(db, 50);
         writeNonFragmented(db, 200);
@@ -710,6 +810,15 @@ public class ValueAccessorTest {
 
     @Test
     public void fieldIncreaseToIndirect() throws Exception {
+        fieldIncreaseToIndirect(false);
+    }
+
+    @Test
+    public void fieldIncreaseToIndirectCheckpoint() throws Exception {
+        fieldIncreaseToIndirect(true);
+    }
+
+    private void fieldIncreaseToIndirect(boolean checkpoint) throws Exception {
         // Start with a specially crafted length, which when increased to use a 4-byte field,
         // forces removal of inline content. Since this is a black-box test, one way to be
         // certain that the conversion happened is by running a debugger.
@@ -719,6 +828,10 @@ public class ValueAccessorTest {
         byte[] value = new byte[19460];
         ix.store(Transaction.BOGUS, key, value);
 
+        if (checkpoint) {
+            mDb.checkpoint();
+        }
+
         byte[] value2 = new byte[70000];
         new Random(12345678).nextBytes(value2);
 
@@ -727,6 +840,68 @@ public class ValueAccessorTest {
         accessor.close();
 
         fastAssertArrayEquals(value2, ix.load(null, key));
+
+        assertTrue(ix.verify(null));
+        ix.store(Transaction.BOGUS, key, null);
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
+    public void convertToIndirectWithLargePages() throws Exception {
+        // Use large page to test 3-byte value header encoding.
+        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        Database db = newTempDatabase(getClass(), decorate(config));
+
+        Index ix = db.openIndex("test");
+        byte[] key = "hello".getBytes();
+
+        Random rnd = new Random(8675309);
+        byte[] value = new byte[20_000_000];
+        rnd.nextBytes(value);
+
+        ix.store(Transaction.BOGUS, key, value);
+
+        byte[] extend = new byte[80_000_000]; // too large for direct pointers
+        rnd.nextBytes(extend);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(value.length, extend, 0, extend.length);
+
+        assertEquals(value.length + extend.length, accessor.valueLength());
+        accessor.close();
+
+        byte[] full = new byte[value.length + extend.length];
+        System.arraycopy(value, 0, full, 0, value.length);
+        System.arraycopy(extend, 0, full, value.length, extend.length);
+        value = null;
+        extend = null;
+
+        fastAssertArrayEquals(full, ix.load(Transaction.BOGUS, key));
+    }
+
+    @Test
+    public void writeInline() throws Exception {
+        // Test writing over inline content only.
+
+        Index ix = mDb.openIndex("test");
+        byte[] key = "hello".getBytes();
+
+        Random rnd = new Random(8675309);
+        byte[] value = new byte[10 + 512 + 512]; // 10 bytes inline
+        rnd.nextBytes(value);
+
+        ix.store(Transaction.BOGUS, key, value);
+
+        byte[] value2 = new byte[10];
+        rnd.nextBytes(value2);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(0, value2, 0, value2.length);
+        accessor.close();
+
+        System.arraycopy(value2, 0, value, 0, value2.length);
+
+        fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
     }
 
     @Test
