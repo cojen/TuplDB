@@ -795,6 +795,7 @@ public class ValueAccessorTest {
 
         // Sneakily replace the ghost.
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        assertEquals(-1, accessor.valueRead(0, value2, 0, value2.length));
         accessor.valueWrite(0, value2, 0, value2.length);
 
         fastAssertArrayEquals(value2, ix.load(Transaction.BOGUS, key));
