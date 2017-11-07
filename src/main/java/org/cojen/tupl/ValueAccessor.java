@@ -29,6 +29,7 @@ import java.io.OutputStream;
  * autoload} should be disabled to prevent values from being fully loaded automatically
  *
  * @author Brian S O'Neill
+ * @see View#newAccessor View.newAccessor
  */
 public interface ValueAccessor extends Closeable {
     /**

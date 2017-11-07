@@ -101,20 +101,22 @@ public interface View {
     }
 
     /**
-     * Returns a value accessor for the given key, which permits values to be larger than what
-     * can fit in main memory.
+     * Returns a cursor intended for {@link ValueAccessor accessing} values in chunks,
+     * permitting them to be larger than what can fit in main memory. Essentially, this is a
+     * convenience method which disables {@link Cursor#autoload(boolean) autoload}, and then
+     * positions the cursor at the given key.
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
      *
      * @param txn optional transaction; pass null for auto-commit mode
      * @param key non-null key
-     * @return non-null value accessor
+     * @return non-null cursor
      * @throws NullPointerException if key is null
      * @throws IllegalArgumentException if transaction belongs to another database instance
      * @throws ViewConstraintException if key is not allowed
      */
-    public default ValueAccessor newAccessor(Transaction txn, byte[] key) throws IOException {
+    public default Cursor newAccessor(Transaction txn, byte[] key) throws IOException {
         Cursor c = newCursor(txn);
         try {
             c.autoload(false);

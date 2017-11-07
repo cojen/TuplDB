@@ -223,11 +223,11 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i13" class="rowColor">
-<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></td>
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-">newAccessor</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
            byte[]&nbsp;key)</code>
-<div class="block">Returns a value accessor for the given key, which permits values to be larger than what
- can fit in main memory.</div>
+<div class="block">Returns a cursor intended for <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+ permitting them to be larger than what can fit in main memory.</div>
 </td>
 </tr>
 <tr id="i14" class="altColor">
@@ -516,11 +516,13 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>newAccessor</h4>
-<pre>default&nbsp;<a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a>&nbsp;newAccessor(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
-                                  byte[]&nbsp;key)
-                           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Returns a value accessor for the given key, which permits values to be larger than what
- can fit in main memory.
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;newAccessor(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+                           byte[]&nbsp;key)
+                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Returns a cursor intended for <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+ permitting them to be larger than what can fit in main memory. Essentially, this is a
+ convenience method which disables <a href="../../../org/cojen/tupl/Cursor.html#autoload-boolean-"><code>autoload</code></a>, and then
+ positions the cursor at the given key.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -529,7 +531,7 @@ var activeTableTab = "activeTableTab";
 <dd><code>txn</code> - optional transaction; pass null for auto-commit mode</dd>
 <dd><code>key</code> - non-null key</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>non-null value accessor</dd>
+<dd>non-null cursor</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
 <dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
