@@ -204,13 +204,6 @@ abstract class SubView implements View {
         throw fail();
     }
 
-    /*
-    @Override
-    public Stream newStream() {
-        return new SubStream(this, mSource.newStream());
-    }
-    */
-
     @Override
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();

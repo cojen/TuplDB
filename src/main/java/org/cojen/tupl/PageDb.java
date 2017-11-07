@@ -136,11 +136,14 @@ abstract class PageDb implements CauseCloseable {
      * Deletes a page, but doesn't commit it. Deleted pages are not used for
      * new writes, and they are still readable until after a commit. Caller
      * must ensure that a page is deleted at most once between commits.
+     *
+     * @param force when true, never throw an IOException; OutOfMemoryError is still possible
      */
-    public abstract void deletePage(long id) throws IOException;
+    public abstract void deletePage(long id, boolean force) throws IOException;
 
     /**
-     * Recycles a page for immediate re-use.
+     * Recycles a page for immediate re-use. An IOException isn't expected, but an
+     * OutOfMemoryError is always possible.
      */
     public abstract void recyclePage(long id) throws IOException;
 

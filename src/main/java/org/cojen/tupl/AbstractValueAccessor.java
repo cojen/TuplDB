@@ -22,77 +22,59 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * Provides random and stream-oriented access to database values. Stream instances can only be
- * safely used by one thread at a time, and they must be {@link #close closed} when no longer
- * needed. Instances can be exchanged by threads, as long as a happens-before relationship is
- * established. Without proper exclusion, multiple threads interacting with a Stream instance
- * may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see View#newStream View.newStream
  */
-abstract class AbstractStream implements Stream {
-    // Used by InputStream and OutputStream implementation to detect if Stream was closed.
-    Object mIoState;
-
-    AbstractStream() {
-    }
-
+abstract class AbstractValueAccessor implements ValueAccessor {
     @Override
-    public final int read(long pos, byte[] buf, int off, int len) throws IOException {
+    public final int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        return doRead(pos, buf, off, len);
+        return doValueRead(pos, buf, off, len);
     }
 
     @Override
-    public final void write(long pos, byte[] buf, int off, int len) throws IOException {
+    public final void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
         boundsCheck(buf, off, len);
-        doWrite(pos, buf, off, len);
+        doValueWrite(pos, buf, off, len);
     }
 
     @Override
-    public final InputStream newInputStream(long pos) throws IOException {
-        return newInputStream(pos, -1);
+    public final InputStream newValueInputStream(long pos) throws IOException {
+        return newValueInputStream(pos, -1);
     }
 
     @Override
-    public final InputStream newInputStream(long pos, int bufferSize) throws IOException {
+    public final InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
-        checkOpen();
-        return new In(mIoState, pos, new byte[selectBufferSize(bufferSize)]);
+        valueCheckOpen();
+        return new In(pos, new byte[valueStreamBufferSize(bufferSize)]);
     }
 
     @Override
-    public final OutputStream newOutputStream(long pos) throws IOException {
-        return newOutputStream(pos, -1);
+    public final OutputStream newValueOutputStream(long pos) throws IOException {
+        return newValueOutputStream(pos, -1);
     }
 
     @Override
-    public final OutputStream newOutputStream(long pos, int bufferSize) throws IOException {
+    public final OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
         if (pos < 0) {
             throw new IllegalArgumentException();
         }
-        checkOpen();
-        return new Out(mIoState, pos, new byte[selectBufferSize(bufferSize)]);
+        valueCheckOpen();
+        return new Out(pos, new byte[valueStreamBufferSize(bufferSize)]);
     }
 
-    @Override
-    public final void close() throws IOException {
-        mIoState = null;
-        doClose();
-    }
+    abstract int doValueRead(long pos, byte[] buf, int off, int len) throws IOException;
 
-    abstract int doRead(long pos, byte[] buf, int off, int len) throws IOException;
-
-    abstract void doWrite(long pos, byte[] buf, int off, int len) throws IOException;
+    abstract void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
      * Return an appropriate buffer size, using the given size suggestion.
@@ -100,14 +82,12 @@ abstract class AbstractStream implements Stream {
      * @param bufferSize buffer size hint; -1 if a default size should be used
      * @return actual size; must be greater than zero
      */
-    abstract int selectBufferSize(int bufferSize);
+    abstract int valueStreamBufferSize(int bufferSize);
 
     /**
      * @throws IllegalStateException if closed
      */
-    abstract void checkOpen();
-
-    abstract void doClose() throws IOException;
+    abstract void valueCheckOpen();
 
     /**
      * @throws NullPointerException if buf is null
@@ -119,48 +99,20 @@ abstract class AbstractStream implements Stream {
         }
     }
 
-    /**
-     * Called by InputStream and OutputStream implementation.
-     */
-    final void ioClose(Object ioState) throws IOException {
-        if (ioState == mIoState) {
-            mIoState = null;
-            doClose();
-        }
-    }
-
-    /**
-     * Called by InputStream and OutputStream implementation.
-     */
-    final void ioCheckOpen(Object ioState) {
-        if (ioState != mIoState) {
-            throw new IllegalStateException("Stream closed");
-        }
-    }
-
     final class In extends InputStream {
-        private final Object mIoState;
-
         private long mPos;
-
-        private final byte[] mBuffer;
+        private byte[] mBuffer;
         private int mStart;
         private int mEnd;
 
-        In(Object ioState, long pos, byte[] buffer) {
-            if (ioState == null) {
-                AbstractStream.this.mIoState = ioState = this;
-            }
-            mIoState = ioState;
+        In(long pos, byte[] buffer) {
             mPos = pos;
             mBuffer = buffer;
         }
 
         @Override
         public int read() throws IOException {
-            ioCheckOpen(mIoState);
-
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int start = mStart;
             if (start < mEnd) {
                 mPos++;
@@ -170,7 +122,7 @@ abstract class AbstractStream implements Stream {
             }
 
             long pos = mPos;
-            int amt = AbstractStream.this.doRead(pos, buf, 0, buf.length);
+            int amt = AbstractValueAccessor.this.doValueRead(pos, buf, 0, buf.length);
 
             if (amt <= 0) {
                 if (amt < 0) {
@@ -188,9 +140,8 @@ abstract class AbstractStream implements Stream {
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
             boundsCheck(b, off, len);
-            ioCheckOpen(mIoState);
 
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int start = mStart;
             int amt = mEnd - start;
 
@@ -216,7 +167,7 @@ abstract class AbstractStream implements Stream {
             doRead: {
                 // Bypass buffer if parameter is large enough.
                 while (len >= buf.length) {
-                    amt = AbstractStream.this.doRead(mPos, b, off, len);
+                    amt = AbstractValueAccessor.this.doValueRead(mPos, b, off, len);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -230,7 +181,7 @@ abstract class AbstractStream implements Stream {
 
                 // Read into buffer and copy to parameter.
                 while (true) {
-                    amt = AbstractStream.this.doRead(mPos, buf, 0, buf.length);
+                    amt = AbstractValueAccessor.this.doValueRead(mPos, buf, 0, buf.length);
                     if (amt <= 0) {
                         break doRead;
                     }
@@ -250,21 +201,21 @@ abstract class AbstractStream implements Stream {
                 }
             }
 
-            amt = off - initialOff;
+            int actual = off - initialOff;
 
-            if (amt <= 0) {
+            if (actual <= 0) {
                 if (amt < 0) {
                     throw new NoSuchValueException();
                 }
                 return -1;
             }
 
-            return amt;
+            return actual;
         }
 
         @Override
         public long skip(long n) throws IOException {
-            ioCheckOpen(mIoState);
+            checkStreamOpen();
 
             if (n <= 0) {
                 return 0;
@@ -286,7 +237,7 @@ abstract class AbstractStream implements Stream {
             }
 
             long pos = mPos;
-            long newPos = Math.min(pos + n, length());
+            long newPos = Math.min(pos + n, valueLength());
 
             if (newPos > pos) {
                 mPos = newPos;
@@ -298,37 +249,37 @@ abstract class AbstractStream implements Stream {
 
         @Override
         public int available() {
-            return mIoState == AbstractStream.this.mIoState ? (mEnd - mStart) : 0;
+            return mBuffer == null ? 0 : (mEnd - mStart);
         }
 
         @Override
         public void close() throws IOException {
-            AbstractStream.this.ioClose(mIoState);
+            mBuffer = null;
+            AbstractValueAccessor.this.close();
+        }
+
+        private byte[] checkStreamOpen() {
+            byte[] buf = mBuffer;
+            if (buf == null) {
+                throw new IllegalStateException("Stream closed");
+            }
+            return buf;
         }
     }
 
     final class Out extends OutputStream {
-        private final Object mIoState;
-
         private long mPos;
-
-        private final byte[] mBuffer;
+        private byte[] mBuffer;
         private int mEnd;
 
-        Out(Object ioState, long pos, byte[] buffer) {
-            if (ioState == null) {
-                AbstractStream.this.mIoState = ioState = this;
-            }
-            mIoState = ioState;
+        Out(long pos, byte[] buffer) {
             mPos = pos;
             mBuffer = buffer;
         }
 
         @Override
         public void write(int b) throws IOException {
-            ioCheckOpen(mIoState);
-
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int end = mEnd;
 
             if (end >= buf.length) {
@@ -340,7 +291,7 @@ abstract class AbstractStream implements Stream {
 
             try {
                 if (end >= buf.length) {
-                    AbstractStream.this.doWrite(mPos, buf, 0, end);
+                    AbstractValueAccessor.this.doValueWrite(mPos, buf, 0, end);
                     mPos += end;
                     end = 0;
                 }
@@ -352,9 +303,8 @@ abstract class AbstractStream implements Stream {
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
             boundsCheck(b, off, len);
-            ioCheckOpen(mIoState);
 
-            byte[] buf = mBuffer;
+            byte[] buf = checkStreamOpen();
             int end = mEnd;
             int avail = buf.length - end;
 
@@ -370,7 +320,7 @@ abstract class AbstractStream implements Stream {
                 len -= avail;
                 avail = buf.length;
                 try {
-                    AbstractStream.this.doWrite(mPos, buf, 0, avail);
+                    AbstractValueAccessor.this.doValueWrite(mPos, buf, 0, avail);
                 } catch (Throwable e) {
                     mEnd = avail;
                     throw e;
@@ -384,31 +334,40 @@ abstract class AbstractStream implements Stream {
                 mEnd = 0;
             }
 
-            AbstractStream.this.doWrite(mPos, b, off, len);
+            AbstractValueAccessor.this.doValueWrite(mPos, b, off, len);
             mPos += len;
         }
 
         @Override
         public void flush() throws IOException {
-            ioCheckOpen(mIoState);
-            doFlush();
+            doFlush(checkStreamOpen());
         }
 
         @Override
         public void close() throws IOException {
-            if (mIoState == AbstractStream.this.mIoState) {
-                doFlush();
-                AbstractStream.this.ioClose(mIoState);
+            byte[] buf = mBuffer;
+            if (buf != null) {
+                doFlush(buf);
+                mBuffer = null;
             }
+            AbstractValueAccessor.this.close();
         }
 
-        private void doFlush() throws IOException {
+        private void doFlush(byte[] buf) throws IOException {
             int end = mEnd;
             if (end > 0) {
-                AbstractStream.this.doWrite(mPos, mBuffer, 0, end);
+                AbstractValueAccessor.this.doValueWrite(mPos, buf, 0, end);
                 mPos += end;
                 mEnd = 0;
             }
+        }
+
+        private byte[] checkStreamOpen() {
+            byte[] buf = mBuffer;
+            if (buf == null) {
+                throw new IllegalStateException("Stream closed");
+            }
+            return buf;
         }
     }
 }

@@ -35,6 +35,8 @@ import java.io.OutputStreamWriter;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import java.math.BigInteger;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
@@ -681,7 +683,7 @@ final class _LocalDatabase extends AbstractDatabase {
             mMaxFragmentedEntrySize = (pageSize - _Node.TN_HEADER_SIZE - (2 + 3 + 2 + 3)) >> 1;
 
             // Limit the maximum key size to allow enough room for a fragmented value. It might
-            // require up to 11 bytes for fragment encoding (when length is >= 65536), and tho
+            // require up to 11 bytes for fragment encoding (when length is >= 65536), and
             // additional bytes are required for the value header inside the tree node.
             mMaxKeySize = Math.min(16383, mMaxFragmentedEntrySize - (2 + 11));
 
@@ -726,6 +728,11 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
+                    if (mEventListener != null) {
+                        mEventListener.notify(EventType.REPLICATION_DEBUG,
+                                              "Starting at: %1$d", redoPos);
+                    }
+
                     rm.start(redoPos);
 
                     if (mReadOnly) {
@@ -3656,7 +3663,9 @@ final class _LocalDatabase extends AbstractDatabase {
                 boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
 
                 try {
-                    mPageDb.deletePage(oldId);
+                    // No need to force delete when dirtying. Caller is responsible for
+                    // cleaning up.
+                    mPageDb.deletePage(oldId, false);
                 } catch (Throwable e) {
                     // Try to undo things.
                     if (removed) {
@@ -3696,7 +3705,8 @@ final class _LocalDatabase extends AbstractDatabase {
             long oldId = node.mId;
 
             try {
-                mPageDb.deletePage(oldId);
+                // No need to force delete when dirtying. Caller is responsible for cleaning up.
+                mPageDb.deletePage(oldId, false);
             } catch (Throwable e) {
                 try {
                     mPageDb.recyclePage(newId);
@@ -3748,7 +3758,8 @@ final class _LocalDatabase extends AbstractDatabase {
             try {
                 // TODO: This can hang on I/O; release frame latch if deletePage would block?
                 // Then allow thread to block without node latch held.
-                mPageDb.deletePage(oldId);
+                // No need to force delete when dirtying. Caller is responsible for cleaning up.
+                mPageDb.deletePage(oldId, false);
             } catch (Throwable e) {
                 // Try to undo things.
                 if (removed) {
@@ -3888,8 +3899,9 @@ final class _LocalDatabase extends AbstractDatabase {
                         // Newly reserved page was never used, so recycle it.
                         mPageDb.recyclePage(id);
                     } else {
-                        // Old data must survive until after checkpoint.
-                        mPageDb.deletePage(id);
+                        // Old data must survive until after checkpoint. Must force the delete,
+                        // because by this point, the caller can't easily clean up.
+                        mPageDb.deletePage(id, true);
                     }
                 } catch (Throwable e) {
                     // Try to undo things.
@@ -3914,6 +3926,8 @@ final class _LocalDatabase extends AbstractDatabase {
             node.mCachedState = CACHED_CLEAN;
         } catch (Throwable e) {
             node.releaseExclusive();
+            // Panic.
+            close(e);
             throw e;
         }
 
@@ -3923,6 +3937,12 @@ final class _LocalDatabase extends AbstractDatabase {
 
     final byte[] fragmentKey(byte[] key) throws IOException {
         return fragment(key, key.length, mMaxKeySize);
+    }
+
+    final byte[] fragment(final byte[] value, final long vlength, int max)
+        throws IOException
+    {
+        return fragment(value, vlength, max, 65535);
     }
 
     /**
@@ -3941,9 +3961,10 @@ final class _LocalDatabase extends AbstractDatabase {
      * @param value can be null if value is all zeros
      * @param max maximum allowed size for returned byte array; must not be
      * less than 11 (can be 9 if full value length is < 65536)
+     * @param maxInline maximum allowed inline size; must not be more than 65535
      * @return null if max is too small
      */
-    byte[] fragment(final byte[] value, final long vlength, int max)
+    final byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
         throws IOException
     {
         final int pageSize = mPageSize;
@@ -3975,7 +3996,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         byte[] newValue;
         final int inline; // length of inline field size
-        if (remainder <= max && remainder < 65536
+        if (remainder <= max && remainder <= maxInline
             && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
         {
             // Remainder fits inline, minimizing internal fragmentation. All
@@ -4026,9 +4047,14 @@ final class _LocalDatabase extends AbstractDatabase {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess.
-                            while ((poffset -= 6) >= (offset + inline + remainder)) {
-                                deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                            try {
+                                // Clean up the mess.
+                                while ((poffset -= 6) >= (offset + inline + remainder)) {
+                                    deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                }
+                            } catch (Throwable e2) {
+                                suppress(e, e2);
+                                close(e);
                             }
                         }
                         throw e;
@@ -4099,9 +4125,14 @@ final class _LocalDatabase extends AbstractDatabase {
                             if (!e.isRecoverable()) {
                                 close(e);
                             } else {
-                                // Clean up the mess.
-                                while ((poffset -= 6) >= offset) {
-                                    deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                try {
+                                    // Clean up the mess.
+                                    while ((poffset -= 6) >= offset) {
+                                        deleteFragment(decodeUnsignedInt48LE(newValue, poffset));
+                                    }
+                                } catch (Throwable e2) {
+                                    suppress(e, e2);
+                                    close(e);
                                 }
                             }
                             throw e;
@@ -4126,10 +4157,15 @@ final class _LocalDatabase extends AbstractDatabase {
                         if (!e.isRecoverable()) {
                             close(e);
                         } else {
-                            // Clean up the mess. Note that inode is still latched here,
-                            // because writeMultilevelFragments never releases it. The call to
-                            // deleteMultilevelFragments always releases the inode latch.
-                            deleteMultilevelFragments(levels, inode, vlength);
+                            try {
+                                // Clean up the mess. Note that inode is still latched here,
+                                // because writeMultilevelFragments never releases it. The call to
+                                // deleteMultilevelFragments always releases the inode latch.
+                                deleteMultilevelFragments(levels, inode, vlength);
+                            } catch (Throwable e2) {
+                                suppress(e, e2);
+                                close(e);
+                            }
                         }
                         throw e;
                     } catch (Throwable e) {
@@ -4194,7 +4230,7 @@ final class _LocalDatabase extends AbstractDatabase {
         level--;
         long levelCap = levelCap(level);
 
-        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+        int childNodeCount = childNodeCount(vlength, levelCap);
 
         int poffset = 0;
         try {
@@ -4227,6 +4263,23 @@ final class _LocalDatabase extends AbstractDatabase {
             // but the rest are not.
             p_clear(page, poffset, pageSize(page));
         }
+    }
+
+    /**
+     * Determine the multi-level fragmented value child node count, at a specific level.
+     */
+    private static int childNodeCount(long vlength, long levelCap) {
+        int count = (int) ((vlength + (levelCap - 1)) / levelCap);
+        if (count < 0) {
+            // Overflowed.
+            count = childNodeCountOverflow(vlength, levelCap);
+        }
+        return count;
+    }
+
+    private static int childNodeCountOverflow(long vlength, long levelCap) {
+        return BigInteger.valueOf(vlength).add(BigInteger.valueOf(levelCap - 1))
+            .divide(BigInteger.valueOf(levelCap)).intValue();
     }
 
     /**
@@ -4358,7 +4411,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 _Node inode = nodeMapLoadFragment(inodeId);
                 pagesRead++;
                 int levels = calculateInodeLevels(vLen);
-                pagesRead += readMultilevelFragments(levels, inode, value, 0, vLen);
+                pagesRead += readMultilevelFragments(levels, inode, value, vOff, vLen);
             }
         }
 
@@ -4387,7 +4440,7 @@ final class _LocalDatabase extends AbstractDatabase {
             level--;
             long levelCap = levelCap(level);
 
-            int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+            int childNodeCount = childNodeCount(vlength, levelCap);
 
             for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
                 long childNodeId = p_uint48GetLE(page, poffset);
@@ -4493,7 +4546,7 @@ final class _LocalDatabase extends AbstractDatabase {
         long levelCap = levelCap(level);
 
         // Copy all child node ids and release parent latch early.
-        int childNodeCount = (int) ((vlength + (levelCap - 1)) / levelCap);
+        int childNodeCount = childNodeCount(vlength, levelCap);
         long[] childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
             childNodeIds[i] = p_uint48GetLE(page, poffset);
@@ -4531,18 +4584,25 @@ final class _LocalDatabase extends AbstractDatabase {
     /**
      * @param nodeId can be zero
      */
-    private void deleteFragment(long nodeId) throws IOException {
+    void deleteFragment(long nodeId) throws IOException {
         if (nodeId != 0) {
             _Node node = nodeMapGetAndRemove(nodeId);
             if (node != null) {
                 deleteNode(node);
-            } else if (mInitialReadState != CACHED_CLEAN) {
-                // Page was never used if nothing has ever been checkpointed.
-                mPageDb.recyclePage(nodeId);
-            } else {
-                // Page is clean if not in a _Node, and so it must survive until
-                // after the next checkpoint.
-                mPageDb.deletePage(nodeId);
+            } else try {
+                if (mInitialReadState != CACHED_CLEAN) {
+                    // Page was never used if nothing has ever been checkpointed.
+                    mPageDb.recyclePage(nodeId);
+                } else {
+                    // Page is clean if not in a _Node, and so it must survive until after the
+                    // next checkpoint. Must force the delete, because by this point, the
+                    // caller can't easily clean up.
+                    mPageDb.deletePage(nodeId, true);
+                }
+            } catch (Throwable e) {
+                // Panic.
+                close(e);
+                throw e;
             }
         }
     }

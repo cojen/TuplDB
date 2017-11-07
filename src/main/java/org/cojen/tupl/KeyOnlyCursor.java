@@ -17,7 +17,9 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
  * 
@@ -28,6 +30,52 @@ final class KeyOnlyCursor extends WrappedCursor<Cursor> {
     KeyOnlyCursor(Cursor source) {
         super(source);
         source.autoload(false);
+    }
+
+    @Override
+    public long valueLength() throws IOException {
+        return source.valueLength();
+    }
+
+    @Override
+    public void setValueLength(long length) throws IOException {
+        if (length >= 0) {
+            throw new ViewConstraintException();
+        }
+        source.store(null);
+    }
+
+    @Override
+    public int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        return source.valueRead(pos, buf, off, 0);
+    }
+
+    @Override
+    public InputStream newValueInputStream(long pos) throws IOException {
+        return new InputStream() {
+            @Override
+            public int read() throws IOException {
+                if (value() == null) {
+                    throw new NoSuchValueException();
+                }
+                return -1;
+            }
+        };
+    }
+
+    @Override
+    public InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
+        return newValueInputStream(pos);
+    }
+
+    @Override
+    public OutputStream newValueOutputStream(long pos) throws IOException {
+        throw new ViewConstraintException();
+    }
+
+    @Override
+    public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
+        return newValueOutputStream(pos);
     }
 
     @Override

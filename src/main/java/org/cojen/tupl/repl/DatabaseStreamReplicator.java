@@ -207,8 +207,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public void start(long position) throws IOException {
-        System.out.println("start: " + position);
-
         if (mStreamReader != null) {
             throw new IllegalStateException();
         }

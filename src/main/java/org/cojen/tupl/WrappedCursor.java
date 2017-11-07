@@ -17,7 +17,9 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import java.util.Comparator;
 
@@ -33,6 +35,70 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
 
     protected WrappedCursor(C source) {
         this.source = source;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public long valueLength() throws IOException {
+        return source.valueLength();
+    }
+
+    /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public void setValueLength(long length) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        return source.valueRead(pos, buf, off, len);
+    }
+
+    /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStream newValueInputStream(long pos) throws IOException {
+        return source.newValueInputStream(pos);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
+        return source.newValueInputStream(pos, bufferSize);
+    }
+
+    /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public OutputStream newValueOutputStream(long pos) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
+        throw new UnmodifiableViewException();
     }
 
     /**
@@ -316,20 +382,18 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     }
 
     /**
-     * Returns an unmodifiable stream by default.
-     */
-    /*
-    @Override
-    public Stream newStream() {
-        return new UnmodifiableStream(source.newStream());
-    }
-    */
-
-    /**
      * {@inheritDoc}
      */
     @Override
     public void reset() {
         source.reset();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void close() {
+        source.close();
     }
 }

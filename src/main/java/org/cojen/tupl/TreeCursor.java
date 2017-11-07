@@ -33,7 +33,7 @@ import static org.cojen.tupl.Utils.*;
  *
  * @author Brian S O'Neill
  */
-class TreeCursor implements CauseCloseable, Cursor {
+class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -3722,14 +3722,105 @@ class TreeCursor implements CauseCloseable, Cursor {
         }
     }
 
-    /*
     @Override
-    public final Stream newStream() {
-        TreeCursor copy = copyNoValue();
-        copy.mKeyOnly = true;
-        return new TreeValueStream(copy);
+    public final long valueLength() throws IOException {
+        CursorFrame frame;
+        try {
+            frame = leafSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        long result = TreeValue.action(this, frame, TreeValue.OP_LENGTH, 0, null, 0, 0);
+        frame.mNode.releaseShared();
+        return result;
     }
-    */
+
+    @Override
+    public final void setValueLength(long length) throws IOException {
+        // FIXME: txn undo/redo
+        try {
+            if (length < 0) {
+                store(null);
+                return;
+            }
+
+            final CursorFrame leaf = leafExclusive();
+
+            final CommitLock.Shared shared = commitLock(leaf);
+            try {
+                notSplitDirty(leaf);
+                TreeValue.action(this, leaf, TreeValue.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
+                Node node = leaf.mNode;
+                if (node.shouldLeafMerge()) {
+                    // Method always release the node latch, even if an exception is thrown.
+                    mergeLeaf(leaf, node);
+                } else {
+                    node.releaseExclusive();
+                }
+            } finally {
+                shared.release();
+            }
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+    }
+
+    @Override
+    final int doValueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        CursorFrame frame;
+        try {
+            frame = leafSharedNotSplit();
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+
+        int result = (int) TreeValue.action(this, frame, TreeValue.OP_READ, pos, buf, off, len);
+        frame.mNode.releaseShared();
+        return result;
+    }
+
+    @Override
+    final void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        // FIXME: txn undo/redo
+        try {
+            final CursorFrame leaf = leafExclusive();
+
+            final CommitLock.Shared shared = commitLock(leaf);
+            try {
+                notSplitDirty(leaf);
+                TreeValue.action(this, leaf, TreeValue.OP_WRITE, pos, buf, off, len);
+                leaf.mNode.releaseExclusive();
+            } finally {
+                shared.release();
+            }
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+    }
+
+    @Override
+    final int valueStreamBufferSize(int bufferSize) {
+        if (bufferSize <= 1) {
+            if (bufferSize < 0) {
+                bufferSize = mTree.mDatabase.mPageSize;
+            } else {
+                bufferSize = 1;
+            }
+        }
+        return bufferSize;
+    }
+
+    @Override
+    final void valueCheckOpen() {
+        if (mKey == null) {
+            throw new IllegalStateException("Accessor closed");
+        }
+    }
 
     @Override
     public final TreeCursor copy() {
@@ -4033,17 +4124,16 @@ class TreeCursor implements CauseCloseable, Cursor {
                     int nodePos = frame.mNodePos;
                     if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
                         int pLen = pageSize(node.mPage);
-                        TreeValueStream stream = new TreeValueStream(this);
                         long pos = 0;
                         while (true) {
-                            int result = stream.compactCheck(frame, pos, highestNodeId);
+                            int result = TreeValue.compactCheck(frame, pos, highestNodeId);
                             if (result < 0) {
                                 break;
                             }
                             if (result > 0) {
                                 node.releaseShared();
                                 node = null;
-                                stream.doWrite(pos, TreeValueStream.TOUCH_VALUE, 0, 0);
+                                doValueWrite(pos, TreeValue.TOUCH_VALUE, 0, 0);
                                 frame = leafSharedNotSplit();
                                 node = frame.mNode;
                                 if (node.mId > highestNodeId) {
@@ -4512,7 +4602,7 @@ class TreeCursor implements CauseCloseable, Cursor {
     /**
      * Caller must hold exclusive latch, which is released by this method.
      */
-    private void mergeLeaf(final CursorFrame leaf, Node node) throws IOException {
+    void mergeLeaf(final CursorFrame leaf, Node node) throws IOException {
         final CursorFrame parentFrame = leaf.mParentFrame;
 
         if (parentFrame == null) {

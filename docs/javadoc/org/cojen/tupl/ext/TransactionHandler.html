@@ -128,12 +128,12 @@ var activeTableTab = "activeTableTab";
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish-org.cojen.tupl.Database-java.lang.Object-">checkpointFinish</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
+                <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
 <div class="block">Wait for a concurrent checkpoint to finish.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-">checkpointStart</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code>
 <div class="block">Called to durably write all changes.</div>
 </td>
@@ -159,7 +159,7 @@ var activeTableTab = "activeTableTab";
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#setCheckpointLock-org.cojen.tupl.Database-java.util.concurrent.locks.Lock-">setCheckpointLock</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                 <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</code>
+                 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</code>
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
  exclusively by checkpoints.</div>
 </td>
@@ -195,14 +195,14 @@ var activeTableTab = "activeTableTab";
 <pre>void&nbsp;redo(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
           <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
           byte[]&nbsp;message)
-   throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Non-transactionally apply an idempotent redo operation.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txn</code> - transaction the operation applies to; can be modified</dd>
 <dd><code>message</code> - message originally provided to <a href="../../../../org/cojen/tupl/Transaction.html#customRedo-byte:A-long-byte:A-"><code>Transaction.customRedo(byte[], long, byte[])</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -217,7 +217,7 @@ var activeTableTab = "activeTableTab";
           byte[]&nbsp;message,
           long&nbsp;indexId,
           byte[]&nbsp;key)
-   throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Non-transactionally apply an idempotent redo operation. Locking an index key allows
  replication to operate concurrently.</div>
 <dl>
@@ -227,7 +227,7 @@ var activeTableTab = "activeTableTab";
 <dd><code>indexId</code> - non-zero index for lock acquisition</dd>
 <dd><code>key</code> - non-null key which has been locked exclusively</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -239,13 +239,13 @@ var activeTableTab = "activeTableTab";
 <h4>undo</h4>
 <pre>void&nbsp;undo(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
           byte[]&nbsp;message)
-   throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Non-transactionally apply an idempotent undo operation.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>message</code> - message originally provided to <a href="../../../../org/cojen/tupl/Transaction.html#customUndo-byte:A-"><code>Transaction.customUndo(byte[])</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -256,7 +256,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>setCheckpointLock</h4>
 <pre>default&nbsp;void&nbsp;setCheckpointLock(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                               <a href="http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</pre>
+                               <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</pre>
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
  exclusively by checkpoints. Implementation is permitted (but not required) to use this
  lock for suspending transactional changes when <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-"><code>checkpointStart</code></a>
@@ -270,8 +270,8 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>checkpointStart</h4>
-<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;checkpointStart(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)
-                        throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;checkpointStart(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)
+                        throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called to durably write all changes. Implementation must suspend all transactional
  changes (although transactions can be left open), and then initiate a concurrent
  checkpoint. The checkpoint must capture a snapshot of all changes at the point it was
@@ -282,7 +282,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>optional object to be passed to <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish-org.cojen.tupl.Database-java.lang.Object-"><code>checkpointFinish</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -293,14 +293,14 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>checkpointFinish</h4>
 <pre>default&nbsp;void&nbsp;checkpointFinish(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                              <a href="http://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)
-                       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                              <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)
+                       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Wait for a concurrent checkpoint to finish.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>obj</code> - optional object passed from <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-"><code>checkpointStart</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
