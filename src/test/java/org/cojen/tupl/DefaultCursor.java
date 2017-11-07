@@ -17,10 +17,12 @@
 
 package org.cojen.tupl;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 /**
- * Cursor implementation used to test the default methods Cursor.
+ * Cursor implementation used to test the default methods of the Cursor interface.
  *
  * @author Brian S O'Neill
  */
@@ -29,6 +31,46 @@ class DefaultCursor implements Cursor {
 
     DefaultCursor(Cursor source) {
         mSource = source;
+    }
+
+    @Override
+    public long valueLength() throws IOException {
+        return mSource.valueLength();
+    }
+
+    @Override
+    public void setValueLength(long length) throws IOException {
+        mSource.setValueLength(length);
+    }
+
+    @Override
+    public int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
+        return mSource.valueRead(pos, buf, off, len);
+    }
+
+    @Override
+    public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        mSource.valueWrite(pos, buf, off, len);
+    }
+
+    @Override
+    public InputStream newValueInputStream(long pos) throws IOException {
+        return mSource.newValueInputStream(pos);
+    }
+
+    @Override
+    public InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
+        return mSource.newValueInputStream(pos, bufferSize);
+    }
+
+    @Override
+    public OutputStream newValueOutputStream(long pos) throws IOException {
+        return mSource.newValueOutputStream(pos);
+    }
+
+    @Override
+    public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
+        return mSource.newValueOutputStream(pos, bufferSize);
     }
 
     @Override
@@ -123,5 +165,10 @@ class DefaultCursor implements Cursor {
     @Override
     public void reset() {
         mSource.reset();
+    }
+
+    @Override
+    public void close() {
+        mSource.close();
     }
 }

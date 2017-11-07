@@ -101,6 +101,34 @@ public interface View {
     }
 
     /**
+     * Returns a cursor intended for {@link ValueAccessor accessing} values in chunks,
+     * permitting them to be larger than what can fit in main memory. Essentially, this is a
+     * convenience method which disables {@link Cursor#autoload(boolean) autoload}, and then
+     * positions the cursor at the given key.
+     *
+     * <p>If the entry must be locked, ownership of the key instance is transferred. The key
+     * must not be modified after calling this method.
+     *
+     * @param txn optional transaction; pass null for auto-commit mode
+     * @param key non-null key
+     * @return non-null cursor
+     * @throws NullPointerException if key is null
+     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws ViewConstraintException if key is not allowed
+     */
+    public default Cursor newAccessor(Transaction txn, byte[] key) throws IOException {
+        Cursor c = newCursor(txn);
+        try {
+            c.autoload(false);
+            c.find(key);
+            return c;
+        } catch (Throwable e) {
+            Utils.closeQuietly(c);
+            throw e;
+        }
+    }
+
+    /**
      * Returns a new transaction which is compatible with this view. If the provided durability
      * mode is null, a default mode is selected.
      *
@@ -584,15 +612,6 @@ public interface View {
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException;
-
-    /**
-     * Returns an unopened stream for accessing values in this view.
-     */
-    /*
-    public default Stream newStream() {
-        throw new UnsupportedOperationException();
-    }
-    */
 
     /**
      * Returns a sub-view, backed by this one, whose keys are greater than or

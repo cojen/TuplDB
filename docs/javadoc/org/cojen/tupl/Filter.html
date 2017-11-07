@@ -108,7 +108,7 @@ var activeTableTab = "activeTableTab";
 </dl>
 <hr>
 <br>
-<pre><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang">@FunctionalInterface</a>
+<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang">@FunctionalInterface</a>
 public interface <span class="typeNameLabel">Filter</span>
 extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl">Transformer</a></pre>
 <div class="block">View transformer which filters out entries which don't belong. Implementations only need to
@@ -188,11 +188,11 @@ extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in o
 <h4>isAllowed</h4>
 <pre>boolean&nbsp;isAllowed(byte[]&nbsp;key,
                   byte[]&nbsp;value)
-           throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Return true if the given key and value are not to be filtered out.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -205,7 +205,7 @@ extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in o
 <pre>default&nbsp;byte[]&nbsp;transformValue(byte[]&nbsp;value,
                               byte[]&nbsp;key,
                               byte[]&nbsp;tkey)
-                       throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Calls the <a href="../../../org/cojen/tupl/Filter.html#isAllowed-byte:A-byte:A-"><code>isAllowed</code></a> method.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
@@ -217,7 +217,7 @@ extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in o
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>transformed value or null to discard entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -230,7 +230,7 @@ extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in o
 <pre>default&nbsp;byte[]&nbsp;inverseTransformValue(byte[]&nbsp;tvalue,
                                      byte[]&nbsp;key,
                                      byte[]&nbsp;tkey)
-                              throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>,
+                              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a>,
                                      <a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></pre>
 <div class="block">Calls the <a href="../../../org/cojen/tupl/Filter.html#isAllowed-byte:A-byte:A-"><code>isAllowed</code></a> method.</div>
 <dl>
@@ -244,7 +244,7 @@ extends <a href="../../../org/cojen/tupl/Transformer.html" title="interface in o
 <dd>inverse transformed value, or null to delete the value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if inverse transformation of given value is not supported</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

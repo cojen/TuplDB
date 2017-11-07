@@ -442,11 +442,11 @@ final class _DurablePageDb extends _PageDb {
     }
 
     @Override
-    public void deletePage(long id) throws IOException {
+    public void deletePage(long id, boolean force) throws IOException {
         checkId(id);
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
-            mPageManager.deletePage(id);
+            mPageManager.deletePage(id, force);
         } catch (IOException e) {
             throw e;
         } catch (Throwable e) {
@@ -465,10 +465,8 @@ final class _DurablePageDb extends _PageDb {
             try {
                 mPageManager.recyclePage(id);
             } catch (IOException e) {
-                mPageManager.deletePage(id);
+                mPageManager.deletePage(id, true);
             }
-        } catch (IOException e) {
-            throw e;
         } catch (Throwable e) {
             throw closeOnFailure(e);
         } finally {

@@ -267,7 +267,7 @@ final class _PageManager {
 
             if (mode == ALLOC_NORMAL && pageId >= mCompactionTargetPageCount && mCompacting) {
                 // Page is in the compaction zone, so allocate another.
-                mReserveList.append(pageId);
+                mReserveList.append(pageId, true);
                 continue;
             }
 
@@ -279,28 +279,30 @@ final class _PageManager {
      * Deletes a page to be reused after commit is called. No page deletions
      * are permanent until after commit is called.
      *
+     * @param force when true, never throw an IOException; OutOfMemoryError is still possible
      * @throws IllegalArgumentException if id is less than or equal to one
      */
-    public void deletePage(long id) throws IOException {
+    public void deletePage(long id, boolean force) throws IOException {
         if (id >= mCompactionTargetPageCount && mCompacting) {
             // Page is in the compaction zone.
-            mReserveList.append(id);
+            mReserveList.append(id, force);
         } else {
-            mRegularFreeList.append(id);
+            mRegularFreeList.append(id, force);
         }
     }
 
     /**
-     * Recycles a page for immediate re-use.
+     * Recycles a page for immediate re-use. An IOException isn't expected, but an
+     * OutOfMemoryError is always possible.
      *
      * @throws IllegalArgumentException if id is less than or equal to one
      */
     public void recyclePage(long id) throws IOException {
         if (id >= mCompactionTargetPageCount && mCompacting) {
             // Page is in the compaction zone.
-            mReserveList.append(id);
+            mReserveList.append(id, true);
         } else {
-            mRecycleFreeList.append(id);
+            mRecycleFreeList.append(id, true);
         }
     }
 
@@ -425,7 +427,7 @@ final class _PageManager {
         } catch (Throwable e) {
             try {
                 recyclePage(initPageId);
-            } catch (Throwable e2) {
+            } catch (IOException e2) {
                 // Ignore.
             }
             throw e;
@@ -473,9 +475,9 @@ final class _PageManager {
                     return mCompacting;
                 }
                 if (pageId >= mCompactionTargetPageCount) {
-                    mReserveList.append(pageId);
+                    mReserveList.append(pageId, true);
                 } else {
-                    mRecycleFreeList.append(pageId);
+                    mRecycleFreeList.append(pageId, true);
                 }
                 if (commitLock.hasQueuedThreads()) {
                     shared.release();

@@ -24,17 +24,13 @@ import org.junit.*;
  *
  * @author Brian S O'Neill
  */
-@Ignore
-public class StreamDirectTest extends StreamTest {
+public class ValueAccessorDirectTest extends ValueAccessorTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(StreamDirectTest.class.getName());
+        org.junit.runner.JUnitCore.main(ValueAccessorDirectTest.class.getName());
     }
 
-    @Before
     @Override
-    public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig().pageSize(512);
-        config.directPageAccess(true);
-        mDb = TestUtils.newTempDatabase(getClass(), config);
+    protected DatabaseConfig decorate(DatabaseConfig config) {
+        return config.directPageAccess(true);
     }
 }

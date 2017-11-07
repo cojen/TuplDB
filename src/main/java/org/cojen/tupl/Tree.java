@@ -639,15 +639,6 @@ class Tree implements View, Index {
         return check(txn).lockCheck(mId, key);
     }
 
-    /*
-    @Override
-    public Stream newStream() {
-        TreeCursor cursor = newCursor();
-        cursor.autoload(false);
-        return new TreeValueStream(cursor);
-    }
-    */
-
     @Override
     public View viewGe(byte[] key) {
         return BoundedView.viewGe(this, key);

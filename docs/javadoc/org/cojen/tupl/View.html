@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":6,"i8":18,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":18,"i15":18,"i16":18,"i17":18,"i18":18,"i19":18,"i20":18,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18};
+var methods = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":6,"i8":18,"i9":6,"i10":6,"i11":6,"i12":6,"i13":18,"i14":6,"i15":18,"i16":18,"i17":18,"i18":18,"i19":18,"i20":18,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18,"i38":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -159,7 +159,7 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i4" class="altColor">
-<td class="colFirst"><code>default <a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#getComparator--">getComparator</a></span>()</code>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </td>
@@ -223,28 +223,36 @@ var activeTableTab = "activeTableTab";
 </td>
 </tr>
 <tr id="i13" class="rowColor">
+<td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-">newAccessor</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+           byte[]&nbsp;key)</code>
+<div class="block">Returns a cursor intended for <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+ permitting them to be larger than what can fit in main memory.</div>
+</td>
+</tr>
+<tr id="i14" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newCursor-org.cojen.tupl.Transaction-">newCursor</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>&nbsp;</td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newScanner-org.cojen.tupl.Transaction-">newScanner</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>
 <div class="block">Returns a new scanner over this view.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newTransaction-org.cojen.tupl.DurabilityMode-">newTransaction</a></span>(<a href="../../../org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code>
 <div class="block">Returns a new transaction which is compatible with this view.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#newUpdater-org.cojen.tupl.Transaction-">newUpdater</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code>
 <div class="block">Returns a new updater over this view.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#remove-org.cojen.tupl.Transaction-byte:A-byte:A-">remove</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -253,7 +261,7 @@ var activeTableTab = "activeTableTab";
  matches.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr id="i19" class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#replace-org.cojen.tupl.Transaction-byte:A-byte:A-">replace</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
        byte[]&nbsp;key,
@@ -261,7 +269,7 @@ var activeTableTab = "activeTableTab";
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#store-org.cojen.tupl.Transaction-byte:A-byte:A-">store</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;key,
@@ -269,7 +277,7 @@ var activeTableTab = "activeTableTab";
 <div class="block">Unconditionally associates a value with the given key.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#touch-org.cojen.tupl.Transaction-byte:A-">touch</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;key)</code>
@@ -277,7 +285,7 @@ var activeTableTab = "activeTableTab";
  necessary locks.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#tryLockExclusive-org.cojen.tupl.Transaction-byte:A-long-">tryLockExclusive</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                 byte[]&nbsp;key,
@@ -286,7 +294,7 @@ var activeTableTab = "activeTableTab";
  locks.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#tryLockShared-org.cojen.tupl.Transaction-byte:A-long-">tryLockShared</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key,
@@ -294,7 +302,7 @@ var activeTableTab = "activeTableTab";
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#tryLockUpgradable-org.cojen.tupl.Transaction-byte:A-long-">tryLockUpgradable</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                  byte[]&nbsp;key,
@@ -303,7 +311,7 @@ var activeTableTab = "activeTableTab";
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-">update</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -312,7 +320,7 @@ var activeTableTab = "activeTableTab";
  existing value.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code>default boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-">update</a></span>(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -322,7 +330,7 @@ var activeTableTab = "activeTableTab";
  existing value.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i27" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewDifference-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewDifference</a></span>(<a href="../../../org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
               <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code>
@@ -330,21 +338,21 @@ var activeTableTab = "activeTableTab";
  one.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewGe-byte:A-">viewGe</a></span>(byte[]&nbsp;key)</code>
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than or
  equal to the given key.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewGt-byte:A-">viewGt</a></span>(byte[]&nbsp;key)</code>
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than the
  given key.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewIntersection-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewIntersection</a></span>(<a href="../../../org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
                 <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code>
@@ -352,54 +360,54 @@ var activeTableTab = "activeTableTab";
  one.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewKeys--">viewKeys</a></span>()</code>
 <div class="block">Returns a view, backed by this one, which only provides the keys.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr id="i32" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewLe-byte:A-">viewLe</a></span>(byte[]&nbsp;key)</code>
 <div class="block">Returns a sub-view, backed by this one, whose keys are less than or
  equal to the given key.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr id="i33" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewLt-byte:A-">viewLt</a></span>(byte[]&nbsp;key)</code>
 <div class="block">Returns a sub-view, backed by this one, whose keys are less than the
  given key.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr id="i34" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewPrefix-byte:A-int-">viewPrefix</a></span>(byte[]&nbsp;prefix,
           int&nbsp;trim)</code>
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr id="i35" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewReverse--">viewReverse</a></span>()</code>
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
 </td>
 </tr>
-<tr id="i35" class="rowColor">
+<tr id="i36" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewTransformed-org.cojen.tupl.Transformer-">viewTransformed</a></span>(<a href="../../../org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code>
 <div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out and
  transformed.</div>
 </td>
 </tr>
-<tr id="i36" class="altColor">
+<tr id="i37" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewUnion-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewUnion</a></span>(<a href="../../../org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
          <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code>
 <div class="block">Returns a view which represents the <i>set union</i> of this view and a second one.</div>
 </td>
 </tr>
-<tr id="i37" class="rowColor">
+<tr id="i38" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/View.html#viewUnmodifiable--">viewUnmodifiable</a></span>()</code>
 <div class="block">Returns a view, backed by this one, whose entries cannot be modified.</div>
@@ -436,7 +444,7 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>getComparator</h4>
-<pre>default&nbsp;<a href="http://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator()</pre>
+<pre>default&nbsp;<a href="https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator()</pre>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </li>
 </ul>
@@ -453,7 +461,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new unpositioned cursor</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 </dl>
 </li>
 </ul>
@@ -464,7 +472,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>newScanner</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;newScanner(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)
-                    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new scanner over this view.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -472,8 +480,8 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new scanner positioned at the first entry in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -484,7 +492,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>newUpdater</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a>&nbsp;newUpdater(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)
-                    throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new updater over this view. When providing a transaction which acquires locks
  (or the transaction is null), upgradable locks are acquired for each entry visited by
  the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
@@ -497,8 +505,38 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new updater positioned at the first entry in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="newAccessor-org.cojen.tupl.Transaction-byte:A-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>newAccessor</h4>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;newAccessor(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+                           byte[]&nbsp;key)
+                    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Returns a cursor intended for <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+ permitting them to be larger than what can fit in main memory. Essentially, this is a
+ convenience method which disables <a href="../../../org/cojen/tupl/Cursor.html#autoload-boolean-"><code>autoload</code></a>, and then
+ positions the cursor at the given key.
+
+ <p>If the entry must be locked, ownership of the key instance is transferred. The key
+ must not be modified after calling this method.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>txn</code> - optional transaction; pass null for auto-commit mode</dd>
+<dd><code>key</code> - non-null key</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>non-null cursor</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -513,7 +551,7 @@ var activeTableTab = "activeTableTab";
  mode is null, a default mode is selected.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </li>
 </ul>
@@ -525,7 +563,7 @@ var activeTableTab = "activeTableTab";
 <h4>count</h4>
 <pre>default&nbsp;long&nbsp;count(byte[]&nbsp;lowKey,
                    byte[]&nbsp;highKey)
-            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Non-transactionally counts the number of entries within the given range. Implementations
  of this method typically scan over the entries, and so it shouldn't be expected to run
  in constant time.</div>
@@ -534,7 +572,7 @@ var activeTableTab = "activeTableTab";
 <dd><code>lowKey</code> - inclusive lowest key in the counted range; pass null for open range</dd>
 <dd><code>highKey</code> - exclusive highest key in the counted range; pass null for open range</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -546,7 +584,7 @@ var activeTableTab = "activeTableTab";
 <h4>load</h4>
 <pre>default&nbsp;byte[]&nbsp;load(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                     byte[]&nbsp;key)
-             throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+             throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -558,9 +596,9 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>copy of value, or null if entry doesn't exist</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -572,7 +610,7 @@ var activeTableTab = "activeTableTab";
 <h4>exists</h4>
 <pre>default&nbsp;boolean&nbsp;exists(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Checks if an entry for the given key exists. This method should be called only if the
  value doesn't need to be loaded or stored &mdash; calling exists and then calling a load
  or store method is typically less efficient than skipping the exists check entirely.
@@ -586,9 +624,9 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>true if entry exists</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -601,7 +639,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;void&nbsp;store(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                    byte[]&nbsp;key,
                    byte[]&nbsp;value)
-            throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Unconditionally associates a value with the given key.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -612,10 +650,10 @@ var activeTableTab = "activeTableTab";
 <dd><code>key</code> - non-null key</dd>
 <dd><code>value</code> - value to store; pass null to delete</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -628,7 +666,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;byte[]&nbsp;exchange(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                         byte[]&nbsp;key,
                         byte[]&nbsp;value)
-                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -641,10 +679,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>copy of previous value, or null if none</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -657,7 +695,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;boolean&nbsp;insert(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key,
                        byte[]&nbsp;value)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Associates a value with the given key, unless a corresponding value already
  exists. Equivalent to: <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-"><code>update(txn, key, null, value)</code></a>
 
@@ -671,10 +709,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if entry already exists</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -687,7 +725,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;boolean&nbsp;replace(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                         byte[]&nbsp;key,
                         byte[]&nbsp;value)
-                 throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -700,10 +738,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no existing entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -716,7 +754,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;boolean&nbsp;update(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key,
                        byte[]&nbsp;value)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Associates a value with the given key, but only if the given value differs from the
  existing value.
 
@@ -730,10 +768,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if given value matches existing value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -747,7 +785,7 @@ var activeTableTab = "activeTableTab";
                        byte[]&nbsp;key,
                        byte[]&nbsp;oldValue,
                        byte[]&nbsp;newValue)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.
 
@@ -762,10 +800,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if existing value doesn't match</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -777,7 +815,7 @@ var activeTableTab = "activeTableTab";
 <h4>delete</h4>
 <pre>default&nbsp;boolean&nbsp;delete(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Unconditionally removes the entry associated with the given key. Equivalent to:
  <a href="../../../org/cojen/tupl/View.html#replace-org.cojen.tupl.Transaction-byte:A-byte:A-"><code>replace(txn, key, null)</code></a>
 
@@ -790,10 +828,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no existing entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if remove is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -806,7 +844,7 @@ var activeTableTab = "activeTableTab";
 <pre>default&nbsp;boolean&nbsp;remove(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                        byte[]&nbsp;key,
                        byte[]&nbsp;value)
-                throws <a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Removes the entry associated with the given key, but only if the given value
  matches. Equivalent to: <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-"><code>update(txn, key, value, null)</code></a>
 
@@ -820,10 +858,10 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if existing value doesn't match</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if remove is not permitted</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -849,8 +887,8 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </li>
@@ -880,8 +918,8 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 </dl>
@@ -910,8 +948,8 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -943,7 +981,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 </dl>
@@ -972,7 +1010,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted, timed out, or illegal upgrade</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -1004,7 +1042,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 </dl>
@@ -1034,7 +1072,7 @@ var activeTableTab = "activeTableTab";
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or
  <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted, timed out, or illegal upgrade</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -1055,7 +1093,7 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 </dl>
 </li>
@@ -1075,8 +1113,8 @@ var activeTableTab = "activeTableTab";
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </li>
 </ul>
@@ -1095,8 +1133,8 @@ var activeTableTab = "activeTableTab";
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </li>
 </ul>
@@ -1115,8 +1153,8 @@ var activeTableTab = "activeTableTab";
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </li>
 </ul>
@@ -1135,8 +1173,8 @@ var activeTableTab = "activeTableTab";
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </li>
 </ul>
@@ -1158,9 +1196,9 @@ var activeTableTab = "activeTableTab";
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>trim</code> - amount of prefix length to trim from all keys in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if prefix is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if trim is longer than prefix</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if prefix is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if trim is longer than prefix</dd>
 </dl>
 </li>
 </ul>
@@ -1178,7 +1216,7 @@ var activeTableTab = "activeTableTab";
  insert an entry not supported by the transformer.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if transformer is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if transformer is null</dd>
 </dl>
 </li>
 </ul>
@@ -1202,8 +1240,8 @@ var activeTableTab = "activeTableTab";
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="../../../org/cojen/tupl/Combiner.html#first--"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the union</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </li>
@@ -1227,8 +1265,8 @@ var activeTableTab = "activeTableTab";
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="../../../org/cojen/tupl/Combiner.html#first--"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the intersection</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </li>
@@ -1252,8 +1290,8 @@ var activeTableTab = "activeTableTab";
 <dd><code>combiner</code> - combines common entries together; pass null to always <a href="../../../org/cojen/tupl/Combiner.html#discard--"><code>discard</code></a> them</dd>
 <dd><code>second</code> - required second view in the difference</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="http://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </li>
