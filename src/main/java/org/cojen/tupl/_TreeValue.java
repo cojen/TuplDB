@@ -1461,45 +1461,19 @@ final class _TreeValue {
         } else {
             // Convert to indirect format.
 
-            int levels = db.calculateInodeLevels(fLen - fInlineLen);
-
-            if (levels > 0) {
-                _Node[] inodes = new _Node[levels];
-
-                for (int i=0; i<inodes.length; i++) {
-                    try {
-                        inodes[i] = db.allocDirtyFragmentNode();
-                    } catch (Throwable e) {
-                        node.releaseExclusive();
-                        try {
-                            // Clean up the mess.
-                            while (--i >= 0) {
-                                db.deleteNode(inodes[i], true);
-                            }
-                        } catch (Throwable e2) {
-                            suppress(e, e2);
-                            db.close(e);
-                        }
-                        throw e;
-                    }
+            if ((fLen - fInlineLen) > pageSize) {
+                _Node inode;
+                try {
+                    inode = db.allocDirtyFragmentNode();
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
                 }
 
-                // Copy direct pointers to inode.
-                _Node inode = inodes[--levels];
                 long ipage = inode.mPage;
                 p_copy(page, loc, ipage, 0, tailLen);
                 // Zero-fill the rest.
                 p_clear(ipage, tailLen, pageSize);
-
-                while (levels > 0) {
-                    _Node upper = inodes[--levels];
-                    long upage = upper.mPage;
-                    p_int48PutLE(upage, 0, inode.mId);
-                    inode.releaseExclusive();
-                    // Zero-fill the rest.
-                    p_clear(upage, 6, pageSize);
-                    inode = upper;
-                }
 
                 // Reference the root inode.
                 p_int48PutLE(page, loc, inode.mId);
