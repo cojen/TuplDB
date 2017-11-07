@@ -474,9 +474,8 @@ final class _TreeValue {
             }
 
             case OP_SET_LENGTH:
-                long endPos = pos + bLen;
-                if (endPos <= fLen) {
-                    if (endPos == fLen) {
+                if (pos <= fLen) {
+                    if (pos == fLen) {
                         return 0;
                     }
 
@@ -497,77 +496,60 @@ final class _TreeValue {
                     doTruncate: if ((fHeader & 0x01) == 0) {
                         // Truncate direct pointers.
 
-                        int pageSize = pageSize(db, page);
-                        int oldCount = (int) pointerCount(pageSize, fLen - fInlineLen);
-                        int newCount = (int) pointerCount(pageSize, endPos - fInlineLen);
-                        int lowLoc = loc + 6 * newCount;
+                        int truncateLen = (int) (fLen - pos - fInlineLen);
+                        final int pageSize = pageSize(db, page);
+                        final int ipos = (int) (pos - fInlineLen);
+                        loc += (ipos / pageSize) * 6;
+                        int fNodeOff = ipos % pageSize;
 
-                        long remainder = (endPos - fInlineLen) % pageSize;
-                        _Node lastNode = null;
-
-                        // FIXME: truncate in forward order, for simplicity and consistency
-
-                        if (remainder > 0) {
-                            // The last highest remaining page (at lowLoc) will need to be
-                            // zero-filled up to the end. Attempt to dirty it early, in case an
-                            // exception is thrown.
-                            long lastNodeId = p_uint48GetLE(page, lowLoc - 6);
-                            if (lastNodeId != 0) {
-                                lastNode = db.nodeMapLoadFragmentExclusive(lastNodeId, true);
+                        if (fNodeOff > 0) {
+                            // Last remaining page is partially truncated.
+                            long fNodeId = p_uint48GetLE(page, loc);
+                            if (fNodeId != 0) {
+                                _Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                                 try {
-                                    if (db.markFragmentDirty(lastNode)) {
-                                        p_int48PutLE(page, lowLoc - 6, lastNode.mId);
+                                    if (db.markFragmentDirty(fNode)) {
+                                        p_int48PutLE(page, loc, fNode.mId);
                                     }
+                                    // Zero fill the end.
+                                    p_clear(fNode.mPage, fNodeOff, pageSize);
                                 } catch (Throwable e) {
-                                    lastNode.releaseExclusive();
+                                    node.releaseExclusive();
                                     throw e;
+                                } finally {
+                                    fNode.releaseExclusive();
                                 }
+                                loc += 6;
+                                truncateLen -= pageSize;
                             }
                         }
 
-                        if (newCount < oldCount) {
-                            int highLoc = loc + 6 * oldCount;
-                            int shrinkage = highLoc - lowLoc;
+                        if (truncateLen > 0) {
+                            final int startLoc = loc;
 
                             do {
-                                highLoc -= 6;
-                                long nodeId = p_uint48GetLE(page, highLoc);
                                 try {
-                                    db.deleteFragment(nodeId);
+                                    db.deleteFragment(p_uint48GetLE(page, loc));
                                 } catch (Throwable e) {
-                                    // Handle partial truncation.
-                                    if (lastNode != null) {
-                                        lastNode.releaseExclusive();
-                                    }
-                                    highLoc += 6;
-                                    shrinkage -= highLoc - lowLoc;
-                                    if (shrinkage > 0) {
-                                        long remainingLen = fInlineLen
-                                            + ((highLoc - lowLoc) / 6L) * pageSize;
-                                        fHeaderLoc = truncateFragmented
-                                            (node, page, vHeaderLoc, vLen, shrinkage);
-                                        updateLengthField(page, fHeaderLoc, remainingLen);
-                                    }
+                                    node.releaseExclusive();
                                     throw e;
                                 }
-                            } while (highLoc > lowLoc);
+                                p_int48PutLE(page, loc, 0);
+                                loc += 6;
+                                truncateLen -= pageSize;
+                            } while (truncateLen > 0);
 
-                            if (lowLoc == loc) {
+                            int shrinkage = loc - startLoc;
+
+                            if (ipos <= 0) {
                                 // All pointers are gone, so convert to a normal value.
-                                int newLen = (int) endPos;
-                                fragmentedToNormal(node, page, vHeaderLoc, fInlineLoc, newLen,
-                                                   shrinkage + (fInlineLen - newLen));
+                                fragmentedToNormal(node, page, vHeaderLoc, fInlineLoc,
+                                                   fInlineLen + ipos, shrinkage - ipos);
                                 return 0;
                             }
 
                             fHeaderLoc = truncateFragmented
                                 (node, page, vHeaderLoc, vLen, shrinkage);
-                        }
-
-                        if (lastNode != null) {
-                            // Zero fill the end.
-                            p_clear(lastNode.mPage, (int) remainder, pageSize);
-                            lastNode.releaseExclusive();
                         }
                     } else {
                         // Truncate indirect pointers.
@@ -587,14 +569,13 @@ final class _TreeValue {
                                     p_int48PutLE(page, loc, inode.mId);
                                 }
                                 levels = db.calculateInodeLevels(fLen);
-                                truncateMultilevelFragments
-                                    (db, endPos, levels, inode, fLen - endPos);
+                                truncateMultilevelFragments(db, pos, levels, inode, fLen - pos);
                             } catch (Throwable e) {
                                 inode.releaseExclusive();
                                 throw e;
                             }
 
-                            final int newLevels = db.calculateInodeLevels(endPos);
+                            final int newLevels = db.calculateInodeLevels(pos);
 
                             if (newLevels >= levels) {
                                 inode.releaseExclusive();
@@ -628,7 +609,7 @@ final class _TreeValue {
                             p_int48PutLE(page, loc, inodeId);
 
                             if (newLevels <= 0) {
-                                if (endPos == 0) {
+                                if (pos == 0) {
                                     // Convert to an empty value.
                                     p_bytePut(page, vHeaderLoc, 0);
                                     int garbageAccum = fHeaderLoc - vHeaderLoc + vLen - 1;
@@ -647,14 +628,14 @@ final class _TreeValue {
                         }
                     }
 
-                    updateLengthField(page, fHeaderLoc, endPos);
+                    updateLengthField(page, fHeaderLoc, pos);
                     return 0;
                 }
 
                 // Fall through to extend the length.
 
             case OP_WRITE:
-                endPos = pos + bLen;
+                final long endPos = pos + bLen;
 
                 int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
