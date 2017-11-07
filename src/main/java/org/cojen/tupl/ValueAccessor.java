@@ -28,6 +28,8 @@ import java.io.OutputStream;
  * When using a {@link Cursor cursor} to access values, {@link Cursor#autoload(boolean)
  * autoload} should be disabled to prevent values from being fully loaded automatically
  *
+ * <p><b>Note: Transactional changes made through this interface don't currently work.</b>
+ *
  * @author Brian S O'Neill
  * @see View#newAccessor View.newAccessor
  */
