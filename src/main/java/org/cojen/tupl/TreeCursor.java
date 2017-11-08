@@ -3145,7 +3145,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final boolean deleteGhost(byte[] key) throws IOException {
         try {
             // Find with no lock because it has already been acquired.
-            // TODO: Use nearby optimization when used with transactional Index.clear.
             find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
 
             CursorFrame leaf = mLeaf;
