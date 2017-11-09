@@ -87,8 +87,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     public byte[] key();
 
     /**
-     * Returns an uncopied reference to the current value, which might be null
-     * or {@link #NOT_LOADED}. Array contents can be safely modified.
+     * Returns an uncopied reference to the current value, which might be null or {@link
+     * #NOT_LOADED}. Array contents can be safely modified. Altering the value via the {@link
+     * ValueAccessor} methods doesn't affect the object returned by this method.
      */
     public byte[] value();
 

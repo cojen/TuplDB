@@ -453,8 +453,7 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <tr id="i41" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#value--">value</a></span>()</code>
-<div class="block">Returns an uncopied reference to the current value, which might be null
- or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
+<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </td>
 </tr>
 <tr id="i42" class="altColor">
@@ -824,8 +823,7 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <li class="blockList">
 <h4>value</h4>
 <pre>public&nbsp;byte[]&nbsp;value()</pre>
-<div class="block">Returns an uncopied reference to the current value, which might be null
- or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>. Array contents can be safely modified.</div>
+<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>. Array contents can be safely modified. Altering the value via the <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>ValueAccessor</code></a> methods doesn't affect the object returned by this method.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/Cursor.html#value--">value</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
