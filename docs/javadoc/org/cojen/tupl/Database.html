@@ -100,12 +100,12 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></dd>
 </dl>
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">Database</span>
-extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
+extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
 <div class="block">Primary database interface, containing a collection of transactional indexes. Call <a href="../../../org/cojen/tupl/Database.html#open-org.cojen.tupl.DatabaseConfig-"><code>open</code></a> to obtain a Database instance. Examples:
 
  <p>Open a non-durable database, limited to a max size of 100MB:
@@ -186,7 +186,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-">applyCachePrimer</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-">applyCachePrimer</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
 <div class="block">Prime the cache, from a set encoded <a href="../../../org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-"><code>earlier</code></a>.</div>
 </td>
 </tr>
@@ -231,7 +231,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#close-java.lang.Throwable-">close</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#close-java.lang.Throwable-">close</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
 <div class="block">Closes the database after an unexpected failure.</div>
 </td>
 </tr>
@@ -244,12 +244,12 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-">createCachePrimer</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-">createCachePrimer</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)</code>
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to <a href="../../../org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-"><code>prime</code></a> the cache.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#deleteIndex-org.cojen.tupl.Index-">deleteIndex</a></span>(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code>
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied.</div>
@@ -270,7 +270,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 </tr>
 <tr id="i13" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#findIndex-java.lang.String-">findIndex</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#findIndex-java.lang.String-">findIndex</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)</code>
 <div class="block">Returns the given named index, returning null if not found.</div>
 </td>
 </tr>
@@ -339,7 +339,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 </tr>
 <tr id="i24" class="altColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#openIndex-java.lang.String-">openIndex</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#openIndex-java.lang.String-">openIndex</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)</code>
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
 </tr>
@@ -359,14 +359,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <tr id="i27" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#renameIndex-org.cojen.tupl.Index-java.lang.String-">renameIndex</a></span>(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-           <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;newName)</code>
+           <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;newName)</code>
 <div class="block">Renames the given index to the one given.</div>
 </td>
 </tr>
 <tr id="i28" class="altColor">
 <td class="colFirst"><code>static <a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.html#restoreFromSnapshot-org.cojen.tupl.DatabaseConfig-java.io.InputStream-">restoreFromSnapshot</a></span>(<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
-                   <a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
+                   <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
 <div class="block">Restore from a <a href="../../../org/cojen/tupl/Database.html#beginSnapshot--"><code>snapshot</code></a>, into the data files defined by the given
  configuration.</div>
 </td>
@@ -430,11 +430,11 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>open</h4>
 <pre>static&nbsp;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;open(<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Open a database, creating it if necessary.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -445,13 +445,13 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>destroy</h4>
 <pre>static&nbsp;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;destroy(<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Delete the contents of an existing database, and replace it with an
  empty one. When using a raw block device for the data file, this method
  must be used to format it.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -462,13 +462,13 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>findIndex</h4>
 <pre><a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;findIndex(byte[]&nbsp;name)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the given named index, returning null if not found.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>shared Index instance; null if not found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -478,15 +478,15 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>findIndex</h4>
-<pre>default&nbsp;<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;findIndex(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;findIndex(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the given named index, returning null if not found. Name is UTF-8
  encoded.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>shared Index instance; null if not found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -497,13 +497,13 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>openIndex</h4>
 <pre><a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;openIndex(byte[]&nbsp;name)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the given named index, creating it if necessary.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>shared Index instance</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -513,15 +513,15 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>openIndex</h4>
-<pre>default&nbsp;<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;openIndex(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;openIndex(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;name)
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the given named index, creating it if necessary. Name is UTF-8
  encoded.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>shared Index instance</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -532,12 +532,12 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>indexById</h4>
 <pre><a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;indexById(long&nbsp;id)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if id is reserved</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if id is reserved</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -548,14 +548,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>indexById</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;indexById(byte[]&nbsp;id)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>id</code> - big-endian encoded long integer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if id is malformed or reserved</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if id is malformed or reserved</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -567,7 +567,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <h4>renameIndex</h4>
 <pre>void&nbsp;renameIndex(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
                  byte[]&nbsp;newName)
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Renames the given index to the one given.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -575,9 +575,9 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dd><code>newName</code> - new non-null name</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if name is already in use by another index</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if name is already in use by another index</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -588,8 +588,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>renameIndex</h4>
 <pre>default&nbsp;void&nbsp;renameIndex(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-                         <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;newName)
-                  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;newName)
+                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Renames the given index to the one given. Name is UTF-8 encoded.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -597,9 +597,9 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dd><code>newName</code> - new non-null name</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if name is already in use by another index</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if name is already in use by another index</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -609,8 +609,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>deleteIndex</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;deleteIndex(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;deleteIndex(<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied. Run the returned task in any thread to reclaim the pages.
 
@@ -628,8 +628,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dd>non-null task to call for reclaiming the pages used by the deleted index</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a>, 
 <a href="../../../org/cojen/tupl/Index.html#drop--"><code>Index.drop</code></a></dd>
@@ -643,12 +643,12 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>newTemporaryIndex</h4>
 <pre><a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;newTemporaryIndex()
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Creates a new unnamed temporary index. Temporary indexes never get written to the redo
  log, and they are deleted when the database is re-opened.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -659,12 +659,12 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>indexRegistryByName</h4>
 <pre><a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>&nbsp;indexRegistryByName()
-                  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns an <a href="../../../org/cojen/tupl/UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
  index names to identifiers. Identifiers are long integers, <a href="../../../org/cojen/tupl/io/Utils.html#decodeLongBE-byte:A-int-"><code>big-endian</code></a> encoded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -675,12 +675,12 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>indexRegistryById</h4>
 <pre><a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>&nbsp;indexRegistryById()
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns an <a href="../../../org/cojen/tupl/UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
  index identifiers to names. Identifiers are long integers, <a href="../../../org/cojen/tupl/io/Utils.html#decodeLongBE-byte:A-int-"><code>big-endian</code></a> encoded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -713,14 +713,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>preallocate</h4>
 <pre>long&nbsp;preallocate(long&nbsp;bytes)
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Preallocates pages for immediate use. The actual amount allocated
  varies, depending on the amount of free pages already available.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>actual amount allocated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -781,7 +781,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>beginSnapshot</h4>
 <pre><a href="../../../org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a>&nbsp;beginSnapshot()
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Support for capturing a snapshot (hot backup) of the database, while
  still allowing concurrent modifications. The snapshot contains all data
  up to the last checkpoint. Call the <a href="../../../org/cojen/tupl/Database.html#checkpoint--"><code>checkpoint</code></a>
@@ -802,7 +802,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a snapshot control object, which must be closed when no longer needed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -813,8 +813,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>restoreFromSnapshot</h4>
 <pre>static&nbsp;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;restoreFromSnapshot(<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
-                                    <a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)
-                             throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                                    <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)
+                             throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Restore from a <a href="../../../org/cojen/tupl/Database.html#beginSnapshot--"><code>snapshot</code></a>, into the data files defined by the given
  configuration. All existing data and redo log files at the snapshot destination are
  deleted before the restore begins.</div>
@@ -822,7 +822,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>in</code> - snapshot source; does not require extra buffering; auto-closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -832,14 +832,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>createCachePrimer</h4>
-<pre>void&nbsp;createCachePrimer(<a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>void&nbsp;createCachePrimer(<a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to <a href="../../../org/cojen/tupl/Database.html#applyCachePrimer-java.io.InputStream-"><code>prime</code></a> the cache.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>out</code> - cache priming destination; buffering is recommended; not auto-closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/DatabaseConfig.html#cachePriming-boolean-"><code>DatabaseConfig.cachePriming(boolean)</code></a></dd>
 </dl>
@@ -851,14 +851,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>applyCachePrimer</h4>
-<pre>void&nbsp;applyCachePrimer(<a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)
-               throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>void&nbsp;applyCachePrimer(<a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)
+               throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Prime the cache, from a set encoded <a href="../../../org/cojen/tupl/Database.html#createCachePrimer-java.io.OutputStream-"><code>earlier</code></a>.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>in</code> - caching priming source; buffering is recommended; not auto-closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/DatabaseConfig.html#cachePriming-boolean-"><code>DatabaseConfig.cachePriming(boolean)</code></a></dd>
 </dl>
@@ -881,16 +881,16 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>flush</h4>
 <pre>void&nbsp;flush()
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Flushes all committed transactions, but not durably. Transactions committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> effectively become <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> durable.
 
  <p>When the database is replicated, the no-flush mode is identical to the no-sync mode.
  Calling this method on a replicated database has no effect.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -901,7 +901,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>sync</h4>
 <pre>void&nbsp;sync()
-   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Durably flushes all committed transactions. Transactions committed with <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> and <a href="../../../org/cojen/tupl/DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> effectively
  become <a href="../../../org/cojen/tupl/DurabilityMode.html#SYNC"><code>sync</code></a> durable.
 
@@ -912,7 +912,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
  guarantee.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -923,14 +923,14 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>checkpoint</h4>
 <pre>void&nbsp;checkpoint()
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Durably sync and checkpoint all changes to the database. In addition to ensuring that
  all committed transactions are durable, checkpointing ensures that non-transactional
  modifications are durable. Checkpoints are performed automatically by a background
  thread, at a <a href="../../../org/cojen/tupl/DatabaseConfig.html#checkpointRate-long-java.util.concurrent.TimeUnit-"><code>configurable</code></a> rate.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -946,7 +946,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
  <a href="../../../org/cojen/tupl/Database.html#resumeCheckpoints--"><code>resume</code></a> call to enable automatic checkpoints again.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if suspended more than 2<sup>31</sup> times</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if suspended more than 2<sup>31</sup> times</dd>
 </dl>
 </li>
 </ul>
@@ -960,7 +960,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <div class="block">Resume automatic checkpoints after having been temporarily <a href="../../../org/cojen/tupl/Database.html#suspendCheckpoints--"><code>suspended</code></a>.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if resumed more than suspended</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if resumed more than suspended</dd>
 </dl>
 </li>
 </ul>
@@ -972,7 +972,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <h4>compactFile</h4>
 <pre>boolean&nbsp;compactFile(<a href="../../../org/cojen/tupl/CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
                     double&nbsp;target)
-             throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+             throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Compacts the database by shrinking the database file. The compaction target is the
  desired file utilization, and it controls how much compaction should be performed. A
  target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
@@ -995,9 +995,9 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if file compaction aborted</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if compaction target is out of bounds</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if compaction is already in progress</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if compaction target is out of bounds</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if compaction is already in progress</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1008,7 +1008,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>verify</h4>
 <pre>boolean&nbsp;verify(<a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)
-        throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+        throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -1016,7 +1016,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>true if verification passed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1027,17 +1027,17 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>close</h4>
 <pre>default&nbsp;void&nbsp;close()
-            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Closes the database, ensuring durability of committed transactions. No
  checkpoint is performed by this method, and so non-transactional
  modifications can be lost.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/Database.html#shutdown--"><code>shutdown()</code></a></dd>
 </dl>
@@ -1049,8 +1049,8 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <ul class="blockList">
 <li class="blockList">
 <h4>close</h4>
-<pre>void&nbsp;close(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>void&nbsp;close(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Closes the database after an unexpected failure. No checkpoint is performed by this
  method, and so non-transactional modifications can be lost.</div>
 <dl>
@@ -1060,7 +1060,7 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <dd><code>cause</code> - if non-null, delivers a <a href="../../../org/cojen/tupl/EventType.html#PANIC_UNHANDLED_EXCEPTION"><code>panic</code></a>
  event and future database accesses will rethrow the cause</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/Database.html#shutdown--"><code>shutdown()</code></a></dd>
 </dl>
@@ -1073,13 +1073,13 @@ extends <a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interfac
 <li class="blockList">
 <h4>shutdown</h4>
 <pre>void&nbsp;shutdown()
-       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
  issued first, and so a quick recovery is performed when the database is re-opened. As a
  side effect of shutting down, all extraneous files are deleted.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

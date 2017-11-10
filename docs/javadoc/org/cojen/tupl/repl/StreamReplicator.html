@@ -100,7 +100,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dd>
 </dl>
 <hr>
 <br>
@@ -179,7 +179,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</code>
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
  which must propagate through the replication log.</div>
 </td>
@@ -237,8 +237,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <li class="blockList"><a name="methods.inherited.from.class.java.io.Closeable">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></h3>
-<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code></li>
+<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></h3>
+<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code></li>
 </ul>
 </li>
 </ul>
@@ -261,12 +261,12 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <li class="blockList">
 <h4>open</h4>
 <pre>static&nbsp;<a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;open(<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)
-                      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                      throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if misconfigured</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if misconfigured</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -296,7 +296,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>reader or possibly null when follow is false</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if index is lower than the start index</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if index is lower than the start index</dd>
 </dl>
 </li>
 </ul>
@@ -318,7 +318,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>
 </ul>
@@ -343,7 +343,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>
 </ul>
@@ -355,7 +355,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <h4>controlMessageReceived</h4>
 <pre>void&nbsp;controlMessageReceived(long&nbsp;index,
                             byte[]&nbsp;message)
-                     throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                     throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>. Control messages must be passed along in the original
  order in which they were created. A control message cannot be treated as applied until
  after this method returns.</div>
@@ -363,7 +363,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - log index just after the message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -373,7 +373,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <ul class="blockListLast">
 <li class="blockList">
 <h4>controlMessageAcceptor</h4>
-<pre>void&nbsp;controlMessageAcceptor(<a href="https://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</pre>
+<pre>void&nbsp;controlMessageAcceptor(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</pre>
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
  which must propagate through the replication log. From the perspective of the acceptor,
  control messages should be treated as opaque. Control messages are primarily used for
