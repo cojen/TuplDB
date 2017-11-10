@@ -100,7 +100,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -109,7 +109,7 @@ var activeTableTab = "activeTableTab";
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">Scanner</span>
-extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></pre>
+extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></pre>
 <div class="block">Scans through all entries in a view and passes them to a consumer. Scanner implementations
  which perform pre-fetching can be more efficient than a <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a>. Any exception
  thrown by a scan action automatically closes the Scanner.
@@ -146,7 +146,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Scanner.html#close--">close</a></span>()</code>&nbsp;</td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Scanner.html#getComparator--">getComparator</a></span>()</code>
 <div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
 </td>
@@ -202,7 +202,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <ul class="blockList">
 <li class="blockList">
 <h4>getComparator</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator()</pre>
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator()</pre>
 <div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
 </li>
 </ul>
@@ -234,13 +234,13 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <li class="blockList">
 <h4>step</h4>
 <pre>boolean&nbsp;step()
-      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+      throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Step to the next entry.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no more entries remain and scanner has been closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -251,7 +251,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <li class="blockList">
 <h4>step</h4>
 <pre>default&nbsp;boolean&nbsp;step(long&nbsp;amount)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Steps over the requested amount of entries.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -259,8 +259,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no more entries remain and scanner has been closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if amount is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if amount is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -271,11 +271,11 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <li class="blockList">
 <h4>scanAll</h4>
 <pre>default&nbsp;void&nbsp;scanAll(<a href="../../../org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a>&nbsp;action)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Calls the given action for each remaining entry, and then closes the scanner.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -286,12 +286,12 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseab
 <li class="blockList">
 <h4>close</h4>
 <pre>void&nbsp;close()
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

@@ -156,7 +156,7 @@ var activeTableTab = "activeTableTab";
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#leaderNotify-java.lang.Runnable-">leaderNotify</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;callback)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html#leaderNotify-java.lang.Runnable-">leaderNotify</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;callback)</code>
 <div class="block">Invokes the given callback upon a leadership change.</div>
 </td>
 </tr>
@@ -217,7 +217,7 @@ var activeTableTab = "activeTableTab";
 <ul class="blockList">
 <li class="blockList">
 <h4>leaderNotify</h4>
-<pre>boolean&nbsp;leaderNotify(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;callback)</pre>
+<pre>boolean&nbsp;leaderNotify(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang">Runnable</a>&nbsp;callback)</pre>
 <div class="block">Invokes the given callback upon a leadership change. Callback should be invoked at
  most once, but extra invocations are ignored.</div>
 <dl>
@@ -236,7 +236,7 @@ var activeTableTab = "activeTableTab";
               int&nbsp;off,
               int&nbsp;len,
               long&nbsp;commitPos)
-       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Fully writes the given data, returning a potential confirmation position. When the
  local instance loses leadership, all data rolls back to the highest confirmed
  position.
@@ -255,8 +255,8 @@ var activeTableTab = "activeTableTab";
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if not leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if commitPos is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if commitPos is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -267,7 +267,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>confirm</h4>
 <pre>default&nbsp;boolean&nbsp;confirm(long&nbsp;commitPos)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -276,7 +276,7 @@ var activeTableTab = "activeTableTab";
 <dd>false if not leader at the given position</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -288,7 +288,7 @@ var activeTableTab = "activeTableTab";
 <h4>confirm</h4>
 <pre>boolean&nbsp;confirm(long&nbsp;commitPos,
                 long&nbsp;timeoutNanos)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until all data up to the given log position is confirmed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -298,7 +298,7 @@ var activeTableTab = "activeTableTab";
 <dd>false if not leader at the given position</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

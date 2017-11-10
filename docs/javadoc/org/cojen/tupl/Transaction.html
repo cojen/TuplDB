@@ -100,12 +100,12 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></dd>
 </dl>
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">Transaction</span>
-extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
+extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
 <div class="block">Defines a logical unit of work. Transaction instances can only be safely
  used by one thread at a time, and they must be <a href="../../../org/cojen/tupl/Transaction.html#reset--"><code>reset</code></a> when no
  longer needed. Instances can be exchanged by threads, as long as a
@@ -179,12 +179,12 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#attach-java.lang.Object-">attach</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#attach-java.lang.Object-">attach</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#attachment--">attachment</a></span>()</code>
 <div class="block">Returns any attachment which was set earlier.</div>
 </td>
@@ -320,13 +320,13 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <tr id="i21" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-long-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(long&nbsp;timeout,
-           <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
+           <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Sets the lock timeout for the current scope.</div>
 </td>
 </tr>
 <tr id="i22" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </td>
 </tr>
@@ -361,7 +361,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 </tr>
 <tr id="i27" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset-java.lang.Throwable-">reset</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset-java.lang.Throwable-">reset</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
 </tr>
@@ -423,8 +423,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList"><a name="methods.inherited.from.class.java.io.Flushable">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></h3>
-<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code></li>
+<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></h3>
+<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code></li>
 </ul>
 </li>
 </ul>
@@ -474,7 +474,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>mode</code> - new lock mode</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if mode is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if mode is null</dd>
 </dl>
 </li>
 </ul>
@@ -495,7 +495,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>lockTimeout</h4>
 <pre>void&nbsp;lockTimeout(long&nbsp;timeout,
-                 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</pre>
+                 <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</pre>
 <div class="block">Sets the lock timeout for the current scope. A negative timeout is
  infinite.</div>
 <dl>
@@ -510,7 +510,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>lockTimeout</h4>
-<pre>long&nbsp;lockTimeout(<a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</pre>
+<pre>long&nbsp;lockTimeout(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</pre>
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </li>
 </ul>
@@ -530,7 +530,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>mode</code> - new durability mode</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if mode is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if mode is null</dd>
 </dl>
 </li>
 </ul>
@@ -557,7 +557,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/InvalidTransactionException.html" title="class in org.cojen.tupl">InvalidTransactionException</a></code> - if transaction is broken or was invalidated by
  an earlier exception</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if transaction is bogus</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if transaction is bogus</dd>
 <dd><code><a href="../../../org/cojen/tupl/DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></code></dd>
 </dl>
 </li>
@@ -569,14 +569,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>commit</h4>
 <pre>void&nbsp;commit()
-     throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+     throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Commits all modifications made within the current transaction scope. The
  current scope is still valid after this method is called, unless an
  exception is thrown. Call exit or reset to fully release transaction
  resources.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -587,11 +587,11 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>commitAll</h4>
 <pre>void&nbsp;commitAll()
-        throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+        throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Commits and exits all transaction scopes.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -602,11 +602,11 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>enter</h4>
 <pre>void&nbsp;enter()
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Enters a nested transaction scope.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -617,13 +617,13 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>exit</h4>
 <pre>void&nbsp;exit()
-   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Exits the current transaction scope, rolling back all uncommitted
  modifications made within. The transaction is still valid after this
  method is called, unless an exception is thrown.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -634,7 +634,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>reset</h4>
 <pre>void&nbsp;reset()
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
 
  <pre>
@@ -645,7 +645,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
  </pre></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -655,7 +655,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>reset</h4>
-<pre>default&nbsp;void&nbsp;reset(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</pre>
+<pre>default&nbsp;void&nbsp;reset(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</pre>
 <div class="block">Reset the transaction due to the given cause. This provides an opportunity to prevent
  this transaction from being used any further. No exception is thrown when invoking this
  method.</div>
@@ -688,7 +688,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 </dl>
@@ -756,7 +756,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <pre>void&nbsp;customRedo(byte[]&nbsp;message,
                 long&nbsp;indexId,
                 byte[]&nbsp;key)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Supply a message for a custom redo handler. Redo operations should be paired with undo
  operations.
 
@@ -767,10 +767,10 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dd><code>indexId</code> - index for lock acquisition; zero if not applicable</dd>
 <dd><code>key</code> - key which has been locked exclusively; null if not applicable</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed; if index and key
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed; if index and key
  are provided but lock isn't held</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index id is zero and key is non-null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if index id is zero and key is non-null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><code>TransactionHandler</code></a></dd>
 </dl>
@@ -783,7 +783,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <li class="blockList">
 <h4>customUndo</h4>
 <pre>void&nbsp;customUndo(byte[]&nbsp;message)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Supply a message for a custom undo handler. Undo operations should be paired with redo
  operations.
 
@@ -792,8 +792,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>message</code> - message to pass to transaction handler</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no transaction handler is installed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><code>TransactionHandler</code></a></dd>
 </dl>
@@ -843,7 +843,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 </dl>
 </li>
@@ -872,7 +872,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 </dl>
@@ -1022,7 +1022,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>locked index id</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held</dd>
 </dl>
 </li>
 </ul>
@@ -1040,7 +1040,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>locked key; instance is not cloned</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held</dd>
 </dl>
 </li>
 </ul>
@@ -1058,7 +1058,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
  unlocking a non-immediate upgrade</dd>
 </dl>
 </li>
@@ -1077,7 +1077,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
  too many shared locks, or if unlocking a non-immediate upgrade</dd>
 </dl>
 </li>
@@ -1095,7 +1095,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
  last lock is shared</dd>
 </dl>
 </li>
@@ -1112,7 +1112,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if no locks held, or if crossing a scope boundary, or if
  combining an acquire with an upgrade</dd>
 </dl>
 </li>
@@ -1123,7 +1123,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>attach</h4>
-<pre>default&nbsp;void&nbsp;attach(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</pre>
+<pre>default&nbsp;void&nbsp;attach(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</pre>
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it. Attachments
  can become visible to other threads as a result of a <a href="../../../org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl"><code>LockTimeoutException</code></a>. A
  happens-before relationship is guaranteed only if the attachment is set before the
@@ -1142,7 +1142,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.htm
 <ul class="blockListLast">
 <li class="blockList">
 <h4>attachment</h4>
-<pre>default&nbsp;<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;attachment()</pre>
+<pre>default&nbsp;<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;attachment()</pre>
 <div class="block">Returns any attachment which was set earlier.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>

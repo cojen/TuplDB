@@ -100,7 +100,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></dd>
 </dl>
 <dl>
 <dt>Enclosing interface:</dt>
@@ -188,14 +188,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <li class="blockList">
 <h4>read</h4>
 <pre>default&nbsp;int&nbsp;read(byte[]&nbsp;buf)
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -208,14 +208,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <pre>int&nbsp;read(byte[]&nbsp;buf,
          int&nbsp;offset,
          int&nbsp;length)
-  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -228,14 +228,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <pre>default&nbsp;void&nbsp;readFully(byte[]&nbsp;buf,
                        int&nbsp;offset,
                        int&nbsp;length)
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
  index or term.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/EOFException.html?is-external=true" title="class or interface in java.io">EOFException</a></code> - if the term end has been reached too soon</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if log was deleted (index is too low)</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/EOFException.html?is-external=true" title="class or interface in java.io">EOFException</a></code> - if the term end has been reached too soon</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
