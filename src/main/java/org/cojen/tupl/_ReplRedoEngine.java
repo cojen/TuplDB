@@ -225,9 +225,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTaskAnywhere(new Worker.Task() {
             public void run() {
-                Index ix;
                 try {
-                    ix = getIndex(indexId);
+                    Index ix = getIndex(indexId);
 
                     // Full exclusive lock is required.
                     locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
@@ -239,7 +238,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             break;
                         } catch (ClosedIndexException e) {
                             // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId, null);
+                            ix = openIndex(indexId);
                         }
                     }
                 } catch (Throwable e) {
@@ -311,7 +310,9 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     // Open the index with the transaction to prevent deadlock
                     // when the instance is not cached and has to be loaded.
                     Index ix = getIndex(txn, indexId);
-                    mIndexes.remove(indexId);
+                    synchronized (mIndexes) {
+                        mIndexes.remove(indexId);
+                    }
 
                     try {
                         txn.commit();
@@ -482,7 +483,6 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() {
-                Index ix;
                 try {
                     if (!newTxn) {
                         txn.enter();
@@ -492,7 +492,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                         txn.push(lock);
                     }
 
-                    ix = getIndex(indexId);
+                    Index ix = getIndex(indexId);
 
                     while (true) {
                         try {
@@ -500,7 +500,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             break;
                         } catch (ClosedIndexException e) {
                             // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId, null);
+                            ix = openIndex(indexId);
                         }
                     }
                 } catch (Throwable e) {
@@ -525,13 +525,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() {
-                Index ix;
                 try {
                     if (lock != null) {
                         txn.push(lock);
                     }
 
-                    ix = getIndex(indexId);
+                    Index ix = getIndex(indexId);
 
                     while (true) {
                         try {
@@ -539,7 +538,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             break;
                         } catch (ClosedIndexException e) {
                             // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId, null);
+                            ix = openIndex(indexId);
                         }
                     }
                 } catch (Throwable e) {
@@ -564,13 +563,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() {
-                Index ix;
                 try {
                     if (lock != null) {
                         txn.push(lock);
                     }
 
-                    ix = getIndex(indexId);
+                    Index ix = getIndex(indexId);
 
                     while (true) {
                         try {
@@ -578,7 +576,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             break;
                         } catch (ClosedIndexException e) {
                             // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId, null);
+                            ix = openIndex(indexId);
                         }
                     }
 
@@ -612,13 +610,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         Worker.Task task = new Worker.Task() {
             public void run() {
-                Index ix;
                 try {
                     if (lock != null) {
                         txn.push(lock);
                     }
 
-                    ix = getIndex(indexId);
+                    Index ix = getIndex(indexId);
 
                     while (true) {
                         try {
@@ -626,7 +623,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                             break;
                         } catch (ClosedIndexException e) {
                             // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId, null);
+                            ix = openIndex(indexId);
                         }
                     }
 
@@ -914,27 +911,24 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     /**
      * Opens the index and puts it into the local cache, replacing the existing entry.
      *
+     * @param cleanup non-null to remove cleared references
      * @return null if not found
      */
-    private Index openIndex(Transaction txn, long indexId,
-                            LHashTable.ObjEntry<SoftReference<Index>> entry)
-        throws IOException
-    {
+    private Index openIndex(Transaction txn, long indexId, Object cleanup) throws IOException {
         Index ix = mDatabase.anyIndexById(txn, indexId);
         if (ix == null) {
             return null;
         }
 
         SoftReference<Index> ref = new SoftReference<>(ix);
-        if (entry == null) {
-            mIndexes.insert(indexId).value = ref;
-        } else {
-            entry.value = ref;
-        }
 
-        if (entry != null) {
-            // Remove entries for all other cleared references, freeing up memory.
-            mIndexes.traverse(e -> e.value.get() == null);
+        synchronized (mIndexes) {
+            mIndexes.insert(indexId).value = ref;
+
+            if (cleanup != null) {
+                // Remove entries for all other cleared references, freeing up memory.
+                mIndexes.traverse(e -> e.value.get() == null);
+            }
         }
 
         return ix;
@@ -945,10 +939,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
      *
      * @return null if not found
      */
-    private Index openIndex(long indexId, LHashTable.ObjEntry<SoftReference<Index>> entry)
-        throws IOException
-    {
-        return openIndex(null, indexId, entry);
+    private Index openIndex(long indexId) throws IOException {
+        return openIndex(null, indexId, null);
     }
 
     private void decode() {
