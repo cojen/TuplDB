@@ -231,14 +231,14 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     // Full exclusive lock is required.
                     locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
-                    while (true) {
+                    ix = getIndex(indexId);
+
+                    while (ix != null) {
                         try {
-                            ix = getIndex(indexId);
                             ix.store(Transaction.BOGUS, key, value);
                             break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId);
+                        } catch (Throwable e) {
+                            ix = reopenIndex(indexId, e);
                         }
                     }
                 } catch (Throwable e) {
@@ -494,13 +494,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                     Index ix = getIndex(indexId);
 
-                    while (true) {
+                    while (ix != null) {
                         try {
                             ix.store(txn, key, value);
                             break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId);
+                        } catch (Throwable e) {
+                            ix = reopenIndex(indexId, e);
                         }
                     }
                 } catch (Throwable e) {
@@ -532,13 +531,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                     Index ix = getIndex(indexId);
 
-                    while (true) {
+                    while (ix != null) {
                         try {
                             ix.store(txn, key, value);
                             break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId);
+                        } catch (Throwable e) {
+                            ix = reopenIndex(indexId, e);
                         }
                     }
                 } catch (Throwable e) {
@@ -570,13 +568,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                     Index ix = getIndex(indexId);
 
-                    while (true) {
+                    while (ix != null) {
                         try {
                             ix.store(txn, key, value);
                             break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId);
+                        } catch (Throwable e) {
+                            ix = reopenIndex(indexId, e);
                         }
                     }
 
@@ -617,13 +614,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                     Index ix = getIndex(indexId);
 
-                    while (true) {
+                    while (ix != null) {
                         try {
                             ix.store(txn, key, value);
                             break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            ix = openIndex(indexId);
+                        } catch (Throwable e) {
+                            ix = reopenIndex(indexId, e);
                         }
                     }
 
@@ -941,6 +937,27 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
      */
     private Index openIndex(long indexId) throws IOException {
         return openIndex(null, indexId, null);
+    }
+
+    /**
+     * Check if user closed the shared index reference, and re-open it. Returns null if index
+     * is truly gone.
+     *
+     * @param e cause, which is rethrown if not due to index closure
+     */
+    private Index reopenIndex(long indexId, final Throwable e) throws IOException {
+        Throwable cause = e;
+        while (true) {
+            if (cause instanceof ClosedIndexException) {
+                break;
+            }
+            cause = cause.getCause();
+            if (cause == null) {
+                rethrow(e);
+            }
+        }
+
+        return openIndex(indexId);
     }
 
     private void decode() {
