@@ -151,6 +151,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Thread t = new Thread(r);
         t.setDaemon(true);
         t.setName("ReplicationReceiver-" + Long.toUnsignedString(t.getId()));
+        t.setUncaughtExceptionHandler((thread, exception) -> fail(exception));
         return t;
     }
 
@@ -159,12 +160,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // Reset and discard all transactions.
         mTransactions.traverse(te -> {
             runTask(te, new Worker.Task() {
-                public void run() {
-                    try {
-                        te.mTxn.recoveryCleanup(true);
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
+                public void run() throws IOException {
+                    te.mTxn.recoveryCleanup(true);
                 }
             });
             return true;
@@ -224,26 +221,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         locker.tryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
         runTaskAnywhere(new Worker.Task() {
-            public void run() {
+            public void run() throws IOException {
                 try {
                     Index ix = getIndex(indexId);
 
                     // Full exclusive lock is required.
                     locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
-                    ix = getIndex(indexId);
-
-                    while (ix != null) {
-                        try {
-                            ix.store(Transaction.BOGUS, key, value);
-                            break;
-                        } catch (Throwable e) {
-                            ix = reopenIndex(indexId, e);
-                        }
-                    }
-                } catch (Throwable e) {
-                    fail(e);
-                    return;
+                    doStore(Transaction.BOGUS, indexId, key, value);
                 } finally {
                     locker.scopeUnlockAll();
                 }
@@ -287,11 +272,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTaskAnywhere(new Worker.Task() {
             public void run() {
-                try {
-                    mManager.notifyRename(ix, oldName, newName.clone());
-                } catch (Throwable e) {
-                    uncaught(e);
-                }
+                mManager.notifyRename(ix, oldName, newName.clone());
             }
         });
 
@@ -303,56 +284,52 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
-            public void run() {
+            public void run() throws IOException {
+                _LocalTransaction txn = te.mTxn;
+
+                // Open the index with the transaction to prevent deadlock
+                // when the instance is not cached and has to be loaded.
+                Index ix = getIndex(txn, indexId);
+                synchronized (mIndexes) {
+                    mIndexes.remove(indexId);
+                }
+
                 try {
-                    _LocalTransaction txn = te.mTxn;
+                    txn.commit();
+                } finally {
+                    txn.exit();
+                }
 
-                    // Open the index with the transaction to prevent deadlock
-                    // when the instance is not cached and has to be loaded.
-                    Index ix = getIndex(txn, indexId);
-                    synchronized (mIndexes) {
-                        mIndexes.remove(indexId);
-                    }
-
+                if (ix != null) {
+                    ix.close();
                     try {
-                        txn.commit();
-                    } finally {
-                        txn.exit();
+                        mManager.notifyDrop(ix);
+                    } catch (Throwable e) {
+                        uncaught(e);
                     }
+                }
 
-                    if (ix != null) {
-                        ix.close();
-                        try {
-                            mManager.notifyDrop(ix);
-                        } catch (Throwable e) {
-                            uncaught(e);
+                Runnable task = mDatabase.replicaDeleteTree(indexId);
+
+                if (task != null) {
+                    try {
+                        // Allow index deletion to run concurrently. If multiple deletes
+                        // are received concurrently, then the application is likely doing
+                        // concurrent deletes.
+                        Thread deletion = new Thread
+                            (task, "IndexDeletion-" +
+                             (ix == null ? indexId : ix.getNameString()));
+                        deletion.setDaemon(true);
+                        deletion.start();
+                    } catch (Throwable e) {
+                        EventListener listener = mDatabase.eventListener();
+                        if (listener != null) {
+                            listener.notify(EventType.REPLICATION_WARNING,
+                                            "Unable to immediately delete index: %1$s",
+                                            rootCause(e));
                         }
+                        // Index will get fully deleted when database is re-opened.
                     }
-
-                    Runnable task = mDatabase.replicaDeleteTree(indexId);
-
-                    if (task != null) {
-                        try {
-                            // Allow index deletion to run concurrently. If multiple deletes
-                            // are received concurrently, then the application is likely doing
-                            // concurrent deletes.
-                            Thread deletion = new Thread
-                                (task, "IndexDeletion-" +
-                                 (ix == null ? indexId : ix.getNameString()));
-                            deletion.setDaemon(true);
-                            deletion.start();
-                        } catch (Throwable e) {
-                            EventListener listener = mDatabase.eventListener();
-                            if (listener != null) {
-                                listener.notify(EventType.REPLICATION_WARNING,
-                                                "Unable to immediately delete index: %1$s",
-                                                rootCause(e));
-                            }
-                            // Index will get fully deleted when database is re-opened.
-                        }
-                    }
-                } catch (Throwable e) {
-                    fail(e);
                 }
             }
         });
@@ -372,12 +349,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // Enter nested scope of an existing transaction.
 
             runTask(te, new Worker.Task() {
-                public void run() {
-                    try {
-                        te.mTxn.enter();
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
+                public void run() throws IOException {
+                    te.mTxn.enter();
                 }
             });
         }
@@ -391,11 +364,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() {
-                try {
-                    te.mTxn.exit();
-                } catch (Throwable e) {
-                    fail(e);
-                }
+                te.mTxn.exit();
             }
         });
 
@@ -409,11 +378,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (te != null) {
             runTask(te, new Worker.Task() {
                 public void run() {
-                    try {
-                        te.mTxn.reset();
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
+                    te.mTxn.reset();
                 }
             });
         }
@@ -424,37 +389,43 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean txnCommit(long txnId) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
-
-        runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    te.mTxn.commit();
-                } catch (Throwable e) {
-                    fail(e);
-                }
-            }
-        });
-
+        runTask(te, new CommitTask(te));
         return true;
+    }
+
+    private static final class CommitTask extends Worker.Task {
+        private final TxnEntry mEntry;
+
+        CommitTask(TxnEntry entry) {
+            mEntry = entry;
+        }
+
+        @Override
+        public void run() throws IOException {
+            mEntry.mTxn.commit();
+        }
     }
 
     @Override
     public boolean txnCommitFinal(long txnId) throws IOException {
         TxnEntry te = removeTxnEntry(txnId);
-
         if (te != null) {
-            runTask(te, new Worker.Task() {
-                public void run() {
-                    try {
-                        te.mTxn.commitAll();
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
-                }
-            });
+            runTask(te, new CommitFinalTask(te));
+        }
+        return true;
+    }
+
+    private static final class CommitFinalTask extends Worker.Task {
+        private final TxnEntry mEntry;
+
+        CommitFinalTask(TxnEntry entry) {
+            mEntry = entry;
         }
 
-        return true;
+        @Override
+        public void run() throws IOException {
+            mEntry.mTxn.commitAll();
+        }
     }
 
     @Override
@@ -482,30 +453,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    if (!newTxn) {
-                        txn.enter();
-                    }
-
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    Index ix = getIndex(indexId);
-
-                    while (ix != null) {
-                        try {
-                            ix.store(txn, key, value);
-                            break;
-                        } catch (Throwable e) {
-                            ix = reopenIndex(indexId, e);
-                        }
-                    }
-                } catch (Throwable e) {
-                    fail(e);
-                    return;
+            public void run() throws IOException {
+                if (!newTxn) {
+                    txn.enter();
                 }
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                doStore(txn, indexId, key, value);
             }
         });
 
@@ -523,26 +478,11 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    Index ix = getIndex(indexId);
-
-                    while (ix != null) {
-                        try {
-                            ix.store(txn, key, value);
-                            break;
-                        } catch (Throwable e) {
-                            ix = reopenIndex(indexId, e);
-                        }
-                    }
-                } catch (Throwable e) {
-                    fail(e);
-                    return;
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
                 }
+                doStore(txn, indexId, key, value);
             }
         });
 
@@ -560,28 +500,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    Index ix = getIndex(indexId);
-
-                    while (ix != null) {
-                        try {
-                            ix.store(txn, key, value);
-                            break;
-                        } catch (Throwable e) {
-                            ix = reopenIndex(indexId, e);
-                        }
-                    }
-
-                    txn.commit();
-                } catch (Throwable e) {
-                    fail(e);
-                    return;
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
                 }
+                doStore(txn, indexId, key, value);
+                txn.commit();
             }
         });
 
@@ -606,28 +530,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
         Worker.Task task = new Worker.Task() {
-            public void run() {
-                try {
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    Index ix = getIndex(indexId);
-
-                    while (ix != null) {
-                        try {
-                            ix.store(txn, key, value);
-                            break;
-                        } catch (Throwable e) {
-                            ix = reopenIndex(indexId, e);
-                        }
-                    }
-
-                    txn.commitAll();
-                } catch (Throwable e) {
-                    fail(e);
-                    return;
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
                 }
+                doStore(txn, indexId, key, value);
+                txn.commitAll();
             }
         };
 
@@ -640,6 +548,21 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return true;
     }
 
+    private void doStore(Transaction txn, long indexId, byte[] key, byte[] value)
+        throws IOException
+    {
+        Index ix = getIndex(indexId);
+
+        while (ix != null) {
+            try {
+                ix.store(txn, key, value);
+                return;
+            } catch (Throwable e) {
+                ix = reopenIndex(e, indexId);
+            }
+        }
+    }
+
     @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
@@ -650,15 +573,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // TODO: No need to run special task if transaction was just created.
         if (lock != null) {
-            runTask(te, new Worker.Task() {
-                public void run() {
-                    try {
-                        txn.push(lock);
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
-                }
-            });
+            runTask(te, new LockPushTask(txn, lock));
         }
 
         return true;
@@ -674,18 +589,25 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // TODO: No need to run special task if transaction was just created.
         if (lock != null) {
-            runTask(te, new Worker.Task() {
-                public void run() {
-                    try {
-                        txn.push(lock);
-                    } catch (Throwable e) {
-                        fail(e);
-                    }
-                }
-            });
+            runTask(te, new LockPushTask(txn, lock));
         }
 
         return true;
+    }
+
+    private static final class LockPushTask extends Worker.Task {
+        private final _LocalTransaction mTxn;
+        private final _Lock mLock;
+
+        LockPushTask(_LocalTransaction txn, _Lock lock) {
+            mTxn = txn;
+            mLock = lock;
+        }
+
+        @Override
+        public void run() {
+            mTxn.push(mLock);
+        }
     }
 
     @Override
@@ -699,16 +621,11 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // TODO: Can acquire exclusive at first, but must know what push mode to use (0 or 1)
         // TODO: No need to run special task if transaction was just created.
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
-                } catch (Throwable e) {
-                    fail(e);
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
                 }
+                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
             }
         });
 
@@ -722,12 +639,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    handler.redo(mDatabase, txn, message);
-                } catch (Throwable e) {
-                    fail(e);
-                }
+            public void run() throws IOException {
+                handler.redo(mDatabase, txn, message);
             }
         });
 
@@ -746,18 +659,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _Lock lock = txn.lockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                try {
-                    if (lock != null) {
-                        txn.push(lock);
-                    }
-
-                    txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
-
-                    handler.redo(mDatabase, txn, message, indexId, key);
-                } catch (Throwable e) {
-                    fail(e);
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
                 }
+
+                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+
+                handler.redo(mDatabase, txn, message, indexId, key);
             }
         });
 
@@ -945,7 +854,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
      *
      * @param e cause, which is rethrown if not due to index closure
      */
-    private Index reopenIndex(long indexId, final Throwable e) throws IOException {
+    private Index reopenIndex(Throwable e, long indexId) throws IOException {
+        checkClosedIndex(e);
+        return openIndex(indexId);
+    }
+
+    private static void checkClosedIndex(final Throwable e) {
         Throwable cause = e;
         while (true) {
             if (cause instanceof ClosedIndexException) {
@@ -956,8 +870,6 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 rethrow(e);
             }
         }
-
-        return openIndex(indexId);
     }
 
     private void decode() {
