@@ -3259,6 +3259,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 }
             } catch (Throwable e) {
                 shared.release();
+                DatabaseException.rethrowIfRecoverable(e);
                 if (txn != null) {
                     txn.reset(e);
                 }
@@ -3317,6 +3318,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 }
             } catch (Throwable e) {
                 shared.release();
+                DatabaseException.rethrowIfRecoverable(e);
                 if (txn != null) {
                     txn.reset(e);
                 }
