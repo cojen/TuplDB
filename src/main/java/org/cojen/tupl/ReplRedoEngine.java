@@ -66,6 +66,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     // weak references to indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
+    private final LHashTable.Obj<TreeCursor> mCursors;
+
     private ReplRedoDecoder mDecoder;
 
     /**
@@ -122,6 +124,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mTransactions = txnTable;
 
         mIndexes = new LHashTable.Obj<>(16);
+        mCursors = new LHashTable.Obj<>(4);
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -171,6 +174,11 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (mWorkerGroup != null) {
             mWorkerGroup.join(false);
         }
+
+        mCursors.traverse(entry -> {
+            entry.value.close();
+            return false;
+        });
 
         // Although it might seem like a good time to clean out any lingering trash, concurrent
         // transactions are still active and need the trash to rollback properly. Waiting for
@@ -564,6 +572,264 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
+        Index ix = getIndex(indexId);
+        if (ix != null) {
+            TreeCursor tc = (TreeCursor) ix.newCursor(null);
+            synchronized (mCursors) {
+                mCursors.insert(cursorId).value = tc;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.remove(cursorId);
+        if (entry != null) {
+            entry.value.reset();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        final TreeCursor fc = getCursor(cursorId);
+        if (fc == null) {
+            return true;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(fc.mTree.mId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                fc.link(txn);
+                fc.findNearby(key);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
+        final TreeCursor fc = getCursor(cursorId);
+        if (fc == null) {
+            return true;
+        }
+
+        TxnEntry te = mTransactions.get(mix(fc.mTxn.mTxnId));
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                TreeCursor tc = fc; // not final
+
+                do {
+                    try {
+                        tc.setValueLength(length);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        tc = reopenCursor(e, cursorId, tc);
+                    }
+                } while (tc != null);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        final TreeCursor fc = getCursor(cursorId);
+        if (fc == null) {
+            return true;
+        }
+
+        TxnEntry te = mTransactions.get(mix(fc.mTxn.mTxnId));
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                TreeCursor tc = fc; // not final
+
+                do {
+                    try {
+                        tc.valueWrite(pos, buf, off, len);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        tc = reopenCursor(e, cursorId, tc);
+                    }
+                } while (tc != null);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorEnterStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        long scrambledTxnId = mix(txnId);
+        TxnEntry te = mTransactions.get(scrambledTxnId);
+
+        LocalTransaction txn;
+        boolean newTxn;
+        if (te == null) {
+            // Create a new transaction.
+            txn = newTransaction(txnId);
+            te = mTransactions.insert(scrambledTxnId);
+            te.init(txn);
+            newTxn = true;
+        } else {
+            // Enter nested scope of an existing transaction.
+            txn = te.mTxn;
+            newTxn = false;
+        }
+
+        TreeCursor tc = getCursor(cursorId);
+        if (tc == null) {
+            return true;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                if (!newTxn) {
+                    txn.enter();
+                }
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                doCursorStore(txn, tc, cursorId, key, value);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        TreeCursor tc = getCursor(cursorId);
+        if (tc == null) {
+            return true;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                doCursorStore(txn, tc, cursorId, key, value);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorStoreCommit(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+
+        TreeCursor tc = getCursor(cursorId);
+        if (tc == null) {
+            runTask(te, new CommitTask(te));
+            return true;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                doCursorStore(txn, tc, cursorId, key, value);
+                txn.commit();
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorStoreCommitFinal(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        TxnEntry te = removeTxnEntry(txnId);
+
+        TreeCursor tc = getCursor(cursorId);
+        if (tc == null) {
+            if (te != null) {
+                runTask(te, new CommitFinalTask(te));
+            }
+            return true;
+        }
+
+        LocalTransaction txn;
+        if (te == null) {
+            // Create the transaction, but don't store it in the transaction table.
+            txn = newTransaction(txnId);
+        } else {
+            txn = te.mTxn;
+        }
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+                doCursorStore(txn, tc, cursorId, key, value);
+                txn.commitAll();
+            }
+        });
+
+        return true;
+    }
+
+    private void doCursorStore(Transaction txn, TreeCursor tc, long cursorId,
+                               byte[] key, byte[] value)
+        throws IOException
+    {
+        tc.link(txn);
+        tc.findNearby(key);
+
+        do {
+            try {
+                tc.store(value);
+                break;
+            } catch (ClosedIndexException e) {
+                tc = reopenCursor(e, cursorId, tc);
+            }
+        } while (tc != null);
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
@@ -857,6 +1123,46 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private Index reopenIndex(Throwable e, long indexId) throws IOException {
         checkClosedIndex(e);
         return openIndex(indexId);
+    }
+
+    private TreeCursor getCursor(long cursorId) {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        TreeCursor tc;
+        if (entry == null || (tc = entry.value) == null) {
+            synchronized (mCursors) {
+                tc = mCursors.getValue(cursorId);
+            }
+        }
+        return tc;
+    }
+
+    /**
+     * Check if user closed the shared index reference, and re-open the affected
+     * cursor. Returns null if index is truly gone.
+     *
+     * @param e cause, which is rethrown if not due to index closure
+     */
+    private TreeCursor reopenCursor(Throwable e, long cursorId, TreeCursor tc)
+        throws IOException
+    {
+        checkClosedIndex(e);
+
+        Transaction txn = tc.link();
+        byte[] key = tc.key();
+
+        synchronized (mCursors) {
+            Index ix = openIndex(tc.mTree.mId);
+            if (ix == null) {
+                mCursors.remove(cursorId);
+                return null;
+            }
+            tc = (TreeCursor) ix.newCursor(txn);
+            mCursors.insert(cursorId).value = tc;
+        }
+
+        tc.find(key);
+
+        return tc;
     }
 
     private static void checkClosedIndex(final Throwable e) {

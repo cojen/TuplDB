@@ -158,6 +158,69 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, indexId=%3$d",
+                         "txnCursorRegister", cursorId, indexId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d", "cursorUnregister", cursorId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s",
+                         "cursorFind", cursorId, txnId, keyStr(key));
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long length) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, length=%3$d",
+                         "cursorValueSetLength", cursorId, length);
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, pos=%3$d, value=%4$s",
+                         "cursorValueWrite", cursorId, pos, valueStr(buf, off, len));
+        return true;
+    }
+
+    @Override
+    public boolean cursorEnterStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        cursorStore("cursorEnterStore", cursorId, txnId, key, value);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        cursorStore("cursorStore", cursorId, txnId, key, value);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStoreCommit(long cursorId, long txnId, byte[] key, byte[] value) {
+        cursorStore("cursorStoreCommit", cursorId, txnId, key, value);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStoreCommitFinal(long cursorId, long txnId, byte[] key, byte[] value) {
+        cursorStore("cursorStoreCommitFinal", txnId, cursorId, key, value);
+        return true;
+    }
+
+    private void cursorStore(String prefix, long cursorId, long txnId, byte[] key, byte[] value) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s, value=%5$s",
+                         prefix, cursorId, txnId, keyStr(key), valueStr(value));
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, indexId=%3$d, key=%4$s",
                          "txnLockShared", txnId, indexId, keyStr(key));
@@ -197,12 +260,16 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String valueStr(byte[] value) {
+        return valueStr(value, 0, value.length);
+    }
+
+    private static String valueStr(byte[] value, int offset, int length) {
         if (value == null) {
             return "null";
-        } else if (value.length <= MAX_VALUE) {
-            return "0x" + Utils.toHex(value);
+        } else if (length <= MAX_VALUE) {
+            return "0x" + Utils.toHex(value, offset, length);
         } else {
-            return "0x" + Utils.toHex(value, 0, MAX_VALUE) + "...";
+            return "0x" + Utils.toHex(value, offset, MAX_VALUE) + "...";
         }
     }
 

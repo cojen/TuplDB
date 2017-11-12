@@ -440,6 +440,194 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_CURSOR_REGISTER:
+                long cursorId;
+                try {
+                    cursorId = readTxnId(in);
+                    indexId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, indexId)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_UNREGISTER:
+                try {
+                    cursorId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorUnregister(cursorId)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_FIND:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorFind(cursorId, txnId, key)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_VALUE_SET_LENGTH:
+                long length;
+                try {
+                    cursorId = readTxnId(in);
+                    length = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorValueSetLength(cursorId, length))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_VALUE_WRITE:
+                try {
+                    cursorId = readTxnId(in);
+                    long pos = in.readUnsignedVarLong();
+                    int amount = in.readUnsignedVarInt();
+                    in.cursorValueWrite(visitor, cursorId, pos, amount);
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_ENTER_STORE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorEnterStore(cursorId, txnId, key, value))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_STORE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStore(cursorId, txnId, key, value))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_STORE_COMMIT:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStoreCommit(cursorId, txnId, key, value))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_STORE_COMMIT_FINAL:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStoreCommitFinal(cursorId, txnId, key, value))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_ENTER_DELETE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorEnterStore(cursorId, txnId, key, null))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_DELETE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, txnId, key, null)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_DELETE_COMMIT:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStoreCommit(cursorId, txnId, key, null))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_DELETE_COMMIT_FINAL:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStoreCommitFinal(cursorId, txnId, key, null))
+                {
+                    return false;
+                }
+                break;
+
             case OP_TXN_LOCK_SHARED:
                 try {
                     txnId = readTxnId(in);

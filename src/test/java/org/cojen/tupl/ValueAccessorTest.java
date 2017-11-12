@@ -41,7 +41,8 @@ public class ValueAccessorTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(512);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
         mDb = newTempDatabase(getClass(), config);
     }
@@ -469,7 +470,8 @@ public class ValueAccessorTest {
     @Test
     public void truncateNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 10, 5);     // 1-byte header to 1
@@ -487,7 +489,8 @@ public class ValueAccessorTest {
         // Test truncation of fragmented value which uses direct pointer encoding.
 
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         truncate(db, 65536, 10);       // no inline content; two pointers to one
@@ -723,7 +726,8 @@ public class ValueAccessorTest {
     @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         writeNonFragmented(db, 50);
@@ -850,7 +854,8 @@ public class ValueAccessorTest {
     @Test
     public void convertToIndirectWithLargePages() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         Index ix = db.openIndex("test");
