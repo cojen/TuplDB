@@ -481,7 +481,7 @@ abstract class RedoDecoder {
                 long length;
                 try {
                     cursorId = readTxnId(in);
-                    length = in.readLongLE();
+                    length = in.readUnsignedVarLong();
                 } catch (EOFException e) {
                     return true;
                 }
