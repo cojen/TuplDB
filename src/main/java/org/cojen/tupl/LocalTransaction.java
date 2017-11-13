@@ -746,41 +746,44 @@ final class LocalTransaction extends Locker implements Transaction {
             throw new IllegalStateException("Custom transaction handler is not installed");
         }
         check();
-        if (mRedo != null) {
-            long txnId = mTxnId;
 
-            if (txnId == 0) {
-                final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-                try {
-                    txnId = assignTransactionId();
-                } finally {
-                    shared.release();
-                }
+        if (mRedo == null) {
+            return;
+        }
+
+        long txnId = mTxnId;
+
+        if (txnId == 0) {
+            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+            try {
+                txnId = assignTransactionId();
+            } finally {
+                shared.release();
             }
+        }
 
-            int hasState = mHasState;
-            if ((hasState & HAS_SCOPE) == 0) {
-                ParentScope parentScope = mParentScope;
-                if (parentScope != null) {
-                    setScopeState(parentScope);
-                }
-                mContext.redoEnter(mRedo, txnId);
+        int hasState = mHasState;
+        if ((hasState & HAS_SCOPE) == 0) {
+            ParentScope parentScope = mParentScope;
+            if (parentScope != null) {
+                setScopeState(parentScope);
             }
+            mContext.redoEnter(mRedo, txnId);
+        }
 
-            mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+        mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
 
-            if (indexId == 0) {
-                if (key != null) {
-                    throw new IllegalArgumentException("Key cannot be used if indexId is zero");
-                }
-                mContext.redoCustom(mRedo, txnId, message);
-            } else {
-                LockResult result = lockCheck(indexId, key);
-                if (result != LockResult.OWNED_EXCLUSIVE) {
-                    throw new IllegalStateException("Lock isn't owned exclusively: " + result);
-                }
-                mContext.redoCustomLock(mRedo, txnId, message, indexId, key);
+        if (indexId == 0) {
+            if (key != null) {
+                throw new IllegalArgumentException("Key cannot be used if indexId is zero");
             }
+            mContext.redoCustom(mRedo, txnId, message);
+        } else {
+            LockResult result = lockCheck(indexId, key);
+            if (result != LockResult.OWNED_EXCLUSIVE) {
+                throw new IllegalStateException("Lock isn't owned exclusively: " + result);
+            }
+            mContext.redoCustomLock(mRedo, txnId, message, indexId, key);
         }
     }
 
@@ -846,42 +849,44 @@ final class LocalTransaction extends Locker implements Transaction {
     final void redoStore(long indexId, byte[] key, byte[] value) throws IOException {
         check();
 
-        if (mRedo != null) {
-            long txnId = mTxnId;
+        if (mRedo == null) {
+            return;
+        }
 
-            if (txnId == 0) {
-                txnId = assignTransactionId();
-            }
+        long txnId = mTxnId;
 
-            try {
-                int hasState = mHasState;
+        if (txnId == 0) {
+            txnId = assignTransactionId();
+        }
 
-                // Set early in case an exception is thrown. Caller is permitted to write redo
-                // entry after making any changes, and setting the commit state ensures that
-                // undo log is not prematurely truncated when commit is called.
-                mHasState = hasState | HAS_COMMIT;
+        try {
+            int hasState = mHasState;
 
-                if ((hasState & HAS_SCOPE) == 0) {
-                    ParentScope parentScope = mParentScope;
-                    if (parentScope != null) {
-                        setScopeState(parentScope);
-                    }
-                    if (value == null) {
-                        mContext.redoDelete(mRedo, OP_TXN_ENTER_DELETE, txnId, indexId, key);
-                    } else {
-                        mContext.redoStore(mRedo, OP_TXN_ENTER_STORE, txnId, indexId, key, value);
-                    }
-                    mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
-                } else {
-                    if (value == null) {
-                        mContext.redoDelete(mRedo, OP_TXN_DELETE, txnId, indexId, key);
-                    } else {
-                        mContext.redoStore(mRedo, OP_TXN_STORE, txnId, indexId, key, value);
-                    }
+            // Set early in case an exception is thrown. Caller is permitted to write redo
+            // entry after making any changes, and setting the commit state ensures that
+            // undo log is not prematurely truncated when commit is called.
+            mHasState = hasState | HAS_COMMIT;
+
+            if ((hasState & HAS_SCOPE) == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null) {
+                    setScopeState(parentScope);
                 }
-            } catch (Throwable e) {
-                borked(e, false, true); // rollback = false, rethrow = true
+                if (value == null) {
+                    mContext.redoDelete(mRedo, OP_TXN_ENTER_DELETE, txnId, indexId, key);
+                } else {
+                    mContext.redoStore(mRedo, OP_TXN_ENTER_STORE, txnId, indexId, key, value);
+                }
+                mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+            } else {
+                if (value == null) {
+                    mContext.redoDelete(mRedo, OP_TXN_DELETE, txnId, indexId, key);
+                } else {
+                    mContext.redoStore(mRedo, OP_TXN_STORE, txnId, indexId, key, value);
+                }
             }
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -893,46 +898,46 @@ final class LocalTransaction extends Locker implements Transaction {
     final void redoCursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
         check();
 
-        if (mRedo != null) {
-            long txnId = mTxnId;
+        if (mRedo == null) {
+            return;
+        }
 
-            if (txnId == 0) {
-                txnId = assignTransactionId();
-            }
+        long txnId = mTxnId;
 
-            try {
-                int hasState = mHasState;
+        if (txnId == 0) {
+            txnId = assignTransactionId();
+        }
 
-                // Set early in case an exception is thrown. Caller is permitted to write redo
-                // entry after making any changes, and setting the commit state ensures that
-                // undo log is not prematurely truncated when commit is called.
-                mHasState = hasState | HAS_COMMIT;
+        try {
+            int hasState = mHasState;
 
-                if ((hasState & HAS_SCOPE) == 0) {
-                    ParentScope parentScope = mParentScope;
-                    if (parentScope != null) {
-                        setScopeState(parentScope);
-                    }
-                    if (value == null) {
-                        mContext.redoCursorDelete
-                            (mRedo, OP_CURSOR_ENTER_DELETE, cursorId, txnId, key);
-                    } else {
-                        mContext.redoCursorStore
-                            (mRedo, OP_CURSOR_ENTER_STORE, cursorId, txnId, key, value);
-                    }
-                    mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
-                } else {
-                    if (value == null) {
-                        mContext.redoCursorDelete
-                            (mRedo, OP_CURSOR_DELETE, cursorId, txnId, key);
-                    } else {
-                        mContext.redoCursorStore
-                            (mRedo, OP_CURSOR_STORE, cursorId, txnId, key, value);
-                    }
+            // Set early in case an exception is thrown. Caller is permitted to write redo
+            // entry after making any changes, and setting the commit state ensures that
+            // undo log is not prematurely truncated when commit is called.
+            mHasState = hasState | HAS_COMMIT;
+
+            if ((hasState & HAS_SCOPE) == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null) {
+                    setScopeState(parentScope);
                 }
-            } catch (Throwable e) {
-                borked(e, false, true); // rollback = false, rethrow = true
+                if (value == null) {
+                    mContext.redoCursorDelete
+                        (mRedo, OP_CURSOR_ENTER_DELETE, cursorId, txnId, key);
+                } else {
+                    mContext.redoCursorStore
+                        (mRedo, OP_CURSOR_ENTER_STORE, cursorId, txnId, key, value);
+                }
+                mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+            } else {
+                if (value == null) {
+                    mContext.redoCursorDelete(mRedo, OP_CURSOR_DELETE, cursorId, txnId, key);
+                } else {
+                    mContext.redoCursorStore(mRedo, OP_CURSOR_STORE, cursorId, txnId, key, value);
+                }
             }
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -985,10 +990,14 @@ final class LocalTransaction extends Locker implements Transaction {
      *
      * @return assigned cursor id, or 0 if not registered
      */
-    final long redoCursorRegister(TreeCursor cursor) throws IOException {
+    final long tryRedoCursorRegister(TreeCursor cursor) throws IOException {
         if (mRedo == null || (mTxnId <= 0 && mRedo.adjustTransactionId(1) <= 0)) {
             return 0;
         }
+        return doRedoCursorRegister(cursor);
+    }
+
+    private long doRedoCursorRegister(TreeCursor cursor) throws IOException {
         long cursorId = mContext.nextTransactionId();
         long indexId = cursor.mTree.mId;
         try {
@@ -998,6 +1007,63 @@ final class LocalTransaction extends Locker implements Transaction {
         }
         cursor.mCursorId = cursorId;
         return cursorId;
+    }
+
+    /**
+     * Caller must hold commit lock.
+     *
+     * @param op OP_SET_LENGTH or OP_WRITE
+     * @param buf pass EMPTY_BYTES for OP_SET_LENGTH
+     */
+    final void redoCursorValueModify(TreeCursor cursor, int op,
+                                     long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        check();
+
+        if (mRedo == null) {
+            return;
+        }
+
+        long txnId = mTxnId;
+
+        if (txnId == 0) {
+            txnId = assignTransactionId();
+        }
+
+        try {
+            int hasState = mHasState;
+            if ((hasState & HAS_SCOPE) == 0) {
+                ParentScope parentScope = mParentScope;
+                if (parentScope != null) {
+                    setScopeState(parentScope);
+                }
+                mContext.redoEnter(mRedo, txnId);
+            }
+
+            mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
+
+            long cursorId = cursor.mCursorId;
+
+            if (cursorId < 0) {
+                // High bit set indicates that a redo op was written which positioned the cursor.
+                cursorId &= ~(1L << 63);
+            } else {
+                if (cursorId == 0) {
+                    cursorId = doRedoCursorRegister(cursor);
+                }
+                mContext.redoCursorFind(mRedo, cursorId, txnId, cursor.mKey);
+                cursor.mCursorId = cursorId | (1L << 63);
+            }
+
+            if (op == TreeValue.OP_SET_LENGTH) {
+                mContext.redoCursorValueSetLength(mRedo, cursorId, txnId, pos);
+            } else {
+                mContext.redoCursorValueWrite(mRedo, cursorId, txnId, pos, buf, off, len);
+            }
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
     }
 
     final void setHasTrash() {

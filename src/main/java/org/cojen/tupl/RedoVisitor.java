@@ -180,7 +180,7 @@ interface RedoVisitor {
      * @param length value length to set
      * @return false to stop visiting
      */
-    public boolean cursorValueSetLength(long cursorId, long length) throws IOException;
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) throws IOException;
 
     /**
      * @param cursorId non-zero cursor id
@@ -188,7 +188,8 @@ interface RedoVisitor {
      * @param buf buffer with data to write
      * @return false to stop visiting
      */
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
         throws IOException;
 
     /**

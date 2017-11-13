@@ -481,12 +481,13 @@ abstract class RedoDecoder {
                 long length;
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     length = in.readUnsignedVarLong();
                 } catch (EOFException e) {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.cursorValueSetLength(cursorId, length))
+                    || !visitor.cursorValueSetLength(cursorId, txnId, length))
                 {
                     return false;
                 }
@@ -495,9 +496,10 @@ abstract class RedoDecoder {
             case OP_CURSOR_VALUE_WRITE:
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     long pos = in.readUnsignedVarLong();
                     int amount = in.readUnsignedVarInt();
-                    in.cursorValueWrite(visitor, cursorId, pos, amount);
+                    in.cursorValueWrite(visitor, cursorId, txnId, pos, amount);
                 } catch (EOFException e) {
                     return true;
                 }

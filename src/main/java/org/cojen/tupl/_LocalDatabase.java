@@ -1641,7 +1641,7 @@ final class _LocalDatabase extends AbstractDatabase {
     /**
      * Returns a _RedoWriter suitable for transactions to write into.
      */
-    private _RedoWriter txnRedoWriter() {
+    _RedoWriter txnRedoWriter() {
         _RedoWriter redo = mRedoWriter;
         if (redo != null) {
             redo = redo.txnRedoWriter();
