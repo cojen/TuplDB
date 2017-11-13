@@ -279,7 +279,7 @@ class RedoPrinter implements RedoVisitor {
             bob.append(Integer.toHexString(b));
         }
         if (length > MAX_VALUE) {
-            bob.append("...");
+            bob.append("...").append(" (length=").append(length).append(')');
         }
         return bob.toString();
     }
