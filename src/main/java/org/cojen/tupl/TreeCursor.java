@@ -3899,7 +3899,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         // Can't redo.
                         return;
                     }
-                    context.redoCursorFind(redo, cursorId, txn.mTxnId, key);
+                    context.redoCursorFind(redo, cursorId, txn.txnId(), key);
                 }
 
                 if (op == TreeValue.OP_SET_LENGTH) {
