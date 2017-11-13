@@ -249,21 +249,28 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
+        throws IOException
+    {
         LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            entry.value.setValueLength(length);
+            Cursor c = entry.value;
+            c.link(txn(txnId));
+            c.setValueLength(length);
         }
         return true;
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
         throws IOException
     {
         LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            entry.value.valueWrite(pos, buf, off, len);
+            Cursor c = entry.value;
+            c.link(txn(txnId));
+            c.valueWrite(pos, buf, off, len);
         }
         return true;
     }

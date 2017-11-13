@@ -179,14 +179,17 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) {
-        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", length=" + length);
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
+        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", length=" + length);
         return true;
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len) {
-        mOut.println("cursorValueWrite: cursorId=" + cursorId +
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+    {
+        mOut.println("cursorValueWrite: cursorId=" + cursorId + ", txnId=" + txnId +
                      ", pos=" + pos + ", value=" + toHex(buf, off, len));
         return true;
     }

@@ -619,17 +619,21 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
+        throws IOException
+    {
+        TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
+
         final _TreeCursor fc = getCursor(cursorId);
         if (fc == null) {
             return true;
         }
 
-        TxnEntry te = mTransactions.get(mix(fc.mTxn.mTxnId));
-
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
                 _TreeCursor tc = fc; // not final
+                tc.link(txn);
 
                 do {
                     try {
@@ -646,19 +650,22 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
         throws IOException
     {
+        TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
+
         final _TreeCursor fc = getCursor(cursorId);
         if (fc == null) {
             return true;
         }
 
-        TxnEntry te = mTransactions.get(mix(fc.mTxn.mTxnId));
-
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
                 _TreeCursor tc = fc; // not final
+                tc.link(txn);
 
                 do {
                     try {

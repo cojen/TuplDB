@@ -3848,10 +3848,6 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             } catch (Throwable e) {
                 txn.reset();
                 throw e;
-            } finally {
-                if (mCursorId != 0) {
-                    doUnregister(txn, mCursorId);
-                }
             }
 
             return;
@@ -3887,26 +3883,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             }
 
             if (mode <= 1 && txn.durabilityMode() != DurabilityMode.NO_REDO) {
-                // Try to redo.
-
-                _TransactionContext context = txn.mContext;
-                _RedoWriter redo = txn.mRedo;
-                long cursorId = mCursorId;
-
-                if (cursorId == 0) {
-                    cursorId = txn.redoCursorRegister(this);
-                    if (cursorId == 0) {
-                        // Can't redo.
-                        return;
-                    }
-                    context.redoCursorFind(redo, cursorId, txn.txnId(), key);
-                }
-
-                if (op == _TreeValue.OP_SET_LENGTH) {
-                    context.redoCursorValueSetLength(redo, cursorId, pos);
-                } else {
-                    context.redoCursorValueWrite(redo, cursorId, pos, buf, off, len);
-                }
+                txn.redoCursorValueModify(this, op, pos, buf, off, len);
             }
         } finally {
             shared.release();
@@ -4027,7 +4004,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             if (txn != null && txn.durabilityMode() != DurabilityMode.NO_REDO) {
                 CommitLock.Shared shared = txn.mDatabase.commitLock().acquireShared();
                 try {
-                    txn.redoCursorRegister(this);
+                    txn.tryRedoCursorRegister(this);
                 } finally {
                     shared.release();
                 }
@@ -4043,8 +4020,21 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     private void doUnregister(_LocalTransaction txn, long cursorId) {
+        cursorId &= ~(1L << 63);
+
         try {
-            txn.mContext.redoCursorUnregister(txn.mRedo, cursorId & ~(1L << 63));
+            _TransactionContext context;
+            _RedoWriter redo;
+            if (txn == null) {
+                _LocalDatabase db = mTree.mDatabase;
+                context = db.anyTransactionContext();
+                redo = db.txnRedoWriter();
+            } else {
+                context = txn.mContext;
+                redo = txn.mRedo;
+            }
+
+            context.redoCursorUnregister(redo, cursorId);
         } catch (UnmodifiableReplicaException e) {
             // Ignore.
         } catch (IOException e) {
@@ -4052,6 +4042,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             // an IOException, so throw it as unchecked for compatibility.
             throw rethrow(e);
         }
+
         mCursorId = 0;
     }
 

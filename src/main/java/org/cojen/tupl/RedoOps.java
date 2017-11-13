@@ -133,10 +133,10 @@ class RedoOps {
         /** cursorId: delta, txnId: delta, keyLength: varInt */
         OP_CURSOR_FIND = 42,
 
-        /** cursorId: delta, length: varInt */
+        /** cursorId: delta, txnId: delta, length: varInt */
         OP_CURSOR_VALUE_SET_LENGTH = 43,
 
-        /** cursorId: delta, pos: varInt, amount: varInt, value: bytes */
+        /** cursorId: delta, txnId: delta, pos: varInt, amount: varInt, value: bytes */
         OP_CURSOR_VALUE_WRITE = 44,
 
         /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
