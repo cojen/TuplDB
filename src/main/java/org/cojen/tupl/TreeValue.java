@@ -1507,14 +1507,26 @@ final class TreeValue {
     {
         // First make sure all the fragment nodes are dirtied, in case of an exception.
 
-        Node[] fNodes = new Node[(endLoc - startLoc) / 6];
+        final Node[] fNodes = new Node[(endLoc - startLoc) / 6];
+        final int pageSize = pageSize(db, page);
 
         try {
+            boolean requireDest = true;
             for (int i = 0, loc = startLoc; loc < endLoc; i++, loc += 6) {
-                Node fNode = db.nodeMapLoadFragmentExclusive(p_uint48GetLE(page, loc), true);
-                fNodes[i] = fNode;
-                if (db.markFragmentDirty(fNode)) {
+                long fNodeId = p_uint48GetLE(page, loc);
+                if (fNodeId != 0) {
+                    Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
+                    fNodes[i] = fNode;
+                    if (db.markFragmentDirty(fNode)) {
+                        p_int48PutLE(page, loc, fNode.mId);
+                    }
+                    requireDest = true;
+                } else if (requireDest) {
+                    Node fNode = db.allocDirtyFragmentNode();
+                    p_clear(fNode.mPage, 0, pageSize);
+                    fNodes[i] = fNode;
                     p_int48PutLE(page, loc, fNode.mId);
+                    requireDest = false;
                 }
             }
         } catch (Throwable e) {
@@ -1526,16 +1538,20 @@ final class TreeValue {
             throw e;
         }
 
-        final int pageSize = pageSize(db, page);
-
         for (int i = fNodes.length; --i >= 0; ) {
             Node fNode = fNodes[i];
-            /*P*/ byte[] fPage = fNode.mPage;
-            if (dstNode != null) {
-                p_copy(fPage, pageSize - amount, dstNode.mPage, 0, amount);
-                dstNode.releaseExclusive();
+            if (fNode == null) {
+                if (dstNode != null) {
+                    p_clear(dstNode.mPage, 0, amount);
+                }
+            } else {
+                /*P*/ byte[] fPage = fNode.mPage;
+                if (dstNode != null) {
+                    p_copy(fPage, pageSize - amount, dstNode.mPage, 0, amount);
+                    dstNode.releaseExclusive();
+                }
+                p_copy(fPage, 0, fPage, amount, pageSize - amount);
             }
-            p_copy(fPage, 0, fPage, amount, pageSize - amount);
             dstNode = fNode;
         }
 
