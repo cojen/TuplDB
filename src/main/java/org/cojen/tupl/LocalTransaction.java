@@ -264,8 +264,6 @@ final class LocalTransaction extends Locker implements Transaction {
                         mHasState = hasState & ~HAS_TRASH;
                     }
                 }
-
-                mTxnId = 0;
             } else {
                 int hasState = mHasState;
                 if ((hasState & HAS_COMMIT) != 0) {
@@ -295,9 +293,14 @@ final class LocalTransaction extends Locker implements Transaction {
         pending.mHasState = mHasState;
         pending.attach(mAttachment);
 
+        if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
+            // Cannot share the transaction id with a pending trasaction, since it will use it
+            // to empty the trash when committed.
+            mTxnId = 0;
+        }
+
         mUndoLog = null;
         mHasState = 0;
-        mTxnId = 0;
 
         mRedo.txnCommitPending(pending);
     }
@@ -412,8 +415,6 @@ final class LocalTransaction extends Locker implements Transaction {
                         mHasState = hasState & ~HAS_TRASH;
                     }
                 }
-
-                mTxnId = 0;
             } else {
                 try {
                     final DurabilityMode original = mDurabilityMode;
@@ -528,8 +529,6 @@ final class LocalTransaction extends Locker implements Transaction {
                     mContext.unregister(undo);
                     mUndoLog = null;
                 }
-
-                mTxnId = 0;
             } else {
                 try {
                     int hasState = mHasState;
@@ -616,8 +615,6 @@ final class LocalTransaction extends Locker implements Transaction {
             mContext.unregister(undo);
             mUndoLog = null;
         }
-
-        mTxnId = 0;
     }
 
     @Override
