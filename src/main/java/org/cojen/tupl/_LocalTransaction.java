@@ -46,7 +46,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
     long mLockTimeoutNanos;
     private int mHasState;
     private long mSavepoint;
-    long mTxnId;
+    private long mTxnId;
 
     private _UndoLog mUndoLog;
 
