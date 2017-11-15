@@ -444,11 +444,12 @@ abstract class RedoDecoder {
                 long cursorId;
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     indexId = in.readLongLE();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, indexId)) {
+                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, txnId, indexId)) {
                     return false;
                 }
                 break;
@@ -464,124 +465,16 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_CURSOR_FIND:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in) || !visitor.cursorFind(cursorId, txnId, key)) {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_VALUE_SET_LENGTH:
-                long length;
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    length = in.readUnsignedVarLong();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorValueSetLength(cursorId, txnId, length))
-                {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_VALUE_WRITE:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    long pos = in.readUnsignedVarLong();
-                    int amount = in.readUnsignedVarInt();
-                    in.cursorValueWrite(visitor, cursorId, txnId, pos, amount);
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)) {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_ENTER_STORE:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
-                    value = in.readBytes();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorEnterStore(cursorId, txnId, key, value))
-                {
-                    return false;
-                }
-                break;
-
             case OP_CURSOR_STORE:
                 try {
                     cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
                     key = in.readBytes();
                     value = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.cursorStore(cursorId, txnId, key, value))
-                {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_STORE_COMMIT:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
-                    value = in.readBytes();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorStoreCommit(cursorId, txnId, key, value))
-                {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_STORE_COMMIT_FINAL:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
-                    value = in.readBytes();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorStoreCommitFinal(cursorId, txnId, key, value))
-                {
-                    return false;
-                }
-                break;
-
-            case OP_CURSOR_ENTER_DELETE:
-                try {
-                    cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorEnterStore(cursorId, txnId, key, null))
+                    || !visitor.cursorStore(cursorId, key, value))
                 {
                     return false;
                 }
@@ -590,42 +483,52 @@ abstract class RedoDecoder {
             case OP_CURSOR_DELETE:
                 try {
                     cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
                     key = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, txnId, key, null)) {
+                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, key, null)) {
                     return false;
                 }
                 break;
 
-            case OP_CURSOR_DELETE_COMMIT:
+            case OP_CURSOR_FIND:
                 try {
                     cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
                     key = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
+                if (!verifyTerminator(in) || !visitor.cursorFind(cursorId, key)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_VALUE_SET_LENGTH:
+                long length;
+                try {
+                    cursorId = readTxnId(in);
+                    length = in.readUnsignedVarLong();
+                } catch (EOFException e) {
+                    return true;
+                }
                 if (!verifyTerminator(in)
-                    || !visitor.cursorStoreCommit(cursorId, txnId, key, null))
+                    || !visitor.cursorValueSetLength(cursorId, length))
                 {
                     return false;
                 }
                 break;
 
-            case OP_CURSOR_DELETE_COMMIT_FINAL:
+            case OP_CURSOR_VALUE_WRITE:
                 try {
                     cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
-                    key = in.readBytes();
+                    long pos = in.readUnsignedVarLong();
+                    int amount = in.readUnsignedVarInt();
+                    in.cursorValueWrite(visitor, cursorId, pos, amount);
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in)
-                    || !visitor.cursorStoreCommitFinal(cursorId, txnId, key, null))
-                {
+                if (!verifyTerminator(in)) {
                     return false;
                 }
                 break;

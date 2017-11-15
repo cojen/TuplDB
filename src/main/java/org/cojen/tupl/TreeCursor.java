@@ -3779,8 +3779,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (length <= 0) {
                 store(length == 0 ? EMPTY_BYTES : null);
             } else {
-                doValueModify(storeMode(), mTxn, TreeValue.OP_SET_LENGTH,
-                              length, EMPTY_BYTES, 0, 0);
+                doValueModify(storeMode(), TreeValue.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
             }
         } catch (IllegalStateException e) {
             valueCheckOpen();
@@ -3806,7 +3805,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     final void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         try {
-            doValueModify(storeMode(), mTxn, TreeValue.OP_WRITE, pos, buf, off, len);
+            doValueModify(storeMode(), TreeValue.OP_WRITE, pos, buf, off, len);
         } catch (IllegalStateException e) {
             valueCheckOpen();
             throw e;
@@ -3819,13 +3818,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param op OP_SET_LENGTH or OP_WRITE
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH
      */
-    private void doValueModify(int mode, LocalTransaction txn, int op,
-                               long pos, byte[] buf, int off, int len)
+    private void doValueModify(int mode, int op, long pos, byte[] buf, int off, int len)
         throws IOException
     {
         LocalDatabase db = mTree.mDatabase;
+        LocalTransaction txn = mTxn;
 
         if (txn == null) {
+            // FIXME: Use a thread-local transaction in order for cursor to be re-used.
             if (mode > 1) {
                 txn = db.doNewTransaction(DurabilityMode.NO_REDO);
             } else {
@@ -3843,11 +3843,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             }
 
             try {
-                doValueModify(mode, txn, op, pos, buf, off, len);
+                link(txn);
+                doValueModify(mode, op, pos, buf, off, len);
                 txn.commit();
             } catch (Throwable e) {
                 txn.reset();
                 throw e;
+            } finally {
+                link(null);
             }
 
             return;

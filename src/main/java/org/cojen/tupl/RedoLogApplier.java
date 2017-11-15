@@ -32,7 +32,7 @@ final class RedoLogApplier implements RedoVisitor {
     private final LocalDatabase mDatabase;
     private final LHashTable.Obj<LocalTransaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
-    private final LHashTable.Obj<Cursor> mCursors;
+    private final LHashTable.Obj<TreeCursor> mCursors;
 
     long mHighestTxnId;
 
@@ -219,10 +219,11 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
+    public boolean cursorRegister(long cursorId, long txnId, long indexId) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
-            Cursor c = ix.newCursor(null);
+            TreeCursor c = (TreeCursor) ix.newCursor(null);
+            c.link(txn(txnId));
             mCursors.insert(cursorId).value = c;
         }
         return true;
@@ -230,7 +231,7 @@ final class RedoLogApplier implements RedoVisitor {
 
     @Override
     public boolean cursorUnregister(long cursorId) {
-        LHashTable.ObjEntry<Cursor> entry = mCursors.remove(cursorId);
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.remove(cursorId);
         if (entry != null) {
             entry.value.reset();
         }
@@ -238,59 +239,10 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws IOException {
-        LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
+    public boolean cursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            Cursor c = entry.value;
-            c.link(txn(txnId));
-            c.findNearby(key);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
-        throws IOException
-    {
-        LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            Cursor c = entry.value;
-            c.link(txn(txnId));
-            c.setValueLength(length);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorValueWrite(long cursorId, long txnId,
-                                    long pos, byte[] buf, int off, int len)
-        throws IOException
-    {
-        LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            Cursor c = entry.value;
-            c.link(txn(txnId));
-            c.valueWrite(pos, buf, off, len);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorEnterStore(long cursorId, long txnId, byte[] key, byte[] value)
-        throws IOException
-    {
-        txnEnter(txnId);
-        return cursorStore(cursorId, txnId, key, value);
-    }
-
-    @Override
-    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
-        throws IOException
-    {
-        LHashTable.ObjEntry<Cursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            Cursor c = entry.value;
-            c.link(txn(txnId));
+            TreeCursor c = entry.value;
             c.findNearby(key);
             c.store(value);
         }
@@ -298,19 +250,32 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorStoreCommit(long cursorId, long txnId, byte[] key, byte[] value)
-        throws IOException
-    {
-        cursorStore(cursorId, txnId, key, value);
-        return txnCommit(txnId);
+    public boolean cursorFind(long cursorId, byte[] key) throws IOException {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            entry.value.findNearby(key);
+        }
+        return true;
     }
 
     @Override
-    public boolean cursorStoreCommitFinal(long cursorId, long txnId, byte[] key, byte[] value)
+    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            entry.value.setValueLength(length);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
         throws IOException
     {
-        cursorStore(cursorId, txnId, key, value);
-        return txnCommitFinal(txnId);
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            entry.value.valueWrite(pos, buf, off, len);
+        }
+        return true;
     }
 
     @Override

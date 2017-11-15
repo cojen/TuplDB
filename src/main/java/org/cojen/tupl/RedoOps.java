@@ -124,48 +124,26 @@ class RedoOps {
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
         OP_TXN_DELETE_COMMIT_FINAL = 39,
 
-        /** cursorId: delta, indexId: long */
+        /** cursorId: delta, txnId: delta, indexId: long */
         OP_CURSOR_REGISTER = 40,
 
         /** cursorId: delta */
         OP_CURSOR_UNREGISTER = 41,
 
-        /** cursorId: delta, txnId: delta, keyLength: varInt */
-        OP_CURSOR_FIND = 42,
+        /** cursorId: delta, keyLength: varInt, key: bytes, valueLength: varInt, value: bytes */
+        OP_CURSOR_STORE = 42,
 
-        /** cursorId: delta, txnId: delta, length: varInt */
-        OP_CURSOR_VALUE_SET_LENGTH = 43,
+        /** cursorId: delta, keyLength: varInt, key: bytes */
+        OP_CURSOR_DELETE = 43,
 
-        /** cursorId: delta, txnId: delta, pos: varInt, amount: varInt, value: bytes */
-        OP_CURSOR_VALUE_WRITE = 44,
+        /** cursorId: delta, keyLength: varInt */
+        OP_CURSOR_FIND = 44,
 
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_CURSOR_ENTER_STORE = 48,
+        /** cursorId: delta, length: varInt */
+        OP_CURSOR_VALUE_SET_LENGTH = 45,
 
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_CURSOR_STORE = 49,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_CURSOR_STORE_COMMIT = 50,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_CURSOR_STORE_COMMIT_FINAL = 51,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes */
-        OP_CURSOR_ENTER_DELETE = 52,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes */
-        OP_CURSOR_DELETE = 53,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes */
-        OP_CURSOR_DELETE_COMMIT = 54,
-
-        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes */
-        OP_CURSOR_DELETE_COMMIT_FINAL = 55,
+        /** cursorId: delta, pos: varInt, amount: varInt, value: bytes */
+        OP_CURSOR_VALUE_WRITE = 46,
 
         /** txnId: delta, dataLength: varInt, data: bytes */
         OP_TXN_CUSTOM = (byte) 128,
