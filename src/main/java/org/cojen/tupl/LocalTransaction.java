@@ -374,12 +374,11 @@ final class LocalTransaction extends Locker implements Transaction {
                         }
                     } else {
                         if (value == null) {
-                            commitPos = mContext.redoCursorDeleteCommitFinal
-                                (mRedo, cursorId, txnId, key, mDurabilityMode);
+                            mContext.redoCursorDelete(mRedo, cursorId, key);
                         } else {
-                            commitPos = mContext.redoCursorStoreCommitFinal
-                                (mRedo, cursorId, txnId, key, value, mDurabilityMode);
+                            mContext.redoCursorStore(mRedo, cursorId, key, value);
                         }
+                        commitPos = mContext.redoCommitFinal(mRedo, txnId, mDurabilityMode);
                     }
                 } catch (Throwable e) {
                     shared.release();
@@ -463,20 +462,17 @@ final class LocalTransaction extends Locker implements Transaction {
                         if ((hasState & HAS_SCOPE) == 0) {
                             setScopeState(parentScope);
                             if (value == null) {
-                                mContext.redoCursorDelete
-                                    (mRedo, OP_CURSOR_DELETE, cursorId, txnId, key);
+                                mContext.redoCursorDelete(mRedo, cursorId, key);
                             } else {
-                                mContext.redoCursorStore
-                                    (mRedo, OP_CURSOR_STORE, cursorId, txnId, key, value);
+                                mContext.redoCursorStore(mRedo, cursorId, key, value);
                             }
                         } else {
                             if (value == null) {
-                                mContext.redoCursorDelete
-                                    (mRedo, OP_CURSOR_DELETE_COMMIT, cursorId, txnId, key);
+                                mContext.redoCursorDelete(mRedo, cursorId, key);
                             } else {
-                                mContext.redoCursorStore
-                                    (mRedo, OP_CURSOR_STORE_COMMIT, cursorId, txnId, key, value);
+                                mContext.redoCursorStore(mRedo, cursorId, key, value);
                             }
+                            mContext.redoCommit(mRedo, txnId);
                         }
                     }
                 } finally {
@@ -918,21 +914,16 @@ final class LocalTransaction extends Locker implements Transaction {
                 if (parentScope != null) {
                     setScopeState(parentScope);
                 }
-                if (value == null) {
-                    mContext.redoCursorDelete
-                        (mRedo, OP_CURSOR_ENTER_DELETE, cursorId, txnId, key);
-                } else {
-                    mContext.redoCursorStore
-                        (mRedo, OP_CURSOR_ENTER_STORE, cursorId, txnId, key, value);
-                }
-                mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
-            } else {
-                if (value == null) {
-                    mContext.redoCursorDelete(mRedo, OP_CURSOR_DELETE, cursorId, txnId, key);
-                } else {
-                    mContext.redoCursorStore(mRedo, OP_CURSOR_STORE, cursorId, txnId, key, value);
-                }
+                mContext.redoEnter(mRedo, txnId);
             }
+
+            if (value == null) {
+                mContext.redoCursorDelete(mRedo, cursorId, key);
+            } else {
+                mContext.redoCursorStore(mRedo, cursorId, key, value);
+            }
+
+            mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
@@ -988,17 +979,21 @@ final class LocalTransaction extends Locker implements Transaction {
      * @return assigned cursor id, or 0 if not registered
      */
     final long tryRedoCursorRegister(TreeCursor cursor) throws IOException {
-        if (mRedo == null || (mTxnId <= 0 && mRedo.adjustTransactionId(1) <= 0)) {
+        long txnId;
+        if (mRedo == null || ((txnId = mTxnId) <= 0 && mRedo.adjustTransactionId(1) <= 0)) {
             return 0;
         }
-        return doRedoCursorRegister(cursor);
+        return doRedoCursorRegister(cursor, txnId);
     }
 
-    private long doRedoCursorRegister(TreeCursor cursor) throws IOException {
+    /**
+     * @param txnId >= 0
+     */
+    private long doRedoCursorRegister(TreeCursor cursor, long txnId) throws IOException {
         long cursorId = mContext.nextTransactionId();
         long indexId = cursor.mTree.mId;
         try {
-            mContext.redoCursorRegister(mRedo, cursorId, indexId);
+            mContext.redoCursorRegister(mRedo, cursorId, txnId, indexId);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
@@ -1047,16 +1042,16 @@ final class LocalTransaction extends Locker implements Transaction {
                 cursorId &= ~(1L << 63);
             } else {
                 if (cursorId == 0) {
-                    cursorId = doRedoCursorRegister(cursor);
+                    cursorId = doRedoCursorRegister(cursor, txnId);
                 }
-                mContext.redoCursorFind(mRedo, cursorId, txnId, cursor.mKey);
+                mContext.redoCursorFind(mRedo, cursorId, cursor.mKey);
                 cursor.mCursorId = cursorId | (1L << 63);
             }
 
             if (op == TreeValue.OP_SET_LENGTH) {
-                mContext.redoCursorValueSetLength(mRedo, cursorId, txnId, pos);
+                mContext.redoCursorValueSetLength(mRedo, cursorId, pos);
             } else {
-                mContext.redoCursorValueWrite(mRedo, cursorId, txnId, pos, buf, off, len);
+                mContext.redoCursorValueWrite(mRedo, cursorId, pos, buf, off, len);
             }
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true

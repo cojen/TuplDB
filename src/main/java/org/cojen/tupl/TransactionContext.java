@@ -456,12 +456,15 @@ final class TransactionContext extends Latch implements Flushable {
         redoWriteTerminator(redo);
     }
 
-    void redoCursorRegister(RedoWriter redo, long cursorId, long indexId) throws IOException {
+    void redoCursorRegister(RedoWriter redo, long cursorId, long txnId, long indexId)
+        throws IOException
+    {
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_REGISTER, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteLongLE(indexId);
             redoWriteTerminator(redo);
         } finally {
@@ -481,15 +484,32 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorFind(RedoWriter redo, long cursorId, long txnId, byte[] key)
+    void redoCursorStore(RedoWriter redo, long cursorId, byte[] key, byte[] value)
         throws IOException
     {
+        keyCheck(key);
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_FIND, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteTxnOp(redo, OP_CURSOR_STORE, cursorId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, false);
+            redoWriteUnsignedVarInt(value.length);
+            redoWriteBytes(value, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorDelete(RedoWriter redo, long cursorId, byte[] key) throws IOException {
+        keyCheck(key);
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_DELETE, cursorId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, false);
             redoWriteTerminator(redo);
@@ -498,15 +518,26 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorValueSetLength(RedoWriter redo, long cursorId, long txnId, long length)
-        throws IOException
-    {
+    void redoCursorFind(RedoWriter redo, long cursorId, byte[] key) throws IOException {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_FIND, cursorId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorValueSetLength(RedoWriter redo, long cursorId, long length) throws IOException {
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_VALUE_SET_LENGTH, cursorId);
-            redoWriteTxnId(txnId);
             redoWriteUnsignedVarLong(length);
             redoWriteTerminator(redo);
         } finally {
@@ -514,7 +545,7 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorValueWrite(RedoWriter redo, long cursorId, long txnId,
+    void redoCursorValueWrite(RedoWriter redo, long cursorId,
                               long pos, byte[] buf, int off, int len)
         throws IOException
     {
@@ -523,7 +554,6 @@ final class TransactionContext extends Latch implements Flushable {
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_VALUE_WRITE, cursorId);
-            redoWriteTxnId(txnId);
             redoWriteUnsignedVarLong(pos);
             redoWriteUnsignedVarInt(len);
             redoWriteBytes(buf, off, len, false);
@@ -531,104 +561,6 @@ final class TransactionContext extends Latch implements Flushable {
         } finally {
             releaseRedoLatch();
         }
-    }
-
-    void redoCursorStore(RedoWriter redo, byte op, long cursorId, long txnId,
-                         byte[] key, byte[] value)
-        throws IOException
-    {
-        keyCheck(key);
-        redo.opWriteCheck(null);
-
-        acquireRedoLatch();
-        try {
-            doRedoCursorStore(redo, op, cursorId, txnId, key, value, false);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
-    /**
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    long redoCursorStoreCommitFinal(RedoWriter redo, long cursorId, long txnId,
-                                    byte[] key, byte[] value, DurabilityMode mode)
-        throws IOException
-    {
-        keyCheck(key);
-        mode = redo.opWriteCheck(mode);
-
-        acquireRedoLatch();
-        try {
-            doRedoCursorStore(redo, OP_CURSOR_STORE_COMMIT_FINAL, cursorId, txnId,
-                              key, value, true);
-            return redoFlushCommit(mode);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
-    /**
-     * @param commit true if last encoded operation should be treated as a transaction commit
-     */
-    private void doRedoCursorStore(RedoWriter redo, byte op, long cursorId, long txnId,
-                                   byte[] key, byte[] value, boolean commit)
-        throws IOException
-    {
-        redoWriteTxnOp(redo, op, cursorId);
-        redoWriteTxnId(txnId);
-        redoWriteUnsignedVarInt(key.length);
-        redoWriteBytes(key, false);
-        redoWriteUnsignedVarInt(value.length);
-        redoWriteBytes(value, commit);
-        redoWriteTerminator(redo);
-    }
-
-    void redoCursorDelete(RedoWriter redo, byte op, long cursorId, long txnId, byte[] key)
-        throws IOException
-    {
-        keyCheck(key);
-        redo.opWriteCheck(null);
-
-        acquireRedoLatch();
-        try {
-            doRedoCursorDelete(redo, op, cursorId, txnId, key, false);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
-    /**
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    long redoCursorDeleteCommitFinal(RedoWriter redo, long cursorId, long txnId,
-                                     byte[] key, DurabilityMode mode)
-        throws IOException
-    {
-        keyCheck(key);
-        mode = redo.opWriteCheck(mode);
-
-        acquireRedoLatch();
-        try {
-            doRedoCursorDelete(redo, OP_CURSOR_DELETE_COMMIT_FINAL, cursorId, txnId, key, true);
-            return redoFlushCommit(mode);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
-    /**
-     * @param commit true if last encoded operation should be treated as a transaction commit
-     */
-    private void doRedoCursorDelete(RedoWriter redo, byte op, long cursorId, long txnId,
-                                    byte[] key, boolean commit)
-        throws IOException
-    {
-        redoWriteTxnOp(redo, op, cursorId);
-        redoWriteTxnId(txnId);
-        redoWriteUnsignedVarInt(key.length);
-        redoWriteBytes(key, commit);
-        redoWriteTerminator(redo);
     }
 
     void redoCustom(RedoWriter redo, long txnId, byte[] message) throws IOException {

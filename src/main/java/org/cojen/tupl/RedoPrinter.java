@@ -160,8 +160,9 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long indexId) {
-        mOut.println("cursorRegister: cursorId=" + cursorId + ", indexId=" + indexId);
+    public boolean cursorRegister(long cursorId, long txnId, long indexId) {
+        mOut.println("cursorRegister: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", indexId=" + indexId);
         return true;
     }
 
@@ -172,55 +173,29 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
-        mOut.println("cursorFind: cursorId=" + cursorId + ", txnId=" + txnId +
-                     ", key=" + toHex(key));
+    public boolean cursorStore(long cursorId, byte[] key, byte[] value) {
+        mOut.println("cursorStore: cursorId=" + cursorId +
+                     ", key=" + toHex(key) + ", value=" + toHex(value));
         return true;
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
-        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", txnId=" + txnId +
-                     ", length=" + length);
+    public boolean cursorFind(long cursorId, byte[] key) {
+        mOut.println("cursorFind: cursorId=" + cursorId + ", key=" + toHex(key));
         return true;
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long txnId,
-                                    long pos, byte[] buf, int off, int len)
-    {
-        mOut.println("cursorValueWrite: cursorId=" + cursorId + ", txnId=" + txnId +
+    public boolean cursorValueSetLength(long cursorId, long length) {
+        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", length=" + length);
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len) {
+        mOut.println("cursorValueWrite: cursorId=" + cursorId +
                      ", pos=" + pos + ", value=" + toHex(buf, off, len));
         return true;
-    }
-
-    @Override
-    public boolean cursorEnterStore(long cursorId, long txnId, byte[] key, byte[] value) {
-        cursorStore("cursorEnterStore", cursorId, txnId, key, value);
-        return true;
-    }
-
-    @Override
-    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
-        cursorStore("cursorStore", cursorId, txnId, key, value);
-        return true;
-    }
-
-    @Override
-    public boolean cursorStoreCommit(long cursorId, long txnId, byte[] key, byte[] value) {
-        cursorStore("cursorStoreCommit", cursorId, txnId, key, value);
-        return true;
-    }
-
-    @Override
-    public boolean cursorStoreCommitFinal(long cursorId, long txnId, byte[] key, byte[] value) {
-        cursorStore("cursorStoreCommitFinal", cursorId, txnId, key, value);
-        return true;
-    }
-
-    private void cursorStore(String prefix, long cursorId, long txnId, byte[] key, byte[] value) {
-        mOut.println(prefix + ": cursorId=" + cursorId + ", txnId=" + txnId +
-                     ", key=" + toHex(key) + ", value=" + toHex(value));
     }
 
     @Override
