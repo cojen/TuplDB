@@ -291,7 +291,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean deleteIndex(long txnId, long indexId) throws IOException {
+    public boolean deleteIndex(long txnId, long indexId) {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
@@ -370,7 +370,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnRollback(long txnId) throws IOException {
+    public boolean txnRollback(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
@@ -383,7 +383,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnRollbackFinal(long txnId) throws IOException {
+    public boolean txnRollbackFinal(long txnId) {
         TxnEntry te = removeTxnEntry(txnId);
 
         if (te != null) {
@@ -398,7 +398,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCommit(long txnId) throws IOException {
+    public boolean txnCommit(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
         runTask(te, new CommitTask(te));
         return true;
@@ -418,7 +418,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCommitFinal(long txnId) throws IOException {
+    public boolean txnCommitFinal(long txnId) {
         TxnEntry te = removeTxnEntry(txnId);
         if (te != null) {
             runTask(te, new CommitFinalTask(te));
@@ -480,7 +480,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
@@ -502,7 +502,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
@@ -525,7 +525,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = removeTxnEntry(txnId);
 
@@ -608,13 +608,15 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
+    public boolean cursorStore(long cursorId, byte[] key, byte[] value)
+        throws LockFailureException
+    {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = ce.mTxnEntry;
+        TxnEntry te = readyCursorTxn(ce);
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = te.mTxn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
@@ -645,13 +647,13 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorFind(long cursorId, byte[] key) throws IOException {
+    public boolean cursorFind(long cursorId, byte[] key) throws LockFailureException {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = ce.mTxnEntry;
+        TxnEntry te = readyCursorTxn(ce);
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = te.mTxn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
@@ -673,13 +675,13 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
+    public boolean cursorValueSetLength(long cursorId, long length) throws LockFailureException {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = ce.mTxnEntry;
+        TxnEntry te = readyCursorTxn(ce);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -701,14 +703,14 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
-        throws IOException
+        throws LockFailureException
     {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = ce.mTxnEntry;
+        TxnEntry te = readyCursorTxn(ce);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -728,8 +730,19 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return true;
     }
 
+    private TxnEntry readyCursorTxn(CursorEntry ce) {
+        // The transaction that the cursor is linked to might have committed, but the id would
+        // remain the same. Make sure that the transaction instance is the correct one.
+        TxnEntry te = ce.mTxnEntry;
+        te = getTxnEntry(te.mTxn.mTxnId);
+        ce.mTxnEntry = te;
+        return te;
+    }
+
     @Override
-    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean txnLockShared(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -745,7 +758,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -776,7 +791,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -896,7 +913,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     /**
      * @return TxnEntry via scrambled transaction id
      */
-    private TxnEntry getTxnEntry(long txnId) throws IOException {
+    private TxnEntry getTxnEntry(long txnId) {
         long scrambledTxnId = mix(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
@@ -947,7 +964,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     /**
      * @return TxnEntry via scrambled transaction id; null if not found
      */
-    private TxnEntry removeTxnEntry(long txnId) throws IOException {
+    private TxnEntry removeTxnEntry(long txnId) {
         long scrambledTxnId = mix(txnId);
         return mTransactions.remove(scrambledTxnId);
     }
