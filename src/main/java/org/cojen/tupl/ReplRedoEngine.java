@@ -593,17 +593,21 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean cursorUnregister(long cursorId) {
         long scrambledCursorId = mix(cursorId);
-        TreeCursor tc;
+        CursorEntry ce;
         synchronized (mCursors) {
-            CursorEntry ce = mCursors.remove(scrambledCursorId);
-            if (ce == null) {
-                return true;
-            }
-            tc = ce.mCursor;
+            ce = mCursors.remove(scrambledCursorId);
         }
-        if (tc != null) {
-            tc.reset();
+
+        if (ce != null) {
+            // Need to enqueue a task with the correct thread, to ensure that the reset doesn't
+            // run concurrently with any unfinished cursor actions.
+            runTask(readyCursorTxn(ce), new Worker.Task() {
+                public void run() throws IOException {
+                    ce.mCursor.reset();
+                }
+            });
         }
+
         return true;
     }
 
