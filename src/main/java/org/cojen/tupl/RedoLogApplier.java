@@ -242,7 +242,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean cursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
         LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            TreeCursor c = entry.value;
+            TreeCursor c = readyCursorTxn(entry);
             c.findNearby(key);
             c.store(value);
         }
@@ -253,7 +253,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean cursorFind(long cursorId, byte[] key) throws IOException {
         LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            entry.value.findNearby(key);
+            readyCursorTxn(entry).findNearby(key);
         }
         return true;
     }
@@ -262,7 +262,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
         LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            entry.value.setValueLength(length);
+            readyCursorTxn(entry).setValueLength(length);
         }
         return true;
     }
@@ -273,9 +273,17 @@ final class RedoLogApplier implements RedoVisitor {
     {
         LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            entry.value.valueWrite(pos, buf, off, len);
+            readyCursorTxn(entry).valueWrite(pos, buf, off, len);
         }
         return true;
+    }
+
+    private TreeCursor readyCursorTxn(LHashTable.ObjEntry<TreeCursor> entry) {
+        // The transaction that the cursor is linked to might have committed, but the id would
+        // remain the same. Make sure that the transaction instance is the correct one.
+        TreeCursor c = entry.value;
+        c.mTxn = mTransactions.getValue(c.mTxn.mTxnId);
+        return c;
     }
 
     @Override

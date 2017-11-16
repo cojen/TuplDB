@@ -138,6 +138,7 @@ final class _LocalDatabase extends AbstractDatabase {
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final _LockManager mLockManager;
+    private final ThreadLocal<_LocalTransaction> mLocalTransaction;
     final _RedoWriter mRedoWriter;
     final _PageDb mPageDb;
     final int mPageSize;
@@ -341,6 +342,7 @@ final class _LocalDatabase extends AbstractDatabase {
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new _LockManager(this, config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
+        mLocalTransaction = new ThreadLocal<>();
 
         // Initialize NodeMap, the primary cache of Nodes.
         final int procCount = Runtime.getRuntime().availableProcessors();
@@ -1608,7 +1610,7 @@ final class _LocalDatabase extends AbstractDatabase {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
     }
 
-    _LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
+    private _LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
         _RedoWriter redo = txnRedoWriter();
         return new _LocalTransaction
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
@@ -1636,6 +1638,29 @@ final class _LocalDatabase extends AbstractDatabase {
         return redoTxnId == 0 ? newNoRedoTransaction() :
             new _LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ,
                                  mDefaultLockTimeoutNanos);
+    }
+
+    /**
+     * Returns a transaction which should be briefly used and reset.
+     */
+    _LocalTransaction threadLocalTransaction(DurabilityMode mode) {
+        _LocalTransaction txn = mLocalTransaction.get();
+        if (txn == null) {
+            txn = doNewTransaction(mode);
+            mLocalTransaction.set(txn);
+        } else {
+            txn.durabilityMode(mode);
+        }
+        return txn;
+    }
+
+    /**
+     * Remove a thread-local reference sooner rather than later, preventing apparent memory
+     * leaks. Doing so also prevents old transaction ids lingering for too long, which makes
+     * delta encoding less effective.
+     */
+    void removeThreadLocalTransaction() {
+        mLocalTransaction.remove();
     }
 
     /**
