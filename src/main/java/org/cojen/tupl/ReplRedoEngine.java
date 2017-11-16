@@ -155,7 +155,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Thread t = new Thread(r);
         t.setDaemon(true);
         t.setName("ReplicationReceiver-" + Long.toUnsignedString(t.getId()));
-        t.setUncaughtExceptionHandler((thread, exception) -> fail(exception));
+        t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
         return t;
     }
 
@@ -1152,11 +1152,18 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     void fail(Throwable e) {
+        fail(e, false);
+    }
+
+    void fail(Throwable e, boolean isUncaught) {
         if (!mDatabase.isClosed()) {
             EventListener listener = mDatabase.eventListener();
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_PANIC,
                                 "Unexpected replication exception: %1$s", rootCause(e));
+            } else if (isUncaught) {
+                Thread t = Thread.currentThread();
+                t.getThreadGroup().uncaughtException(t, e);
             } else {
                 uncaught(e);
             }
