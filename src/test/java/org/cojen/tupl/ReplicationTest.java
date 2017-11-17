@@ -561,59 +561,6 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         assertNull(rix.load(null, "k2".getBytes()));
     }
 
-    @Test
-    public void pendingTrash() throws Exception {
-        // When a transaction is re-used, the pending transaction mustn't empty the trash of
-        // the second usage. This verifies that a new transaction id is assigned when re-using
-        // a transaction which had deleted fragmented values.
-
-        Index test = mLeader.openIndex("test");
-
-        byte[] key1 = "key1".getBytes();
-        byte[] key2 = "key2".getBytes();
-
-        Random rnd = new Random(76894235);
-
-        byte[] big1 = new byte[100_000];
-        rnd.nextBytes(big1);
-
-        byte[] big2 = new byte[100_000];
-        rnd.nextBytes(big2);
-
-        test.store(null, key1, big1);
-        test.store(null, key2, big2);
-        fence();
-
-        // Commit pending, with an item in the trash.
-        mLeaderMan.suspendConfirmation(Long.MAX_VALUE);
-        Transaction txn = mLeader.newTransaction();
-        test.store(txn, key1, null);
-        txn.commit();
-
-        // Re-use the transaction, and delete another big value, but don't commit.
-        test.store(txn, key2, null);
-        assertNull(test.load(txn, key2));
-
-        // Allow the pending transaction to finish, and then catch up.
-        mLeaderMan.suspendConfirmation(0);
-        fence();
-
-        // Wait for leader pending transaction to complete and verify.
-        assertNull(test.load(null, key1));
-
-        // Rollback the re-used transaction, and the second big value should come back. The
-        // first should be gone.
-        txn.reset();
-        fence();
-
-        assertNull(test.load(null, key1));
-        fastAssertArrayEquals(big2, test.load(null, key2));
-
-        test = mReplica.openIndex("test");
-        assertNull(test.load(null, key1));
-        fastAssertArrayEquals(big2, test.load(null, key2));
-    }
-
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */
