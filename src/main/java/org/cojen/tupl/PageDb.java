@@ -42,6 +42,8 @@ abstract class PageDb implements CauseCloseable {
 
     public abstract boolean isDurable();
 
+    public abstract boolean isDirectIO();
+
     /**
      * @return 0 or NodeContext.MODE_NO_EVICT
      */

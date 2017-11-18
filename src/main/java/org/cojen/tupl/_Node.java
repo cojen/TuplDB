@@ -2259,7 +2259,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     private void cleanupFragments(Throwable cause, byte[] fragmented) {
         if (fragmented != null) {
-            long copy = p_transfer(fragmented);
+            long copy = p_transfer(fragmented, false);
             try {
                 getDatabase().deleteFragments(copy, 0, fragmented.length);
             } catch (Throwable e) {

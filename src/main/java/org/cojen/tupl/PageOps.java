@@ -102,11 +102,11 @@ final class PageOps {
         return STUB_TREE_PAGE;
     }
 
-    static /*P*/ byte[] p_alloc(int size) {
+    static /*P*/ byte[] p_alloc(int size, boolean aligned) {
         return new byte[size];
     }
 
-    static /*P*/ byte[] p_calloc(int size) {
+    static /*P*/ byte[] p_calloc(int size, boolean aligned) {
         return new byte[size];
     }
 
@@ -143,11 +143,11 @@ final class PageOps {
      *
      * @throws IllegalArgumentException if unknown arena or if page size doesn't match
      */
-    static /*P*/ byte[] p_calloc(Object arena, int size) {
-        return p_calloc(size);
+    static /*P*/ byte[] p_calloc(Object arena, int size, boolean aligned) {
+        return p_calloc(size, aligned);
     }
 
-    static /*P*/ byte[] p_clone(/*P*/ byte[] page, int length) {
+    static /*P*/ byte[] p_clone(/*P*/ byte[] page, int length, boolean aligned) {
         return page.clone();
     }
 
@@ -156,7 +156,7 @@ final class PageOps {
      *
      * @return original array or a newly allocated page
      */
-    static /*P*/ byte[] p_transfer(byte[] array) {
+    static /*P*/ byte[] p_transfer(byte[] array, boolean aligned) {
         return array;
     }
 

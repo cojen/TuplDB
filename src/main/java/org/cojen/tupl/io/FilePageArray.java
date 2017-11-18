@@ -52,6 +52,11 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
+    public boolean isDirectIO() {
+        return mFio.isDirectIO();
+    }
+
+    @Override
     public boolean isReadOnly() {
         return mFio.isReadOnly();
     }
