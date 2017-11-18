@@ -103,6 +103,11 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
+    public boolean isDirectIO() {
+        return false;
+    }
+
+    @Override
     protected long doLength() throws IOException {
         RandomAccessFile file = accessFile();
         try {

@@ -30,11 +30,11 @@ final class _PagePool extends Latch {
     private final long[] mPool;
     private int mPos;
 
-    _PagePool(int pageSize, int poolSize) {
+    _PagePool(int pageSize, int poolSize, boolean aligned) {
         mQueue = new LatchCondition();
         long[] pool = DirectPageOps.p_allocArray(poolSize);
         for (int i=0; i<poolSize; i++) {
-            pool[i] = DirectPageOps.p_calloc(pageSize);
+            pool[i] = DirectPageOps.p_calloc(pageSize, aligned);
         }
         mPool = pool;
         mPos = poolSize;
