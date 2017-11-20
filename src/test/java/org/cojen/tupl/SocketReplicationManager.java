@@ -158,13 +158,6 @@ class SocketReplicationManager implements ReplicationManager {
         }
     }
 
-    /**
-     * @param untilMillis system time to wait until; pass 0 to resume earlier
-     */
-    public void suspendConfirmation(long untilMillis) {
-        mWriter.mSuspendedUntil = untilMillis;
-    }
-
     public void disableWrites() {
         mWriter.mDisabled = true;
     }
@@ -192,7 +185,6 @@ class SocketReplicationManager implements ReplicationManager {
         private final OutputStream mOut;
         private boolean mNotified;
         private volatile boolean mDisabled;
-        private volatile long mSuspendedUntil;
 
         StreamWriter(OutputStream out) throws IOException {
             mOut = out;
@@ -238,16 +230,6 @@ class SocketReplicationManager implements ReplicationManager {
             if (mDisabled) {
                 throw new ConfirmationFailureException();
             }
-
-            if (mSuspendedUntil != 0) {
-                while (System.currentTimeMillis() < mSuspendedUntil) {
-                    try {
-                        Thread.sleep(1);
-                    } catch (Exception e) {
-                    }
-                }
-            }
-
             return true;
         }
 

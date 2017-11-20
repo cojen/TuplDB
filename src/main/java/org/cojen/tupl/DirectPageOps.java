@@ -29,6 +29,9 @@ import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.UnsafeAccess;
 
+import com.sun.jna.Native;
+import com.sun.jna.Platform;
+
 /**
  * 
  *
@@ -71,7 +74,7 @@ final class DirectPageOps {
     }
 
     private static long newEmptyTreePage(int pageSize, int type) {
-        long empty = p_calloc(pageSize);
+        long empty = p_calloc(pageSize, false);
 
         p_bytePut(empty, 0, type);
 
@@ -102,12 +105,21 @@ final class DirectPageOps {
         return STUB_TREE_PAGE;
     }
 
-    static long p_alloc(int size) {
-        return UNSAFE.allocateMemory(size);
+    static class JNA {
+        static {
+            Native.register(Platform.C_LIBRARY_NAME);
+        }
+
+        // TODO: Define variant that works on Windows.
+        static native long valloc(int size);
     }
 
-    static long p_calloc(int size) {
-        long ptr = p_alloc(size);
+    static long p_alloc(int size, boolean aligned) {
+        return aligned ? JNA.valloc(size) : UNSAFE.allocateMemory(size);
+    }
+
+    static long p_calloc(int size, boolean aligned) {
+        long ptr = p_alloc(size, aligned);
         UNSAFE.setMemory(ptr, size, (byte) 0);
         return ptr;
     }
@@ -256,9 +268,9 @@ final class DirectPageOps {
         }
     }
 
-    static long p_calloc(Object arena, int size) {
+    static long p_calloc(Object arena, int size, boolean aligned) {
         if (arena instanceof Arena) {
-            final long page = ((Arena) arena).p_calloc(size);
+            final long page = ((Arena) arena).p_calloc(size); // assumed to be aligned
             if (page != p_null()) {
                 return page;
             }
@@ -266,18 +278,18 @@ final class DirectPageOps {
             throw new IllegalArgumentException();
         }
 
-        return p_calloc(size);
+        return p_calloc(size, aligned);
     }
 
-    static long p_clone(final long page, int length) {
-        long dst = p_alloc(length);
+    static long p_clone(final long page, int length, boolean aligned) {
+        long dst = p_alloc(length, aligned);
         UNSAFE.copyMemory(page, dst, length);
         return dst;
     }
 
-    static long p_transfer(byte[] array) {
+    static long p_transfer(byte[] array, boolean aligned) {
         int length = array.length;
-        final long page = p_alloc(length);
+        final long page = p_alloc(length, aligned);
         p_copyFromArray(array, 0, page, 0, length);
         return page;
     }

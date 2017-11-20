@@ -178,7 +178,7 @@ public class CipherCrypto implements Crypto {
             cipher = headerPageCipher();
             initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
 
-            long srcCopy = DirectPageOps.p_alloc(pageSize);
+            long srcCopy = DirectPageOps.p_alloc(pageSize, false);
             try {
                 DirectPageOps.p_copy(srcPtr, srcOffset, srcCopy, 0, pageSize);
                 srcPtr = srcCopy;
