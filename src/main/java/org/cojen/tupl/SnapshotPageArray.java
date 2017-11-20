@@ -59,6 +59,11 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public boolean isDirectIO() {
+        return mSource.isDirectIO();
+    }
+
+    @Override
     public boolean isReadOnly() {
         return mSource.isReadOnly();
     }
@@ -366,7 +371,7 @@ final class SnapshotPageArray extends PageArray {
                 mCaptureLatches[i] = new Latch();
                 mCaptureBufferArrays[i] = new byte[pageSize];
                 // Allocates if page is not an array. The copy is not actually required.
-                mCaptureBuffers[i] = p_transfer(mCaptureBufferArrays[i]);
+                mCaptureBuffers[i] = p_transfer(mCaptureBufferArrays[i], isDirectIO());
             }
 
             DatabaseConfig config = new DatabaseConfig()
@@ -406,7 +411,7 @@ final class SnapshotPageArray extends PageArray {
 
             final byte[] pageBufferArray = new byte[pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
-            final /*P*/ byte[] pageBuffer = p_transfer(pageBufferArray);
+            final /*P*/ byte[] pageBuffer = p_transfer(pageBufferArray, isDirectIO());
 
             final LocalDatabase cache = mNodeCache;
             final long count = mSnapshotPageCount;

@@ -53,7 +53,7 @@ public class PageCacheTest {
         assertTrue(cache.maxEntryCount() < 1_000_000);
 
         final long seed = System.nanoTime();
-        final /*P*/ byte[] page = p_alloc(4096);
+        final /*P*/ byte[] page = p_alloc(4096, false);
         try {
             Random rnd = new Random(seed);
 
@@ -66,7 +66,7 @@ public class PageCacheTest {
                 cache.add(pageId, page, 0, true);
             }
 
-            final /*P*/ byte[] actual = p_alloc(4096);
+            final /*P*/ byte[] actual = p_alloc(4096, false);
             try {
                 rnd = new Random(seed);
 
@@ -117,7 +117,7 @@ public class PageCacheTest {
         PageCache cache = new BasicPageCache(100_000, 100);
 
         final long seed = System.nanoTime();
-        final /*P*/ byte[] page = p_alloc(100);
+        final /*P*/ byte[] page = p_alloc(100, false);
         try {
             Random rnd = new Random(seed);
 
@@ -130,7 +130,7 @@ public class PageCacheTest {
                 cache.add(pageId, page, 0, true);
             }
 
-            final /*P*/ byte[] actual = p_alloc(100);
+            final /*P*/ byte[] actual = p_alloc(100, false);
             try {
                 rnd = new Random(seed);
 
@@ -164,9 +164,9 @@ public class PageCacheTest {
         PageCache cache = new BasicPageCache(256, 4);
         cache.close();
 
-        final /*P*/ byte[] p1 = p_alloc(4);
+        final /*P*/ byte[] p1 = p_alloc(4, false);
         try {
-            final /*P*/ byte[] p2 = p_alloc(4);
+            final /*P*/ byte[] p2 = p_alloc(4, false);
             try {
                 cache.add(1, p1, 0, true);
                 assertFalse(cache.remove(1, p2, 0, 4));
@@ -189,7 +189,7 @@ public class PageCacheTest {
         assertTrue(cache.maxEntryCount() < 1_000_000);
 
         final long seed = System.nanoTime();
-        final /*P*/ byte[] page = p_alloc(4096);
+        final /*P*/ byte[] page = p_alloc(4096, false);
         try {
             Random rnd = new Random(seed);
 
@@ -199,7 +199,7 @@ public class PageCacheTest {
                 cache.add(pageId, page, 0, true);
             }
 
-            final /*P*/ byte[] actual = p_alloc(4096);
+            final /*P*/ byte[] actual = p_alloc(4096, false);
             try {
                 rnd = new Random(seed);
 

@@ -595,7 +595,7 @@ final class LocalDatabase extends AbstractDatabase {
                 mTxnContexts[i] = new TransactionContext(mTxnContexts.length, 4096);
             };
 
-            mSparePagePool = new PagePool(mPageSize, procCount);
+            mSparePagePool = new PagePool(mPageSize, procCount, mPageDb.isDirectIO());
 
             mCommitLock.acquireExclusive();
             try {
@@ -4741,7 +4741,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             if (header == p_null()) {
                 // Not resumed. Allocate new header early, before acquiring locks.
-                header = p_calloc(mPageDb.pageSize());
+                header = p_calloc(mPageDb.pageSize(), mPageDb.isDirectIO());
                 resume = false;
                 if (masterUndoLog != null) {
                     // TODO: Thrown when closed? After storage device was full.

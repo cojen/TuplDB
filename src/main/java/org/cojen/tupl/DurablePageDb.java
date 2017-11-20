@@ -208,7 +208,7 @@ final class DurablePageDb extends PageDb {
                 mCommitNumber = -1;
 
                 // Commit twice to ensure both headers have valid data.
-                /*P*/ byte[] header = p_calloc(pageSize);
+                /*P*/ byte[] header = p_calloc(pageSize, isDirectIO());
                 try {
                     mCommitLock.acquireExclusive();
                     try {
@@ -337,6 +337,11 @@ final class DurablePageDb extends PageDb {
     @Override
     public boolean isDurable() {
         return true;
+    }
+
+    @Override
+    public boolean isDirectIO() {
+        return mPageArray.isDirectIO();
     }
 
     @Override
@@ -689,7 +694,7 @@ final class DurablePageDb extends PageDb {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
-            /*P*/ byte[] header = p_alloc(MINIMUM_PAGE_SIZE);
+            /*P*/ byte[] header = p_alloc(MINIMUM_PAGE_SIZE, isDirectIO());
             try {
                 mPageArray.readPage(mCommitNumber & 1, header, 0, MINIMUM_PAGE_SIZE);
                 pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
@@ -821,7 +826,7 @@ final class DurablePageDb extends PageDb {
             }
         }
 
-        /*P*/ byte[] bufferPage = p_transfer(buffer);
+        /*P*/ byte[] bufferPage = p_transfer(buffer, pa.isDirectIO());
 
         try {
             // Write header and ensure that the incomplete restore state is persisted.
@@ -938,7 +943,7 @@ final class DurablePageDb extends PageDb {
     }
 
     private /*P*/ byte[] readHeader(int id) throws IOException {
-        /*P*/ byte[] header = p_alloc(MINIMUM_PAGE_SIZE);
+        /*P*/ byte[] header = p_alloc(MINIMUM_PAGE_SIZE, isDirectIO());
 
         try {
             try {
@@ -967,9 +972,19 @@ final class DurablePageDb extends PageDb {
     private void readPartial(long index, int start, byte[] buf, int offset, int length)
         throws IOException
     {
-        /*P*/ byte[] page = p_alloc(start + length);
+        /*P*/ byte[] page;
+        int readLen;
+
+        if (isDirectIO()) {
+            readLen = pageSize();
+            page = p_alloc(readLen, true);
+        } else {
+            readLen = start + length;
+            page = p_alloc(readLen, false);
+        }
+
         try {
-            mPageArray.readPage(index, page, 0, start + length);
+            mPageArray.readPage(index, page, 0, readLen);
             p_copyToArray(page, start, buf, offset, length);
         } finally {
             p_delete(page);

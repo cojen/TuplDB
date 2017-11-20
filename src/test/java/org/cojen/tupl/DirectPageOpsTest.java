@@ -38,7 +38,7 @@ public class DirectPageOpsTest {
         Object arena = DirectPageOps.p_arenaAlloc(4096, count);
 
         try {
-            long ptr = DirectPageOps.p_calloc(arena, 100);
+            long ptr = DirectPageOps.p_calloc(arena, 100, false);
             fail();
         } catch (IllegalArgumentException e) {
             // Wrong size.
@@ -46,7 +46,7 @@ public class DirectPageOpsTest {
 
         long last = 0;
         for (int i=0; i<count; i++) {
-            long ptr = DirectPageOps.p_calloc(arena, 4096);
+            long ptr = DirectPageOps.p_calloc(arena, 4096, false);
             assertTrue(DirectPageOps.inArena(ptr));
             if (i != 0) {
                 assertEquals(4096, ptr - last);
@@ -55,7 +55,7 @@ public class DirectPageOpsTest {
         }
 
         // Arena is depleted, and so the next allocation is outside the arena.
-        long ptr = DirectPageOps.p_calloc(arena, 4096);
+        long ptr = DirectPageOps.p_calloc(arena, 4096, false);
         assertFalse(DirectPageOps.inArena(ptr));
 
         DirectPageOps.p_delete(ptr);
@@ -116,13 +116,13 @@ public class DirectPageOpsTest {
 
     private void allocAll(Object arena, long[] pages, int size) {
         for (int i=0; i<pages.length; i++) {
-            pages[i] = DirectPageOps.p_calloc(arena, size);
+            pages[i] = DirectPageOps.p_calloc(arena, size, false);
         }
     }
 
     @Test
     public void varInt() throws Exception {
-        long page = DirectPageOps.p_alloc(100);
+        long page = DirectPageOps.p_alloc(100, false);
 
         // Pairs of value to encode and expected length.
         int[] values = {
@@ -149,7 +149,7 @@ public class DirectPageOpsTest {
 
     @Test
     public void varLong() throws Exception {
-        long page = DirectPageOps.p_alloc(100);
+        long page = DirectPageOps.p_alloc(100, false);
 
         // Pairs of value to encode and expected length.
         long[] values = {
