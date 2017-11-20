@@ -345,21 +345,24 @@ abstract class DataIn extends InputStream {
     /**
      * Transfers data to the given visitor, in the form of cursorValueWrite calls.
      */
-    public void cursorValueWrite(RedoVisitor visitor, long cursorId, long pos, int amount)
+    public void cursorValueWrite(RedoVisitor visitor, long cursorId, long txnId,
+                                 long pos, int amount)
         throws IOException
     {
         int avail = mEnd - mStart;
 
         while (true) {
             if (amount <= avail) {
-                visitor.cursorValueWrite(cursorId, pos, mBuffer, mStart, amount);
+                visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, amount);
                 mStart += amount;
+                mPos += amount;
                 return;
             }
 
-            visitor.cursorValueWrite(cursorId, pos, mBuffer, mStart, avail);
+            visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, avail);
 
             mStart = mEnd = 0;
+            mPos += avail;
             pos += avail;
             amount -= avail;
 

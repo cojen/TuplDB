@@ -78,7 +78,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     public final Transaction link(Transaction txn) {
         LocalTransaction old = mTxn;
-        unregister();
         mTxn = mTree.check(txn);
         return old;
     }
@@ -2767,12 +2766,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 if (txn.lockMode() != LockMode.UNSAFE) {
-                    LockResult result = txn.lockExclusive(mTree.mId, key, keyHash());
-                    if (result == LockResult.ACQUIRED && mCursorId != 0) {
-                        // Assume transaction was committed/reset, so unregister.
-                        // A replica would otherwise act on the wrong transaction.
-                        doUnregister(txn, mCursorId);
-                    }
+                    txn.lockExclusive(mTree.mId, key, keyHash());
                 }
                 CursorFrame leaf = leafExclusive();
                 final DurabilityMode dmode;
@@ -2843,12 +2837,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 int mode = storeMode();
                 if (mode <= 1) {
                     if (txn.lockMode() != LockMode.UNSAFE) {
-                        LockResult result = txn.lockExclusive(mTree.mId, key, keyHash());
-                        if (result == LockResult.ACQUIRED && mCursorId != 0) {
-                            // Assume transaction was committed/reset, so unregister.
-                            // A replica would otherwise act on the wrong transaction.
-                            doUnregister(txn, mCursorId);
-                        }
+                        txn.lockExclusive(mTree.mId, key, keyHash());
                         if (txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                             txn.storeCommit(mode != 0, this, value);
                             return;
@@ -3826,15 +3815,15 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         if (txn == null) {
             if (mode > 1) {
-                txn = db.threadLocalTransaction(DurabilityMode.NO_REDO);
+                txn = db.doNewTransaction(DurabilityMode.NO_REDO);
             } else {
                 DurabilityMode durabilityMode = db.mDurabilityMode;
                 if (mode != 0) {
-                    txn = db.threadLocalTransaction(durabilityMode.alwaysRedo());
+                    txn = db.doNewTransaction(durabilityMode.alwaysRedo());
                 } else {
                     byte[] key = mKey;
                     ViewUtils.positionCheck(key);
-                    txn = db.threadLocalTransaction(durabilityMode);
+                    txn = db.doNewTransaction(durabilityMode);
                     txn.lockMode(LockMode.UNSAFE); // no undo
                     // Manually lock the key.
                     txn.lockExclusive(mTree.mId, key, keyHash());
@@ -3845,18 +3834,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 mTxn = txn;
                 doValueModify(mode, op, pos, buf, off, len);
                 txn.commit();
-                txn.lockMode(LockMode.UPGRADABLE_READ);
-                if (txn.mTxnId == 0) {
-                    // When the transaction id can't be recycled, need to unregister and
-                    // re-register again later. This is required because redo recovery and
-                    // replica decoding can't relink cursors to replacement transactions. Not
-                    // enough context is available. A "relink" operation could be defined, but
-                    // this is simpler, and the optimization seems unnecessary.
-                    unregister();
-                }
             } catch (Throwable e) {
                 txn.reset();
-                db.removeThreadLocalTransaction();
                 throw e;
             } finally {
                 mTxn = null;
@@ -3869,12 +3848,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         ViewUtils.positionCheck(key);
 
         if (txn.lockMode() != LockMode.UNSAFE) {
-            LockResult result = txn.lockExclusive(mTree.mId, key, keyHash());
-            if (result == LockResult.ACQUIRED && mCursorId != 0) {
-                // Assume transaction was committed/reset, so unregister.
-                // A replica would otherwise act on the wrong transaction.
-                doUnregister(txn, mCursorId);
-            }
+            txn.lockExclusive(mTree.mId, key, keyHash());
         }
 
         final CursorFrame leaf = leafExclusive();
@@ -4027,10 +4001,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private void unregister() {
         long cursorId = mCursorId;
         if (cursorId != 0) {
-            LocalDatabase db = mTree.mDatabase;
-            LocalTransaction txn = db.threadLocalTransaction(DurabilityMode.NO_FLUSH);
-            db.removeThreadLocalTransaction();
-            doUnregister(txn, cursorId);
+            doUnregister(mTxn, cursorId);
         }
     }
 
@@ -4041,7 +4012,18 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         cursorId &= ~(1L << 63);
 
         try {
-            txn.mContext.redoCursorUnregister(txn.mRedo, cursorId);
+            TransactionContext context;
+            RedoWriter redo;
+            if (txn == null) {
+                LocalDatabase db = mTree.mDatabase;
+                context = db.anyTransactionContext();
+                redo = db.txnRedoWriter();
+            } else {
+                context = txn.mContext;
+                redo = txn.mRedo;
+            }
+
+            context.redoCursorUnregister(redo, cursorId);
         } catch (UnmodifiableReplicaException e) {
             // Ignore.
         } catch (IOException e) {

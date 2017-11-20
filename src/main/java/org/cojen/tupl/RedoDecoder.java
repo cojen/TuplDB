@@ -444,12 +444,11 @@ abstract class RedoDecoder {
                 long cursorId;
                 try {
                     cursorId = readTxnId(in);
-                    txnId = readTxnId(in);
                     indexId = in.readLongLE();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, txnId, indexId)) {
+                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, indexId)) {
                     return false;
                 }
                 break;
@@ -468,13 +467,14 @@ abstract class RedoDecoder {
             case OP_CURSOR_STORE:
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     key = in.readBytes();
                     value = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.cursorStore(cursorId, key, value))
+                    || !visitor.cursorStore(cursorId, txnId, key, value))
                 {
                     return false;
                 }
@@ -483,11 +483,12 @@ abstract class RedoDecoder {
             case OP_CURSOR_DELETE:
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     key = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, key, null)) {
+                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, txnId, key, null)) {
                     return false;
                 }
                 break;
@@ -495,11 +496,12 @@ abstract class RedoDecoder {
             case OP_CURSOR_FIND:
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     key = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.cursorFind(cursorId, key)) {
+                if (!verifyTerminator(in) || !visitor.cursorFind(cursorId, txnId, key)) {
                     return false;
                 }
                 break;
@@ -508,12 +510,13 @@ abstract class RedoDecoder {
                 long length;
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     length = in.readUnsignedVarLong();
                 } catch (EOFException e) {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.cursorValueSetLength(cursorId, length))
+                    || !visitor.cursorValueSetLength(cursorId, txnId, length))
                 {
                     return false;
                 }
@@ -522,9 +525,10 @@ abstract class RedoDecoder {
             case OP_CURSOR_VALUE_WRITE:
                 try {
                     cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
                     long pos = in.readUnsignedVarLong();
                     int amount = in.readUnsignedVarInt();
-                    in.cursorValueWrite(visitor, cursorId, pos, amount);
+                    in.cursorValueWrite(visitor, cursorId, txnId, pos, amount);
                 } catch (EOFException e) {
                     return true;
                 }
