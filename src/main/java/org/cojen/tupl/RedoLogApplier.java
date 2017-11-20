@@ -219,12 +219,10 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long txnId, long indexId) throws IOException {
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
-            TreeCursor c = (TreeCursor) ix.newCursor(null);
-            c.link(txn(txnId));
-            mCursors.insert(cursorId).value = c;
+            mCursors.insert(cursorId).value = (TreeCursor) ix.newCursor(Transaction.BOGUS);
         }
         return true;
     }
@@ -239,50 +237,75 @@ final class RedoLogApplier implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
-        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            TreeCursor c = readyCursorTxn(entry);
-            c.findNearby(key);
-            c.store(value);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorFind(long cursorId, byte[] key) throws IOException {
-        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            readyCursorTxn(entry).findNearby(key);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorValueSetLength(long cursorId, long length) throws IOException {
-        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
-        if (entry != null) {
-            readyCursorTxn(entry).setValueLength(length);
-        }
-        return true;
-    }
-
-    @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
         throws IOException
     {
         LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
         if (entry != null) {
-            readyCursorTxn(entry).valueWrite(pos, buf, off, len);
+            LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                TreeCursor c = entry.value;
+                c.mTxn = txn;
+                c.findNearby(key);
+                c.store(value);
+            }
         }
         return true;
     }
 
-    private TreeCursor readyCursorTxn(LHashTable.ObjEntry<TreeCursor> entry) {
-        // The transaction that the cursor is linked to might have committed, but the id would
-        // remain the same. Make sure that the transaction instance is the correct one.
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws IOException {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                TreeCursor c = entry.value;
+                c.mTxn = txn;
+                c.findNearby(key);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
+        throws IOException
+    {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).setValueLength(length);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).valueWrite(pos, buf, off, len);
+            }
+        }
+        return true;
+    }
+
+    private TreeCursor readyCursorValueOp(LHashTable.ObjEntry<TreeCursor> entry,
+                                          LocalTransaction txn)
+        throws IOException
+    {
         TreeCursor c = entry.value;
-        c.mTxn = mTransactions.getValue(c.mTxn.mTxnId);
+        LocalTransaction oldTxn = c.mTxn;
+        c.mTxn = txn;
+        if (oldTxn != txn) {
+            c.findNearby(c.mKey);
+        }
         return c;
     }
 

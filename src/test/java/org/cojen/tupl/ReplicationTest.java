@@ -561,6 +561,54 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         assertNull(rix.load(null, "k2".getBytes()));
     }
 
+    @Test
+    public void valueWrite() throws Exception {
+        // Basic test of writing to a value in chunks with an auto-commit transaction.
+
+        Index test = mLeader.openIndex("test");
+
+        long seed = 98250983;
+        Random rnd = new Random(seed);
+
+        final int chunk = 100;
+        final int length = 1000 * chunk;
+        final byte[] b = new byte[chunk];
+
+        Cursor c = test.newAccessor(null, "key1".getBytes());
+        for (int i=0; i<length; i+=chunk) {
+            rnd.nextBytes(b);
+            c.valueWrite(i, b, 0, b.length);
+        }
+        c.reset();
+
+        c = test.newAccessor(null, "key2".getBytes());
+        for (int i=0; i<length; i+=chunk) {
+            rnd.nextBytes(b);
+            c.valueWrite(i, b, 0, b.length);
+        }
+        c.reset();
+
+        fence();
+
+        Index replica = mReplica.openIndex("test");
+        rnd = new Random(seed);
+        final byte[] buf = new byte[chunk];
+
+        for (String key : new String[] {"key1", "key2"}) {
+            c = replica.newAccessor(null, key.getBytes());
+            assertEquals(length, c.valueLength());
+            int i = 0;
+            for (; i<length; i+=chunk) {
+                rnd.nextBytes(b);
+                int amt = c.valueRead(i, buf, 0, buf.length);
+                assertEquals(chunk, amt);
+                fastAssertArrayEquals(b, buf);
+            }
+            assertEquals(0, c.valueRead(i, buf, 0, buf.length));
+            c.reset();
+        }
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

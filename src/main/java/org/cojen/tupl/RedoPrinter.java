@@ -160,9 +160,8 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long txnId, long indexId) {
-        mOut.println("cursorRegister: cursorId=" + cursorId + ", txnId=" + txnId +
-                     ", indexId=" + indexId);
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mOut.println("cursorRegister: cursorId=" + cursorId + ", indexId=" + indexId);
         return true;
     }
 
@@ -173,27 +172,31 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorStore(long cursorId, byte[] key, byte[] value) {
-        mOut.println("cursorStore: cursorId=" + cursorId +
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        mOut.println("cursorStore: cursorId=" + cursorId + ", txnId=" + txnId +
                      ", key=" + toHex(key) + ", value=" + toHex(value));
         return true;
     }
 
     @Override
-    public boolean cursorFind(long cursorId, byte[] key) {
-        mOut.println("cursorFind: cursorId=" + cursorId + ", key=" + toHex(key));
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
+        mOut.println("cursorFind: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", key=" + toHex(key));
         return true;
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) {
-        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", length=" + length);
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
+        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", length=" + length);
         return true;
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len) {
-        mOut.println("cursorValueWrite: cursorId=" + cursorId +
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+    {
+        mOut.println("cursorValueWrite: cursorId=" + cursorId + ", txnId=" + txnId +
                      ", pos=" + pos + ", value=" + toHex(buf, off, len));
         return true;
     }

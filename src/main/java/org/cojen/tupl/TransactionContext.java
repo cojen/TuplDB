@@ -456,15 +456,12 @@ final class TransactionContext extends Latch implements Flushable {
         redoWriteTerminator(redo);
     }
 
-    void redoCursorRegister(RedoWriter redo, long cursorId, long txnId, long indexId)
-        throws IOException
-    {
+    void redoCursorRegister(RedoWriter redo, long cursorId, long indexId) throws IOException {
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_REGISTER, cursorId);
-            redoWriteTxnId(txnId);
             redoWriteLongLE(indexId);
             redoWriteTerminator(redo);
         } finally {
@@ -484,7 +481,7 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorStore(RedoWriter redo, long cursorId, byte[] key, byte[] value)
+    void redoCursorStore(RedoWriter redo, long cursorId, long txnId, byte[] key, byte[] value)
         throws IOException
     {
         keyCheck(key);
@@ -493,6 +490,7 @@ final class TransactionContext extends Latch implements Flushable {
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_STORE, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, false);
             redoWriteUnsignedVarInt(value.length);
@@ -503,13 +501,16 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorDelete(RedoWriter redo, long cursorId, byte[] key) throws IOException {
+    void redoCursorDelete(RedoWriter redo, long cursorId, long txnId, byte[] key)
+        throws IOException
+    {
         keyCheck(key);
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_DELETE, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, false);
             redoWriteTerminator(redo);
@@ -518,12 +519,15 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorFind(RedoWriter redo, long cursorId, byte[] key) throws IOException {
+    void redoCursorFind(RedoWriter redo, long cursorId, long txnId, byte[] key)
+        throws IOException
+    {
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_FIND, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, false);
             redoWriteTerminator(redo);
@@ -532,12 +536,15 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorValueSetLength(RedoWriter redo, long cursorId, long length) throws IOException {
+    void redoCursorValueSetLength(RedoWriter redo, long cursorId, long txnId, long length)
+        throws IOException
+    {
         redo.opWriteCheck(null);
 
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_VALUE_SET_LENGTH, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteUnsignedVarLong(length);
             redoWriteTerminator(redo);
         } finally {
@@ -545,7 +552,7 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoCursorValueWrite(RedoWriter redo, long cursorId,
+    void redoCursorValueWrite(RedoWriter redo, long cursorId, long txnId,
                               long pos, byte[] buf, int off, int len)
         throws IOException
     {
@@ -554,6 +561,7 @@ final class TransactionContext extends Latch implements Flushable {
         acquireRedoLatch();
         try {
             redoWriteTxnOp(redo, OP_CURSOR_VALUE_WRITE, cursorId);
+            redoWriteTxnId(txnId);
             redoWriteUnsignedVarLong(pos);
             redoWriteUnsignedVarInt(len);
             redoWriteBytes(buf, off, len, false);

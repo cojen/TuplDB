@@ -158,9 +158,9 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long txnId, long indexId) {
-        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, indexId=%4$d",
-                         "txnCursorRegister", cursorId, txnId, indexId);
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, indexId=%3$d",
+                         "txnCursorRegister", cursorId, indexId);
         return true;
     }
 
@@ -171,30 +171,32 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorStore(long cursorId, byte[] key, byte[] value) {
-        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, key=%3$s, value=%4$s",
-                         "cursorStore", cursorId, keyStr(key), valueStr(value));
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s, value=%5$s",
+                         "cursorStore", cursorId, txnId, keyStr(key), valueStr(value));
         return true;
     }
 
     @Override
-    public boolean cursorFind(long cursorId, byte[] key) {
-        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, key=%3$s",
-                         "cursorFind", cursorId, keyStr(key));
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s",
+                         "cursorFind", cursorId, txnId, keyStr(key));
         return true;
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) {
-        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, length=%3$d",
-                         "cursorValueSetLength", cursorId, length);
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, length=%4$d",
+                         "cursorValueSetLength", cursorId, txnId, length);
         return true;
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len) {
-        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, pos=%3$d, value=%4$s",
-                         "cursorValueWrite", cursorId, pos, valueStr(buf, off, len));
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+    {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, pos=%4$d, value=%5$s",
+                         "cursorValueWrite", cursorId, txnId, pos, valueStr(buf, off, len));
         return true;
     }
 

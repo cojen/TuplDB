@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
+import java.util.Arrays;
+
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -575,16 +577,13 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorRegister(long cursorId, long txnId, long indexId) throws IOException {
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
         long scrambledCursorId = mix(cursorId);
         Index ix = getIndex(indexId);
         if (ix != null) {
-            TxnEntry te = getTxnEntry(txnId);
-            TreeCursor tc = (TreeCursor) ix.newCursor(te.mTxn);
+            TreeCursor tc = (TreeCursor) ix.newCursor(Transaction.BOGUS);
             synchronized (mCursors) {
-                CursorEntry ce = mCursors.insert(scrambledCursorId);
-                ce.mTxnEntry = te;
-                ce.mCursor = tc;
+                mCursors.insert(scrambledCursorId).mCursor = tc;
             }
         }
         return true;
@@ -601,18 +600,25 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (ce != null) {
             // Need to enqueue a task with the correct thread, to ensure that the reset doesn't
             // run concurrently with any unfinished cursor actions.
-            runTask(readyCursorTxn(ce), new Worker.Task() {
-                public void run() throws IOException {
-                    ce.mCursor.reset();
-                }
-            });
+            TreeCursor tc = ce.mCursor;
+            Worker w = ce.mWorker;
+            if (w == null) {
+                // Cursor was never actually used.
+                tc.reset();
+            } else {
+                w.enqueue(new Worker.Task() {
+                    public void run() throws IOException {
+                        tc.reset();
+                    }
+                });
+            }
         }
 
         return true;
     }
 
     @Override
-    public boolean cursorStore(long cursorId, byte[] key, byte[] value)
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
         throws LockFailureException
     {
         CursorEntry ce = getCursorEntry(cursorId);
@@ -620,20 +626,22 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             return true;
         }
 
-        TxnEntry te = readyCursorTxn(ce);
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+        TreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        Lock lock = te.mTxn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
+        ce.mKey = key;
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
 
-        runTask(te, new Worker.Task() {
+        runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
-                LocalTransaction txn = ce.mTxnEntry.mTxn;
-
                 if (lock != null) {
                     txn.push(lock);
                 }
 
                 TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
                 tc.findNearby(key);
 
                 do {
@@ -651,26 +659,27 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorFind(long cursorId, byte[] key) throws LockFailureException {
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws LockFailureException {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = readyCursorTxn(ce);
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+        TreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        Lock lock = te.mTxn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
+        ce.mKey = key;
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
 
-        runTask(te, new Worker.Task() {
+        runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
-                LocalTransaction txn = ce.mTxnEntry.mTxn;
-
                 if (lock != null) {
                     txn.push(lock);
                 }
-
                 TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
                 tc.findNearby(key);
             }
         });
@@ -679,17 +688,29 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueSetLength(long cursorId, long length) throws LockFailureException {
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
+        throws LockFailureException
+    {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
             return true;
         }
 
-        TxnEntry te = readyCursorTxn(ce);
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+        TreeCursor tc = ce.mCursor;
 
-        runTask(te, new Worker.Task() {
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+
+        runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+
                 TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
 
                 do {
                     try {
@@ -706,7 +727,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
         throws LockFailureException
     {
         CursorEntry ce = getCursorEntry(cursorId);
@@ -714,15 +736,29 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             return true;
         }
 
-        TxnEntry te = readyCursorTxn(ce);
+        // Need to copy the data, since it will be accessed by another thread.
+        // FIXME: Use a buffer pool.
+        byte[] data = Arrays.copyOfRange(buf, off, off + len);
 
-        runTask(te, new Worker.Task() {
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+        TreeCursor tc = ce.mCursor;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+
+        runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+
                 TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
 
                 do {
                     try {
-                        tc.valueWrite(pos, buf, off, len);
+                        tc.valueWrite(pos, data, 0, data.length);
                         break;
                     } catch (ClosedIndexException e) {
                         tc = reopenCursor(e, ce);
@@ -734,13 +770,34 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return true;
     }
 
-    private TxnEntry readyCursorTxn(CursorEntry ce) {
-        // The transaction that the cursor is linked to might have committed, but the id would
-        // remain the same. Make sure that the transaction instance is the correct one.
-        TxnEntry te = ce.mTxnEntry;
-        te = getTxnEntry(te.mTxn.mTxnId);
-        ce.mTxnEntry = te;
-        return te;
+    private void runCursorTask(CursorEntry ce, TxnEntry te, Worker.Task task) {
+        Worker w = ce.mWorker;
+        if (w == null) {
+            w = te.mWorker;
+            if (w == null) {
+                w = runTaskAnywhere(task);
+                te.mWorker = w;
+            } else {
+                w.enqueue(task);
+            }
+            ce.mWorker = w;
+        } else {
+            Worker txnWorker = te.mWorker;
+            if (w != txnWorker) {
+                if (txnWorker == null) {
+                    txnWorker = w;
+                    te.mWorker = w;
+                } else {
+                    // When the transaction changes, the assigned worker can change too. Wait
+                    // for tasks in the original queue to drain before enqueueing against the
+                    // new worker. This prevents cursor operations from running out of order,
+                    // or from accessing the cursor concurrently.
+                    w.join(false);
+                    ce.mWorker = txnWorker;
+                }
+            }
+            txnWorker.enqueue(task);
+        }
     }
 
     @Override
@@ -1198,8 +1255,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     static final class CursorEntry extends LHashTable.Entry<CursorEntry> {
-        TxnEntry mTxnEntry;
         TreeCursor mCursor;
+        Worker mWorker;
+        byte[] mKey;
     }
 
     static final class CursorTable extends LHashTable<CursorEntry> {
