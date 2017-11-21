@@ -464,6 +464,10 @@ final class _TransactionContext extends Latch implements Flushable {
             redoWriteTxnOp(redo, OP_CURSOR_REGISTER, cursorId);
             redoWriteLongLE(indexId);
             redoWriteTerminator(redo);
+            // Must always flush this out, in case cursor transaction linkage changes, or when
+            // transaction is linked to null. Otherwise, the cursor registration operation
+            // might appear out of order in the log due to context striping.
+            redoFlush(false);
         } finally {
             releaseRedoLatch();
         }

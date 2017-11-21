@@ -978,21 +978,20 @@ final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Attempt to generate an identifier for a cursor to perform direct redo operations.
      * Caller must hold commit lock.
-     *
-     * @return assigned cursor id, or 0 if not registered
      */
-    final long tryRedoCursorRegister(_TreeCursor cursor) throws IOException {
+    final boolean tryRedoCursorRegister(_TreeCursor cursor) throws IOException {
         if (mRedo == null || (mTxnId <= 0 && mRedo.adjustTransactionId(1) <= 0)) {
-            return 0;
+            return false;
+        } else {
+            doRedoCursorRegister(cursor);
+            return true;
         }
-        return doRedoCursorRegister(cursor);
     }
 
     private long doRedoCursorRegister(_TreeCursor cursor) throws IOException {
         long cursorId = mContext.nextTransactionId();
-        long indexId = cursor.mTree.mId;
         try {
-            mContext.redoCursorRegister(mRedo, cursorId, indexId);
+            mContext.redoCursorRegister(mRedo, cursorId, cursor.mTree.mId);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }

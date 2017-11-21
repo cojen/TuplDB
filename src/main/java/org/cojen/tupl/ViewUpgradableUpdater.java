@@ -32,6 +32,7 @@ class ViewUpgradableUpdater extends ViewScanner implements Updater {
      */
     ViewUpgradableUpdater(View view, Cursor cursor) throws IOException {
         super(view, cursor);
+        cursor.register();
         Transaction txn = cursor.link();
         mOriginalMode = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
