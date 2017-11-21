@@ -816,6 +816,9 @@ final class LocalDatabase extends AbstractDatabase {
                             doCheckpoint = true;
                         }
 
+                        // Reset any lingering registered cursors.
+                        applier.resetCursors();
+
                         // New redo logs begin with identifiers one higher than last scanned.
                         mRedoWriter = new RedoLog(config, replayLog, mTxnContexts[0]);
 
@@ -1638,7 +1641,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Returns a RedoWriter suitable for transactions to write into.
      */
-    private RedoWriter txnRedoWriter() {
+    RedoWriter txnRedoWriter() {
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
             redo = redo.txnRedoWriter();

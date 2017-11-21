@@ -32,6 +32,7 @@ final class _RedoLogApplier implements RedoVisitor {
     private final _LocalDatabase mDatabase;
     private final LHashTable.Obj<_LocalTransaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
+    private final LHashTable.Obj<_TreeCursor> mCursors;
 
     long mHighestTxnId;
 
@@ -39,6 +40,14 @@ final class _RedoLogApplier implements RedoVisitor {
         mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
+        mCursors = new LHashTable.Obj<>(4);
+    }
+
+    void resetCursors() {
+        mCursors.traverse(entry -> {
+            entry.value.close();
+            return false;
+        });
     }
 
     @Override
@@ -207,6 +216,41 @@ final class _RedoLogApplier implements RedoVisitor {
     {
         txnStore(txnId, indexId, key, value);
         return txnCommitFinal(txnId);
+    }
+
+    @Override
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
+        Index ix = openIndex(indexId);
+        if (ix != null) {
+            mCursors.insert(cursorId).value = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.remove(cursorId);
+        if (entry != null) {
+            entry.value.reset();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                _TreeCursor c = entry.value;
+                c.mTxn = txn;
+                c.findNearby(key);
+                c.store(value);
+            }
+        }
+        return true;
     }
 
     @Override

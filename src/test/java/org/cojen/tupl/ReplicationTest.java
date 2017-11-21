@@ -561,6 +561,82 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         assertNull(rix.load(null, "k2".getBytes()));
     }
 
+    @Test
+    public void cursorRegister() throws Exception {
+        // Basic testing of registered cursors.
+
+        Index leader = mLeader.openIndex("test");
+        fence();
+        Index replica = mReplica.openIndex("test");
+
+        Cursor c = leader.newCursor(null);
+        assertTrue(c.register());
+        c.reset();
+
+        Transaction txn = mLeader.newTransaction();
+        c = leader.newCursor(txn);
+        assertTrue(c.register());
+        c.reset();
+        txn.reset();
+
+        c = replica.newCursor(null);
+        assertFalse(c.register());
+        // Replicas don't redo.
+        c.reset();
+
+        for (int q=0; q<2; q++) {
+            String prefix;
+            if (q == 0) {
+                txn = null;
+                prefix = "null-";
+            } else {
+                txn = mLeader.newTransaction();
+                prefix = "txn-";
+            }
+
+            c = leader.newCursor(txn);
+            c.register();
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                c.store((prefix + "value-" + i).getBytes());
+            }
+            c.reset();
+
+            if (txn != null) {
+                txn.commit();
+            }
+
+            fence();
+
+            c = replica.newCursor(null);
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                fastAssertArrayEquals((prefix + "value-" + i).getBytes(), c.value());
+            }
+            c.reset();
+
+            // Now scan and update.
+            c = leader.newCursor(txn);
+            for (c.first(), c.register(); c.key() != null; c.next()) {
+                c.store((new String(c.value()) + "-updated").getBytes());
+            }
+            c.reset();
+
+            if (txn != null) {
+                txn.commit();
+            }
+
+            fence();
+
+            c = replica.newCursor(null);
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                fastAssertArrayEquals((prefix + "value-" + i + "-updated").getBytes(), c.value());
+            }
+            c.reset();
+        }
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

@@ -75,8 +75,9 @@ public interface View {
     public default Updater newUpdater(Transaction txn) throws IOException {
         if (txn == null) {
             txn = newTransaction(null);
+            Cursor c = newCursor(txn);
             try {
-                return new ViewAutoCommitUpdater(this, newCursor(txn));
+                return new ViewAutoCommitUpdater(this, c);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -86,16 +87,17 @@ public interface View {
                 throw e;
             }
         } else {
+            Cursor c = newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                return new ViewSimpleUpdater(this, newCursor(txn));
+                return new ViewSimpleUpdater(this, c);
             case REPEATABLE_READ:
-                return new ViewUpgradableUpdater(this, newCursor(txn));
+                return new ViewUpgradableUpdater(this, c);
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                return new ViewNonRepeatableUpdater(this, newCursor(txn));
+                return new ViewNonRepeatableUpdater(this, c);
             }
         }
     }
