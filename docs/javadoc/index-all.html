@@ -2507,6 +2507,16 @@
 <dd>
 <div class="block">Returns a second independent thread-local ByteBuffer.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#register--">register()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Attempt to register this cursor for direct redo operations, which can improve
+ replication performance when modifying a range of values.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#register--">register()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Attempt to register this cursor for direct redo operations, which can improve
+ replication performance when modifying a range of values.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#release-boolean-">release(boolean)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
@@ -3173,6 +3183,14 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/DirectAccess.html#unref-java.nio.ByteBuffer-">unref(ByteBuffer)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>
 <div class="block">Optionally unreference a buffer.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#unregister--">unregister()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Unregisters the cursor for direct redo operations.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#unregister--">unregister()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
+<dd>
+<div class="block">Unregisters the cursor for direct redo operations.</div>
 </dd>
 <dt><a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">UnsafeAccess</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
