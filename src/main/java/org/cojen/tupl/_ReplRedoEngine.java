@@ -737,7 +737,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Need to copy the data, since it will be accessed by another thread.
-        // FIXME: Use a buffer pool.
+        // TODO: Use a buffer pool.
         byte[] data = Arrays.copyOfRange(buf, off, off + len);
 
         TxnEntry te = getTxnEntry(txnId);
