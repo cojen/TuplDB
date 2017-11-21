@@ -30,6 +30,7 @@ class ViewSimpleUpdater extends ViewScanner implements Updater {
      */
     ViewSimpleUpdater(View view, Cursor cursor) throws IOException {
         super(view, cursor);
+        cursor.register();
     }
 
     @Override

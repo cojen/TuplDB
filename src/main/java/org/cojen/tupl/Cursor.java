@@ -138,6 +138,30 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
+     * Attempt to register this cursor for direct redo operations, which can improve
+     * replication performance when modifying a range of values. Without registration, replicas
+     * must perform a full find operation for each modification made in the range.
+     * Registration isn't useful when using the cursor for single updates.
+     *
+     * <p>The cursor is automatically {@link #unregister unregistered} when {@link #reset
+     * reset}, or when moved to an undefined position, or when moving the cursor
+     * non-incrementally. Methods whose name starts with "next", "previous", "skip", or
+     * "findNearby" are considered to move the cursor incrementally. The use of these methods
+     * generally indicates that registering the cursor might be beneficial.
+     */
+    public default boolean register() throws IOException {
+        return false;
+    }
+
+    /**
+     * Unregisters the cursor for direct redo operations.
+     *
+     * @see #register
+     */
+    public default void unregister() {
+    }
+
+    /**
      * Moves the Cursor to find the first available entry. Cursor key and value
      * are set to null if no entries exist, and position will be undefined.
      *
