@@ -52,6 +52,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     // Hashcode is defined by LockManager.
     private int mKeyHash;
 
+    // Assigned by register method, for direct redo operations. When id isn't zero, and the
+    // high bit is clear, the key must be written into the redo log.
+    long mCursorId;
+
     TreeCursor(Tree tree, Transaction txn) {
         mTxn = tree.check(txn);
         mTree = tree;
@@ -139,6 +143,61 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     public final int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = mKey;
         return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+    }
+
+    @Override
+    public final boolean register() throws IOException {
+        if (mCursorId == 0) {
+            LocalTransaction txn = mTxn;
+            if (txn == null) {
+                if (storeMode() < 1) {
+                    // Never redo.
+                    return false;
+                }
+
+                LocalDatabase db = mTree.mDatabase;
+                RedoWriter redo = db.txnRedoWriter();
+
+                if (redo.adjustTransactionId(1) <= 0) {
+                    // Replica doesn't redo.
+                    return false;
+                }
+
+                CommitLock.Shared shared = db.commitLock().acquireShared();
+                try {
+                    TransactionContext context = db.anyTransactionContext();
+                    long cursorId = context.nextTransactionId();
+                    context.redoCursorRegister(redo, cursorId, mTree.mId);
+                    mCursorId = cursorId;
+                } catch (UnmodifiableReplicaException e) {
+                    return false;
+                } finally {
+                    shared.release();
+                }
+            } else {
+                if (txn.durabilityMode() == DurabilityMode.NO_REDO) {
+                    return false;
+                }
+                CommitLock.Shared shared = txn.mDatabase.commitLock().acquireShared();
+                try {
+                    return txn.tryRedoCursorRegister(this);
+                } catch (UnmodifiableReplicaException e) {
+                    return false;
+                } finally {
+                    shared.release();
+                }
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public final void unregister() {
+        long cursorId = mCursorId;
+        if (cursorId != 0) {
+            doUnregister(mTxn, cursorId);
+        }
     }
 
     private int keyHash() {
@@ -311,6 +370,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             return LockResult.UNOWNED;
         }
 
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
+
         try {
             CursorFrame frame = leafSharedNotSplit();
             if (amount > 0) {
@@ -336,6 +397,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (amount == 0 || limitKey == null) {
             return skip(amount);
         }
+
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
 
         try {
             CursorFrame frame = leafSharedNotSplit();
@@ -380,6 +443,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private LockResult nextCmp(byte[] limitKey, int limitMode, CursorFrame frame)
         throws IOException
     {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
         LocalTransaction txn = mTxn;
 
         while (true) {
@@ -405,6 +469,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param frame leaf frame, not split, with shared latch
      */
     private LockResult next(LocalTransaction txn, CursorFrame frame) throws IOException {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
+
         while (true) {
             if (!toNext(frame)) {
                 return LockResult.UNOWNED;
@@ -499,6 +565,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 mKey = null;
                 mKeyHash = 0;
                 mValue = null;
+                unregister();
                 return null;
             }
 
@@ -634,6 +701,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     mKey = null;
                     mKeyHash = 0;
                     mValue = null;
+                    unregister();
                     return null;
                 }
 
@@ -1095,6 +1163,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private LockResult previousCmp(byte[] limitKey, int limitMode, CursorFrame frame)
         throws IOException
     {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
         LocalTransaction txn = mTxn;
 
         while (true) {
@@ -1122,6 +1191,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private LockResult previous(LocalTransaction txn, CursorFrame frame)
         throws IOException
     {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
+
         while (true) {
             if (!toPrevious(frame)) {
                 return LockResult.UNOWNED;
@@ -1174,6 +1245,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 mKey = null;
                 mKeyHash = 0;
                 mValue = null;
+                unregister();
                 return false;
             }
 
@@ -1308,6 +1380,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     mKey = null;
                     mKeyHash = 0;
                     mValue = null;
+                    unregister();
                     return null;
                 }
 
@@ -1835,6 +1908,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     @Override
     public final LockResult findNearby(byte[] key) throws IOException {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
         LocalTransaction txn = prepareFind(key);
 
         Node node;
@@ -2729,7 +2803,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * @return 0: default behavior, 1: always undo, 2: never redo
+     * @return 0: default behavior, 1: always undo (unless unsafe), 2: never redo (temp cursor)
      */
     protected int storeMode() {
         return 0;
@@ -2777,23 +2851,20 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             int mode = storeMode();
             if (mode == 0) {
                 txn = null;
-            } else {
-                LocalDatabase db = mTree.mDatabase;
-                if (mode == 1) {
-                    // Always undo.
-                    txn = db.newAlwaysRedoTransaction();
-                    try {
-                        txn.lockExclusive(mTree.mId, key, keyHash());
-                        txn.storeCommit(true, this, value);
-                        return;
-                    } catch (Throwable e) {
-                        txn.reset();
-                        throw e;
-                    }
-                } else {
-                    // Never redo, but still acquire the lock.
-                    txn = LocalTransaction.BOGUS;
+            } else if (mode == 1) {
+                // Always undo (and redo).
+                txn = mTree.mDatabase.newAlwaysRedoTransaction();
+                try {
+                    txn.lockExclusive(mTree.mId, key, keyHash());
+                    txn.storeCommit(true, this, value);
+                    return;
+                } catch (Throwable e) {
+                    txn.reset();
+                    throw e;
                 }
+            } else {
+                // Never redo, but still acquire the lock.
+                txn = LocalTransaction.BOGUS;
             }
 
             final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
@@ -2871,7 +2942,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (mode != 0) {
                     LocalDatabase db = mTree.mDatabase;
                     if (mode == 1) {
-                        // Always undo.
+                        // Always undo (and redo).
                         txn = db.newAlwaysRedoTransaction();
                         try {
                             txn.lockExclusive(mTree.mId, key, hash);
@@ -2970,7 +3041,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (mode != 0) {
                     LocalDatabase db = mTree.mDatabase;
                     if (mode == 1) {
-                        // Always undo.
+                        // Always undo (and redo).
                         txn = db.newAlwaysRedoTransaction();
                         try {
                             txn.lockExclusive(mTree.mId, key, hash);
@@ -3335,7 +3406,15 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
                 return;
             } else if (txn.lockMode() != LockMode.UNSAFE) {
-                txn.redoStore(mTree.mId, key, value);
+                long cursorId = mCursorId;
+                if (cursorId == 0) {
+                    txn.redoStore(mTree.mId, key, value);
+                } else {
+                    // Always write the key, for simplicity. There's no good reason for an
+                    // application to update the same entry multiple times.
+                    txn.redoCursorStore(cursorId & ~(1L << 63), key, value);
+                    mCursorId = cursorId | (1L << 63);
+                }
                 return;
             } else {
                 commitPos = mTree.redoStoreNoLock(key, value);
@@ -3865,6 +3944,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (frame != null) {
             CursorFrame.popAll(frame);
         }
+
+        unregister();
     }
 
     /**
@@ -3905,6 +3986,36 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         } finally {
             reset();
         }
+    }
+
+    /**
+     * @param txn non-null
+     */
+    private void doUnregister(LocalTransaction txn, long cursorId) {
+        cursorId &= ~(1L << 63);
+
+        try {
+            TransactionContext context;
+            RedoWriter redo;
+            if (txn == null) {
+                LocalDatabase db = mTree.mDatabase;
+                context = db.anyTransactionContext();
+                redo = db.txnRedoWriter();
+            } else {
+                context = txn.mContext;
+                redo = txn.mRedo;
+            }
+
+            context.redoCursorUnregister(redo, cursorId);
+        } catch (UnmodifiableReplicaException e) {
+            // Ignore.
+        } catch (IOException e) {
+            // Original definition of link and reset methods doesn't declare throwing
+            // an IOException, so throw it as unchecked for compatibility.
+            throw rethrow(e);
+        }
+
+        mCursorId = 0;
     }
 
     final int height() {

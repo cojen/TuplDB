@@ -158,6 +158,26 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, indexId=%3$d",
+                         "txnCursorRegister", cursorId, indexId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d", "cursorUnregister", cursorId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s, value=%5$s",
+                         "cursorStore", cursorId, txnId, keyStr(key), valueStr(value));
+        return true;
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, indexId=%3$d, key=%4$s",
                          "txnLockShared", txnId, indexId, keyStr(key));

@@ -185,6 +185,22 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public boolean register() throws IOException {
+        return source.register();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void unregister() {
+        source.unregister();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult first() throws IOException {
         return source.first();
     }

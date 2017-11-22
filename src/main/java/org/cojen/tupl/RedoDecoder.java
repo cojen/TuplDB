@@ -440,6 +440,59 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_CURSOR_REGISTER:
+                long cursorId;
+                try {
+                    cursorId = readTxnId(in);
+                    indexId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorRegister(cursorId, indexId)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_UNREGISTER:
+                try {
+                    cursorId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorUnregister(cursorId)) {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_STORE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                    value = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorStore(cursorId, txnId, key, value))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_CURSOR_DELETE:
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    key = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.cursorStore(cursorId, txnId, key, null)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_LOCK_SHARED:
                 try {
                     txnId = readTxnId(in);
