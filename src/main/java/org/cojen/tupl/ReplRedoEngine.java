@@ -66,6 +66,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     // weak references to indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
+    private final CursorTable mCursors;
+
     private ReplRedoDecoder mDecoder;
 
     /**
@@ -112,7 +114,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 long scrambledTxnId = mix(te.key);
                 LocalTransaction txn = te.value;
                 if (!txn.recoveryCleanup(false)) {
-                    txnTable.insert(scrambledTxnId).init(txn);
+                    txnTable.insert(scrambledTxnId).mTxn = txn;
                 }
                 // Delete entry.
                 return true;
@@ -122,6 +124,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         mTransactions = txnTable;
 
         mIndexes = new LHashTable.Obj<>(16);
+
+        mCursors = new CursorTable(4);
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -151,7 +155,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Thread t = new Thread(r);
         t.setDaemon(true);
         t.setName("ReplicationReceiver-" + Long.toUnsignedString(t.getId()));
-        t.setUncaughtExceptionHandler((thread, exception) -> fail(exception));
+        t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
         return t;
     }
 
@@ -170,6 +174,13 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
             mWorkerGroup.join(false);
+        }
+
+        synchronized (mCursors) {
+            mCursors.traverse(entry -> {
+                entry.mCursor.close();
+                return true;
+            });
         }
 
         // Although it might seem like a good time to clean out any lingering trash, concurrent
@@ -280,7 +291,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean deleteIndex(long txnId, long indexId) throws IOException {
+    public boolean deleteIndex(long txnId, long indexId) {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
@@ -344,7 +355,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         if (te == null) {
             // Create a new transaction.
-            mTransactions.insert(scrambledTxnId).init(newTransaction(txnId));
+            mTransactions.insert(scrambledTxnId).mTxn = newTransaction(txnId);
         } else {
             // Enter nested scope of an existing transaction.
 
@@ -359,7 +370,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnRollback(long txnId) throws IOException {
+    public boolean txnRollback(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
@@ -372,7 +383,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnRollbackFinal(long txnId) throws IOException {
+    public boolean txnRollbackFinal(long txnId) {
         TxnEntry te = removeTxnEntry(txnId);
 
         if (te != null) {
@@ -387,7 +398,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCommit(long txnId) throws IOException {
+    public boolean txnCommit(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
         runTask(te, new CommitTask(te));
         return true;
@@ -407,7 +418,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCommitFinal(long txnId) throws IOException {
+    public boolean txnCommitFinal(long txnId) {
         TxnEntry te = removeTxnEntry(txnId);
         if (te != null) {
             runTask(te, new CommitFinalTask(te));
@@ -441,7 +452,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // Create a new transaction.
             txn = newTransaction(txnId);
             te = mTransactions.insert(scrambledTxnId);
-            te.init(txn);
+            te.mTxn = txn;
             newTxn = true;
         } else {
             // Enter nested scope of an existing transaction.
@@ -469,7 +480,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStore(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
@@ -491,7 +502,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStoreCommit(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
@@ -514,7 +525,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnStoreCommitFinal(long txnId, long indexId, byte[] key, byte[] value)
-        throws IOException
+        throws LockFailureException
     {
         TxnEntry te = removeTxnEntry(txnId);
 
@@ -564,7 +575,121 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnLockShared(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
+        long scrambledCursorId = mix(cursorId);
+        Index ix = getIndex(indexId);
+        if (ix != null) {
+            TreeCursor tc = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            synchronized (mCursors) {
+                mCursors.insert(scrambledCursorId).mCursor = tc;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        long scrambledCursorId = mix(cursorId);
+        CursorEntry ce;
+        synchronized (mCursors) {
+            ce = mCursors.remove(scrambledCursorId);
+        }
+
+        if (ce != null) {
+            // Need to enqueue a task with the correct thread, to ensure that the reset doesn't
+            // run concurrently with any unfinished cursor actions.
+            TreeCursor tc = ce.mCursor;
+            Worker w = ce.mWorker;
+            if (w == null) {
+                // Cursor was never actually used.
+                tc.reset();
+            } else {
+                w.enqueue(new Worker.Task() {
+                    public void run() throws IOException {
+                        tc.reset();
+                    }
+                });
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws LockFailureException
+    {
+        CursorEntry ce = getCursorEntry(cursorId);
+        if (ce == null) {
+            return true;
+        }
+
+        TxnEntry te = getTxnEntry(txnId);
+        LocalTransaction txn = te.mTxn;
+        TreeCursor tc = ce.mCursor;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        ce.mKey = key;
+        Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+
+        runCursorTask(ce, te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+
+                TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
+                tc.findNearby(key);
+
+                do {
+                    try {
+                        tc.store(value);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        tc = reopenCursor(e, ce);
+                    }
+                } while (tc != null);
+            }
+        });
+
+        return true;
+    }
+
+    private void runCursorTask(CursorEntry ce, TxnEntry te, Worker.Task task) {
+        Worker w = ce.mWorker;
+        if (w == null) {
+            w = te.mWorker;
+            if (w == null) {
+                w = runTaskAnywhere(task);
+                te.mWorker = w;
+            } else {
+                w.enqueue(task);
+            }
+            ce.mWorker = w;
+        } else {
+            Worker txnWorker = te.mWorker;
+            if (w != txnWorker) {
+                if (txnWorker == null) {
+                    txnWorker = w;
+                    te.mWorker = w;
+                } else {
+                    // When the transaction changes, the assigned worker can change too. Wait
+                    // for tasks in the original queue to drain before enqueueing against the
+                    // new worker. This prevents cursor operations from running out of order,
+                    // or from accessing the cursor concurrently.
+                    w.join(false);
+                    ce.mWorker = txnWorker;
+                }
+            }
+            txnWorker.enqueue(task);
+        }
+    }
+
+    @Override
+    public boolean txnLockShared(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -580,7 +705,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean txnLockUpgradable(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -611,7 +738,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnLockExclusive(long txnId, long indexId, byte[] key) throws IOException {
+    public boolean txnLockExclusive(long txnId, long indexId, byte[] key)
+        throws LockFailureException
+    {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
@@ -729,9 +858,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * @return TxnEntry with scrambled transaction id
+     * @return TxnEntry via scrambled transaction id
      */
-    private TxnEntry getTxnEntry(long txnId) throws IOException {
+    private TxnEntry getTxnEntry(long txnId) {
         long scrambledTxnId = mix(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
@@ -740,7 +869,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             // applies to those which generated undo log entries.
             LocalTransaction txn = newTransaction(txnId);
             te = mTransactions.insert(scrambledTxnId);
-            te.init(txn);
+            te.mTxn = txn;
         }
 
         return te;
@@ -780,9 +909,9 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * @return TxnEntry with scrambled transaction id; null if not found
+     * @return TxnEntry via scrambled transaction id; null if not found
      */
-    private TxnEntry removeTxnEntry(long txnId) throws IOException {
+    private TxnEntry removeTxnEntry(long txnId) {
         long scrambledTxnId = mix(txnId);
         return mTransactions.remove(scrambledTxnId);
     }
@@ -859,6 +988,59 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return openIndex(indexId);
     }
 
+    /**
+     * @return CursorEntry via scrambled cursor id
+     */
+    private CursorEntry getCursorEntry(long cursorId) {
+        long scrambledCursorId = mix(cursorId);
+        CursorEntry ce = mCursors.get(scrambledCursorId);
+        if (ce == null) {
+            synchronized (mCursors) {
+                ce = mCursors.get(scrambledCursorId);
+            }
+        }
+        return ce;
+    }
+
+    /**
+     * Check if user closed the shared index reference, and re-open the affected
+     * cursor. Returns null if index is truly gone.
+     *
+     * @param e cause, which is rethrown if not due to index closure
+     */
+    private TreeCursor reopenCursor(Throwable e, CursorEntry ce) throws IOException {
+        checkClosedIndex(e);
+
+        long scrambledCursorId = mix(ce.key);
+        TreeCursor tc = ce.mCursor;
+        Index ix = openIndex(tc.mTree.mId);
+
+        if (ix == null) {
+            synchronized (mCursors) {
+                mCursors.remove(scrambledCursorId);
+            }
+        } else {
+            LocalTransaction txn = tc.mTxn;
+            byte[] key = tc.key();
+            tc.reset();
+
+            tc = (TreeCursor) ix.newCursor(txn);
+            tc.mTxn = txn;
+            tc.find(key);
+
+            synchronized (mCursors) {
+                if (ce == mCursors.get(scrambledCursorId)) {
+                    ce.mCursor = tc;
+                    return tc;
+                }
+            }
+        }
+
+        tc.reset();
+
+        return null;
+    }
+
     private static void checkClosedIndex(final Throwable e) {
         Throwable cause = e;
         while (true) {
@@ -913,11 +1095,18 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     void fail(Throwable e) {
+        fail(e, false);
+    }
+
+    void fail(Throwable e, boolean isUncaught) {
         if (!mDatabase.isClosed()) {
             EventListener listener = mDatabase.eventListener();
             if (listener != null) {
                 listener.notify(EventType.REPLICATION_PANIC,
                                 "Unexpected replication exception: %1$s", rootCause(e));
+            } else if (isUncaught) {
+                Thread t = Thread.currentThread();
+                t.getThreadGroup().uncaughtException(t, e);
             } else {
                 uncaught(e);
             }
@@ -938,10 +1127,6 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
         LocalTransaction mTxn;
         Worker mWorker;
-
-        void init(LocalTransaction txn) {
-            mTxn = txn;
-        }
     }
 
     static final class TxnTable extends LHashTable<TxnEntry> {
@@ -949,8 +1134,26 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             super(capacity);
         }
 
+        @Override
         protected TxnEntry newEntry() {
             return new TxnEntry();
+        }
+    }
+
+    static final class CursorEntry extends LHashTable.Entry<CursorEntry> {
+        TreeCursor mCursor;
+        Worker mWorker;
+        byte[] mKey;
+    }
+
+    static final class CursorTable extends LHashTable<CursorEntry> {
+        CursorTable(int capacity) {
+            super(capacity);
+        }
+
+        @Override
+        protected CursorEntry newEntry() {
+            return new CursorEntry();
         }
     }
 }

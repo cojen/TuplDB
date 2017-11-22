@@ -132,6 +132,16 @@ final class BoundedCursor implements Cursor {
     }
 
     @Override
+    public boolean register() throws IOException {
+        return mSource.register();
+    }
+
+    @Override
+    public void unregister() {
+        mSource.unregister();
+    }
+
+    @Override
     public LockResult first() throws IOException {
         BoundedView view = mView;
         if (view.mEnd == null) {

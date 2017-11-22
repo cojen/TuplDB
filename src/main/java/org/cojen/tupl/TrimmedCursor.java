@@ -143,6 +143,16 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public boolean register() throws IOException {
+        return mSource.register();
+    }
+
+    @Override
+    public void unregister() {
+        mSource.unregister();
+    }
+
+    @Override
     public LockResult first() throws IOException {
         mKey = null;
         return mSource.first();

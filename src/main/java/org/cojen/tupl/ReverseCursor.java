@@ -126,6 +126,16 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public boolean register() throws IOException {
+        return mSource.register();
+    }
+
+    @Override
+    public void unregister() {
+        mSource.unregister();
+    }
+
+    @Override
     public LockResult first() throws IOException {
         return mSource.last();
     }
