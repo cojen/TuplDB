@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.IOException;
 
 import java.net.InetSocketAddress;
@@ -157,7 +158,7 @@ class GroupJoiner {
                     } else {
                         key.cancel();
                         channel.configureBlocking(true);
-                        SocketAddress addr = processReply(channel.socket());
+                        SocketAddress addr = processReply(channel.socket(), timeoutMillis);
                         expected--;
 
                         if (addr != null && mLeaderChannel == null && !seeds.contains(addr)) {
@@ -235,16 +236,28 @@ class GroupJoiner {
     /**
      * @return leader address or null
      */
-    private SocketAddress processReply(Socket s) throws IOException {
+    private SocketAddress processReply(Socket s, long timeoutMillis) throws IOException {
+        InputStream in = s.getInputStream();
+
+        if (timeoutMillis >= 0) {
+            int intTimeout;
+            if (timeoutMillis == 0) {
+                intTimeout = 1;
+            } else {
+                intTimeout = (int) Math.min(timeoutMillis, Integer.MAX_VALUE);
+            }
+            s.setSoTimeout(intTimeout);
+        }
+
         SocketAddress addr = null;
 
-        byte[] header = ChannelManager.readHeader(s, mGroupToken, 0);
+        byte[] header = ChannelManager.readHeader(in, mGroupToken, 0);
 
         if (header != null) {
-            ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 1000);
-            int op = in.read();
+            ChannelInputStream cin = new ChannelInputStream(in, 1000);
+            int op = cin.read();
             if (op == OP_ADDRESS) {
-                addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
+                addr = GroupFile.parseSocketAddress(cin.readStr(cin.readIntLE()));
                 if (!(addr instanceof InetSocketAddress)
                     || ((InetSocketAddress) addr).getAddress().isAnyLocalAddress())
                 {
@@ -252,15 +265,15 @@ class GroupJoiner {
                     addr = null;
                 }
             } else if (op == OP_JOINED) {
-                mPrevTerm = in.readLongLE();
-                mTerm = in.readLongLE();
-                mIndex = in.readLongLE();
+                mPrevTerm = cin.readLongLE();
+                mTerm = cin.readLongLE();
+                mIndex = cin.readLongLE();
                 try (FileOutputStream out = new FileOutputStream(mFile)) {
-                    in.drainTo(out);
+                    cin.drainTo(out);
                 }
                 mGroupFile = GroupFile.open(mEventListener, mFile, mLocalAddress, false);
             } else if (op == OP_ERROR) {
-                throw new JoinException(ErrorCodes.toString(in.readByte()));
+                throw new JoinException(ErrorCodes.toString(cin.readByte()));
             }
         }
 
