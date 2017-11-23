@@ -578,49 +578,52 @@ final class ChannelManager {
      * @return null if invalid
      */
     byte[] readHeader(Socket s) {
-        return readHeader(s, mGroupToken, getGroupId());
+        byte[] header;
+        try {
+            s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
+            header = readHeader(s.getInputStream(), mGroupToken, getGroupId());
+            s.setSoTimeout(0);
+            s.setTcpNoDelay(true);
+        } catch (IOException e) {
+            // Ignore and close socket.
+            header = null;
+        }
+
+        if (header == null) {
+            closeQuietly(s);
+        }
+
+        return header;
     }
 
     /**
      * @return null if invalid
      */
-    static byte[] readHeader(Socket s, long groupToken, long groupId) {
-        check: try {
-            s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
+    static byte[] readHeader(InputStream in, long groupToken, long groupId) throws IOException {
+        byte[] header = new byte[INIT_HEADER_SIZE];
+        readFully(in, header, 0, header.length);
 
-            byte[] header = new byte[INIT_HEADER_SIZE];
-            readFully(s.getInputStream(), header, 0, header.length);
-
-            if (decodeLongLE(header, 0) != MAGIC_NUMBER) {
-                break check;
-            }
-
-            if (decodeLongLE(header, 8) != groupToken) {
-                break check;
-            }
-
-            int connectionType = decodeIntLE(header, 32);
-
-            if (connectionType != TYPE_JOIN && (decodeLongLE(header, 16) != groupId)) {
-                break check;
-            }
-
-            Checksum crc = CRC32C.newInstance();
-            crc.update(header, 0, header.length - 4);
-            if (decodeIntLE(header, header.length - 4) != (int) crc.getValue()) {
-                break check;
-            }
-
-            s.setSoTimeout(0);
-            s.setTcpNoDelay(true);
-
-            return header;
-        } catch (IOException e) {
-            // Ignore and close socket.
+        if (decodeLongLE(header, 0) != MAGIC_NUMBER) {
+            return null;
         }
 
-        closeQuietly(s);
-        return null;
+        if (decodeLongLE(header, 8) != groupToken) {
+            return null;
+        }
+
+        int connectionType = decodeIntLE(header, 32);
+
+        if (connectionType != TYPE_JOIN && (decodeLongLE(header, 16) != groupId)) {
+            return null;
+        }
+
+        Checksum crc = CRC32C.newInstance();
+        crc.update(header, 0, header.length - 4);
+        if (decodeIntLE(header, header.length - 4) != (int) crc.getValue()) {
+            return null;
+        }
+
+        return header;
     }
 
     private synchronized void checkWrites() {

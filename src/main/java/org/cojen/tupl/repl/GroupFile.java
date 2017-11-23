@@ -653,6 +653,14 @@ final class GroupFile extends Latch {
 
         if (consumer == null) {
             releaseExclusive();
+        } else if (peer == null) {
+            releaseExclusive();
+            // Rejected for any number of reasons, possibly a version mismatch.
+            try {
+                consumer.accept(null, 0);
+            } catch (Throwable e) {
+                Utils.uncaught(e);
+            }
         } else {
             downgrade();
             try {
