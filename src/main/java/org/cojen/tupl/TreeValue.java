@@ -569,7 +569,7 @@ final class TreeValue {
                                     p_int48PutLE(page, loc, inode.mId);
                                 }
                                 levels = db.calculateInodeLevels(fLen);
-                                truncateMultilevelFragments(db, pos, levels, inode, fLen - pos);
+                                clearMultilevelFragments(db, pos, levels, inode, fLen - pos);
                             } catch (Throwable e) {
                                 inode.releaseExclusive();
                                 throw e;
@@ -1033,14 +1033,14 @@ final class TreeValue {
     }
 
     /**
-     * @param pos value position being truncated
+     * @param pos value position being cleared
      * @param level inode level; at least 1
      * @param inode exclusively latched parent inode; never released by this method
-     * @param truncateLen full truncation length (to the end)
+     * @param clearLen length to clear
      */
-    private static void truncateMultilevelFragments(final LocalDatabase db,
-                                                    final long pos, int level, final Node inode,
-                                                    long truncateLen)
+    private static void clearMultilevelFragments(final LocalDatabase db,
+                                                 final long pos, int level, final Node inode,
+                                                 long clearLen)
         throws IOException
     {
         /*P*/ byte[] page = inode.mPage;
@@ -1049,22 +1049,22 @@ final class TreeValue {
 
         int poffset = ((int) (pos / levelCap)) * 6;
 
-        // Handle a possible partial truncation of the first page.
+        // Handle a possible partial clear of the first page.
         long ppos = pos % levelCap;
 
         while (true) {
-            long len = Math.min(levelCap - ppos, truncateLen);
+            long len = Math.min(levelCap - ppos, clearLen);
             long childNodeId = p_uint48GetLE(page, poffset);
 
             if (childNodeId != 0) {
                 if (ppos <= 0 || len >= levelCap) {
-                    // Full truncation of inode.
+                    // Full clear of inode.
                     if (level <= 0) {
                         db.deleteFragment(childNodeId);
                     } else {
                         Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                         try {
-                            truncateMultilevelFragments(db, ppos, level, childNode, len);
+                            clearMultilevelFragments(db, ppos, level, childNode, len);
                         } catch (Throwable e) {
                             childNode.releaseExclusive();
                             throw e;
@@ -1073,16 +1073,16 @@ final class TreeValue {
                     }
                     p_int48PutLE(page, poffset, 0);
                 } else {
-                    // Partial truncation of inode.
+                    // Partial clear of inode.
                     Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                     try {
                         if (db.markFragmentDirty(childNode)) {
                             p_int48PutLE(page, poffset, childNode.mId);
                         }
                         if (level <= 0) {
-                            p_clear(childNode.mPage, (int) ppos, (int) levelCap);
+                            p_clear(childNode.mPage, (int) ppos, (int) (ppos + len));
                         } else {
-                            truncateMultilevelFragments(db, ppos, level, childNode, len);
+                            clearMultilevelFragments(db, ppos, level, childNode, len);
                         }
                     } finally {
                         childNode.releaseExclusive();
@@ -1090,14 +1090,14 @@ final class TreeValue {
                 }
             }
 
-            truncateLen -= len;
-            if (truncateLen <= 0) {
+            clearLen -= len;
+            if (clearLen <= 0) {
                 break;
             }
 
             poffset += 6;
 
-            // Remaining truncates begin at the start of the page.
+            // Remaining clear steps begin at the start of the page.
             ppos = 0;
         }
     }
