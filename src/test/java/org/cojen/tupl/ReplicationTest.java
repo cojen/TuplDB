@@ -19,6 +19,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.*;
@@ -683,6 +684,31 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
             assertEquals(0, c.valueRead(i, buf, 0, buf.length));
             c.reset();
         }
+    }
+
+    @Test
+    public void valueClear() throws Exception {
+        // Basic test of clearing a value range.
+
+        Index test = mLeader.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = new byte[100_000];
+        new Random(2923578).nextBytes(value);
+
+        test.store(null, key, value);
+
+        Cursor c = test.newAccessor(null, key);
+        c.valueClear(5000, 50_000);
+        c.close();
+
+        fence();
+
+        Arrays.fill(value, 5000, 5000 + 50_000, (byte) 0);
+        fastAssertArrayEquals(value, test.load(null, key));
+
+        Index replica = mReplica.openIndex("test");
+        fastAssertArrayEquals(value, replica.load(null, key));
     }
 
     /**
