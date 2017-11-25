@@ -44,7 +44,7 @@ public interface ValueAccessor extends Closeable {
 
     /**
      * Extends or truncates the accessed value. When extended, the new portion of the value is
-     * zero-filled.
+     * filled with zeros.
      *
      * @param length new value length; a negative length deletes the value
      * @throws IllegalArgumentException if length is too large
@@ -70,8 +70,8 @@ public interface ValueAccessor extends Closeable {
     public int valueRead(long pos, byte[] buf, int off, int len) throws IOException;
 
     /**
-     * Write into the value, starting from any position. Value is extended when writing past
-     * the end, even if the written amount is zero.
+     * Write into the value, starting from any position. Value is extended with zeros when
+     * writing past the end, even if the written amount is zero.
      *
      * @param pos start position to write to
      * @param buf buffer to write from
@@ -83,6 +83,18 @@ public interface ValueAccessor extends Closeable {
      * @throws IllegalUpgradeException if not locked for writing
      */
     public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException;
+
+    /**
+     * Writes over a range of the value with zeros, starting from any position. The length of
+     * the value is never changed by this method, even when clearing past the end.
+     *
+     * @param pos start position to clear from
+     * @param length amount to clear
+     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalStateException if closed
+     * @throws IllegalUpgradeException if not locked for writing
+     */
+    public void valueClear(long pos, long length) throws IOException;
 
     /**
      * Returns a new buffered InputStream instance, which reads from the value. When the

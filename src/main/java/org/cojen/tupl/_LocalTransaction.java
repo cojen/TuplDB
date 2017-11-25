@@ -1002,11 +1002,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Caller must hold commit lock.
      *
-     * @param op OP_SET_LENGTH or OP_WRITE
-     * @param buf pass EMPTY_BYTES for OP_SET_LENGTH
+     * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
+     * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
     final void redoCursorValueModify(_TreeCursor cursor, int op,
-                                     long pos, byte[] buf, int off, int len)
+                                     long pos, byte[] buf, int off, long len)
         throws IOException
     {
         check();
@@ -1048,8 +1048,10 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
             if (op == _TreeValue.OP_SET_LENGTH) {
                 mContext.redoCursorValueSetLength(mRedo, cursorId, txnId, pos);
+            } else if (op == _TreeValue.OP_WRITE) {
+                mContext.redoCursorValueWrite(mRedo, cursorId, txnId, pos, buf, off, (int) len);
             } else {
-                mContext.redoCursorValueWrite(mRedo, cursorId, txnId, pos, buf, off, len);
+                mContext.redoCursorValueClear(mRedo, cursorId, txnId, pos, len);
             }
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true

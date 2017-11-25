@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10,"i33":10,"i34":10,"i35":10,"i36":10,"i37":10,"i38":10,"i39":10,"i40":10,"i41":10,"i42":10,"i43":10,"i44":10,"i45":10,"i46":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10,"i33":10,"i34":10,"i35":10,"i36":10,"i37":10,"i38":10,"i39":10,"i40":10,"i41":10,"i42":10,"i43":10,"i44":10,"i45":10,"i46":10,"i47":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -470,12 +470,19 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 </td>
 </tr>
 <tr id="i44" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueClear-long-long-">valueClear</a></span>(long&nbsp;pos,
+          long&nbsp;length)</code>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
+</td>
+</tr>
+<tr id="i45" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueLength--">valueLength</a></span>()</code>
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
-<tr id="i45" class="rowColor">
+<tr id="i46" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueRead-long-byte:A-int-int-">valueRead</a></span>(long&nbsp;pos,
          byte[]&nbsp;buf,
@@ -484,7 +491,7 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
-<tr id="i46" class="altColor">
+<tr id="i47" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueWrite-long-byte:A-int-int-">valueWrite</a></span>(long&nbsp;pos,
           byte[]&nbsp;buf,
@@ -646,6 +653,28 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <dd><code>buf</code> - buffer to write from</dd>
 <dd><code>off</code> - buffer start offset</dd>
 <dd><code>len</code> - amount to write</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="valueClear-long-long-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>valueClear</h4>
+<pre>public&nbsp;void&nbsp;valueClear(long&nbsp;pos,
+                       long&nbsp;length)
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
+<dd><code><a href="../../../org/cojen/tupl/ValueAccessor.html#valueClear-long-long-">valueClear</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>pos</code> - start position to clear from</dd>
+<dd><code>length</code> - amount to clear</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>

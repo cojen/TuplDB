@@ -70,6 +70,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     }
 
     /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public void valueClear(long pos, long length) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override

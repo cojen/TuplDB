@@ -989,6 +989,146 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void clearNonFragmented() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = "value".getBytes();
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+
+        // Clear nothing.
+        accessor.valueClear(0, 10);
+        assertNull(ix.load(Transaction.BOGUS, key));
+
+        // Clear entire value.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(0, value.length);
+        fastAssertArrayEquals(new byte[value.length], ix.load(Transaction.BOGUS, key));
+
+        // Clear value slice.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(1, value.length - 2);
+        byte[] expected = value.clone();
+        for (int i=1; i<expected.length - 1; i++) {
+            expected[i] = 0;
+        }
+        fastAssertArrayEquals(expected, ix.load(Transaction.BOGUS, key));
+
+        // Attempt to clear past the end.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(1, 1000);
+        expected = value.clone();
+        for (int i=1; i<expected.length; i++) {
+            expected[i] = 0;
+        }
+        fastAssertArrayEquals(expected, ix.load(Transaction.BOGUS, key));
+
+        // Attempt to clear before the start.
+        try {
+            accessor.valueClear(-1, 1000);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+
+        accessor.close();
+    }
+
+    @Test
+    public void clearFragmentedDirect() throws Exception {
+        // Test clear of fragmented value which uses direct pointer encoding.
+
+        // Values with one page and no inline content...
+        clearFragmented(512, 0, 100);
+        clearFragmented(512, 0, 512);
+        clearFragmented(512, 0, 513);
+        clearFragmented(512, 1, 100);
+        clearFragmented(512, 1, 511);
+        clearFragmented(512, 1, 512);
+
+        // Values with multiple pages and no inline content...
+        clearFragmented(5120, 0, 100);
+        clearFragmented(5120, 0, 512);
+        clearFragmented(5120, 0, 513);
+        clearFragmented(5120, 0, 2000);
+        clearFragmented(5120, 0, 5119);
+        clearFragmented(5120, 0, 5120);
+        clearFragmented(5120, 0, 5121);
+        clearFragmented(5120, 100, 100);
+        clearFragmented(5120, 512, 512);
+        clearFragmented(5120, 1000, 513);
+        clearFragmented(5120, 2000, 2000);
+        clearFragmented(5120, 4000, 2000);
+
+        // Values with multiple pages and some inline content...
+        clearFragmented(5200, 0, 50);
+        clearFragmented(5200, 0, 80);
+        clearFragmented(5200, 0, 100);
+        clearFragmented(5200, 40, 100);
+        clearFragmented(5200, 80, 100);
+        clearFragmented(5200, 100, 100);
+        clearFragmented(5200, 512, 512);
+        clearFragmented(5200, 1000, 513);
+        clearFragmented(5200, 2000, 2000);
+        clearFragmented(5200, 4000, 2000);
+
+        // Values with sparse content (due to double clearing)...
+        clearFragmented(5200, 2000, 1000, 2500, 600);  // no overlap
+        clearFragmented(5200, 2000, 1000, 1500, 1000); // low overlap
+        clearFragmented(5200, 2000, 1000, 2500, 1000); // high overlap
+        clearFragmented(5200, 2000, 1000, 1500, 2000); // full overlap
+    }
+
+    @Test
+    public void clearFragmentedIndirect() throws Exception {
+        // Test clear of fragmented value which uses indirect pointer encoding.
+
+        clearFragmented(51200, 0, 1);
+        clearFragmented(51200, 0, 1000);
+        clearFragmented(51201, 0, 5000);
+        clearFragmented(20000, 0, 1000);
+        clearFragmented(20000, 10000, 1000);
+        clearFragmented(20000, 10000, 100000);
+
+        // Values with sparse content (due to double clearing)...
+        clearFragmented(20000, 10000, 1000, 11000, 900);  // no overlap
+        clearFragmented(20000, 10000, 1000, 9000, 900);   // low overlap
+        clearFragmented(20000, 10000, 1000, 11000, 2000); // high overlap
+        clearFragmented(20000, 10000, 1000, 9000, 2000);  // full overlap
+    }
+
+    private void clearFragmented(int length, int clearPos, int clearLen) throws Exception {
+        clearFragmented(length, clearPos, clearLen, 0, 0);
+    }
+
+    private void clearFragmented(int length, int clearPos, int clearLen, int pos2, int len2)
+        throws Exception
+    {
+        Index ix = mDb.openIndex("test");
+        byte[] key = "key".getBytes();
+        long seed = (((length * 31) + clearPos) * 31) + clearLen;
+        byte[] value = new byte[length];
+        new Random(seed).nextBytes(value);
+        ix.store(Transaction.BOGUS, key, value);
+
+        Arrays.fill(value, clearPos, clearPos + Math.min(clearLen, length - clearPos), (byte) 0);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueClear(clearPos, clearLen);
+        fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
+
+        if (len2 > 0) {
+            Arrays.fill(value, pos2, pos2 + Math.min(len2, length - pos2), (byte) 0);
+            accessor.valueClear(pos2, len2);
+            fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
+        }
+
+        accessor.close();
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 

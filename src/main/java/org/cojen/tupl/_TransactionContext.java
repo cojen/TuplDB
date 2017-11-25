@@ -575,6 +575,23 @@ final class _TransactionContext extends Latch implements Flushable {
         }
     }
 
+    void redoCursorValueClear(_RedoWriter redo, long cursorId, long txnId, long pos, long length)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_VALUE_CLEAR, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarLong(pos);
+            redoWriteUnsignedVarLong(length);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     void redoCustom(_RedoWriter redo, long txnId, byte[] message) throws IOException {
         if (message == null) {
             throw new NullPointerException("Message is null");

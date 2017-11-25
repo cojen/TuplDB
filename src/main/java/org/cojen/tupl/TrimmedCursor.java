@@ -62,6 +62,11 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
+    public void valueClear(long pos, long length) throws IOException {
+        mSource.valueClear(pos, length);
+    }
+
+    @Override
     public InputStream newValueInputStream(long pos) throws IOException {
         return mSource.newValueInputStream(pos);
     }
