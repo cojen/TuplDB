@@ -48,6 +48,12 @@ public class EventPrinter implements EventListener {
     public void notify(EventType type, String message, Object... args) {
         try {
             mOut.println(type.category + ": " + String.format(message, args));
+
+            for (Object obj : args) {
+                if (obj instanceof Throwable) {
+                    ((Throwable) obj).printStackTrace(mOut);
+                }
+            }
         } catch (Throwable e) {
             // Ignore, and so this listener is safe for the caller.
         }
