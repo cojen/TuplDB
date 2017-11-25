@@ -202,6 +202,13 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length) {
+        mOut.println("cursorValueClear: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", pos=" + pos + ", length=" + length);
+        return true;
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) {
         mOut.println("txnLockShared: txnId=" + txnId + ", indexId=" + indexId +
                      ", key=" + toHex(key));

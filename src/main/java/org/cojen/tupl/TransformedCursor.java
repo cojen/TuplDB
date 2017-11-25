@@ -556,6 +556,11 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
+    void doValueClear(long pos, long length) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     int valueStreamBufferSize(int bufferSize) {
         throw new UnsupportedOperationException();
     }

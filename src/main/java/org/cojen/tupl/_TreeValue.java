@@ -33,7 +33,7 @@ import static org.cojen.tupl.Utils.*;
  */
 final class _TreeValue {
     // Op ordinals are relevant.
-    static final int OP_LENGTH = 0, OP_READ = 1, OP_SET_LENGTH = 2, OP_WRITE = 3;
+    static final int OP_LENGTH = 0, OP_READ = 1, OP_CLEAR = 2, OP_SET_LENGTH = 3, OP_WRITE = 4;
 
     // Touches a fragment without extending the value length. Used for file compaction.
     static final byte[] TOUCH_VALUE = new byte[0];
@@ -155,7 +155,7 @@ final class _TreeValue {
      */
     @SuppressWarnings("fallthrough")
     static long action(_TreeCursor cursor, _CursorFrame frame, int op,
-                       long pos, byte[] b, int bOff, int bLen)
+                       long pos, byte[] b, int bOff, long bLen)
         throws IOException
     {
         while (true) {
@@ -165,8 +165,8 @@ final class _TreeValue {
             if (nodePos < 0) {
                 // Value doesn't exist.
 
-                if (op <= OP_READ) {
-                    // Handle OP_LENGTH and OP_READ.
+                if (op <= OP_CLEAR) {
+                    // Handle OP_LENGTH, OP_READ, and OP_CLEAR.
                     return -1;
                 }
 
@@ -212,8 +212,8 @@ final class _TreeValue {
                                     | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
                     } else {
                         // ghost
-                        if (op <= OP_READ) {
-                            // Handle OP_LENGTH and OP_READ.
+                        if (op <= OP_CLEAR) {
+                            // Handle OP_LENGTH, OP_READ, and OP_CLEAR.
                             return -1;
                         }
 
@@ -244,9 +244,16 @@ final class _TreeValue {
                         bLen = 0;
                     } else {
                         bLen = Math.min((int) (vLen - pos), bLen);
-                        p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
+                        p_copyToArray(page, (int) (loc + pos), b, bOff, (int) bLen);
                     }
                     return bLen;
+
+                case OP_CLEAR:
+                    if (pos < vLen) {
+                        bLen = Math.min(bLen, vLen - pos);
+                        p_clear(page, (int) (loc + pos), (int) (loc + pos + bLen));
+                    }
+                    return 0;
 
                 case OP_SET_LENGTH:
                     if (pos <= vLen) {
@@ -307,10 +314,10 @@ final class _TreeValue {
                         final long end = pos + bLen;
                         if (end <= vLen) {
                             // Writing within existing value region.
-                            p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
+                            p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) bLen);
                             return 0;
                         } else if (pos == 0 && bOff == 0 && bLen == b.length) {
-                            // Writing over the entire value.
+                            // Writing over the entire value and extending.
                             try {
                                 node.updateLeafValue(frame, cursor.mTree, nodePos, 0, b);
                             } catch (Throwable e) {
@@ -400,7 +407,7 @@ final class _TreeValue {
                 }
 
                 bLen = (int) Math.min(fLen - pos, bLen);
-                final int total = bLen;
+                final int total = (int) bLen;
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
@@ -411,7 +418,7 @@ final class _TreeValue {
                         // Not reading any inline content.
                         pos -= fInlineLen;
                     } else if (bLen <= amt) {
-                        p_copyToArray(page, (int) (loc + pos), b, bOff, bLen);
+                        p_copyToArray(page, (int) (loc + pos), b, bOff, (int) bLen);
                         return bLen;
                     } else {
                         p_copyToArray(page, (int) (loc + pos), b, bOff, amt);
@@ -431,7 +438,7 @@ final class _TreeValue {
                     loc += (ipos / pageSize) * 6;
                     int fNodeOff = ipos % pageSize;
                     while (true) {
-                        final int amt = Math.min(bLen, pageSize - fNodeOff);
+                        final int amt = Math.min((int) bLen, pageSize - fNodeOff);
                         final long fNodeId = p_uint48GetLE(page, loc);
                         if (fNodeId == 0) {
                             // Reading a sparse value.
@@ -456,12 +463,12 @@ final class _TreeValue {
                 final long inodeId = p_uint48GetLE(page, loc);
                 if (inodeId == 0) {
                     // Reading a sparse value.
-                    Arrays.fill(b, bOff, bOff + bLen, (byte) 0);
+                    Arrays.fill(b, bOff, bOff + (int) bLen, (byte) 0);
                 } else {
                     final _Node inode = db.nodeMapLoadFragment(inodeId);
                     final int levels = db.calculateInodeLevels(fLen);
                     try {
-                        readMultilevelFragments(db, pos, levels, inode, b, bOff, bLen);
+                        readMultilevelFragments(db, pos, levels, inode, b, (int) bOff, (int) bLen);
                     } finally {
                         inode.releaseShared();
                     }
@@ -471,6 +478,105 @@ final class _TreeValue {
             } catch (Throwable e) {
                 node.releaseShared();
                 throw e;
+            }
+
+            case OP_CLEAR: {
+                // Clear range of fragmented value.
+
+                bLen = Math.min(bLen, fLen - pos);
+
+                if (bLen <= 0) {
+                    return 0;
+                }
+
+                if ((fHeader & 0x02) != 0) {
+                    // Inline content.
+                    int fInlineLen = p_ushortGetLE(page, loc);
+                    loc += 2;
+                    final long amt = fInlineLen - pos;
+                    if (amt > 0) {
+                        if (bLen <= amt) {
+                            // Only clearing inline content.
+                            p_clear(page, (int) (loc + pos), (int) (loc + pos + bLen));
+                            return 0;
+                        }
+                        p_clear(page, (int) (loc + pos), (int) (loc + pos + amt));
+                        bLen -= amt;
+                        pos = 0;
+                    } else {
+                        pos -= fInlineLen;
+                    }
+                    fLen -= fInlineLen;
+                    // Move location to first page pointer.
+                    loc += fInlineLen;
+                }
+
+                final boolean toEnd = (pos + bLen) >= fLen;
+
+                if ((fHeader & 0x01) != 0) try {
+                    // Indirect pointers.
+
+                    long inodeId = p_uint48GetLE(page, loc);
+
+                    if (inodeId != 0) {
+                        final _LocalDatabase db = node.getDatabase();
+                        final _Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
+                        try {
+                            if (db.markFragmentDirty(inode)) {
+                                p_int48PutLE(page, loc, inode.mId);
+                            }
+                            int levels = db.calculateInodeLevels(fLen);
+                            clearMultilevelFragments(db, pos, levels, inode, bLen, toEnd);
+                        } finally {
+                            inode.releaseExclusive();
+                        }
+                    }
+
+                    return 0;
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
+
+                // Direct pointers.
+
+                final _LocalDatabase db = node.getDatabase();
+                final int ipos = (int) pos;
+                final int pageSize = pageSize(db, page);
+                loc += (ipos / pageSize) * 6;
+                int fNodeOff = ipos % pageSize;
+
+                while (true) try {
+                    final int amt = Math.min((int) bLen, pageSize - fNodeOff);
+                    final long fNodeId = p_uint48GetLE(page, loc);
+                    if (fNodeId != 0) {
+                        if (amt >= pageSize || toEnd && fNodeOff <= 0) {
+                            // Full clear of inode.
+                            db.deleteFragment(fNodeId);
+                            p_int48PutLE(page, loc, 0);
+                        } else {
+                            // Obtain node from cache, or read it only for partial clear.
+                            _Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
+                            try {
+                                if (db.markFragmentDirty(fNode)) {
+                                    p_int48PutLE(page, loc, fNode.mId);
+                                }
+                                p_clear(fNode.mPage, fNodeOff, fNodeOff + amt);
+                            } finally {
+                                fNode.releaseExclusive();
+                            }
+                        }
+                    }
+                    bLen -= amt;
+                    if (bLen <= 0) {
+                        return 0;
+                    }
+                    loc += 6;
+                    fNodeOff = 0;
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
             }
 
             case OP_SET_LENGTH:
@@ -569,7 +675,7 @@ final class _TreeValue {
                                     p_int48PutLE(page, loc, inode.mId);
                                 }
                                 levels = db.calculateInodeLevels(fLen);
-                                clearMultilevelFragments(db, pos, levels, inode, fLen - pos);
+                                clearMultilevelFragments(db, pos, levels, inode, fLen - pos, true);
                             } catch (Throwable e) {
                                 inode.releaseExclusive();
                                 throw e;
@@ -635,8 +741,6 @@ final class _TreeValue {
                 // Fall through to extend the length.
 
             case OP_WRITE:
-                final long endPos = pos + bLen;
-
                 int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
@@ -646,7 +750,7 @@ final class _TreeValue {
                     if (amt > 0) {
                         if (bLen <= amt) {
                             // Only writing inline content.
-                            p_copyFromArray(b, bOff, page, (int) (loc + pos), bLen);
+                            p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) bLen);
                             return 0;
                         }
                         // Write just the inline region, and then never touch it again if
@@ -660,6 +764,7 @@ final class _TreeValue {
                     loc += fInlineLen;
                 }
 
+                final long endPos = pos + bLen;
                 final _LocalDatabase db;
                 final int pageSize;
 
@@ -819,7 +924,7 @@ final class _TreeValue {
                 int fNodeOff = ipos % pageSize;
 
                 while (true) try {
-                    final int amt = Math.min(bLen, pageSize - fNodeOff);
+                    final int amt = Math.min((int) bLen, pageSize - fNodeOff);
                     final long fNodeId = p_uint48GetLE(page, loc);
                     if (fNodeId == 0) {
                         if (amt > 0) {
@@ -962,7 +1067,7 @@ final class _TreeValue {
      */
     private static void writeMultilevelFragments(final _LocalDatabase db,
                                                  final long pos, int level, final _Node inode,
-                                                 final byte[] b, int bOff, int bLen)
+                                                 final byte[] b, int bOff, long bLen)
         throws IOException
     {
         long page = inode.mPage;
@@ -977,7 +1082,7 @@ final class _TreeValue {
         final int pageSize = pageSize(db, page);
 
         while (true) {
-            int len = (int) Math.min(levelCap - ppos, bLen);
+            long len = Math.min(levelCap - ppos, bLen);
             int off = (int) ppos;
 
             final _Node childNode;
@@ -1011,7 +1116,7 @@ final class _TreeValue {
 
             try {
                 if (level <= 0) {
-                    p_copyFromArray(b, bOff, childNode.mPage, off, len);
+                    p_copyFromArray(b, bOff, childNode.mPage, off, (int) len);
                 } else {
                     writeMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
                 }
@@ -1037,10 +1142,11 @@ final class _TreeValue {
      * @param level inode level; at least 1
      * @param inode exclusively latched parent inode; never released by this method
      * @param clearLen length to clear
+     * @param toEnd true if clearing to the end of the value
      */
     private static void clearMultilevelFragments(final _LocalDatabase db,
                                                  final long pos, int level, final _Node inode,
-                                                 long clearLen)
+                                                 long clearLen, boolean toEnd)
         throws IOException
     {
         long page = inode.mPage;
@@ -1057,14 +1163,14 @@ final class _TreeValue {
             long childNodeId = p_uint48GetLE(page, poffset);
 
             if (childNodeId != 0) {
-                if (ppos <= 0 || len >= levelCap) {
+                if (len >= levelCap || toEnd && ppos <= 0) {
                     // Full clear of inode.
                     if (level <= 0) {
                         db.deleteFragment(childNodeId);
                     } else {
                         _Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                         try {
-                            clearMultilevelFragments(db, ppos, level, childNode, len);
+                            clearMultilevelFragments(db, ppos, level, childNode, len, toEnd);
                         } catch (Throwable e) {
                             childNode.releaseExclusive();
                             throw e;
@@ -1082,7 +1188,7 @@ final class _TreeValue {
                         if (level <= 0) {
                             p_clear(childNode.mPage, (int) ppos, (int) (ppos + len));
                         } else {
-                            clearMultilevelFragments(db, ppos, level, childNode, len);
+                            clearMultilevelFragments(db, ppos, level, childNode, len, toEnd);
                         }
                     } finally {
                         childNode.releaseExclusive();

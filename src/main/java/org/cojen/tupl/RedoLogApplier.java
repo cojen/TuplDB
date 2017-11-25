@@ -296,6 +296,20 @@ final class RedoLogApplier implements RedoVisitor {
         return true;
     }
 
+    @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length)
+        throws IOException
+    {
+        LHashTable.ObjEntry<TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).valueClear(pos, length);
+            }
+        }
+        return true;
+    }
+
     private TreeCursor readyCursorValueOp(LHashTable.ObjEntry<TreeCursor> entry,
                                           LocalTransaction txn)
         throws IOException

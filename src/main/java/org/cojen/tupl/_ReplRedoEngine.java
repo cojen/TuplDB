@@ -770,6 +770,45 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return true;
     }
 
+    @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length)
+        throws LockFailureException
+    {
+        CursorEntry ce = getCursorEntry(cursorId);
+        if (ce == null) {
+            return true;
+        }
+
+        TxnEntry te = getTxnEntry(txnId);
+        _LocalTransaction txn = te.mTxn;
+        _TreeCursor tc = ce.mCursor;
+
+        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+
+        runCursorTask(ce, te, new Worker.Task() {
+            public void run() throws IOException {
+                if (lock != null) {
+                    txn.push(lock);
+                }
+
+                _TreeCursor tc = ce.mCursor;
+                tc.mTxn = txn;
+
+                do {
+                    try {
+                        tc.valueClear(pos, length);
+                        break;
+                    } catch (ClosedIndexException e) {
+                        tc = reopenCursor(e, ce);
+                    }
+                } while (tc != null);
+            }
+        });
+
+        return true;
+    }
+
     private void runCursorTask(CursorEntry ce, TxnEntry te, Worker.Task task) {
         Worker w = ce.mWorker;
         if (w == null) {

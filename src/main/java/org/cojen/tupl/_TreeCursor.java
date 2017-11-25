@@ -3856,13 +3856,23 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         }
     }
 
+    @Override
+    final void doValueClear(long pos, long length) throws IOException {
+        try {
+            doValueModify(storeMode(), _TreeValue.OP_CLEAR, pos, EMPTY_BYTES, 0, length);
+        } catch (IllegalStateException e) {
+            valueCheckOpen();
+            throw e;
+        }
+    }
+
     /**
      * Caller must hold shared commit lock.
      *
-     * @param op OP_SET_LENGTH or OP_WRITE
-     * @param buf pass EMPTY_BYTES for OP_SET_LENGTH
+     * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
+     * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
-    private void doValueModify(int mode, int op, long pos, byte[] buf, int off, int len)
+    private void doValueModify(int mode, int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
         _LocalTransaction txn = mTxn;

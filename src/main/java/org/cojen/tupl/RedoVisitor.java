@@ -205,6 +205,16 @@ interface RedoVisitor {
         throws IOException;
 
     /**
+     * @param cursorId non-zero cursor id
+     * @param txnId non-zero transaction id
+     * @param pos start position to clear from
+     * @param length amount to clear
+     * @return false to stop visiting
+     */
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length)
+        throws IOException;
+
+    /**
      * @param txnId non-zero transaction id
      * @param indexId non-zero index id
      * @param key non-null key

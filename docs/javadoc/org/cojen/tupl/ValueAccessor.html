@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -180,12 +180,19 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 </td>
 </tr>
 <tr id="i6" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueClear-long-long-">valueClear</a></span>(long&nbsp;pos,
+          long&nbsp;length)</code>
+<div class="block">Writes over a range of the value with zeros, starting from any position.</div>
+</td>
+</tr>
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueLength--">valueLength</a></span>()</code>
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueRead-long-byte:A-int-int-">valueRead</a></span>(long&nbsp;pos,
          byte[]&nbsp;buf,
@@ -194,7 +201,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueWrite-long-byte:A-int-int-">valueWrite</a></span>(long&nbsp;pos,
           byte[]&nbsp;buf,
@@ -245,7 +252,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <pre>void&nbsp;setValueLength(long&nbsp;length)
              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Extends or truncates the accessed value. When extended, the new portion of the value is
- zero-filled.</div>
+ filled with zeros.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>length</code> - new value length; a negative length deletes the value</dd>
@@ -298,8 +305,8 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
                 int&nbsp;off,
                 int&nbsp;len)
          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write into the value, starting from any position. Value is extended when writing past
- the end, even if the written amount is zero.</div>
+<div class="block">Write into the value, starting from any position. Value is extended with zeros when
+ writing past the end, even if the written amount is zero.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pos</code> - start position to write to</dd>
@@ -309,6 +316,29 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="valueClear-long-long-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>valueClear</h4>
+<pre>void&nbsp;valueClear(long&nbsp;pos,
+                long&nbsp;length)
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Writes over a range of the value with zeros, starting from any position. The length of
+ the value is never changed by this method, even when clearing past the end.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>pos</code> - start position to clear from</dd>
+<dd><code>length</code> - amount to clear</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
 <dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>

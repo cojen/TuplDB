@@ -537,6 +537,23 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_CURSOR_VALUE_CLEAR:
+                long pos;
+                try {
+                    cursorId = readTxnId(in);
+                    txnId = readTxnId(in);
+                    pos = in.readUnsignedVarLong();
+                    length = in.readUnsignedVarLong();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.cursorValueClear(cursorId, txnId, pos, length))
+                {
+                    return false;
+                }
+                break;
+
             case OP_TXN_LOCK_SHARED:
                 try {
                     txnId = readTxnId(in);
