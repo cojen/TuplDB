@@ -580,6 +580,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Index ix = getIndex(indexId);
         if (ix != null) {
             TreeCursor tc = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            tc.autoload(false);
             synchronized (mCursors) {
                 mCursors.insert(scrambledCursorId).mCursor = tc;
             }
@@ -1025,6 +1026,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             tc.reset();
 
             tc = (TreeCursor) ix.newCursor(txn);
+            tc.autoload(false);
             tc.mTxn = txn;
             tc.find(key);
 
