@@ -648,6 +648,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 do {
                     try {
                         tc.store(value);
+                        tc.mValue = Cursor.NOT_LOADED;
                         break;
                     } catch (ClosedIndexException e) {
                         tc = reopenCursor(e, ce);

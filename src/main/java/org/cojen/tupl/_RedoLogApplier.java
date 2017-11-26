@@ -250,6 +250,7 @@ final class _RedoLogApplier implements RedoVisitor {
                 c.mTxn = txn;
                 c.findNearby(key);
                 c.store(value);
+                c.mValue = Cursor.NOT_LOADED;
             }
         }
         return true;
