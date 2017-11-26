@@ -984,6 +984,27 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void updateSplit() throws Exception {
+        // Updating a non-fragmented value which then splits the node.
+
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<24; i++) {
+            ix.store(Transaction.BOGUS, ("key-" + i).getBytes(), ("value-" + i).getBytes());
+        }
+
+        byte[] key = "key-5".getBytes();
+        byte[] value = new byte[100];
+        new Random().nextBytes(value);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(0, value, 0, value.length);
+        accessor.close();
+
+        fastAssertArrayEquals(value, ix.load(null, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 

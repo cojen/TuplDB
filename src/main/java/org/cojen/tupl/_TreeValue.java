@@ -322,6 +322,10 @@ final class _TreeValue {
                                 node.releaseExclusive();
                                 throw e;
                             }
+                            if (node.mSplit != null) {
+                                // Releases latch if an exception is thrown.
+                                node = cursor.mTree.finishSplit(frame, node);
+                            }
                             return 0;
                         } else {
                             // Write the overlapping region, and then append the rest.
