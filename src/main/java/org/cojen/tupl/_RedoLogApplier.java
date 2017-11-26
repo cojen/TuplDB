@@ -222,7 +222,9 @@ final class _RedoLogApplier implements RedoVisitor {
     public boolean cursorRegister(long cursorId, long indexId) throws IOException {
         Index ix = openIndex(indexId);
         if (ix != null) {
-            mCursors.insert(cursorId).value = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
+            _TreeCursor c = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
+            c.autoload(false);
+            mCursors.insert(cursorId).value = c;
         }
         return true;
     }
