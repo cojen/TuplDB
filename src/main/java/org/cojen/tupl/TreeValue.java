@@ -186,6 +186,11 @@ final class TreeValue {
                 // Fallthrough and complete the write operation. Need to re-assign nodePos,
                 // because the insert operation changed it.
                 nodePos = frame.mNodePos;
+
+                if (nodePos < 0) {
+                    // Concurrently deleted.
+                    return 0;
+                }
             }
 
             /*P*/ byte[] page = node.mPage;
@@ -340,7 +345,8 @@ final class TreeValue {
                 p_copyToArray(page, loc, oldValue, 0, oldValue.length);
 
                 node.deleteLeafEntry(nodePos);
-                frame.mNodePos = ~nodePos;
+                // Fix all bound cursors, including the current one.
+                node.postDelete(nodePos, cursor.mKey);
 
                 // Method releases latch if an exception is thrown.
                 cursor.insertBlank(frame, node, pos + bLen);
