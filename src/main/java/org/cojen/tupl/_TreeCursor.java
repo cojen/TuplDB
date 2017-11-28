@@ -3812,7 +3812,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             throw e;
         }
 
-        long result = _TreeValue.action(this, frame, _TreeValue.OP_LENGTH, 0, null, 0, 0);
+        long result = _TreeValue.action(null, this, frame, _TreeValue.OP_LENGTH, 0, null, 0, 0);
         frame.mNode.releaseShared();
         return result;
     }
@@ -3841,9 +3841,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             throw e;
         }
 
-        int result = (int) _TreeValue.action(this, frame, _TreeValue.OP_READ, pos, buf, off, len);
+        long result = _TreeValue.action(null, this, frame, _TreeValue.OP_READ, pos, buf, off, len);
         frame.mNode.releaseShared();
-        return result;
+        return (int) result;
     }
 
     @Override
@@ -3913,18 +3913,19 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
+        _LocalTransaction undoTxn = null;
+
         if (txn.lockMode() != LockMode.UNSAFE) {
             txn.lockExclusive(mTree.mId, key, keyHash());
+            undoTxn = txn;
         }
 
         final _CursorFrame leaf = leafExclusive();
 
         final CommitLock.Shared shared = commitLock(leaf);
         try {
-            // FIXME: txn undo
-
             notSplitDirty(leaf);
-            _TreeValue.action(this, leaf, op, pos, buf, off, len);
+            _TreeValue.action(undoTxn, this, leaf, op, pos, buf, off, len);
             _Node node = leaf.mNode;
 
             if (op == _TreeValue.OP_SET_LENGTH && node.shouldLeafMerge()) {
@@ -4186,7 +4187,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                                 final CommitLock.Shared shared = commitLock(frame);
                                 try {
                                     notSplitDirty(frame);
-                                    _TreeValue.action(this, frame, _TreeValue.OP_WRITE,
+                                    _TreeValue.action(null, this, frame, _TreeValue.OP_WRITE,
                                                      pos, _TreeValue.TOUCH_VALUE, 0, 0);
                                 } finally {
                                     shared.release();

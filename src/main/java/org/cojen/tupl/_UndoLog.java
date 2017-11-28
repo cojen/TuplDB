@@ -386,6 +386,17 @@ final class _UndoLog implements _DatabaseAccess {
         }
     }
 
+    /**
+     * Caller must hold db commit lock.
+     */
+    void pushUnwrite(long indexId, byte[] key, long pos, long ptr, int off, int len)
+        throws IOException
+    {
+        byte[] b = new byte[len];
+        DirectPageOps.p_copyToArray(ptr, off, b, 0, len);
+        pushUnwrite(indexId, key, pos, b, 0, len);
+    }
+
     private void setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
         setActiveIndexId(indexId);
 
@@ -393,7 +404,7 @@ final class _UndoLog implements _DatabaseAccess {
             if (Arrays.equals(mActiveKey, key)) {
                 return;
             }
-            doPush(OP_ACTIVE_KEY, key);
+            doPush(OP_ACTIVE_KEY, mActiveKey);
         }
 
         mActiveKey = key;

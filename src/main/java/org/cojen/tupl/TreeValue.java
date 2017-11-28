@@ -148,14 +148,15 @@ final class TreeValue {
     /**
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
+     * @param txn optional transaction for undo operations
      * @param frame latched shared for read op, exclusive for write op; released only if an
      * exception is thrown
      * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
      * @return applicable only to OP_LENGTH and OP_READ
      */
     @SuppressWarnings("fallthrough")
-    static long action(TreeCursor cursor, CursorFrame frame, int op,
-                       long pos, byte[] b, int bOff, long bLen)
+    static long action(LocalTransaction txn, TreeCursor cursor, CursorFrame frame,
+                       int op, long pos, byte[] b, int bOff, long bLen)
         throws IOException
     {
         while (true) {
@@ -174,6 +175,10 @@ final class TreeValue {
 
                 if (b == TOUCH_VALUE) {
                     return 0;
+                }
+
+                if (txn != null) {
+                    txn.pushUninsert(cursor.mTree.mId, cursor.mKey);
                 }
 
                 // Method releases latch if an exception is thrown.
@@ -255,18 +260,31 @@ final class TreeValue {
 
                 case OP_CLEAR:
                     if (pos < vLen) {
-                        bLen = Math.min(bLen, vLen - pos);
-                        p_clear(page, (int) (loc + pos), (int) (loc + pos + bLen));
+                        int iLoc = (int) (loc + pos);
+                        int iLen = (int) Math.min(bLen, vLen - pos);
+                        if (txn != null) {
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                        }
+                        p_clear(page, iLoc, iLoc + iLen);
                     }
                     return 0;
 
                 case OP_SET_LENGTH:
                     if (pos <= vLen) {
-                        // Truncate length. 
+                        if (pos == vLen) {
+                            return 0;
+                        }
+
+                        // Truncate non-fragmented value. 
 
                         int newLen = (int) pos;
                         int oldLen = (int) vLen;
                         int garbageAccum = oldLen - newLen;
+
+                        if (txn != null) {
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                            pos, page, loc + newLen, garbageAccum);
+                        }
 
                         shift: {
                             final int vShift;
@@ -307,12 +325,24 @@ final class TreeValue {
                         final long end = pos + bLen;
                         if (end <= vLen) {
                             // Writing within existing value region.
-                            p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) bLen);
+                            int iLoc = (int) (loc + pos);
+                            int iLen = (int) bLen;
+                            if (txn != null) {
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                                pos, page, iLoc, iLen);
+                            }
+                            p_copyFromArray(b, bOff, page, iLoc, iLen);
                             return 0;
                         } else if (pos == 0 && bOff == 0 && bLen == b.length) {
                             // Writing over the entire value and extending.
                             try {
-                                node.updateLeafValue(frame, cursor.mTree, nodePos, 0, b);
+                                Tree tree = cursor.mTree;
+                                if (txn != null) {
+                                    // Copy whole entry into undo log.
+                                    txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE,
+                                                      page, kHeaderLoc, loc + vLen - kHeaderLoc);
+                                }
+                                node.updateLeafValue(frame, tree, nodePos, 0, b);
                             } catch (Throwable e) {
                                 node.releaseExclusive();
                                 throw e;
@@ -324,11 +354,16 @@ final class TreeValue {
                             return 0;
                         } else {
                             // Write the overlapping region, and then append the rest.
-                            int len = (int) (vLen - pos);
-                            p_copyFromArray(b, bOff, page, (int) (loc + pos), len);
+                            int iLoc = (int) (loc + pos);
+                            int iLen = (int) (vLen - pos);
+                            if (txn != null) {
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                                pos, page, iLoc, iLen);
+                            }
+                            p_copyFromArray(b, bOff, page, iLoc, iLen);
                             pos = vLen;
-                            bOff += len;
-                            bLen -= len;
+                            bOff += iLen;
+                            bLen -= iLen;
                         }
                     }
 
@@ -339,6 +374,12 @@ final class TreeValue {
                 // This point is reached for appending to a non-fragmented value. There's all
                 // kinds of optimizations that can be performed here, but keep things
                 // simple. Delete the old value, insert a blank value, and then update it.
+
+                if (txn != null) {
+                    txn.pushUnextend(cursor.mTree.mId, cursor.mKey, vLen);
+                    // No more undo operations to push.
+                    txn = null;
+                }
 
                 byte[] oldValue = new byte[vLen];
                 p_copyToArray(page, loc, oldValue, 0, oldValue.length);
@@ -358,7 +399,7 @@ final class TreeValue {
                     bOff = 0;
                     bLen = oldValue.length;
                 } else {
-                    action(cursor, frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
+                    action(null, cursor, frame, OP_WRITE, 0, oldValue, 0, oldValue.length);
                 }
 
                 continue;
@@ -487,6 +528,8 @@ final class TreeValue {
                     return 0;
                 }
 
+                // FIXME: undo: unwrite (hole aware)
+
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
                     int fInlineLen = p_ushortGetLE(page, loc);
@@ -584,6 +627,8 @@ final class TreeValue {
                     }
 
                     // Truncate fragmented value.
+
+                    // FIXME: undo: unwrite (hole aware)
 
                     int fInlineLoc = loc;
                     int fInlineLen = 0;
@@ -739,6 +784,8 @@ final class TreeValue {
                 // Fall through to extend the length.
 
             case OP_WRITE:
+                // FIXME: undo: unextend, unalloc, unwrite (hole aware)
+
                 int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
