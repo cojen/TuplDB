@@ -262,29 +262,15 @@ final class _TreeValue {
                         int garbageAccum = oldLen - newLen;
 
                         shift: {
-                            final int vLoc;
                             final int vShift;
 
                             if (newLen <= 127) {
                                 p_bytePut(page, vHeaderLoc, newLen);
-                                if (oldLen <= 127) {
-                                    break shift;
-                                } else if (oldLen <= 8192) {
-                                    vLoc = vHeaderLoc + 2;
-                                    vShift = 1;
-                                } else {
-                                    vLoc = vHeaderLoc + 3;
-                                    vShift = 2;
-                                }
+                                vShift = loc - (vHeaderLoc + 1);
                             } else if (newLen <= 8192) {
                                 p_bytePut(page, vHeaderLoc, 0x80 | ((newLen - 1) >> 8));
                                 p_bytePut(page, vHeaderLoc + 1, newLen - 1);
-                                if (oldLen <= 8192) {
-                                    break shift;
-                                } else {
-                                    vLoc = vHeaderLoc + 3;
-                                    vShift = 1;
-                                }
+                                vShift = loc - (vHeaderLoc + 2);
                             } else {
                                 p_bytePut(page, vHeaderLoc, 0xa0 | ((newLen - 1) >> 16));
                                 p_bytePut(page, vHeaderLoc + 1, (newLen - 1) >> 8);
@@ -292,8 +278,10 @@ final class _TreeValue {
                                 break shift;
                             }
 
-                            garbageAccum += vShift;
-                            p_copy(page, vLoc, page, vLoc - vShift, newLen);
+                            if (vShift > 0) {
+                                garbageAccum += vShift;
+                                p_copy(page, loc, page, loc - vShift, newLen);
+                            }
                         }
 
                         node.garbage(node.garbage() + garbageAccum);
