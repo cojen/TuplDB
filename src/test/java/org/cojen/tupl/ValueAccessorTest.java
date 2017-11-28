@@ -44,6 +44,7 @@ public class ValueAccessorTest {
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
+        mConfig = config;
         mDb = newTempDatabase(getClass(), config);
     }
 
@@ -54,9 +55,11 @@ public class ValueAccessorTest {
     @After
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
+        mConfig = null;
         mDb = null;
     }
 
+    protected DatabaseConfig mConfig;
     protected Database mDb;
 
     @Test
@@ -1147,6 +1150,204 @@ public class ValueAccessorTest {
         accessor.close();
 
         fastAssertArrayEquals(value, ix.load(null, key));
+    }
+
+    @Test
+    public void undoMissing() throws Exception {
+        // Test rollback of value insert.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] k2 = "key-2".getBytes();
+
+        Cursor c = ix.newAccessor(txn, k1);
+        c.setValueLength(10000);
+
+        c.findNearby(k2);
+        byte[] v2 = "hello".getBytes();
+        c.valueWrite(1, v2, 0, v2.length);
+
+        c.findNearby(k1);
+        assertEquals(10000, c.valueLength());
+        c.findNearby(k2);
+        assertEquals(1 + v2.length, c.valueLength());
+        byte[] expect = new byte[1 + v2.length];
+        System.arraycopy(v2, 0, expect, 1, v2.length);
+        c.load();
+        fastAssertArrayEquals(expect, c.value());
+
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        assertFalse(ix.exists(Transaction.BOGUS, k1));
+        assertFalse(ix.exists(Transaction.BOGUS, k2));
+    }
+
+    @Test
+    public void undoTruncateNonFragmented() throws Exception {
+        // Test rollback of value truncation.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        byte[] k2 = "key-2".getBytes();
+        byte[] v2 = "world".getBytes();
+
+        ix.store(null, k1, v1);
+        ix.store(null, k2, v2);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.setValueLength(1);
+        c.findNearby(k2);
+        c.setValueLength(2);
+        assertEquals(2, c.valueLength());
+        c.findNearby(k1);
+        assertEquals(1, c.valueLength());
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+        fastAssertArrayEquals(v2, ix.load(null, k2));
+    }
+
+    @Test
+    public void undoUpdateNonFragmented() throws Exception {
+        // Test rollback of value update, not extended in length.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueWrite(1, "xyz".getBytes(), 0, 3);
+        fastAssertArrayEquals("hxyzo".getBytes(), ix.load(txn, k1));
+        c.valueWrite(0, "world".getBytes(), 0, 5);
+        fastAssertArrayEquals("world".getBytes(), ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoReplaceExtendNonFragmented() throws Exception {
+        // Test rollback of full value replace and extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] v2 = "helloworld".getBytes();
+        c.valueWrite(0, v2, 0, v2.length);
+        fastAssertArrayEquals(v2, ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoPartialReplaceExtendNonFragmented() throws Exception {
+        // Test rollback of partial value replace and extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] v2 = "world".getBytes();
+        c.valueWrite(2, v2, 0, v2.length);
+        fastAssertArrayEquals("heworld".getBytes(), ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoExtendNonFragmented() throws Exception {
+        // Test rollback of value extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        byte[] k2 = "key-2".getBytes();
+        byte[] v2 = "world".getBytes();
+
+        ix.store(null, k1, v1);
+        ix.store(null, k2, v2);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] extend = "extend".getBytes();
+        c.valueWrite(v1.length, extend, 0, extend.length);
+        c.findNearby(k2);
+        c.valueWrite(v2.length + 1, extend, 0, extend.length);
+        fastAssertArrayEquals("helloextend".getBytes(), ix.load(txn, k1));
+        fastAssertArrayEquals("world\0extend".getBytes(), ix.load(txn, k2));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+        fastAssertArrayEquals(v2, ix.load(null, k2));
+    }
+
+    @Test
+    public void undoClearNonFragmented() throws Exception {
+        // Test rollback of value clear.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+        
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 3);
+        fastAssertArrayEquals("h\0\0\0o".getBytes(), ix.load(txn, k1));
+        c.close();
+
+        // Close and re-open, to test undo log persistence and rollback.
+        mDb.checkpoint();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+
+        ix = mDb.openIndex("test");
+        fastAssertArrayEquals(v1, ix.load(null, k1));
     }
 
     @Test

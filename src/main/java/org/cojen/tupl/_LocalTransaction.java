@@ -1110,6 +1110,44 @@ final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Caller must hold commit lock.
      */
+    final void pushUnextend(long indexId, byte[] key, long length) throws IOException {
+        check();
+        try {
+            undoLog().pushUnextend(indexId, key, length);
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    final void pushUnalloc(long indexId, byte[] key, long pos, long length) throws IOException {
+        check();
+        try {
+            undoLog().pushUnalloc(indexId, key, pos, length);
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
+    final void pushUnwrite(long indexId, byte[] key, long pos, long b, int off, int len)
+        throws IOException
+    {
+        check();
+        try {
+            undoLog().pushUnwrite(indexId, key, pos, b, off, len);
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
     private _UndoLog undoLog() throws IOException {
         _UndoLog undo = mUndoLog;
         if (undo == null) {
