@@ -959,7 +959,15 @@ final class _UndoLog implements _DatabaseAccess {
             IntegerRef offsetRef = new IntegerRef.Value();
             long pos = decodeUnsignedVarLong(entry, offsetRef);
             length = decodeUnsignedVarLong(entry, offsetRef);
-            // FIXME: fill the range with zeros (clear)
+            while ((activeIndex = findIndex(activeIndex)) != null) {
+                try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
+                    c.valueClear(pos, length);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
+                }
+            }
             break;
 
         case OP_UNWRITE:
