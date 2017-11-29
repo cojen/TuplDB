@@ -528,7 +528,7 @@ final class _TreeValue {
                     return 0;
                 }
 
-                // FIXME: undo: unwrite (hole aware)
+                // FIXME: undo: unalloc, unwrite (hole aware)
 
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
@@ -628,7 +628,7 @@ final class _TreeValue {
 
                     // Truncate fragmented value.
 
-                    // FIXME: undo: unwrite (hole aware)
+                    // FIXME: undo: unalloc, unwrite (hole aware)
 
                     int fInlineLoc = loc;
                     int fInlineLen = 0;
@@ -784,8 +784,6 @@ final class _TreeValue {
                 // Fall through to extend the length.
 
             case OP_WRITE:
-                // FIXME: undo: unextend, unalloc, unwrite (hole aware)
-
                 int fInlineLen = 0;
                 if ((fHeader & 0x02) != 0) {
                     // Inline content.
@@ -793,14 +791,24 @@ final class _TreeValue {
                     loc += 2;
                     final long amt = fInlineLen - pos;
                     if (amt > 0) {
+                        int iLoc = (int) (loc + pos);
                         if (bLen <= amt) {
                             // Only writing inline content.
-                            p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) bLen);
+                            int iLen = (int) bLen;
+                            if (txn != null) {
+                                txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                                pos, page, iLoc, iLen);
+                            }
+                            p_copyFromArray(b, bOff, page, iLoc, iLen);
                             return 0;
                         }
                         // Write just the inline region, and then never touch it again if
                         // continued to the outermost loop.
-                        p_copyFromArray(b, bOff, page, (int) (loc + pos), (int) amt);
+                        int iLen = (int) amt;
+                        if (txn != null) {
+                            txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                        }
+                        p_copyFromArray(b, bOff, page, iLoc, iLen);
                         bLen -= amt;
                         bOff += amt;
                         pos = fInlineLen;
@@ -819,6 +827,8 @@ final class _TreeValue {
                     if (bLen == 0 && b != TOUCH_VALUE) {
                         return 0;
                     }
+
+                    // FIXME: undo: unalloc, unwrite (hole aware)
 
                     db = node.getDatabase();
 
@@ -863,6 +873,18 @@ final class _TreeValue {
 
                     if ((fHeader & 0x01) != 0) try {
                         // Extend the value with indirect pointers.
+
+                        if (txn != null) {
+                            // FIXME: test
+                            txn.pushUnextend(cursor.mTree.mId, cursor.mKey, fLen);
+                            if (pos >= fLen) {
+                                // Write is fully contained in the extended region, so no more
+                                // undo is required.
+                                txn = null;
+                            }
+                        }
+
+                        // FIXME: undo: unalloc, unwrite (hole aware)
 
                         pos -= fInlineLen; // safe to update now that outermost loop won't continue
 
@@ -957,14 +979,21 @@ final class _TreeValue {
                         fHeaderLoc = newLoc;
                     }
 
+                    if (txn != null) {
+                        txn.pushUnextend(cursor.mTree.mId, cursor.mKey, fLen);
+                        if (pos >= fLen) {
+                            // Write is fully contained in the extended region, so no more
+                            // undo is required.
+                            txn = null;
+                        }
+                    }
+
                     updateLengthField(page, fHeaderLoc, endPos);
                 }
 
                 // Direct pointers.
 
-                pos -= fInlineLen; // safe to update now that outermost loop won't continue
-
-                final int ipos = (int) pos;
+                final int ipos = (int) (pos - fInlineLen);
                 loc += (ipos / pageSize) * 6;
                 int fNodeOff = ipos % pageSize;
 
@@ -974,6 +1003,9 @@ final class _TreeValue {
                     if (fNodeId == 0) {
                         if (amt > 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
+                            if (txn != null) {
+                                txn.pushUnalloc(cursor.mTree.mId, cursor.mKey, pos, amt);
+                            }
                             final _Node fNode = db.allocDirtyFragmentNode();
                             try {
                                 p_int48PutLE(page, loc, fNode.mId);
@@ -990,15 +1022,29 @@ final class _TreeValue {
                     } else {
                         if (amt > 0 || b == TOUCH_VALUE) {
                             // Obtain node from cache, or read it only for partial write.
-                            final _Node fNode = db
-                                .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
-                            try {
-                                if (db.markFragmentDirty(fNode)) {
-                                    p_int48PutLE(page, loc, fNode.mId);
+                            if (txn == null) {
+                                final _Node fNode = db
+                                    .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
+                                try {
+                                    if (db.markFragmentDirty(fNode)) {
+                                        p_int48PutLE(page, loc, fNode.mId);
+                                    }
+                                    p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
+                                } finally {
+                                    fNode.releaseExclusive();
                                 }
-                                p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
-                            } finally {
-                                fNode.releaseExclusive();
+                            } else {
+                                final _Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
+                                try {
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                                    pos, fNode.mPage, fNodeOff, amt);
+                                    if (db.markFragmentDirty(fNode)) {
+                                        p_int48PutLE(page, loc, fNode.mId);
+                                    }
+                                    p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
+                                } finally {
+                                    fNode.releaseExclusive();
+                                }
                             }
                         }
                     }
@@ -1007,6 +1053,7 @@ final class _TreeValue {
                         return 0;
                     }
                     bOff += amt;
+                    pos += pageSize;
                     loc += 6;
                     fNodeOff = 0;
                 } catch (Throwable e) {
