@@ -506,7 +506,7 @@ final class TreeValue {
                 } else {
                     final int levels = db.calculateInodeLevels(fLen);
                     final Node inode = db.nodeMapLoadFragment(inodeId);
-                    readMultilevelFragments(db, pos, levels, inode, b, bOff, (int) bLen);
+                    readMultilevelFragments(pos, levels, inode, b, bOff, (int) bLen);
                 }
 
                 return total;
@@ -563,7 +563,7 @@ final class TreeValue {
                                 p_int48PutLE(page, loc, inode.mId);
                             }
                             int levels = db.calculateInodeLevels(fLen);
-                            clearMultilevelFragments(db, pos, levels, inode, bLen, toEnd);
+                            clearMultilevelFragments(pos, levels, inode, bLen, toEnd);
                         } finally {
                             inode.releaseExclusive();
                         }
@@ -714,7 +714,7 @@ final class TreeValue {
                                     p_int48PutLE(page, loc, inode.mId);
                                 }
                                 levels = db.calculateInodeLevels(fLen);
-                                clearMultilevelFragments(db, pos, levels, inode, fLen - pos, true);
+                                clearMultilevelFragments(pos, levels, inode, fLen - pos, true);
                             } catch (Throwable e) {
                                 inode.releaseExclusive();
                                 throw e;
@@ -824,8 +824,6 @@ final class TreeValue {
                         return 0;
                     }
 
-                    // FIXME: undo: unalloc, unwrite (hole aware)
-
                     db = node.getDatabase();
 
                     if ((fHeader & 0x01) != 0) try {
@@ -836,7 +834,8 @@ final class TreeValue {
 
                         final int levels = db.calculateInodeLevels(fLen);
                         final Node inode = prepareMultilevelWrite(db, page, loc);
-                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, (int) bLen);
+                        writeMultilevelFragments
+                            (txn, cursor, pos, pos, levels, inode, b, bOff, (int) bLen);
 
                         return 0;
                     } catch (Throwable e) {
@@ -867,7 +866,6 @@ final class TreeValue {
                         // Extend the value with indirect pointers.
 
                         if (txn != null) {
-                            // FIXME: test
                             txn.pushUnextend(cursor.mTree.mId, cursor.mKey, fLen);
                             if (pos >= fLen) {
                                 // Write is fully contained in the extended region, so no more
@@ -875,8 +873,6 @@ final class TreeValue {
                                 txn = null;
                             }
                         }
-
-                        // FIXME: undo: unalloc, unwrite (hole aware)
 
                         pos -= fInlineLen; // safe to update now that outermost loop won't continue
 
@@ -931,7 +927,8 @@ final class TreeValue {
 
                         updateLengthField(page, fHeaderLoc, endPos);
 
-                        writeMultilevelFragments(db, pos, levels, inode, b, bOff, (int) bLen);
+                        writeMultilevelFragments
+                            (txn, cursor, pos, pos, levels, inode, b, bOff, (int) bLen);
 
                         return 0;
                     } catch (Throwable e) {
@@ -1059,11 +1056,12 @@ final class TreeValue {
      * @param b slice of complete value being reconstructed
      * @param bLen must be more than zero
      */
-    private static void readMultilevelFragments(final LocalDatabase db,
-                                                long pos, int level, Node inode,
+    private static void readMultilevelFragments(long pos, int level, Node inode,
                                                 final byte[] b, int bOff, int bLen)
         throws IOException
     {
+        LocalDatabase db = inode.getDatabase();
+
         start: while (true) {
             /*P*/ byte[] page = inode.mPage;
             level--;
@@ -1112,7 +1110,7 @@ final class TreeValue {
                             continue start;
                         }
                         try {
-                            readMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
+                            readMultilevelFragments(ppos, level, childNode, b, bOff, len);
                         } catch (Throwable e) {
                             inode.releaseShared();
                             throw e;
@@ -1162,93 +1160,138 @@ final class TreeValue {
     }
 
     /**
+     * @param txn optional transaction for undo operations
      * @param pos value position being written
+     * @param ppos partial value position being written (same as pos initially)
      * @param level inode level; at least 1
      * @param inode exclusively latched parent inode; always released by this method
      * @param b slice of complete value being written
      * @param bLen can be zero
      */
-    private static void writeMultilevelFragments(final LocalDatabase db,
-                                                 long pos, int level, Node inode,
+    private static void writeMultilevelFragments(LocalTransaction txn, TreeCursor cursor,
+                                                 long pos, long ppos, int level, Node inode,
                                                  final byte[] b, int bOff, int bLen)
         throws IOException
     {
+        LocalDatabase db = inode.getDatabase();
+
         start: while (true) {
             /*P*/ byte[] page = inode.mPage;
             level--;
             long levelCap = db.levelCap(level);
 
-            int poffset = ((int) (pos / levelCap)) * 6;
+            int poffset = ((int) (ppos / levelCap)) * 6;
 
             // Handle a possible partial write to the first page.
-            long ppos = pos % levelCap;
+            ppos %= levelCap;
 
             final int pageSize = pageSize(db, page);
 
             while (true) {
+                long childNodeId = p_uint48GetLE(page, poffset);
                 int len = (int) Math.min(levelCap - ppos, bLen);
-                int off = (int) ppos;
-
-                final Node childNode;
-                setPtr: {
-                    long childNodeId = p_uint48GetLE(page, poffset);
-                    boolean partial = level > 0 | off > 0 | len < pageSize;
-
-                    try {
-                        if (childNodeId == 0) {
-                            // Writing into a sparse value. Allocate a node and point to it.
-                            childNode = db.allocDirtyFragmentNode();
-                            if (partial) {
-                                // New page must be zero-filled.
-                                p_clear(childNode.mPage, 0, pageSize);
-                            }
-                        } else {
-                            // Obtain node from cache, or read it only for partial write.
-                            childNode = db.nodeMapLoadFragmentExclusive(childNodeId, partial);
-                            try {
-                                if (!db.markFragmentDirty(childNode)) {
-                                    // Already dirty, so no need to update the pointer.
-                                    break setPtr;
-                                }
-                            } catch (Throwable e) {
-                                childNode.releaseExclusive();
-                                throw e;
-                            }
-                        }
-                    } catch (Throwable e) {
-                        inode.releaseExclusive();
-                        throw e;
-                    }
-
-                    p_int48PutLE(page, poffset, childNode.mId);
-                }
 
                 bLen -= len;
 
                 if (level <= 0) {
-                    p_copyFromArray(b, bOff, childNode.mPage, off, len);
+                    final Node childNode;
+                    setPtr: {
+                        try {
+                            if (childNodeId == 0) {
+                                // Writing into a sparse value. Allocate a node and point to it.
+                                if (txn != null) {
+                                    txn.pushUnalloc(cursor.mTree.mId, cursor.mKey, pos, len);
+                                }
+                                childNode = db.allocDirtyFragmentNode();
+                                if (ppos > 0 || len < pageSize) {
+                                    // New page must be zero-filled.
+                                    p_clear(childNode.mPage, 0, pageSize);
+                                }
+                            } else {
+                                if (txn == null) {
+                                    // Obtain node from cache, or read it only for partial write.
+                                    childNode = db.nodeMapLoadFragmentExclusive
+                                        (childNodeId, ppos > 0 | len < pageSize);
+                                } else {
+                                    // Obtain node from cache, fully reading it for the undo log.
+                                    childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
+                                    txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
+                                                    pos, childNode.mPage, (int) ppos, len);
+                                }
+
+                                try {
+                                    if (!db.markFragmentDirty(childNode)) {
+                                        // Already dirty, so no need to update the pointer.
+                                        break setPtr;
+                                    }
+                                } catch (Throwable e) {
+                                    childNode.releaseExclusive();
+                                    throw e;
+                                }
+                            }
+                        } catch (Throwable e) {
+                            inode.releaseExclusive();
+                            throw e;
+                        }
+
+                        p_int48PutLE(page, poffset, childNode.mId);
+                    }
+
+                    p_copyFromArray(b, bOff, childNode.mPage, (int) ppos, len);
                     childNode.releaseExclusive();
+
                     if (bLen <= 0) {
                         inode.releaseExclusive();
                         return;
                     }
                 } else {
+                    final Node childNode;
+                    setPtr: {
+                        try {
+                            if (childNodeId == 0) {
+                                // Writing into a sparse value. Allocate a node and point to it.
+                                childNode = db.allocDirtyFragmentNode();
+                                // New page must be zero-filled.
+                                p_clear(childNode.mPage, 0, pageSize);
+                            } else {
+                                // Obtain node from cache, fully reading if necessary.
+                                childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
+                                try {
+                                    if (!db.markFragmentDirty(childNode)) {
+                                        // Already dirty, so no need to update the pointer.
+                                        break setPtr;
+                                    }
+                                } catch (Throwable e) {
+                                    childNode.releaseExclusive();
+                                    throw e;
+                                }
+                            }
+                        } catch (Throwable e) {
+                            inode.releaseExclusive();
+                            throw e;
+                        }
+
+                        p_int48PutLE(page, poffset, childNode.mId);
+                    }
+
                     if (bLen <= 0) {
                         // Tail call.
                         inode.releaseExclusive(); // latch coupling release
-                        pos = ppos;
                         inode = childNode;
                         bLen = len;
                         continue start;
                     }
+
                     try {
-                        writeMultilevelFragments(db, ppos, level, childNode, b, bOff, len);
+                        writeMultilevelFragments
+                            (txn, cursor, pos, ppos, level, childNode, b, bOff, len);
                     } catch (Throwable e) {
                         inode.releaseExclusive();
                         throw e;
                     }
                 }
 
+                pos += len;
                 bOff += len;
                 poffset += 6;
 
@@ -1265,11 +1308,12 @@ final class TreeValue {
      * @param clearLen length to clear
      * @param toEnd true if clearing to the end of the value
      */
-    private static void clearMultilevelFragments(final LocalDatabase db,
-                                                 final long pos, int level, final Node inode,
+    private static void clearMultilevelFragments(final long pos, int level, final Node inode,
                                                  long clearLen, boolean toEnd)
         throws IOException
     {
+        LocalDatabase db = inode.getDatabase();
+
         /*P*/ byte[] page = inode.mPage;
         level--;
         long levelCap = db.levelCap(level);
@@ -1291,7 +1335,7 @@ final class TreeValue {
                     } else {
                         Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                         try {
-                            clearMultilevelFragments(db, ppos, level, childNode, len, toEnd);
+                            clearMultilevelFragments(ppos, level, childNode, len, toEnd);
                         } catch (Throwable e) {
                             childNode.releaseExclusive();
                             throw e;
@@ -1309,7 +1353,7 @@ final class TreeValue {
                         if (level <= 0) {
                             p_clear(childNode.mPage, (int) ppos, (int) (ppos + len));
                         } else {
-                            clearMultilevelFragments(db, ppos, level, childNode, len, toEnd);
+                            clearMultilevelFragments(ppos, level, childNode, len, toEnd);
                         }
                     } finally {
                         childNode.releaseExclusive();
