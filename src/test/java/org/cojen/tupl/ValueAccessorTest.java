@@ -1351,6 +1351,67 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void undoUpdateFragmentedDirectInline() throws Exception {
+        // Test rollback of value update, with inline content and direct pointers.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = new byte[520];
+        new Random(2893547).nextBytes(v1);
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueWrite(1, "hello".getBytes(), 0, 5);
+        byte[] expect = v1.clone();
+        System.arraycopy("hello".getBytes(), 0, expect, 1, 5);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline replace and extend.
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        byte[] v2 = new byte[10000];
+        new Random(28935471).nextBytes(v2);
+        c.valueWrite(1, v2, 0, v2.length);
+        expect = new byte[1 + v2.length];
+        expect[0] = v1[0];
+        System.arraycopy(v2, 0, expect, 1, v2.length);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test pure extend with no overlap.
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        byte[] v3 = new byte[2000];
+        new Random(289354715).nextBytes(v3);
+        c.valueWrite(v1.length, v3, 0, v3.length);
+        expect = new byte[v1.length + v3.length];
+        System.arraycopy(v1, 0, expect, 0, v1.length);
+        System.arraycopy(v3, 0, expect, v1.length, v3.length);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
