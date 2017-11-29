@@ -1351,9 +1351,18 @@ public class ValueAccessorTest {
     }
 
     @Test
-    public void undoUpdateFragmentedDirectInline() throws Exception {
+    public void undoUpdateFragmentedInlineDirect() throws Exception {
         // Test rollback of value update, with inline content and direct pointers.
+        undoUpdateFragmentedInline(false);
+    }
 
+    @Test
+    public void undoUpdateFragmentedInlineIndirect() throws Exception {
+        // Test rollback of value update, with inline content and indirect pointers.
+        undoUpdateFragmentedInline(true);
+    }
+
+    private void undoUpdateFragmentedInline(boolean indirect) throws Exception {
         Index ix = mDb.openIndex("test");
 
         byte[] k1 = "key-1".getBytes();
@@ -1379,7 +1388,7 @@ public class ValueAccessorTest {
 
         txn = mDb.newTransaction();
         c = ix.newAccessor(txn, k1);
-        byte[] v2 = new byte[10000];
+        byte[] v2 = new byte[indirect ? 100_000 : 10_000];
         new Random(28935471).nextBytes(v2);
         c.valueWrite(1, v2, 0, v2.length);
         expect = new byte[1 + v2.length];
@@ -1396,7 +1405,7 @@ public class ValueAccessorTest {
         // Test pure extend with no overlap.
         txn = mDb.newTransaction();
         c = ix.newAccessor(txn, k1);
-        byte[] v3 = new byte[2000];
+        byte[] v3 = new byte[indirect ? 20_000 : 2000];
         new Random(289354715).nextBytes(v3);
         c.valueWrite(v1.length, v3, 0, v3.length);
         expect = new byte[v1.length + v3.length];
