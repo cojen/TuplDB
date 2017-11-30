@@ -96,6 +96,16 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
+    public boolean register() throws IOException {
+        return mSource.register();
+    }
+
+    @Override
+    public void unregister() {
+        mSource.unregister();
+    }
+
+    @Override
     public LockResult first() throws IOException {
         LockResult result;
         try {
@@ -542,6 +552,11 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
 
     @Override
     void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    void doValueClear(long pos, long length) throws IOException {
         throw new UnsupportedOperationException();
     }
 

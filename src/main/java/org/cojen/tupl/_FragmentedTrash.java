@@ -140,7 +140,7 @@ final class _FragmentedTrash {
     void remove(long txnId, _Tree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
 
-        long undo = p_transfer(undoEntry);
+        long undo = p_transfer(undoEntry, false);
 
         byte[] indexKey, trashKey;
         try {
@@ -280,7 +280,7 @@ final class _FragmentedTrash {
         if (value == null) {
             return false;
         } else {
-            long fragmented = p_transfer(value);
+            long fragmented = p_transfer(value, false);
             try {
                 db.deleteFragments(fragmented, 0, value.length);
                 cursor.store(null);

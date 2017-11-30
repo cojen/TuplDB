@@ -87,8 +87,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     public byte[] key();
 
     /**
-     * Returns an uncopied reference to the current value, which might be null
-     * or {@link #NOT_LOADED}. Array contents can be safely modified.
+     * Returns an uncopied reference to the current value, which might be null or {@link
+     * #NOT_LOADED}. Array contents can be safely modified. Altering the value via the {@link
+     * ValueAccessor} methods doesn't affect the object returned by this method.
      */
     public byte[] value();
 
@@ -134,6 +135,30 @@ public interface Cursor extends ValueAccessor, Closeable {
     public default int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = key();
         return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+    }
+
+    /**
+     * Attempt to register this cursor for direct redo operations, which can improve
+     * replication performance when modifying a range of values. Without registration, replicas
+     * must perform a full find operation for each modification made in the range.
+     * Registration isn't useful when using the cursor for single updates.
+     *
+     * <p>The cursor is automatically {@link #unregister unregistered} when {@link #reset
+     * reset}, or when moved to an undefined position, or when moving the cursor
+     * non-incrementally. Methods whose name starts with "next", "previous", "skip", or
+     * "findNearby" are considered to move the cursor incrementally. The use of these methods
+     * generally indicates that registering the cursor might be beneficial.
+     */
+    public default boolean register() throws IOException {
+        return false;
+    }
+
+    /**
+     * Unregisters the cursor for direct redo operations.
+     *
+     * @see #register
+     */
+    public default void unregister() {
     }
 
     /**

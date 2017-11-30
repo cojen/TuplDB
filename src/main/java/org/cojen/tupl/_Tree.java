@@ -1256,7 +1256,6 @@ class _Tree implements View, Index {
                 return node;
             }
 
-            // TODO: Quick check by trying to latch upwards. Give up if parent is split.
             final _CursorFrame parentFrame = frame.mParentFrame;
             node.releaseExclusive();
 

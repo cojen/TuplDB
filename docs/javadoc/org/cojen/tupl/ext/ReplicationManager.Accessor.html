@@ -179,7 +179,7 @@ extends <a href="../../../../org/cojen/tupl/EventListener.html" title="interface
 <li class="blockList">
 <h4>control</h4>
 <pre>long&nbsp;control(byte[]&nbsp;message)
-      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+      throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Attempt to write a replicated control message, and then calls <a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#control-long-byte:A-"><code>control</code></a> when confirmed. Control messages might get
  replayed, and so they must be idempotent.</div>
 <dl>
@@ -187,7 +187,7 @@ extends <a href="../../../../org/cojen/tupl/EventListener.html" title="interface
 <dd>confirmed log position just after the message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/UnmodifiableReplicaException.html" title="class in org.cojen.tupl">UnmodifiableReplicaException</a></code> - if not the leader</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

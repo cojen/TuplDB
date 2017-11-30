@@ -428,6 +428,11 @@ public class GroupFileTest {
         File newFile = TestUtils.newTempBaseFile(getClass());
 
         message = gf.proposeJoin((byte) 1, null, (in, index) -> {
+            if (in == null) {
+                // Version mismatch.
+                return;
+            }
+
             try (FileOutputStream out = new FileOutputStream(newFile)) {
                 byte[] buf = new byte[1000];
                 int amt;

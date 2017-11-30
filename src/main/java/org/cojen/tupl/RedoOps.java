@@ -124,6 +124,31 @@ class RedoOps {
         /** txnId: delta, indexId: long, keyLength: varInt, key: bytes */
         OP_TXN_DELETE_COMMIT_FINAL = 39,
 
+        /** cursorId: delta, indexId: long */
+        OP_CURSOR_REGISTER = 40,
+
+        /** cursorId: delta */
+        OP_CURSOR_UNREGISTER = 41,
+
+        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes,
+            valueLength: varInt, value: bytes */
+        OP_CURSOR_STORE = 42,
+
+        /** cursorId: delta, txnId: delta, keyLength: varInt, key: bytes */
+        OP_CURSOR_DELETE = 43,
+
+        /** cursorId: delta, txnId: delta, keyLength: varInt */
+        OP_CURSOR_FIND = 44,
+
+        /** cursorId: delta, txnId: delta, length: varLong */
+        OP_CURSOR_VALUE_SET_LENGTH = 45,
+
+        /** cursorId: delta, txnId: delta, pos: varLong, amount: varInt, value: bytes */
+        OP_CURSOR_VALUE_WRITE = 46,
+
+        /** cursorId: delta, txnId: delta, pos: varLong, length: varLong */
+        OP_CURSOR_VALUE_CLEAR = 47,
+
         /** txnId: delta, dataLength: varInt, data: bytes */
         OP_TXN_CUSTOM = (byte) 128,
 

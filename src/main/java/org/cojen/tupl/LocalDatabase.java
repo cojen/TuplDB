@@ -598,7 +598,7 @@ final class LocalDatabase extends AbstractDatabase {
                 mTxnContexts[i] = new TransactionContext(mTxnContexts.length, 4096);
             };
 
-            mSparePagePool = new PagePool(mPageSize, procCount);
+            mSparePagePool = new PagePool(mPageSize, procCount, mPageDb.isDirectIO());
 
             mCommitLock.acquireExclusive();
             try {
@@ -820,6 +820,9 @@ final class LocalDatabase extends AbstractDatabase {
 
                             doCheckpoint = true;
                         }
+
+                        // Reset any lingering registered cursors.
+                        applier.resetCursors();
 
                         // New redo logs begin with identifiers one higher than last scanned.
                         mRedoWriter = new RedoLog(config, replayLog, mTxnContexts[0]);
@@ -1649,7 +1652,7 @@ final class LocalDatabase extends AbstractDatabase {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
     }
 
-    private LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
+    LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
         RedoWriter redo = txnRedoWriter();
         return new LocalTransaction
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
@@ -1682,7 +1685,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Returns a RedoWriter suitable for transactions to write into.
      */
-    private RedoWriter txnRedoWriter() {
+    RedoWriter txnRedoWriter() {
         RedoWriter redo = mRedoWriter;
         if (redo != null) {
             redo = redo.txnRedoWriter();
@@ -4789,7 +4792,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             if (header == p_null()) {
                 // Not resumed. Allocate new header early, before acquiring locks.
-                header = p_calloc(mPageDb.pageSize());
+                header = p_calloc(mPageDb.pageSize(), mPageDb.isDirectIO());
                 resume = false;
                 if (masterUndoLog != null) {
                     // TODO: Thrown when closed? After storage device was full.

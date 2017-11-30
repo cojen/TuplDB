@@ -19,6 +19,7 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.*;
@@ -559,6 +560,155 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
 
         fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
         assertNull(rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void cursorRegister() throws Exception {
+        // Basic testing of registered cursors.
+
+        Index leader = mLeader.openIndex("test");
+        fence();
+        Index replica = mReplica.openIndex("test");
+
+        Cursor c = leader.newCursor(null);
+        assertTrue(c.register());
+        c.reset();
+
+        Transaction txn = mLeader.newTransaction();
+        c = leader.newCursor(txn);
+        assertTrue(c.register());
+        c.reset();
+        txn.reset();
+
+        c = replica.newCursor(null);
+        assertFalse(c.register());
+        // Replicas don't redo.
+        c.reset();
+
+        for (int q=0; q<2; q++) {
+            String prefix;
+            if (q == 0) {
+                txn = null;
+                prefix = "null-";
+            } else {
+                txn = mLeader.newTransaction();
+                prefix = "txn-";
+            }
+
+            c = leader.newCursor(txn);
+            c.register();
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                c.store((prefix + "value-" + i).getBytes());
+            }
+            c.reset();
+
+            if (txn != null) {
+                txn.commit();
+            }
+
+            fence();
+
+            c = replica.newCursor(null);
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                fastAssertArrayEquals((prefix + "value-" + i).getBytes(), c.value());
+            }
+            c.reset();
+
+            // Now scan and update.
+            c = leader.newCursor(txn);
+            for (c.first(), c.register(); c.key() != null; c.next()) {
+                c.store((new String(c.value()) + "-updated").getBytes());
+            }
+            c.reset();
+
+            if (txn != null) {
+                txn.commit();
+            }
+
+            fence();
+
+            c = replica.newCursor(null);
+            for (int i=0; i<1000; i++) {
+                c.findNearby((prefix + "key-" + i).getBytes());
+                fastAssertArrayEquals((prefix + "value-" + i + "-updated").getBytes(), c.value());
+            }
+            c.reset();
+        }
+    }
+
+    @Test
+    public void valueWrite() throws Exception {
+        // Basic test of writing to a value in chunks with an auto-commit transaction.
+
+        Index test = mLeader.openIndex("test");
+
+        long seed = 98250983;
+        Random rnd = new Random(seed);
+
+        final int chunk = 100;
+        final int length = 1000 * chunk;
+        final byte[] b = new byte[chunk];
+
+        Cursor c = test.newAccessor(null, "key1".getBytes());
+        for (int i=0; i<length; i+=chunk) {
+            rnd.nextBytes(b);
+            c.valueWrite(i, b, 0, b.length);
+        }
+        c.reset();
+
+        c = test.newAccessor(null, "key2".getBytes());
+        for (int i=0; i<length; i+=chunk) {
+            rnd.nextBytes(b);
+            c.valueWrite(i, b, 0, b.length);
+        }
+        c.reset();
+
+        fence();
+
+        Index replica = mReplica.openIndex("test");
+        rnd = new Random(seed);
+        final byte[] buf = new byte[chunk];
+
+        for (String key : new String[] {"key1", "key2"}) {
+            c = replica.newAccessor(null, key.getBytes());
+            assertEquals(length, c.valueLength());
+            int i = 0;
+            for (; i<length; i+=chunk) {
+                rnd.nextBytes(b);
+                int amt = c.valueRead(i, buf, 0, buf.length);
+                assertEquals(chunk, amt);
+                fastAssertArrayEquals(b, buf);
+            }
+            assertEquals(0, c.valueRead(i, buf, 0, buf.length));
+            c.reset();
+        }
+    }
+
+    @Test
+    public void valueClear() throws Exception {
+        // Basic test of clearing a value range.
+
+        Index test = mLeader.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = new byte[100_000];
+        new Random(2923578).nextBytes(value);
+
+        test.store(null, key, value);
+
+        Cursor c = test.newAccessor(null, key);
+        c.valueClear(5000, 50_000);
+        c.close();
+
+        fence();
+
+        Arrays.fill(value, 5000, 5000 + 50_000, (byte) 0);
+        fastAssertArrayEquals(value, test.load(null, key));
+
+        Index replica = mReplica.openIndex("test");
+        fastAssertArrayEquals(value, replica.load(null, key));
     }
 
     /**

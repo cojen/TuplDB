@@ -50,7 +50,7 @@ final class PosixFileIO extends AbstractFileIO {
         Native.register(Platform.C_LIBRARY_NAME);
     }
 
-    private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2;
+    private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
 
     private final File mFile;
     private final int mReopenOptions;
@@ -69,7 +69,14 @@ final class PosixFileIO extends AbstractFileIO {
         if (options.contains(OpenOption.NON_DURABLE)) {
             mReopenOptions = REOPEN_NON_DURABLE;
         } else {
-            mReopenOptions = options.contains(OpenOption.SYNC_IO) ? REOPEN_SYNC_IO : 0;
+            int reopenOpts = 0;
+            if (options.contains(OpenOption.SYNC_IO)) {
+                reopenOpts |= REOPEN_SYNC_IO;
+            }
+            if (options.contains(OpenOption.DIRECT_IO)) {
+                reopenOpts |= REOPEN_DIRECT_IO;
+            }
+            mReopenOptions = reopenOpts;
             if (options.contains(OpenOption.CREATE)) {
                 new JavaFileIO(file, options, 1, false).close();
             }
@@ -93,6 +100,11 @@ final class PosixFileIO extends AbstractFileIO {
         if (options.contains(OpenOption.CREATE)) {
             dirSync(file);
         }
+    }
+
+    @Override
+    public boolean isDirectIO() {
+        return (mReopenOptions & REOPEN_DIRECT_IO) != 0;
     }
 
     @Override
@@ -179,6 +191,9 @@ final class PosixFileIO extends AbstractFileIO {
         }
         if ((mReopenOptions & REOPEN_NON_DURABLE) != 0) {
             options.add(OpenOption.NON_DURABLE);
+        }
+        if ((mReopenOptions & REOPEN_DIRECT_IO) != 0) {
+            options.add(OpenOption.DIRECT_IO);
         }
 
         mFileDescriptor = openFd(mFile, options);

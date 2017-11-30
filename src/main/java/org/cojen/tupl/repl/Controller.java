@@ -158,14 +158,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mGroupFile == null) {
                 // Need to join the group.
 
-                GroupJoiner joiner = new GroupJoiner
-                    (mEventListener, groupFile, mChanMan.getGroupToken(),
-                     localAddress, listenAddress);
+                for (int trials = 2; --trials >= 0; ) {
+                    try {
+                        GroupJoiner joiner = new GroupJoiner
+                            (mEventListener, groupFile, mChanMan.getGroupToken(),
+                             localAddress, listenAddress);
 
-                joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
+                        joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
 
-                mGroupFile = joiner.mGroupFile;
-                mChanMan.setGroupId(mGroupFile.groupId());
+                        mGroupFile = joiner.mGroupFile;
+                        mChanMan.setGroupId(mGroupFile.groupId());
+                        break;
+                    } catch (JoinException e) {
+                        if (trials <= 0) {
+                            throw e;
+                        }
+                        // Try again. Might be a version mismatch race condition caused by
+                        // concurrent joins.
+                    }
+                }
             }
 
             mChanMan.setLocalMemberId(mGroupFile.localMemberId(), localSocket);
@@ -1132,6 +1143,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // is immediately after the control message.
 
             try {
+                if (gfIn == null) {
+                    out.write(new byte[] {
+                        // Assume failure is due to version mismatch, but could be something else.
+                        // TODO: Use more specific error code.
+                        GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH});
+                    return;
+                }
+
                 TermLog termLog = mStateLog.termLogAt(index);
 
                 byte[] buf = new byte[1000];

@@ -155,6 +155,66 @@ interface RedoVisitor {
         throws IOException;
 
     /**
+     * @param cursorId non-zero cursor id
+     * @param indexId non-zero index id
+     * @return false to stop visiting
+     */
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException;
+
+    /**
+     * @param cursorId non-zero cursor id
+     * @return false to stop visiting
+     */
+    public boolean cursorUnregister(long cursorId) throws IOException;
+
+    /**
+     * @param cursorId non-zero cursorId id
+     * @param txnId non-zero transaction id
+     * @param key non-null key
+     * @param value value to store; null to delete
+     * @return false to stop visiting
+     */
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException;
+
+    /**
+     * @param cursorId non-zero cursor id
+     * @param txnId non-zero transaction id
+     * @param key non-null key
+     * @return false to stop visiting
+     */
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws IOException;
+
+    /**
+     * @param cursorId non-zero cursor id
+     * @param txnId non-zero transaction id
+     * @param length value length to set
+     * @return false to stop visiting
+     */
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) throws IOException;
+
+    /**
+     * @param cursorId non-zero cursor id
+     * @param txnId non-zero transaction id
+     * @param pos value position to write to
+     * @param buf buffer with data to write
+     * @return false to stop visiting
+     */
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+        throws IOException;
+
+    /**
+     * @param cursorId non-zero cursor id
+     * @param txnId non-zero transaction id
+     * @param pos start position to clear from
+     * @param length amount to clear
+     * @return false to stop visiting
+     */
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length)
+        throws IOException;
+
+    /**
      * @param txnId non-zero transaction id
      * @param indexId non-zero index id
      * @param key non-null key

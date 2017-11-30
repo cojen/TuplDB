@@ -56,6 +56,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
+    public void valueClear(long pos, long length) throws IOException {
+        mSource.valueClear(pos, length);
+    }
+
+    @Override
     public InputStream newValueInputStream(long pos) throws IOException {
         return mSource.newValueInputStream(pos);
     }
@@ -123,6 +128,16 @@ final class ReverseCursor implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         return -mSource.compareKeyTo(rkey, offset, length);
+    }
+
+    @Override
+    public boolean register() throws IOException {
+        return mSource.register();
+    }
+
+    @Override
+    public void unregister() {
+        mSource.unregister();
     }
 
     @Override

@@ -78,6 +78,8 @@ public abstract class FileIO implements CauseCloseable {
         return new JavaFileIO(file, options, openFileCount);
     }
 
+    public abstract boolean isDirectIO();
+
     public abstract boolean isReadOnly();
 
     public abstract long length() throws IOException;

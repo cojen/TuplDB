@@ -100,7 +100,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -109,7 +109,7 @@ var activeTableTab = "activeTableTab";
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">ReplicationManager</span>
-extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
+extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
 <div class="block">Interface which replaces the redo log, for replicating transactional operations.
  Non-transactional operations, or those with <a href="../../../../org/cojen/tupl/DurabilityMode.html#NO_REDO"><code>NO_REDO</code></a>
  durability will not pass through the replication manager.</div>
@@ -216,7 +216,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </td>
 </tr>
 <tr id="i8" class="altColor">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#restoreRequest-org.cojen.tupl.EventListener-">restoreRequest</a></span>(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code>
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer.</div>
@@ -260,8 +260,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList"><a name="methods.inherited.from.class.java.io.Closeable">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></h3>
-<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code></li>
+<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></h3>
+<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code></li>
 </ul>
 </li>
 </ul>
@@ -295,8 +295,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>restoreRequest</h4>
-<pre>default&nbsp;<a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)
-                            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;<a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;restoreRequest(<a href="../../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)
+                            throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer. If null is returned, the database will try to start
  reading replication data at the lowest position.</div>
@@ -306,7 +306,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>null if no snapshot could be found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if a snapshot was found, but requesting it failed</dd>
 </dl>
 </li>
 </ul>
@@ -317,7 +317,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>start</h4>
 <pre>void&nbsp;start(long&nbsp;position)
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Start the replication manager in replica mode. Invocation of this method implies that
  all data lower than the given position is confirmed. All data at or higher than the
  given position might be discarded.
@@ -329,9 +329,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - position to start reading from; 0 is the lowest position</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if already started</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if already started</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -342,7 +342,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>ready</h4>
 <pre>default&nbsp;void&nbsp;ready(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)
-            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
  replication has sufficiently "caught up". The thread which is opening the database
  invokes this method, and so it blocks until recovery completes. Default implementation
@@ -351,7 +351,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>accessor</code> - provides access to the database</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -375,15 +375,15 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <pre>int&nbsp;read(byte[]&nbsp;b,
          int&nbsp;off,
          int&nbsp;len)
-  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Blocks at most once, reading as much replication input as possible. Returns -1 if local
  instance has become the leader, and a writer instance now exists.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount read, or -1 if leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if not started</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if not started</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -394,12 +394,12 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>writer</h4>
 <pre><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a>&nbsp;writer()
-                          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns an object which allows the leader to write changes. A new instance is required
  after a leader transition. Returned object can be null if local instance is a replica.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -410,11 +410,11 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>sync</h4>
 <pre>void&nbsp;sync()
-   throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the current position.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -425,13 +425,13 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>syncConfirm</h4>
 <pre>default&nbsp;void&nbsp;syncConfirm(long&nbsp;position)
-                  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
  position, and then blocks until fully confirmed.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -443,7 +443,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <h4>syncConfirm</h4>
 <pre>void&nbsp;syncConfirm(long&nbsp;position,
                  long&nbsp;timeoutNanos)
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
  position, and then blocks until fully confirmed.</div>
 <dl>
@@ -451,7 +451,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dd><code>timeoutNanos</code> - pass -1 for infinite</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -462,7 +462,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>checkpointed</h4>
 <pre>void&nbsp;checkpointed(long&nbsp;position)
-           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Indicates that all data prior to the given log position has been durably
  checkpointed. The log can discard the old data. This method is never invoked
  concurrently, and the implementation should return quickly.</div>
@@ -470,7 +470,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - log position immediately after the checkpoint position</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -482,7 +482,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <h4>control</h4>
 <pre>default&nbsp;void&nbsp;control(long&nbsp;position,
                      byte[]&nbsp;message)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Called after a control operation has been confirmed by a leader or received by a
  replica. All replication processing and checkpoints are suspended until this method
  returns. Any exception thrown by this method causes the database to panic and close.</div>
@@ -490,7 +490,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - log position just after the message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

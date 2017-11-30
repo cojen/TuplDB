@@ -32,6 +32,7 @@ final class _RedoLogApplier implements RedoVisitor {
     private final _LocalDatabase mDatabase;
     private final LHashTable.Obj<_LocalTransaction> mTransactions;
     private final LHashTable.Obj<Index> mIndexes;
+    private final LHashTable.Obj<_TreeCursor> mCursors;
 
     long mHighestTxnId;
 
@@ -39,6 +40,14 @@ final class _RedoLogApplier implements RedoVisitor {
         mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
+        mCursors = new LHashTable.Obj<>(4);
+    }
+
+    void resetCursors() {
+        mCursors.traverse(entry -> {
+            entry.value.close();
+            return false;
+        });
     }
 
     @Override
@@ -207,6 +216,114 @@ final class _RedoLogApplier implements RedoVisitor {
     {
         txnStore(txnId, indexId, key, value);
         return txnCommitFinal(txnId);
+    }
+
+    @Override
+    public boolean cursorRegister(long cursorId, long indexId) throws IOException {
+        Index ix = openIndex(indexId);
+        if (ix != null) {
+            _TreeCursor c = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
+            c.autoload(false);
+            mCursors.insert(cursorId).value = c;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.remove(cursorId);
+        if (entry != null) {
+            entry.value.reset();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                _TreeCursor c = entry.value;
+                c.mTxn = txn;
+                c.findNearby(key);
+                c.store(value);
+                c.mValue = Cursor.NOT_LOADED;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) throws IOException {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                _TreeCursor c = entry.value;
+                c.mTxn = txn;
+                c.findNearby(key);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length)
+        throws IOException
+    {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).setValueLength(length);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).valueWrite(pos, buf, off, len);
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length)
+        throws IOException
+    {
+        LHashTable.ObjEntry<_TreeCursor> entry = mCursors.get(cursorId);
+        if (entry != null) {
+            _LocalTransaction txn = txn(txnId);
+            if (txn != null) {
+                readyCursorValueOp(entry, txn).valueClear(pos, length);
+            }
+        }
+        return true;
+    }
+
+    private _TreeCursor readyCursorValueOp(LHashTable.ObjEntry<_TreeCursor> entry,
+                                          _LocalTransaction txn)
+        throws IOException
+    {
+        _TreeCursor c = entry.value;
+        _LocalTransaction oldTxn = c.mTxn;
+        c.mTxn = txn;
+        if (oldTxn != txn) {
+            c.findNearby(c.mKey);
+        }
+        return c;
     }
 
     @Override
