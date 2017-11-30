@@ -46,7 +46,7 @@ abstract class AbstractValueAccessor implements ValueAccessor {
 
     @Override
     public final void valueClear(long pos, long length) throws IOException {
-        if (pos < 0) {
+        if (pos < 0 || length < 0) {
             throw new IllegalArgumentException();
         }
         doValueClear(pos, length);

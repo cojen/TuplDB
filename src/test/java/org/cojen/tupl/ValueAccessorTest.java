@@ -472,23 +472,41 @@ public class ValueAccessorTest {
 
     @Test
     public void truncateNonFragmented() throws Exception {
+        truncateNonFragmented(false);
+    }
+
+    @Test
+    public void truncateNonFragmentedUndo() throws Exception {
+        truncateNonFragmented(true);
+    }
+
+    private void truncateNonFragmented(boolean undo) throws Exception {
         // Use large page to test 3-byte value header encoding.
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
-        truncate(db, 10, 5);     // 1-byte header to 1
-        truncate(db, 200, 50);   // 2-byte header to 1
-        truncate(db, 10000, 50); // 3-byte header to 1
+        truncate(db, 10, 5, undo);     // 1-byte header to 1
+        truncate(db, 200, 50, undo);   // 2-byte header to 1
+        truncate(db, 10000, 50, undo); // 3-byte header to 1
 
-        truncate(db, 200, 150);   // 2-byte header to 2
-        truncate(db, 10000, 200); // 3-byte header to 2
+        truncate(db, 200, 150, undo);   // 2-byte header to 2
+        truncate(db, 10000, 200, undo); // 3-byte header to 2
 
-        truncate(db, 20000, 10000); // 3-byte header to 3
+        truncate(db, 20000, 10000, undo); // 3-byte header to 3
     }
 
     @Test
     public void truncateFragmentedDirect() throws Exception {
+        truncateFragmentedDirect(false);
+    }
+
+    @Test
+    public void truncateFragmentedDirectUndo() throws Exception {
+        truncateFragmentedDirect(true);
+    }
+
+    private void truncateFragmentedDirect(boolean undo) throws Exception {
         // Test truncation of fragmented value which uses direct pointer encoding.
 
         // Use large page to test 3-byte value header encoding.
@@ -496,22 +514,22 @@ public class ValueAccessorTest {
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
-        truncate(db, 65536, 10);       // no inline content; two pointers to one
-        truncate(db, 65537, 10);       // 1-byte inline content; two pointers to one
+        truncate(db, 65536, 10, undo);       // no inline content; two pointers to one
+        truncate(db, 65537, 10, undo);       // 1-byte inline content; two pointers to one
 
-        truncate(db, 100_000, 99_999); // slight truncation
-        truncate(db, 100_000, 1696);   // only inline content remains
-        truncate(db, 100_000, 1695);   // inline content is reduced
-        truncate(db, 100_000, 10);     // only inline content remains
-        truncate(db, 100_000, 0);      // full truncation
+        truncate(db, 100_000, 99_999, undo); // slight truncation
+        truncate(db, 100_000, 1696, undo);   // only inline content remains
+        truncate(db, 100_000, 1695, undo);   // inline content is reduced
+        truncate(db, 100_000, 10, undo);     // only inline content remains
+        truncate(db, 100_000, 0, undo);      // full truncation
 
-        truncate(db, 108_000, 9000);   // convert to normal value, 3-byte header
+        truncate(db, 108_000, 9000, undo);   // convert to normal value, 3-byte header
 
-        truncate(db, 50_000_000, 1_000_000);   // still fragmented, 2-byte header
-        truncate(db, 50_000_000, 45_000_000);  // still fragmented, 3-byte header
+        truncate(db, 50_000_000, 1_000_000, undo);   // still fragmented, 2-byte header
+        truncate(db, 50_000_000, 45_000_000, undo);  // still fragmented, 3-byte header
     }
 
-    private static void truncate(Database db, int from, int to) throws Exception {
+    private static void truncate(Database db, int from, int to, boolean undo) throws Exception {
         Index ix = db.openIndex("test");
         Random rnd = new Random(from * 31 + to);
 
@@ -523,15 +541,23 @@ public class ValueAccessorTest {
 
         ix.store(null, key, value);
 
-        ValueAccessor accessor = ix.newAccessor(null, key);
+        Transaction txn = undo ? db.newTransaction() : null;
+
+        ValueAccessor accessor = ix.newAccessor(txn, key);
         accessor.setValueLength(to);
         accessor.close();
 
-        byte[] truncated = ix.load(null, key);
-        assertEquals(to, truncated.length);
+        if (txn == null) {
+            byte[] truncated = ix.load(null, key);
+            assertEquals(to, truncated.length);
 
-        for (int i=0; i<to; i++) {
-            assertEquals(value[i], truncated[i]);
+            for (int i=0; i<to; i++) {
+                assertEquals(value[i], truncated[i]);
+            }
+        } else {
+            // Rollback.
+            txn.reset();
+            fastAssertArrayEquals(value, ix.load(null, key));
         }
 
         assertTrue(ix.verify(null));
@@ -578,54 +604,68 @@ public class ValueAccessorTest {
 
     @Test
     public void truncateFragmentedIndirect() throws Exception {
+        truncateFragmentedIndirect(false);
+    }
+
+    @Test
+    public void truncateFragmentedIndirectUndo() throws Exception {
+        truncateFragmentedIndirect(true);
+    }
+
+    private void truncateFragmentedIndirect(boolean undo) throws Exception {
         // Test truncation of fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(40_000, 30_000);
-        truncateFragmentedIndirect(40_000, 29_696); // newLen fully fits in pages
-        truncateFragmentedIndirect(40_448, 30_000); // oldLen fully fits
-        truncateFragmentedIndirect(40_448, 29_696);
+        truncateFragmentedIndirect(40_000, 30_000, false, undo);
+        truncateFragmentedIndirect(40_000, 29_696, false, undo); // newLen fully fits in pages
+        truncateFragmentedIndirect(40_448, 30_000, false, undo); // oldLen fully fits
+        truncateFragmentedIndirect(40_448, 29_696, false, undo);
 
-        truncateFragmentedIndirect(50_000, 40_000); // lose one indirect level
-        truncateFragmentedIndirect(50_000, 513);    // lose one indirect level
-        truncateFragmentedIndirect(50_000, 512);    // convert to direct format
-        truncateFragmentedIndirect(50_000, 1);      // convert to direct format
-        truncateFragmentedIndirect(50_000, 0);      // full truncation
+        truncateFragmentedIndirect(50_000, 40_000, false, undo); // lose one indirect level
+        truncateFragmentedIndirect(50_000, 513, false, undo);    // lose one indirect level
+        truncateFragmentedIndirect(50_000, 512, false, undo);    // convert to direct format
+        truncateFragmentedIndirect(50_000, 1, false, undo);      // convert to direct format
+        truncateFragmentedIndirect(50_000, 0, false, undo);      // full truncation
 
-        truncateFragmentedIndirect(50_000, 50_000); // no truncation
+        truncateFragmentedIndirect(50_000, 50_000, false, undo); // no truncation
     }
 
     @Test
     public void truncateFragmentedIndirectSparse() throws Exception {
+        truncateFragmentedIndirectSparse(false);
+    }
+
+    @Test
+    public void truncateFragmentedIndirectSparseUndo() throws Exception {
+        truncateFragmentedIndirectSparse(true);
+    }
+
+    private void truncateFragmentedIndirectSparse(boolean undo) throws Exception {
         // Test truncation of sparse fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(100_000, 99_999, true);
-        truncateFragmentedIndirect(100_000, 29_696, true); // newLen fully fits in pages
-        truncateFragmentedIndirect(100_000, 1, true);      // convert to direct format
-        truncateFragmentedIndirect(100_000, 0, true);      // full truncation
+        truncateFragmentedIndirect(100_000, 99_999, true, undo);
+        truncateFragmentedIndirect(100_000, 29_696, true, undo); // newLen fully fits in pages
+        truncateFragmentedIndirect(100_000, 1, true, undo);      // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true, undo);      // full truncation
     }
 
     @Test
     public void truncateFragmentedIndirectSparseWithCheckpoint() throws Exception {
         // Test truncation of sparse fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(100_000, 99_999, true, true);
-        truncateFragmentedIndirect(100_000, 29_696, true, true); // newLen fully fits in pages
-        truncateFragmentedIndirect(100_000, 1, true, true);      // convert to direct format
-        truncateFragmentedIndirect(100_000, 0, true, true);      // full truncation
+        truncateFragmentedIndirect(100_000, 99_999, true, true, false);
+        truncateFragmentedIndirect(100_000, 29_696, true, true, false); // newLen fully fits
+        truncateFragmentedIndirect(100_000, 1, true, true, false); // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true, true, false); // full truncation
     }
 
-    private void truncateFragmentedIndirect(int oldLen, int newLen) throws Exception {
-        truncateFragmentedIndirect(oldLen, newLen, false, false);
-    }
-
-    private void truncateFragmentedIndirect(int oldLen, int newLen, boolean sparse)
+    private void truncateFragmentedIndirect(int oldLen, int newLen, boolean sparse, boolean undo)
         throws Exception
     {
-        truncateFragmentedIndirect(oldLen, newLen, sparse, false);
+        truncateFragmentedIndirect(oldLen, newLen, sparse, false, undo);
     }
 
     private void truncateFragmentedIndirect(int oldLen, int newLen,
-                                            boolean sparse, boolean checkpoint)
+                                            boolean sparse, boolean checkpoint, boolean undo)
         throws Exception
     {
         final long seed = 248237410 + oldLen + newLen;
@@ -635,7 +675,7 @@ public class ValueAccessorTest {
         byte[] key = new byte[20];
         rnd.nextBytes(key);
 
-        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        Cursor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
         rnd = new Random(seed);
         byte[] b = new byte[10000];
@@ -660,9 +700,23 @@ public class ValueAccessorTest {
             mDb.checkpoint();
         }
 
+        if (sparse) {
+            oldLen = (int) accessor.valueLength();
+        }
+
+        if (undo) {
+            accessor.link(mDb.newTransaction());
+        }
+
         accessor.setValueLength(newLen);
 
         assertEquals(newLen, accessor.valueLength());
+
+        if (undo) {
+            // Rollback.
+            accessor.link().reset();
+            assertEquals(oldLen, accessor.valueLength());
+        }
 
         rnd = new Random(seed);
         byte[] b2 = new byte[b.length];
@@ -680,7 +734,7 @@ public class ValueAccessorTest {
             total += amt;
 
             if (amt < b2.length) {
-                assertEquals(newLen, total);
+                assertEquals(undo ? oldLen : newLen, total);
                 for (int j=0; j<amt; j++) {
                     assertEquals(b[j], b2[j]);
                 }
@@ -690,11 +744,13 @@ public class ValueAccessorTest {
             }
         }
 
-        // Extending shouldn't reveal old data.
-        accessor.setValueLength(newLen + 10);
-        assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
-        for (int j=0; j<10; j++) {
-            assertEquals(0, b2[j]);
+        if (!undo) {
+            // Extending shouldn't reveal old data.
+            accessor.setValueLength(newLen + 10);
+            assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
+            for (int j=0; j<10; j++) {
+                assertEquals(0, b2[j]);
+            }
         }
 
         assertTrue(ix.verify(null));
@@ -1433,7 +1489,7 @@ public class ValueAccessorTest {
     }
 
     private void undoClearFragmented(boolean indirect) throws Exception {
-        // Note: With indirect format, indirect content isn't defined.
+        // Note: With indirect format, inline content isn't defined.
 
         Index ix = mDb.openIndex("test");
 
