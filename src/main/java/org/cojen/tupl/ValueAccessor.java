@@ -28,7 +28,10 @@ import java.io.OutputStream;
  * When using a {@link Cursor cursor} to access values, {@link Cursor#autoload(boolean)
  * autoload} should be disabled to prevent values from being fully loaded automatically
  *
- * <p><b>Note: Transactional changes made through this interface don't currently work.</b>
+ * <p>When making transactional changes through this interface, undo actions may require that
+ * copies be made of the original value. Partial truncation of a large value isn't optimized to
+ * reduce copying, but full truncation is. When possible, full truncation will reference the
+ * original value instead of creating a copy.
  *
  * @author Brian S O'Neill
  * @see View#newAccessor View.newAccessor
