@@ -147,7 +147,18 @@ public class DatabaseReplicatorTest {
 
     @Test
     public void basicTestThreeMembers() throws Exception {
-        basicTest(3);
+        for (int i=3; --i>=0; ) {
+            try {
+                basicTest(3);
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Test is load sensitive and leadership is sometimes lost.
+                // https://github.com/cojen/Tupl/issues/70
+                if (i <= 0) {
+                    throw e;
+                }
+            }
+        }
     }
 
     private void basicTest(int memberCount) throws Exception {
