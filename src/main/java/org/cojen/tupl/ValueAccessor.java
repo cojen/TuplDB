@@ -90,7 +90,7 @@ public interface ValueAccessor extends Closeable {
      *
      * @param pos start position to clear from
      * @param length amount to clear
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if position or length is negative
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
