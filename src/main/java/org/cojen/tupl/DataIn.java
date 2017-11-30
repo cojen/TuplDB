@@ -33,7 +33,7 @@ abstract class DataIn extends InputStream {
         private final InputStream mIn;
 
         Stream(long pos, InputStream in) {
-            this(pos, in, 4096);
+            this(pos, in, 64 << 10);
         }
 
         Stream(long pos, InputStream in, int bufferSize) {
@@ -340,6 +340,40 @@ abstract class DataIn extends InputStream {
         byte[] bytes = new byte[readUnsignedVarInt()];
         readFully(bytes);
         return bytes;
+    }
+
+    /**
+     * Transfers data to the given visitor, in the form of cursorValueWrite calls.
+     */
+    public void cursorValueWrite(RedoVisitor visitor, long cursorId, long txnId,
+                                 long pos, int amount)
+        throws IOException
+    {
+        int avail = mEnd - mStart;
+
+        while (true) {
+            if (amount <= avail) {
+                visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, amount);
+                mStart += amount;
+                mPos += amount;
+                return;
+            }
+
+            visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, avail);
+
+            mStart = mEnd = 0;
+            mPos += avail;
+            pos += avail;
+            amount -= avail;
+
+            avail = doRead(mBuffer, 0, mBuffer.length);
+
+            if (avail < 0) {
+                throw new EOFException();
+            }
+
+            mEnd = avail;
+        }
     }
 
     /**

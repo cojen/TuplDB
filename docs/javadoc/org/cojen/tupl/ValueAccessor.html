@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -100,7 +100,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -113,12 +113,15 @@ var activeTableTab = "activeTableTab";
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">ValueAccessor</span>
-extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
+extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation. This interface permits values to be larger than what can fit in main memory.
  When using a <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a> to access values, <a href="../../../org/cojen/tupl/Cursor.html#autoload-boolean-"><code>autoload</code></a> should be disabled to prevent values from being fully loaded automatically
 
- <p><b>Note: Transactional changes made through this interface don't currently work.</b></div>
+ <p>When making transactional changes through this interface, undo actions may require that
+ copies be made of the original value. Partial truncation of a large value isn't optimized to
+ reduce copying, but full truncation is. When possible, full truncation will reference the
+ original value instead of creating a copy.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-"><code>View.newAccessor</code></a></dd>
@@ -148,26 +151,26 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-">newValueInputStream</a></span>(long&nbsp;pos)</code>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-int-">newValueInputStream</a></span>(long&nbsp;pos,
                    int&nbsp;bufferSize)</code>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-">newValueOutputStream</a></span>(long&nbsp;pos)</code>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-int-">newValueOutputStream</a></span>(long&nbsp;pos,
                     int&nbsp;bufferSize)</code>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
@@ -180,12 +183,19 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 </td>
 </tr>
 <tr id="i6" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueClear-long-long-">valueClear</a></span>(long&nbsp;pos,
+          long&nbsp;length)</code>
+<div class="block">Writes over a range of the value with zeros, starting from any position.</div>
+</td>
+</tr>
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueLength--">valueLength</a></span>()</code>
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueRead-long-byte:A-int-int-">valueRead</a></span>(long&nbsp;pos,
          byte[]&nbsp;buf,
@@ -194,7 +204,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueWrite-long-byte:A-int-int-">valueWrite</a></span>(long&nbsp;pos,
           byte[]&nbsp;buf,
@@ -225,14 +235,14 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>valueLength</h4>
 <pre>long&nbsp;valueLength()
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns the total length of the accessed value.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>value length or -1 if it doesn't exist</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -243,16 +253,16 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <li class="blockList">
 <h4>setValueLength</h4>
 <pre>void&nbsp;setValueLength(long&nbsp;length)
-             throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+             throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Extends or truncates the accessed value. When extended, the new portion of the value is
- zero-filled.</div>
+ filled with zeros.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>length</code> - new value length; a negative length deletes the value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if length is too large</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if length is too large</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -266,7 +276,7 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
               byte[]&nbsp;buf,
               int&nbsp;off,
               int&nbsp;len)
-       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Read from the value, starting from any position. The full requested amount of bytes are
  read, unless the end is reached. A return value of -1 indicates that the value doesn't
  exist at all, even when the requested amount is zero.</div>
@@ -280,10 +290,10 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dd>actual amount read, which is less than requested only if the end was reached, or
  -1 if the value doesn't exist</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -297,9 +307,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
                 byte[]&nbsp;buf,
                 int&nbsp;off,
                 int&nbsp;len)
-         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
-<div class="block">Write into the value, starting from any position. Value is extended when writing past
- the end, even if the written amount is zero.</div>
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Write into the value, starting from any position. Value is extended with zeros when
+ writing past the end, even if the written amount is zero.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pos</code> - start position to write to</dd>
@@ -307,11 +317,34 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dd><code>off</code> - buffer start offset</dd>
 <dd><code>len</code> - amount to write</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang">IndexOutOfBoundsException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
 <dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a name="valueClear-long-long-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>valueClear</h4>
+<pre>void&nbsp;valueClear(long&nbsp;pos,
+                long&nbsp;length)
+         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Writes over a range of the value with zeros, starting from any position. The length of
+ the value is never changed by this method, even when clearing past the end.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>pos</code> - start position to clear from</dd>
+<dd><code>length</code> - amount to clear</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position or length is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -321,8 +354,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos)
-                         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos)
+                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value. When the
  InputStream is closed, it closes the accessor too. The InputStream is bound to the
  accessor, and so only one thread can access either at a time.
@@ -336,8 +369,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>buffered unsynchronized InputStream</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -347,9 +380,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos,
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newValueInputStream(long&nbsp;pos,
                                 int&nbsp;bufferSize)
-                         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value. When the
  InputStream is closed, it closes the accessor too. The InputStream is bound to the
  accessor, and so only one thread can access either at a time.
@@ -364,9 +397,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>buffered unsynchronized InputStream</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -376,8 +409,8 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos)
-                           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos)
+                           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value. When the
  OutputStream is closed, it closes the accessor too. The OutputStream is bound to the
  accessor, and so only one thread can access either at a time.</div>
@@ -387,9 +420,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>buffered unsynchronized OutputStream</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -399,9 +432,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/8/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos,
+<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newValueOutputStream(long&nbsp;pos,
                                   int&nbsp;bufferSize)
-                           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value. When the
  OutputStream is closed, it closes the accessor too. The OutputStream is bound to the
  accessor, and so only one thread can access either at a time.</div>
@@ -412,9 +445,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>buffered unsynchronized OutputStream</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -428,9 +461,9 @@ extends <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.htm
 <div class="block">Closes the accessor, but doesn't flush any OutputStream instances.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
 </dl>
 </li>
 </ul>

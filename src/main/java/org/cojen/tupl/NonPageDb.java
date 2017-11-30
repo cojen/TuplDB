@@ -64,6 +64,11 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public boolean isDirectIO() {
+        return false;
+    }
+
+    @Override
     public int allocMode() {
         return NodeContext.MODE_NO_EVICT;
     }

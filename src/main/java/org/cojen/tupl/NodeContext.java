@@ -223,9 +223,10 @@ final class NodeContext extends Clutch.Pack {
 
             /*P*/ byte[] page;
             /*P*/ // [
-            page = p_calloc(arena, mPageSize);
+            page = p_calloc(arena, mPageSize, mDatabase.mPageDb.isDirectIO());
             /*P*/ // |
-            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage() : p_calloc(arena, mPageSize);
+            /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage()
+            /*P*/ //        : p_calloc(arena, mPageSize, mDatabase.mPageDb.isDirectIO());
             /*P*/ // ]
 
             Node node = new Node(this, page);

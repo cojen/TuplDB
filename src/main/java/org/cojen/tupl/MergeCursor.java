@@ -105,6 +105,17 @@ abstract class MergeCursor extends AbstractValueAccessor implements Cursor {
             : mSecond.compareKeyTo(rkey, offset, length);
     }
 
+    @Override
+    public boolean register() throws IOException {
+        return mFirst.register() || mSecond.register();
+    }
+
+    @Override
+    public void unregister() {
+        mFirst.unregister();
+        mSecond.unregister();
+    }
+
     @FunctionalInterface
     static interface Action {
         LockResult perform(Transaction txn) throws IOException;
@@ -551,6 +562,11 @@ abstract class MergeCursor extends AbstractValueAccessor implements Cursor {
 
     @Override
     void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    void doValueClear(long pos, long length) throws IOException {
         throw new UnsupportedOperationException();
     }
 

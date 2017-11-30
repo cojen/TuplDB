@@ -45,6 +45,14 @@ abstract class AbstractValueAccessor implements ValueAccessor {
     }
 
     @Override
+    public final void valueClear(long pos, long length) throws IOException {
+        if (pos < 0 || length < 0) {
+            throw new IllegalArgumentException();
+        }
+        doValueClear(pos, length);
+    }
+
+    @Override
     public final InputStream newValueInputStream(long pos) throws IOException {
         return newValueInputStream(pos, -1);
     }
@@ -75,6 +83,8 @@ abstract class AbstractValueAccessor implements ValueAccessor {
     abstract int doValueRead(long pos, byte[] buf, int off, int len) throws IOException;
 
     abstract void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException;
+
+    abstract void doValueClear(long pos, long length) throws IOException;
 
     /**
      * Return an appropriate buffer size, using the given size suggestion.

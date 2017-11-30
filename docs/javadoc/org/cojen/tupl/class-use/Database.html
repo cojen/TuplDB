@@ -125,7 +125,7 @@
 <tr class="altColor">
 <td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
 <td class="colLast"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/Database.html#restoreFromSnapshot-org.cojen.tupl.DatabaseConfig-java.io.InputStream-">restoreFromSnapshot</a></span>(<a href="../../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
-                   <a href="https://docs.oracle.com/javase/8/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
+                   <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code>
 <div class="block">Restore from a <a href="../../../../org/cojen/tupl/Database.html#beginSnapshot--"><code>snapshot</code></a>, into the data files defined by the given
  configuration.</div>
 </td>
@@ -162,12 +162,12 @@
 <tr class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish-org.cojen.tupl.Database-java.lang.Object-">checkpointFinish</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
+                <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a>&nbsp;obj)</code>
 <div class="block">Wait for a concurrent checkpoint to finish.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-">checkpointStart</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code>
 <div class="block">Called to durably write all changes.</div>
 </td>
@@ -193,7 +193,7 @@
 <tr class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#setCheckpointLock-org.cojen.tupl.Database-java.util.concurrent.locks.Lock-">setCheckpointLock</a></span>(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                 <a href="https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</code>
+                 <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks">Lock</a>&nbsp;lock)</code>
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
  exclusively by checkpoints.</div>
 </td>

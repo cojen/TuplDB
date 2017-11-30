@@ -35,6 +35,10 @@ public abstract class PageArray implements CauseCloseable {
         mPageSize = pageSize;
     }
 
+    public boolean isDirectIO() {
+        return false;
+    }
+
     /**
      * Returns the fixed size of all pages in the array, in bytes.
      */

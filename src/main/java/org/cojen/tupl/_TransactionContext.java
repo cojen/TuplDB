@@ -445,8 +445,8 @@ final class _TransactionContext extends Latch implements Flushable {
     /**
      * @param commit true if last encoded operation should be treated as a transaction commit
      */
-    private void doRedoDelete(_RedoWriter redo, byte op, long txnId, long indexId, byte[] key,
-                              boolean commit)
+    private void doRedoDelete(_RedoWriter redo, byte op, long txnId, long indexId,
+                              byte[] key, boolean commit)
         throws IOException
     {
         redoWriteTxnOp(redo, op, txnId);
@@ -454,6 +454,142 @@ final class _TransactionContext extends Latch implements Flushable {
         redoWriteUnsignedVarInt(key.length);
         redoWriteBytes(key, commit);
         redoWriteTerminator(redo);
+    }
+
+    void redoCursorRegister(_RedoWriter redo, long cursorId, long indexId) throws IOException {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_REGISTER, cursorId);
+            redoWriteLongLE(indexId);
+            redoWriteTerminator(redo);
+            // Must always flush this out, in case cursor transaction linkage changes, or when
+            // transaction is linked to null. Otherwise, the cursor registration operation
+            // might appear out of order in the log due to context striping.
+            redoFlush(false);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorUnregister(_RedoWriter redo, long cursorId) throws IOException {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_UNREGISTER, cursorId);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorStore(_RedoWriter redo, long cursorId, long txnId, byte[] key, byte[] value)
+        throws IOException
+    {
+        keyCheck(key);
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_STORE, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, false);
+            redoWriteUnsignedVarInt(value.length);
+            redoWriteBytes(value, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorDelete(_RedoWriter redo, long cursorId, long txnId, byte[] key)
+        throws IOException
+    {
+        keyCheck(key);
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_DELETE, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorFind(_RedoWriter redo, long cursorId, long txnId, byte[] key)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_FIND, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorValueSetLength(_RedoWriter redo, long cursorId, long txnId, long length)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_VALUE_SET_LENGTH, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarLong(length);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorValueWrite(_RedoWriter redo, long cursorId, long txnId,
+                              long pos, byte[] buf, int off, int len)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_VALUE_WRITE, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarLong(pos);
+            redoWriteUnsignedVarInt(len);
+            redoWriteBytes(buf, off, len, false);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoCursorValueClear(_RedoWriter redo, long cursorId, long txnId, long pos, long length)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_CURSOR_VALUE_CLEAR, cursorId);
+            redoWriteTxnId(txnId);
+            redoWriteUnsignedVarLong(pos);
+            redoWriteUnsignedVarLong(length);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
     }
 
     void redoCustom(_RedoWriter redo, long txnId, byte[] message) throws IOException {
@@ -652,12 +788,32 @@ final class _TransactionContext extends Latch implements Flushable {
         mRedoPos = Utils.encodeUnsignedVarInt(buffer, pos, v);
     }
 
+    // Caller must hold redo latch.
+    private void redoWriteUnsignedVarLong(long v) throws IOException {
+        byte[] buffer = mRedoBuffer;
+        int pos = mRedoPos;
+        if (pos > buffer.length - 9) {
+            redoFlush(false);
+            pos = 0;
+        }
+        mRedoPos = Utils.encodeUnsignedVarLong(buffer, pos, v);
+    }
+
     /**
      * @param commit true if last encoded operation should be treated as a transaction commit
      */
     // Caller must hold redo latch.
     private void redoWriteBytes(byte[] bytes, boolean commit) throws IOException {
-        int length = bytes.length;
+        redoWriteBytes(bytes, 0, bytes.length, commit);
+    }
+
+    /**
+     * @param commit true if last encoded operation should be treated as a transaction commit
+     */
+    // Caller must hold redo latch.
+    private void redoWriteBytes(byte[] bytes, int offset, int length, boolean commit)
+        throws IOException
+    {
         if (length == 0) {
             return;
         }
@@ -669,32 +825,33 @@ final class _TransactionContext extends Latch implements Flushable {
             if (mRedoPos == 0 && avail == length) {
                 _RedoWriter redo = latchWriter();
                 try {
-                    mRedoWriterPos = redo.write(isCommit(commit), bytes, 0, length);
+                    mRedoWriterPos = redo.write(isCommit(commit), bytes, offset, length);
                 } catch (IOException e) {
                     throw rethrow(e, redo.mCloseCause);
                 }
             } else {
-                System.arraycopy(bytes, 0, buffer, mRedoPos, length);
+                System.arraycopy(bytes, offset, buffer, mRedoPos, length);
                 mRedoPos += length;
             }
         } else {
             // Fill remainder of buffer and flush it.
-            System.arraycopy(bytes, 0, buffer, mRedoPos, avail);
+            System.arraycopy(bytes, offset, buffer, mRedoPos, avail);
             mRedoPos = buffer.length;
 
             // Latches writer as a side-effect.
             redoFlush(false);
 
+            offset += avail;
             length -= avail;
 
             if (length >= buffer.length) {
                 try {
-                    mRedoWriterPos = mRedoWriter.write(isCommit(commit), bytes, avail, length);
+                    mRedoWriterPos = mRedoWriter.write(isCommit(commit), bytes, offset, length);
                 } catch (IOException e) {
                     throw rethrow(e, mRedoWriter.mCloseCause);
                 }
             } else {
-                System.arraycopy(bytes, avail, buffer, 0, length);
+                System.arraycopy(bytes, offset, buffer, 0, length);
                 mRedoPos = length;
             }
         }
@@ -767,6 +924,26 @@ final class _TransactionContext extends Latch implements Flushable {
         }
 
         buffer[pos] = op;
+        mRedoLastTxnId = txnId;
+    }
+
+    // Caller must hold redo latch.
+    private void redoWriteTxnId(long txnId) throws IOException {
+        byte[] buffer = mRedoBuffer;
+        int pos = mRedoPos;
+
+        prepare: {
+            if (pos > buffer.length - 9) { // up to 9 for txn delta
+                redoFlush(false);
+                pos = 0;
+            } else if (pos != 0) {
+                mRedoPos = Utils.encodeSignedVarLong(buffer, pos, txnId - mRedoLastTxnId);
+                break prepare;
+            }
+            mRedoFirstTxnId = txnId;
+            mRedoPos = 9; // reserve 9 for txn delta
+        }
+
         mRedoLastTxnId = txnId;
     }
 

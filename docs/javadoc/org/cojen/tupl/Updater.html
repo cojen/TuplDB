@@ -100,12 +100,12 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>, <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a>, <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dd>
 </dl>
 <hr>
 <br>
 <pre>public interface <span class="typeNameLabel">Updater</span>
-extends <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
+extends <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></pre>
 <div class="block">Scans through all entries in a view, updating them along the way. Updater implementations
  which perform pre-fetching can be more efficient than a <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a>. Any exception
  thrown by an updating action automatically closes the Updater.
@@ -185,13 +185,13 @@ extends <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.c
 <li class="blockList">
 <h4>update</h4>
 <pre>boolean&nbsp;update(byte[]&nbsp;value)
-        throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+        throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Update the current value and then step to the next entry.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no more entries remain and updater has been closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -202,11 +202,11 @@ extends <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.c
 <li class="blockList">
 <h4>updateAll</h4>
 <pre>default&nbsp;void&nbsp;updateAll(<a href="../../../org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Applies the given updating action for each remaining entry, and then closes the updater.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -217,14 +217,14 @@ extends <a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.c
 <li class="blockList">
 <h4>flush</h4>
 <pre>default&nbsp;void&nbsp;flush()
-            throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Ensures that any queued update operations are applied; flushing is automatically
  performed when the updater is closed.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true#flush--" title="class or interface in java.io">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io">Flushable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

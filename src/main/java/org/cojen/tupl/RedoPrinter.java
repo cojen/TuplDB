@@ -160,6 +160,55 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mOut.println("cursorRegister: cursorId=" + cursorId + ", indexId=" + indexId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        mOut.println("cursorUnregister: cursorId=" + cursorId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        mOut.println("cursorStore: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", key=" + toHex(key) + ", value=" + toHex(value));
+        return true;
+    }
+
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
+        mOut.println("cursorFind: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", key=" + toHex(key));
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
+        mOut.println("cursorValueSetLength: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", length=" + length);
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+    {
+        mOut.println("cursorValueWrite: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", pos=" + pos + ", value=" + toHex(buf, off, len));
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length) {
+        mOut.println("cursorValueClear: cursorId=" + cursorId + ", txnId=" + txnId +
+                     ", pos=" + pos + ", length=" + length);
+        return true;
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) {
         mOut.println("txnLockShared: txnId=" + txnId + ", indexId=" + indexId +
                      ", key=" + toHex(key));
@@ -194,27 +243,31 @@ class RedoPrinter implements RedoVisitor {
     }
 
     private static String toHex(byte[] bytes) {
+        return toHex(bytes, 0, bytes.length);
+    }
+
+    private static String toHex(byte[] bytes, int offset, int length) {
         if (bytes == null) {
             return "null";
         }
         StringBuilder bob;
         int len;
-        if (bytes.length <= MAX_VALUE) {
-            len = bytes.length;
+        if (length <= MAX_VALUE) {
+            len = length;
             bob = new StringBuilder(len * 2);
         } else {
             len = MAX_VALUE;
             bob = new StringBuilder(len * 2 + 3);
         }
         for (int i=0; i<len; i++) {
-            int b = bytes[i] & 0xff;
+            int b = bytes[offset + i] & 0xff;
             if (b < 16) {
                 bob.append('0');
             }
             bob.append(Integer.toHexString(b));
         }
-        if (bytes.length > MAX_VALUE) {
-            bob.append("...");
+        if (length > MAX_VALUE) {
+            bob.append("...").append(" (length=").append(length).append(')');
         }
         return bob.toString();
     }

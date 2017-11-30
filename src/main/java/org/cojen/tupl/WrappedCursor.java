@@ -70,6 +70,14 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     }
 
     /**
+     * Always throws UnmodifiableViewException by default.
+     */
+    @Override
+    public void valueClear(long pos, long length) throws IOException {
+        throw new UnmodifiableViewException();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -179,6 +187,22 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
     @Override
     public int compareKeyTo(byte[] rkey, int offset, int length) {
         return source.compareKeyTo(rkey, offset, length);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean register() throws IOException {
+        return source.register();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void unregister() {
+        source.unregister();
     }
 
     /**

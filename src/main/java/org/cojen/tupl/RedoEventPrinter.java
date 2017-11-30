@@ -158,6 +158,56 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean cursorRegister(long cursorId, long indexId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, indexId=%3$d",
+                         "txnCursorRegister", cursorId, indexId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorUnregister(long cursorId) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d", "cursorUnregister", cursorId);
+        return true;
+    }
+
+    @Override
+    public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s, value=%5$s",
+                         "cursorStore", cursorId, txnId, keyStr(key), valueStr(value));
+        return true;
+    }
+
+    @Override
+    public boolean cursorFind(long cursorId, long txnId, byte[] key) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, key=%4$s",
+                         "cursorFind", cursorId, txnId, keyStr(key));
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueSetLength(long cursorId, long txnId, long length) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, length=%4$d",
+                         "cursorValueSetLength", cursorId, txnId, length);
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueWrite(long cursorId, long txnId,
+                                    long pos, byte[] buf, int off, int len)
+    {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, pos=%4$d, value=%5$s",
+                         "cursorValueWrite", cursorId, txnId, pos, valueStr(buf, off, len));
+        return true;
+    }
+
+    @Override
+    public boolean cursorValueClear(long cursorId, long txnId, long pos, long length) {
+        mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, pos=%4$d, length=%5$d",
+                         "cursorValueClear", cursorId, txnId, pos, length);
+        return true;
+    }
+
+    @Override
     public boolean txnLockShared(long txnId, long indexId, byte[] key) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, indexId=%3$d, key=%4$s",
                          "txnLockShared", txnId, indexId, keyStr(key));
@@ -197,12 +247,16 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String valueStr(byte[] value) {
+        return valueStr(value, 0, value.length);
+    }
+
+    private static String valueStr(byte[] value, int offset, int length) {
         if (value == null) {
             return "null";
-        } else if (value.length <= MAX_VALUE) {
-            return "0x" + Utils.toHex(value);
+        } else if (length <= MAX_VALUE) {
+            return "0x" + Utils.toHex(value, offset, length);
         } else {
-            return "0x" + Utils.toHex(value, 0, MAX_VALUE) + "...";
+            return "0x" + Utils.toHex(value, offset, MAX_VALUE) + "...";
         }
     }
 

@@ -41,8 +41,10 @@ public class ValueAccessorTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(512);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
+        mConfig = config;
         mDb = newTempDatabase(getClass(), config);
     }
 
@@ -53,9 +55,11 @@ public class ValueAccessorTest {
     @After
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
+        mConfig = null;
         mDb = null;
     }
 
+    protected DatabaseConfig mConfig;
     protected Database mDb;
 
     @Test
@@ -468,44 +472,64 @@ public class ValueAccessorTest {
 
     @Test
     public void truncateNonFragmented() throws Exception {
+        truncateNonFragmented(false);
+    }
+
+    @Test
+    public void truncateNonFragmentedUndo() throws Exception {
+        truncateNonFragmented(true);
+    }
+
+    private void truncateNonFragmented(boolean undo) throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
-        truncate(db, 10, 5);     // 1-byte header to 1
-        truncate(db, 200, 50);   // 2-byte header to 1
-        truncate(db, 10000, 50); // 3-byte header to 1
+        truncate(db, 10, 5, undo);     // 1-byte header to 1
+        truncate(db, 200, 50, undo);   // 2-byte header to 1
+        truncate(db, 10000, 50, undo); // 3-byte header to 1
 
-        truncate(db, 200, 150);   // 2-byte header to 2
-        truncate(db, 10000, 200); // 3-byte header to 2
+        truncate(db, 200, 150, undo);   // 2-byte header to 2
+        truncate(db, 10000, 200, undo); // 3-byte header to 2
 
-        truncate(db, 20000, 10000); // 3-byte header to 3
+        truncate(db, 20000, 10000, undo); // 3-byte header to 3
     }
 
     @Test
     public void truncateFragmentedDirect() throws Exception {
+        truncateFragmentedDirect(false);
+    }
+
+    @Test
+    public void truncateFragmentedDirectUndo() throws Exception {
+        truncateFragmentedDirect(true);
+    }
+
+    private void truncateFragmentedDirect(boolean undo) throws Exception {
         // Test truncation of fragmented value which uses direct pointer encoding.
 
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
-        truncate(db, 65536, 10);       // no inline content; two pointers to one
-        truncate(db, 65537, 10);       // 1-byte inline content; two pointers to one
+        truncate(db, 65536, 10, undo);       // no inline content; two pointers to one
+        truncate(db, 65537, 10, undo);       // 1-byte inline content; two pointers to one
 
-        truncate(db, 100_000, 99_999); // slight truncation
-        truncate(db, 100_000, 1696);   // only inline content remains
-        truncate(db, 100_000, 1695);   // inline content is reduced
-        truncate(db, 100_000, 10);     // only inline content remains
-        truncate(db, 100_000, 0);      // full truncation
+        truncate(db, 100_000, 99_999, undo); // slight truncation
+        truncate(db, 100_000, 1696, undo);   // only inline content remains
+        truncate(db, 100_000, 1695, undo);   // inline content is reduced
+        truncate(db, 100_000, 10, undo);     // only inline content remains
+        truncate(db, 100_000, 0, undo);      // full truncation
 
-        truncate(db, 108_000, 9000);   // convert to normal value, 3-byte header
+        truncate(db, 108_000, 9000, undo);   // convert to normal value, 3-byte header
 
-        truncate(db, 50_000_000, 1_000_000);   // still fragmented, 2-byte header
-        truncate(db, 50_000_000, 45_000_000);  // still fragmented, 3-byte header
+        truncate(db, 50_000_000, 1_000_000, undo);   // still fragmented, 2-byte header
+        truncate(db, 50_000_000, 45_000_000, undo);  // still fragmented, 3-byte header
     }
 
-    private static void truncate(Database db, int from, int to) throws Exception {
+    private static void truncate(Database db, int from, int to, boolean undo) throws Exception {
         Index ix = db.openIndex("test");
         Random rnd = new Random(from * 31 + to);
 
@@ -517,15 +541,23 @@ public class ValueAccessorTest {
 
         ix.store(null, key, value);
 
-        ValueAccessor accessor = ix.newAccessor(null, key);
+        Transaction txn = undo ? db.newTransaction() : null;
+
+        ValueAccessor accessor = ix.newAccessor(txn, key);
         accessor.setValueLength(to);
         accessor.close();
 
-        byte[] truncated = ix.load(null, key);
-        assertEquals(to, truncated.length);
+        if (txn == null) {
+            byte[] truncated = ix.load(null, key);
+            assertEquals(to, truncated.length);
 
-        for (int i=0; i<to; i++) {
-            assertEquals(value[i], truncated[i]);
+            for (int i=0; i<to; i++) {
+                assertEquals(value[i], truncated[i]);
+            }
+        } else {
+            // Rollback.
+            txn.reset();
+            fastAssertArrayEquals(value, ix.load(null, key));
         }
 
         assertTrue(ix.verify(null));
@@ -572,54 +604,68 @@ public class ValueAccessorTest {
 
     @Test
     public void truncateFragmentedIndirect() throws Exception {
+        truncateFragmentedIndirect(false);
+    }
+
+    @Test
+    public void truncateFragmentedIndirectUndo() throws Exception {
+        truncateFragmentedIndirect(true);
+    }
+
+    private void truncateFragmentedIndirect(boolean undo) throws Exception {
         // Test truncation of fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(40_000, 30_000);
-        truncateFragmentedIndirect(40_000, 29_696); // newLen fully fits in pages
-        truncateFragmentedIndirect(40_448, 30_000); // oldLen fully fits
-        truncateFragmentedIndirect(40_448, 29_696);
+        truncateFragmentedIndirect(40_000, 30_000, false, undo);
+        truncateFragmentedIndirect(40_000, 29_696, false, undo); // newLen fully fits in pages
+        truncateFragmentedIndirect(40_448, 30_000, false, undo); // oldLen fully fits
+        truncateFragmentedIndirect(40_448, 29_696, false, undo);
 
-        truncateFragmentedIndirect(50_000, 40_000); // lose one indirect level
-        truncateFragmentedIndirect(50_000, 513);    // lose one indirect level
-        truncateFragmentedIndirect(50_000, 512);    // convert to direct format
-        truncateFragmentedIndirect(50_000, 1);      // convert to direct format
-        truncateFragmentedIndirect(50_000, 0);      // full truncation
+        truncateFragmentedIndirect(50_000, 40_000, false, undo); // lose one indirect level
+        truncateFragmentedIndirect(50_000, 513, false, undo);    // lose one indirect level
+        truncateFragmentedIndirect(50_000, 512, false, undo);    // convert to direct format
+        truncateFragmentedIndirect(50_000, 1, false, undo);      // convert to direct format
+        truncateFragmentedIndirect(50_000, 0, false, undo);      // full truncation
 
-        truncateFragmentedIndirect(50_000, 50_000); // no truncation
+        truncateFragmentedIndirect(50_000, 50_000, false, undo); // no truncation
     }
 
     @Test
     public void truncateFragmentedIndirectSparse() throws Exception {
+        truncateFragmentedIndirectSparse(false);
+    }
+
+    @Test
+    public void truncateFragmentedIndirectSparseUndo() throws Exception {
+        truncateFragmentedIndirectSparse(true);
+    }
+
+    private void truncateFragmentedIndirectSparse(boolean undo) throws Exception {
         // Test truncation of sparse fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(100_000, 99_999, true);
-        truncateFragmentedIndirect(100_000, 29_696, true); // newLen fully fits in pages
-        truncateFragmentedIndirect(100_000, 1, true);      // convert to direct format
-        truncateFragmentedIndirect(100_000, 0, true);      // full truncation
+        truncateFragmentedIndirect(100_000, 99_999, true, undo);
+        truncateFragmentedIndirect(100_000, 29_696, true, undo); // newLen fully fits in pages
+        truncateFragmentedIndirect(100_000, 1, true, undo);      // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true, undo);      // full truncation
     }
 
     @Test
     public void truncateFragmentedIndirectSparseWithCheckpoint() throws Exception {
         // Test truncation of sparse fragmented values which use indirect pointer encoding.
 
-        truncateFragmentedIndirect(100_000, 99_999, true, true);
-        truncateFragmentedIndirect(100_000, 29_696, true, true); // newLen fully fits in pages
-        truncateFragmentedIndirect(100_000, 1, true, true);      // convert to direct format
-        truncateFragmentedIndirect(100_000, 0, true, true);      // full truncation
+        truncateFragmentedIndirect(100_000, 99_999, true, true, false);
+        truncateFragmentedIndirect(100_000, 29_696, true, true, false); // newLen fully fits
+        truncateFragmentedIndirect(100_000, 1, true, true, false); // convert to direct format
+        truncateFragmentedIndirect(100_000, 0, true, true, false); // full truncation
     }
 
-    private void truncateFragmentedIndirect(int oldLen, int newLen) throws Exception {
-        truncateFragmentedIndirect(oldLen, newLen, false, false);
-    }
-
-    private void truncateFragmentedIndirect(int oldLen, int newLen, boolean sparse)
+    private void truncateFragmentedIndirect(int oldLen, int newLen, boolean sparse, boolean undo)
         throws Exception
     {
-        truncateFragmentedIndirect(oldLen, newLen, sparse, false);
+        truncateFragmentedIndirect(oldLen, newLen, sparse, false, undo);
     }
 
     private void truncateFragmentedIndirect(int oldLen, int newLen,
-                                            boolean sparse, boolean checkpoint)
+                                            boolean sparse, boolean checkpoint, boolean undo)
         throws Exception
     {
         final long seed = 248237410 + oldLen + newLen;
@@ -629,7 +675,7 @@ public class ValueAccessorTest {
         byte[] key = new byte[20];
         rnd.nextBytes(key);
 
-        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        Cursor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
         rnd = new Random(seed);
         byte[] b = new byte[10000];
@@ -654,9 +700,23 @@ public class ValueAccessorTest {
             mDb.checkpoint();
         }
 
+        if (sparse) {
+            oldLen = (int) accessor.valueLength();
+        }
+
+        if (undo) {
+            accessor.link(mDb.newTransaction());
+        }
+
         accessor.setValueLength(newLen);
 
         assertEquals(newLen, accessor.valueLength());
+
+        if (undo) {
+            // Rollback.
+            accessor.link().reset();
+            assertEquals(oldLen, accessor.valueLength());
+        }
 
         rnd = new Random(seed);
         byte[] b2 = new byte[b.length];
@@ -674,7 +734,7 @@ public class ValueAccessorTest {
             total += amt;
 
             if (amt < b2.length) {
-                assertEquals(newLen, total);
+                assertEquals(undo ? oldLen : newLen, total);
                 for (int j=0; j<amt; j++) {
                     assertEquals(b[j], b2[j]);
                 }
@@ -684,11 +744,13 @@ public class ValueAccessorTest {
             }
         }
 
-        // Extending shouldn't reveal old data.
-        accessor.setValueLength(newLen + 10);
-        assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
-        for (int j=0; j<10; j++) {
-            assertEquals(0, b2[j]);
+        if (!undo) {
+            // Extending shouldn't reveal old data.
+            accessor.setValueLength(newLen + 10);
+            assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
+            for (int j=0; j<10; j++) {
+                assertEquals(0, b2[j]);
+            }
         }
 
         assertTrue(ix.verify(null));
@@ -723,7 +785,8 @@ public class ValueAccessorTest {
     @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         writeNonFragmented(db, 50);
@@ -850,7 +913,8 @@ public class ValueAccessorTest {
     @Test
     public void convertToIndirectWithLargePages() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig().directPageAccess(false).pageSize(32768);
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         Index ix = db.openIndex("test");
@@ -981,6 +1045,503 @@ public class ValueAccessorTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void clearNonFragmented() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = "value".getBytes();
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+
+        // Clear nothing.
+        accessor.valueClear(0, 10);
+        assertNull(ix.load(Transaction.BOGUS, key));
+
+        // Clear entire value.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(0, value.length);
+        fastAssertArrayEquals(new byte[value.length], ix.load(Transaction.BOGUS, key));
+
+        // Clear value slice.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(1, value.length - 2);
+        byte[] expected = value.clone();
+        for (int i=1; i<expected.length - 1; i++) {
+            expected[i] = 0;
+        }
+        fastAssertArrayEquals(expected, ix.load(Transaction.BOGUS, key));
+
+        // Attempt to clear past the end.
+        ix.store(Transaction.BOGUS, key, value);
+        accessor.valueClear(1, 1000);
+        expected = value.clone();
+        for (int i=1; i<expected.length; i++) {
+            expected[i] = 0;
+        }
+        fastAssertArrayEquals(expected, ix.load(Transaction.BOGUS, key));
+
+        // Attempt to clear before the start.
+        try {
+            accessor.valueClear(-1, 1000);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+
+        accessor.close();
+    }
+
+    @Test
+    public void clearFragmentedDirect() throws Exception {
+        // Test clear of fragmented value which uses direct pointer encoding.
+
+        // Values with one page and no inline content...
+        clearFragmented(512, 0, 100);
+        clearFragmented(512, 0, 512);
+        clearFragmented(512, 0, 513);
+        clearFragmented(512, 1, 100);
+        clearFragmented(512, 1, 511);
+        clearFragmented(512, 1, 512);
+
+        // Values with multiple pages and no inline content...
+        clearFragmented(5120, 0, 100);
+        clearFragmented(5120, 0, 512);
+        clearFragmented(5120, 0, 513);
+        clearFragmented(5120, 0, 2000);
+        clearFragmented(5120, 0, 5119);
+        clearFragmented(5120, 0, 5120);
+        clearFragmented(5120, 0, 5121);
+        clearFragmented(5120, 100, 100);
+        clearFragmented(5120, 512, 512);
+        clearFragmented(5120, 1000, 513);
+        clearFragmented(5120, 2000, 2000);
+        clearFragmented(5120, 4000, 2000);
+
+        // Values with multiple pages and some inline content...
+        clearFragmented(5200, 0, 50);
+        clearFragmented(5200, 0, 80);
+        clearFragmented(5200, 0, 100);
+        clearFragmented(5200, 40, 100);
+        clearFragmented(5200, 80, 100);
+        clearFragmented(5200, 100, 100);
+        clearFragmented(5200, 512, 512);
+        clearFragmented(5200, 1000, 513);
+        clearFragmented(5200, 2000, 2000);
+        clearFragmented(5200, 4000, 2000);
+
+        // Values with sparse content (due to double clearing)...
+        clearFragmented(5200, 2000, 1000, 2500, 600);  // no overlap
+        clearFragmented(5200, 2000, 1000, 1500, 1000); // low overlap
+        clearFragmented(5200, 2000, 1000, 2500, 1000); // high overlap
+        clearFragmented(5200, 2000, 1000, 1500, 2000); // full overlap
+    }
+
+    @Test
+    public void clearFragmentedIndirect() throws Exception {
+        // Test clear of fragmented value which uses indirect pointer encoding.
+
+        clearFragmented(51200, 0, 1);
+        clearFragmented(51200, 0, 1000);
+        clearFragmented(51201, 0, 5000);
+        clearFragmented(20000, 0, 1000);
+        clearFragmented(20000, 10000, 1000);
+        clearFragmented(20000, 10000, 100000);
+
+        // Values with sparse content (due to double clearing)...
+        clearFragmented(20000, 10000, 1000, 11000, 900);  // no overlap
+        clearFragmented(20000, 10000, 1000, 9000, 900);   // low overlap
+        clearFragmented(20000, 10000, 1000, 11000, 2000); // high overlap
+        clearFragmented(20000, 10000, 1000, 9000, 2000);  // full overlap
+    }
+
+    private void clearFragmented(int length, int clearPos, int clearLen) throws Exception {
+        clearFragmented(length, clearPos, clearLen, 0, 0);
+    }
+
+    private void clearFragmented(int length, int clearPos, int clearLen, int pos2, int len2)
+        throws Exception
+    {
+        Index ix = mDb.openIndex("test");
+        byte[] key = "key".getBytes();
+        long seed = (((length * 31) + clearPos) * 31) + clearLen;
+        byte[] value = new byte[length];
+        new Random(seed).nextBytes(value);
+        ix.store(Transaction.BOGUS, key, value);
+
+        Arrays.fill(value, clearPos, clearPos + Math.min(clearLen, length - clearPos), (byte) 0);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueClear(clearPos, clearLen);
+        fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
+
+        if (len2 > 0) {
+            Arrays.fill(value, pos2, pos2 + Math.min(len2, length - pos2), (byte) 0);
+            accessor.valueClear(pos2, len2);
+            fastAssertArrayEquals(value, ix.load(Transaction.BOGUS, key));
+        }
+
+        accessor.close();
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
+    public void updateSplit() throws Exception {
+        // Updating a non-fragmented value which then splits the node.
+
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<24; i++) {
+            ix.store(Transaction.BOGUS, ("key-" + i).getBytes(), ("value-" + i).getBytes());
+        }
+
+        byte[] key = "key-5".getBytes();
+        byte[] value = new byte[100];
+        new Random().nextBytes(value);
+
+        ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
+        accessor.valueWrite(0, value, 0, value.length);
+        accessor.close();
+
+        fastAssertArrayEquals(value, ix.load(null, key));
+    }
+
+    @Test
+    public void undoMissing() throws Exception {
+        // Test rollback of value insert.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] k2 = "key-2".getBytes();
+
+        Cursor c = ix.newAccessor(txn, k1);
+        c.setValueLength(10000);
+
+        c.findNearby(k2);
+        byte[] v2 = "hello".getBytes();
+        c.valueWrite(1, v2, 0, v2.length);
+
+        c.findNearby(k1);
+        assertEquals(10000, c.valueLength());
+        c.findNearby(k2);
+        assertEquals(1 + v2.length, c.valueLength());
+        byte[] expect = new byte[1 + v2.length];
+        System.arraycopy(v2, 0, expect, 1, v2.length);
+        c.load();
+        fastAssertArrayEquals(expect, c.value());
+
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        assertFalse(ix.exists(Transaction.BOGUS, k1));
+        assertFalse(ix.exists(Transaction.BOGUS, k2));
+    }
+
+    @Test
+    public void undoTruncateNonFragmented() throws Exception {
+        // Test rollback of value truncation.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        byte[] k2 = "key-2".getBytes();
+        byte[] v2 = "world".getBytes();
+
+        ix.store(null, k1, v1);
+        ix.store(null, k2, v2);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.setValueLength(1);
+        c.findNearby(k2);
+        c.setValueLength(2);
+        assertEquals(2, c.valueLength());
+        c.findNearby(k1);
+        assertEquals(1, c.valueLength());
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+        fastAssertArrayEquals(v2, ix.load(null, k2));
+    }
+
+    @Test
+    public void undoUpdateNonFragmented() throws Exception {
+        // Test rollback of value update, not extended in length.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueWrite(1, "xyz".getBytes(), 0, 3);
+        fastAssertArrayEquals("hxyzo".getBytes(), ix.load(txn, k1));
+        c.valueWrite(0, "world".getBytes(), 0, 5);
+        fastAssertArrayEquals("world".getBytes(), ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoReplaceExtendNonFragmented() throws Exception {
+        // Test rollback of full value replace and extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] v2 = "helloworld".getBytes();
+        c.valueWrite(0, v2, 0, v2.length);
+        fastAssertArrayEquals(v2, ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoPartialReplaceExtendNonFragmented() throws Exception {
+        // Test rollback of partial value replace and extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] v2 = "world".getBytes();
+        c.valueWrite(2, v2, 0, v2.length);
+        fastAssertArrayEquals("heworld".getBytes(), ix.load(txn, k1));
+
+        // Rollback.
+        txn.reset();
+        c.close();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoExtendNonFragmented() throws Exception {
+        // Test rollback of value extend.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        byte[] k2 = "key-2".getBytes();
+        byte[] v2 = "world".getBytes();
+
+        ix.store(null, k1, v1);
+        ix.store(null, k2, v2);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        byte[] extend = "extend".getBytes();
+        c.valueWrite(v1.length, extend, 0, extend.length);
+        c.findNearby(k2);
+        c.valueWrite(v2.length + 1, extend, 0, extend.length);
+        fastAssertArrayEquals("helloextend".getBytes(), ix.load(txn, k1));
+        fastAssertArrayEquals("world\0extend".getBytes(), ix.load(txn, k2));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+        fastAssertArrayEquals(v2, ix.load(null, k2));
+    }
+
+    @Test
+    public void undoClearNonFragmented() throws Exception {
+        // Test rollback of value clear.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = "hello".getBytes();
+
+        ix.store(null, k1, v1);
+        
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 3);
+        fastAssertArrayEquals("h\0\0\0o".getBytes(), ix.load(txn, k1));
+        c.close();
+
+        // Close and re-open, to test undo log persistence and rollback.
+        mDb.checkpoint();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+
+        ix = mDb.openIndex("test");
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoUpdateFragmentedInlineDirect() throws Exception {
+        // Test rollback of value update, with inline content and direct pointers.
+        undoUpdateFragmentedInline(false);
+    }
+
+    @Test
+    public void undoUpdateFragmentedInlineIndirect() throws Exception {
+        // Test rollback of value update, with inline content and indirect pointers.
+        undoUpdateFragmentedInline(true);
+    }
+
+    private void undoUpdateFragmentedInline(boolean indirect) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = new byte[520];
+        new Random(2893547).nextBytes(v1);
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueWrite(1, "hello".getBytes(), 0, 5);
+        byte[] expect = v1.clone();
+        System.arraycopy("hello".getBytes(), 0, expect, 1, 5);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline replace and extend.
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        byte[] v2 = new byte[indirect ? 100_000 : 10_000];
+        new Random(28935471).nextBytes(v2);
+        c.valueWrite(1, v2, 0, v2.length);
+        expect = new byte[1 + v2.length];
+        expect[0] = v1[0];
+        System.arraycopy(v2, 0, expect, 1, v2.length);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test pure extend with no overlap.
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        byte[] v3 = new byte[indirect ? 20_000 : 2000];
+        new Random(289354715).nextBytes(v3);
+        c.valueWrite(v1.length, v3, 0, v3.length);
+        expect = new byte[v1.length + v3.length];
+        System.arraycopy(v1, 0, expect, 0, v1.length);
+        System.arraycopy(v3, 0, expect, v1.length, v3.length);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
+    public void undoClearFragmentedInlineDirect() throws Exception {
+        // Test rollback of value clear, with inline content and direct pointers.
+        undoClearFragmented(false);
+    }
+
+    @Test
+    public void undoClearFragmentedIndirect() throws Exception {
+        // Test rollback of value clear, with indirect pointers.
+        undoClearFragmented(true);
+    }
+
+    private void undoClearFragmented(boolean indirect) throws Exception {
+        // Note: With indirect format, inline content isn't defined.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = new byte[indirect ? 100_000 : 520];
+        new Random(2893542).nextBytes(v1);
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 5);
+        byte[] expect = v1.clone();
+        Arrays.fill(expect, 1, 1 + 5, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline clear beyond inline content (or a few blocks)
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        int len = indirect ? 2000 : 100;
+        c.valueClear(1, len);
+        expect = v1.clone();
+        Arrays.fill(expect, 1, 1 + len, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline clear beyond the end.
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 100_000);
+        expect = v1.clone();
+        Arrays.fill(expect, 1, v1.length, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
     }
 
     @Test

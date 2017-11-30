@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -96,7 +96,7 @@ var activeTableTab = "activeTableTab";
 </div>
 <div class="contentContainer">
 <ul class="inheritance">
-<li><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">java.lang.Object</a></li>
+<li><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">java.lang.Object</a></li>
 <li>
 <ul class="inheritance">
 <li><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">org.cojen.tupl.io.PageArray</a></li>
@@ -113,7 +113,7 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <dl>
 <dt>All Implemented Interfaces:</dt>
-<dd><a href="https://docs.oracle.com/javase/8/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="../../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></dd>
+<dd><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a>, <a href="../../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></dd>
 </dl>
 <hr>
 <br>
@@ -158,7 +158,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#close-java.lang.Throwable-">close</a></span>(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>&nbsp;</td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#close-java.lang.Throwable-">close</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>&nbsp;</td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
@@ -204,51 +204,55 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#isEmpty--">isEmpty</a></span>()</code>&nbsp;</td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#isDirectIO--">isDirectIO</a></span>()</code>&nbsp;</td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#isReadOnly--">isReadOnly</a></span>()</code>&nbsp;</td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#isEmpty--">isEmpty</a></span>()</code>&nbsp;</td>
 </tr>
 <tr id="i10" class="altColor">
+<td class="colFirst"><code>boolean</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#isReadOnly--">isReadOnly</a></span>()</code>&nbsp;</td>
+</tr>
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#open--">open</a></span>()</code>
 <div class="block">Attempt to open or reopen the page array.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#readPage-long-byte:A-int-int-">readPage</a></span>(long&nbsp;index,
         byte[]&nbsp;dst,
         int&nbsp;offset,
         int&nbsp;length)</code>&nbsp;</td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#readPage-long-long-int-int-">readPage</a></span>(long&nbsp;index,
         long&nbsp;dstPtr,
         int&nbsp;offset,
         int&nbsp;length)</code>&nbsp;</td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#setPageCount-long-">setPageCount</a></span>(long&nbsp;count)</code>
 <div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#sync-boolean-">sync</a></span>(boolean&nbsp;metadata)</code>
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#syncPage-long-">syncPage</a></span>(long&nbsp;index)</code>
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#writePage-long-byte:A-int-">writePage</a></span>(long&nbsp;index,
          byte[]&nbsp;src,
@@ -256,7 +260,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/StripedPageArray.html#writePage-long-long-int-">writePage</a></span>(long&nbsp;index,
          long&nbsp;srcPtr,
@@ -276,8 +280,8 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang">clone</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang">equals</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang">finalize</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang">getClass</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang">hashCode</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang">notify</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang">notifyAll</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang">toString</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang">wait</a></code></li>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></h3>
+<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang">clone</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang">equals</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang">finalize</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang">getClass</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang">hashCode</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang">notify</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang">notifyAll</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang">toString</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang">wait</a></code></li>
 </ul>
 </li>
 </ul>
@@ -310,6 +314,19 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <!--   -->
 </a>
 <h3>Method Detail</h3>
+<a name="isDirectIO--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isDirectIO</h4>
+<pre>public final&nbsp;boolean&nbsp;isDirectIO()</pre>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#isDirectIO--">isDirectIO</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+</dl>
+</li>
+</ul>
 <a name="isReadOnly--">
 <!--   -->
 </a>
@@ -330,12 +347,12 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>isEmpty</h4>
 <pre>public&nbsp;boolean&nbsp;isEmpty()
-                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#isEmpty--">isEmpty</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -346,14 +363,14 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>getPageCount</h4>
 <pre>public&nbsp;long&nbsp;getPageCount()
-                  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCount--">PageArray</a></code></span></div>
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCount--">getPageCount</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -364,7 +381,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>setPageCount</h4>
 <pre>public&nbsp;void&nbsp;setPageCount(long&nbsp;count)
-                  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#setPageCount-long-">PageArray</a></code></span></div>
 <div class="block">Set the total count of pages, truncating or growing the array as necessary. Array
  implementation might not support setting the page count, in which case this method does
@@ -373,7 +390,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#setPageCount-long-">setPageCount</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -384,14 +401,14 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>getPageCountLimit</h4>
 <pre>public&nbsp;long&nbsp;getPageCountLimit()
-                       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCountLimit--">PageArray</a></code></span></div>
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCountLimit--">getPageCountLimit</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -405,7 +422,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
                      byte[]&nbsp;dst,
                      int&nbsp;offset,
                      int&nbsp;length)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-byte:A-int-int-">readPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
@@ -414,7 +431,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dd><code>dst</code> - receives read data</dd>
 <dd><code>offset</code> - offset into data dstfer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if index is greater than or equal to page count</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if index is greater than or equal to page count</dd>
 </dl>
 </li>
 </ul>
@@ -428,7 +445,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
                      long&nbsp;dstPtr,
                      int&nbsp;offset,
                      int&nbsp;length)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-long-int-int-">readPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
@@ -437,7 +454,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dd><code>dstPtr</code> - receives read data</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if index is greater than or equal to page count</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code> - if index is greater than or equal to page count</dd>
 </dl>
 </li>
 </ul>
@@ -450,7 +467,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <pre>public&nbsp;void&nbsp;writePage(long&nbsp;index,
                       byte[]&nbsp;src,
                       int&nbsp;offset)
-               throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+               throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-byte:A-int-">PageArray</a></code></span></div>
 <div class="block">Writes a page, which is lazily flushed. The array grows automatically if the index is
  greater than or equal to the current page count. If array supports caching, page must be
@@ -463,7 +480,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dd><code>src</code> - data to write</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -476,7 +493,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <pre>public&nbsp;void&nbsp;writePage(long&nbsp;index,
                       long&nbsp;srcPtr,
                       int&nbsp;offset)
-               throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+               throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-long-int-">PageArray</a></code></span></div>
 <div class="block">Writes a page, which is lazily flushed. The array grows automatically if the index is
  greater than or equal to the current page count. If array supports caching, page must be
@@ -489,7 +506,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dd><code>srcPtr</code> - data to write</dd>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -501,7 +518,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>evictPage</h4>
 <pre>public&nbsp;byte[]&nbsp;evictPage(long&nbsp;index,
                         byte[]&nbsp;buf)
-                 throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#evictPage-long-byte:A-">PageArray</a></code></span></div>
 <div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
  be returned. Caller must not alter the original buffer if a replacement was provided,
@@ -515,7 +532,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>replacement buffer, or same instance if replacement was not performed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -527,7 +544,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>evictPage</h4>
 <pre>public&nbsp;long&nbsp;evictPage(long&nbsp;index,
                       long&nbsp;bufPtr)
-               throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+               throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#evictPage-long-long-">PageArray</a></code></span></div>
 <div class="block">Same as writePage, except that the given buffer might be altered and a replacement might
  be returned. Caller must not alter the original buffer if a replacement was provided,
@@ -541,7 +558,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>replacement buffer, or same instance if replacement was not performed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -552,12 +569,12 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>directPagePointer</h4>
 <pre>public&nbsp;long&nbsp;directPagePointer(long&nbsp;index)
-                       throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#directPagePointer-long-">directPagePointer</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -569,12 +586,12 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>copyPage</h4>
 <pre>public&nbsp;long&nbsp;copyPage(long&nbsp;srcIndex,
                      long&nbsp;dstIndex)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#copyPage-long-long-">copyPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -586,12 +603,12 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>copyPageFromPointer</h4>
 <pre>public&nbsp;long&nbsp;copyPageFromPointer(long&nbsp;srcPointer,
                                 long&nbsp;dstIndex)
-                         throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#copyPageFromPointer-long-long-">copyPageFromPointer</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -602,7 +619,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>sync</h4>
 <pre>public&nbsp;void&nbsp;sync(boolean&nbsp;metadata)
-          throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#sync-boolean-">PageArray</a></code></span></div>
 <div class="block">Durably flushes all writes to the underlying device.</div>
 <dl>
@@ -611,7 +628,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>metadata</code> - pass true to flush all file metadata</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -622,7 +639,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>syncPage</h4>
 <pre>public&nbsp;void&nbsp;syncPage(long&nbsp;index)
-              throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#syncPage-long-">PageArray</a></code></span></div>
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.
  File metadata is not flushed.</div>
@@ -630,7 +647,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#syncPage-long-">syncPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -640,8 +657,8 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <ul class="blockList">
 <li class="blockList">
 <h4>close</h4>
-<pre>public&nbsp;void&nbsp;close(<a href="https://docs.oracle.com/javase/8/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)
-           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>public&nbsp;void&nbsp;close(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)
+           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../../org/cojen/tupl/io/CauseCloseable.html#close-java.lang.Throwable-">close</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
@@ -650,7 +667,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>cause</code> - null if close is not caused by a failure</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -661,7 +678,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li class="blockList">
 <h4>open</h4>
 <pre>public&nbsp;<a href="../../../../org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a>&nbsp;open()
-                      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                      throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#open--">PageArray</a></code></span></div>
 <div class="block">Attempt to open or reopen the page array.</div>
 <dl>
@@ -670,7 +687,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>existing or new page array</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
