@@ -1421,6 +1421,74 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void undoClearFragmentedInlineDirect() throws Exception {
+        // Test rollback of value clear, with inline content and direct pointers.
+        undoClearFragmented(false);
+    }
+
+    @Test
+    public void undoClearFragmentedIndirect() throws Exception {
+        // Test rollback of value clear, with indirect pointers.
+        undoClearFragmented(true);
+    }
+
+    private void undoClearFragmented(boolean indirect) throws Exception {
+        // Note: With indirect format, indirect content isn't defined.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "key-1".getBytes();
+        byte[] v1 = new byte[indirect ? 100_000 : 520];
+        new Random(2893542).nextBytes(v1);
+
+        ix.store(null, k1, v1);
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 5);
+        byte[] expect = v1.clone();
+        Arrays.fill(expect, 1, 1 + 5, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline clear beyond inline content (or a few blocks)
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        int len = indirect ? 2000 : 100;
+        c.valueClear(1, len);
+        expect = v1.clone();
+        Arrays.fill(expect, 1, 1 + len, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        // Test inline clear beyond the end.
+
+        txn = mDb.newTransaction();
+        c = ix.newAccessor(txn, k1);
+        c.valueClear(1, 100_000);
+        expect = v1.clone();
+        Arrays.fill(expect, 1, v1.length, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(txn, k1));
+        c.close();
+
+        // Rollback.
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, k1));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
