@@ -7,7 +7,7 @@ v1.4.0
 * Added a RAFT-based replication system.
 * Added a ValueAccessor interface which supports very large values (>2Gib), random access,
   appending, truncation, zero-filling, and streams.
-* Added Scanner and Updater interfaces, which can be simpler and more efficient than Cursor.
+* Added Scanners and Updaters, which can be simpler and more efficient than using a Cursor.
 * Added a key-only view, intended for use with scanners and updaters.
 * Added various set views: union, intersection, and difference.
 * Added support for event filtering and logging, with more events defined.
@@ -20,7 +20,12 @@ v1.4.0
 * Added a view method to touch a key, as a convenient way to lock it.
 * Added a transaction flush method, which helps ensure that replicated changes propagate early.
 * Added a transaction lock combining method, as an alternative to nested scopes.
-* Added a dirty pages stat counter.
+* Added a dirty pages stat counter, and include internal index stats.
+* Added support for direct I/O (O_DIRECT).
+* Added a CRC-32C utility (to bridge the gap with Java 9)
+* Added more control over file preallocation when extending the length.
+* Files are opened with the random access hint by default, eliminating unnecessary prefetching.
+* Improved concurrency with the introduction of a "clutch", replacing ordinary latches.
 * Incomplete database restoration is now detected, causing an IncompleteRestoreException to be
   thrown when opening the database.
 * Unpositioned cursors now throw a specialized exception, still existing IllegalStateException.
