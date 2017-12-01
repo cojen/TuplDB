@@ -136,7 +136,7 @@ final class UndoLog implements DatabaseAccess {
     // Payload is the value length to undo a value extension.
     static final byte OP_UNEXTEND = (byte) 29;
 
-    // Payload is the value position and length to undo value hole fill.
+    // Payload is the value length and position to undo value hole fill.
     static final byte OP_UNALLOC = (byte) 30;
 
     // Payload is the value position and bytes to undo a value write.
@@ -360,8 +360,8 @@ final class UndoLog implements DatabaseAccess {
     void pushUnalloc(long indexId, byte[] key, long pos, long length) throws IOException {
         setActiveIndexIdAndKey(indexId, key);
         byte[] payload = new byte[9 + 9];
-        int off = encodeUnsignedVarLong(payload, 0, pos);
-        off = encodeUnsignedVarLong(payload, off, length);
+        int off = encodeUnsignedVarLong(payload, 0, length);
+        off = encodeUnsignedVarLong(payload, off, pos);
         doPush(OP_UNALLOC, payload, 0, off);
     }
 
@@ -968,8 +968,8 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNALLOC:
             IntegerRef offsetRef = new IntegerRef.Value();
-            long pos = decodeUnsignedVarLong(entry, offsetRef);
             length = decodeUnsignedVarLong(entry, offsetRef);
+            long pos = decodeUnsignedVarLong(entry, offsetRef);
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
                     c.valueClear(pos, length);
