@@ -28,7 +28,7 @@ v1.4.0
 * Improved concurrency with the introduction of a "clutch", replacing ordinary latches.
 * Incomplete database restoration is now detected, causing an IncompleteRestoreException to be
   thrown when opening the database.
-* Unpositioned cursors now throw a specialized exception, still existing IllegalStateException.
+* Unpositioned cursors now throw a specialized exception, still extending IllegalStateException.
 
 v1.3.12.3 (2017-05-20)
 ---------
