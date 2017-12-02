@@ -272,7 +272,9 @@ class ReplRedoWriter extends RedoWriter {
     }
 
     @Override
-    final long write(boolean commit, byte[] bytes, int offset, int length) throws IOException {
+    final long write(boolean flush, byte[] bytes, int offset, int length, int commitLen)
+        throws IOException
+    {
         if (mReplWriter == null) {
             throw mEngine.unmodifiable();
         }
@@ -342,15 +344,18 @@ class ReplRedoWriter extends RedoWriter {
                         throw e;
                     }
 
-                    long pos = mWritePos += length;
+                    long pos = mWritePos;
+
+                    if (commitLen > 0) {
+                        mLastCommitPos = pos + commitLen;
+                        mLastCommitTxnId = mLastTxnId;
+                    }
+
+                    pos += length;
+                    mWritePos = pos;
 
                     if ((mBufferTail += length) >= buffer.length) {
                         mBufferTail = 0;
-                    }
-
-                    if (commit) {
-                        mLastCommitPos = pos;
-                        mLastCommitTxnId = mLastTxnId;
                     }
 
                     // FIXME: If consumer is parked, attempt to do the write immediately.
