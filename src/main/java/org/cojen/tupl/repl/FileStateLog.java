@@ -96,6 +96,7 @@ final class FileStateLog extends Latch implements StateLog {
     private static final int METADATA_FILE_SIZE = SECTION_SIZE + METADATA_SIZE;
     private static final int COUNTER_OFFSET = 12;
     private static final int CURRENT_TERM_OFFSET = 16;
+    private static final int HIGHEST_PREV_TERM_OFFSET = 32;
     private static final int CRC_OFFSET = METADATA_SIZE - 4;
 
     private final File mBase;
@@ -150,7 +151,7 @@ final class FileStateLog extends Latch implements StateLog {
             throw new IOException("Replicator is open and locked by another process");
         }
 
-        boolean mdFileExists = mMetadataFile.size() != 0;
+        final boolean mdFileExists = mMetadataFile.size() != 0;
 
         mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
@@ -891,12 +892,9 @@ final class FileStateLog extends Latch implements StateLog {
             }
 
             checkDurable(index, mMetadataHighestIndex);
-
-            TermLog highestLog = captureHighest(mMetadataInfo);
-
             checkDurable(index, mMetadataInfo.mCommitIndex);
 
-            syncMetadata(highestLog, index);
+            syncMetadata(null, index);
 
             return true;
         } finally {
@@ -934,7 +932,7 @@ final class FileStateLog extends Latch implements StateLog {
 
     // Caller must exclusively hold mMetadataLatch.
     private void syncMetadata(TermLog highestLog) throws IOException {
-        syncMetadata(highestLog, mMetadataDurableIndex);
+        syncMetadata(highestLog, -1);
     }
 
     // Caller must exclusively hold mMetadataLatch.
@@ -943,18 +941,40 @@ final class FileStateLog extends Latch implements StateLog {
             return;
         }
 
+        boolean durableOnly;
+        if (durableIndex >= 0) {
+            // Only updating the durable index (called by commitDurable).
+            durableOnly = true;
+        } else {
+            durableIndex = mMetadataDurableIndex;
+            durableOnly = false;
+        }
+
         if (mMetadataInfo.mHighestIndex < durableIndex) {
             throw new IllegalStateException("Highest index is lower than durable index: " +
                                             mMetadataInfo.mHighestIndex + " < " + durableIndex);
         }
 
-        int counter = mMetadataCounter + 1;
-        int offset = (counter & 1) << SECTION_POW;
-
-        long highestTerm = mMetadataInfo.mTerm;
-        long highestIndex = mMetadataInfo.mHighestIndex;
-
         MappedByteBuffer bb = mMetadataBuffer;
+        int counter = mMetadataCounter;
+
+        long highestPrevTerm, highestTerm, highestIndex;
+
+        if (durableOnly) {
+            // Leave the existing highest log field values alone, since no data was sync'd.
+            bb.position(((counter & 1) << SECTION_POW) + HIGHEST_PREV_TERM_OFFSET);
+            highestPrevTerm = bb.getLong();
+            highestTerm = bb.getLong();
+            highestIndex = bb.getLong();
+        } else {
+            highestTerm = mMetadataInfo.mTerm;
+            highestIndex = mMetadataInfo.mHighestIndex;
+            highestPrevTerm = highestLog == null ?
+                highestTerm : highestLog.prevTermAt(highestIndex);
+        }
+
+        counter += 1;
+        int offset = (counter & 1) << SECTION_POW;
 
         bb.clear();
         bb.position(offset + COUNTER_OFFSET);
@@ -963,7 +983,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putInt(counter);
         bb.putLong(mCurrentTerm);
         bb.putLong(mVotedForId);
-        bb.putLong(highestLog == null ? highestTerm : highestLog.prevTermAt(highestIndex));
+        bb.putLong(highestPrevTerm);
         bb.putLong(highestTerm);
         bb.putLong(highestIndex);
         bb.putLong(durableIndex);
@@ -979,8 +999,12 @@ final class FileStateLog extends Latch implements StateLog {
 
         // Update field values only after successful file I/O.
         mMetadataCounter = counter;
-        mMetadataHighestIndex = mMetadataInfo.mHighestIndex;
-        mMetadataDurableIndex = durableIndex;
+
+        if (durableOnly) {
+            mMetadataDurableIndex = durableIndex;
+        } else {
+            mMetadataHighestIndex = mMetadataInfo.mHighestIndex;
+        }
     }
 
     @Override
