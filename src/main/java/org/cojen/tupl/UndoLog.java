@@ -1513,6 +1513,10 @@ final class UndoLog implements DatabaseAccess {
             opStr = "COMMIT_TRUNCATE";
             break;
 
+        case OP_UNCREATE:
+            opStr = "UNCREATE";
+            break;
+
         case OP_LOG_COPY:
             opStr = "LOG_COPY";
             break;
@@ -1546,6 +1550,12 @@ final class UndoLog implements DatabaseAccess {
                 new String(key, StandardCharsets.UTF_8) + ')';
             break;
 
+        case OP_ACTIVE_KEY:
+            opStr = "ACTIVE_KEY";
+            payloadStr = "key=0x" + Utils.toHex(entry) + " (" +
+                new String(entry, StandardCharsets.UTF_8) + ')';
+            break;
+
         case OP_CUSTOM:
             opStr = "CUSTOM";
             payloadStr = "entry=0x" + Utils.toHex(entry);
@@ -1554,28 +1564,47 @@ final class UndoLog implements DatabaseAccess {
         case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
             opStr = op == OP_UNUPDATE ? "UNUPDATE_LK" : "UNDELETE_LK";
 
-            key = new byte[decodeUnsignedVarInt(entry, 0)];
-            int keyLoc = calcUnsignedVarIntLength(key.length);
-            arraycopy(entry, keyLoc, key, 0, key.length);
+            int keyLen = decodeUnsignedVarInt(entry, 0);
+            int keyLoc = calcUnsignedVarIntLength(keyLen);
+            int valueLoc = keyLoc + keyLen;
+            int valueLen = entry.length - valueLoc;
 
-            int valueLoc = keyLoc + key.length;
-            byte[] value = new byte[entry.length - valueLoc];
-            arraycopy(entry, valueLoc, value, 0, value.length);
-
-            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
-                new String(key, StandardCharsets.UTF_8) + ") value=0x" + Utils.toHex(value);
+            payloadStr = "key=0x" + Utils.toHex(entry, keyLoc, keyLen) + " (" +
+                new String(entry, keyLoc, keyLen, StandardCharsets.UTF_8) + ") value=0x" +
+                Utils.toHex(entry, valueLoc, valueLen);
 
             break;
 
         case OP_UNDELETE_LK_FRAGMENTED:
             opStr = "UNDELETE_LK_FRAGMENTED";
 
-            key = new byte[decodeUnsignedVarInt(entry, 0)];
-            arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+            keyLen = decodeUnsignedVarInt(entry, 0);
+            keyLoc = calcUnsignedVarIntLength(keyLen);
 
-            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
-                new String(key, StandardCharsets.UTF_8) + ')';
+            payloadStr = "key=0x" + Utils.toHex(entry, keyLoc, keyLen) + " (" +
+                new String(entry, keyLoc, keyLen, StandardCharsets.UTF_8) + ')';
 
+            break;
+
+        case OP_UNEXTEND:
+            opStr = "UNEXTEND";
+            payloadStr = "length=" + decodeUnsignedVarLong(entry, new IntegerRef.Value());
+            break;
+
+        case OP_UNALLOC:
+            opStr = "UNALLOC";
+            IntegerRef offsetRef = new IntegerRef.Value();
+            long length = decodeUnsignedVarLong(entry, offsetRef);
+            long pos = decodeUnsignedVarLong(entry, offsetRef);
+            payloadStr = "pos=" + pos + ", length=" + length;
+            break;
+
+        case OP_UNWRITE:
+            opStr = "UNWRITE";
+            offsetRef = new IntegerRef.Value();
+            pos = decodeUnsignedVarLong(entry, offsetRef);
+            int off = offsetRef.get();
+            payloadStr = "pos=" + pos + ", value=0x" + Utils.toHex(entry, off, entry.length - off);
             break;
         }
 
