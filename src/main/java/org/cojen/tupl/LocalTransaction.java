@@ -1125,7 +1125,7 @@ final class LocalTransaction extends Locker implements Transaction {
     final void pushUnextend(long indexId, byte[] key, long length) throws IOException {
         check();
         try {
-            undoLog().pushUnextend(indexId, key, length);
+            undoLog().pushUnextend(mSavepoint, indexId, key, length);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
