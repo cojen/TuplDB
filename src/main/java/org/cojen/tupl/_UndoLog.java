@@ -90,6 +90,9 @@ final class _UndoLog implements _DatabaseAccess {
     // Indicates that transaction has been committed and log is partially truncated.
     static final byte OP_COMMIT_TRUNCATE = (byte) 5;
 
+    // Same as OP_UNINSERT, except uses OP_ACTIVE_KEY. (ValueAccessor op)
+    static final byte OP_UNCREATE = (byte) 12;
+
     // All ops less than 16 have no payload.
     private static final byte PAYLOAD_OP = (byte) 16;
 
@@ -116,7 +119,7 @@ final class _UndoLog implements _DatabaseAccess {
     // Payload is _Node-encoded key and trash id, to undo a fragmented value delete.
     static final byte OP_UNDELETE_FRAGMENTED = (byte) 22;
 
-    // Payload is a key for unwrite or unextend operations.
+    // Payload is a key for ValueAccessor operations.
     static final byte OP_ACTIVE_KEY = (byte) 23;
 
     // Payload is custom message.
@@ -133,13 +136,13 @@ final class _UndoLog implements _DatabaseAccess {
     // Payload is a (large) key and trash id, to undo a fragmented value delete.
     static final byte OP_UNDELETE_LK_FRAGMENTED = (byte) (OP_UNDELETE_FRAGMENTED + LK_ADJUST); //27
 
-    // Payload is the value length to undo a value extension.
+    // Payload is the value length to undo a value extension. (ValueAccessor op)
     static final byte OP_UNEXTEND = (byte) 29;
 
-    // Payload is the value length and position to undo value hole fill.
+    // Payload is the value length and position to undo value hole fill. (ValueAccessor op)
     static final byte OP_UNALLOC = (byte) 30;
 
-    // Payload is the value position and bytes to undo a value write.
+    // Payload is the value position and bytes to undo a value write. (ValueAccessor op)
     static final byte OP_UNWRITE = (byte) 31;
 
     private final _LocalDatabase mDatabase;
@@ -342,6 +345,14 @@ final class _UndoLog implements _DatabaseAccess {
      */
     void pushCustom(byte[] message) throws IOException {
         doPush(OP_CUSTOM, message);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    void pushUncreate(long indexId, byte[] key) throws IOException {
+        setActiveIndexIdAndKey(indexId, key);
+        doPush(OP_UNCREATE);
     }
 
     /**
@@ -763,6 +774,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_SCOPE_COMMIT:
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
+            case OP_UNCREATE:
             case OP_UNINSERT:
             case OP_UNUPDATE:
             case OP_ACTIVE_KEY:
@@ -847,6 +859,18 @@ final class _UndoLog implements _DatabaseAccess {
         case OP_INDEX:
             mActiveIndexId = decodeLongLE(entry, 0);
             activeIndex = null;
+            break;
+
+        case OP_UNCREATE:
+            while ((activeIndex = findIndex(activeIndex)) != null) {
+                try {
+                    activeIndex.delete(Transaction.BOGUS, mActiveKey);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
+                }
+            }
             break;
 
         case OP_UNINSERT:
@@ -1430,6 +1454,7 @@ final class _UndoLog implements _DatabaseAccess {
                 }
                 break;
 
+            case OP_UNCREATE:
             case OP_UNEXTEND:
             case OP_UNALLOC:
             case OP_UNWRITE:

@@ -1110,6 +1110,18 @@ final class LocalTransaction extends Locker implements Transaction {
     /**
      * Caller must hold commit lock.
      */
+    final void pushUncreate(long indexId, byte[] key) throws IOException {
+        check();
+        try {
+            undoLog().pushUncreate(indexId, key);
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
+    }
+
+    /**
+     * Caller must hold commit lock.
+     */
     final void pushUnextend(long indexId, byte[] key, long length) throws IOException {
         check();
         try {
