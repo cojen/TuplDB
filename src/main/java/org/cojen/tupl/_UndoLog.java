@@ -357,9 +357,56 @@ final class _UndoLog implements _DatabaseAccess {
 
     /**
      * Caller must hold db commit lock.
+     *
+     * @param savepoint used to check if op isn't necessary
      */
-    void pushUnextend(long indexId, byte[] key, long length) throws IOException {
-        setActiveIndexIdAndKey(indexId, key);
+    void pushUnextend(long savepoint, long indexId, byte[] key, long length) throws IOException {
+        if (setActiveIndexIdAndKey(indexId, key) && savepoint < mLength) discardCheck: {
+            // Check if op isn't necessary because it's action will be superceded by another.
+
+            long unlen;
+
+            _Node node = mNode;
+            if (node == null) {
+                byte op = mBuffer[mBufferPos];
+                if (op == OP_UNCREATE) {
+                    return;
+                }
+                if (op != OP_UNEXTEND) {
+                    break discardCheck;
+                }
+                int pos = mBufferPos + 1;
+                int payloadLen = decodeUnsignedVarInt(mBuffer, pos);
+                pos += calcUnsignedVarIntLength(payloadLen);
+                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                offsetRef.value = pos;
+                unlen = decodeUnsignedVarLong(mBuffer, offsetRef);
+            } else {
+                byte op = p_byteGet(mNode.mPage, mNodeTopPos);
+                if (op == OP_UNCREATE) {
+                    return;
+                }
+                if (op != OP_UNEXTEND) {
+                    break discardCheck;
+                }
+                int pos = mNodeTopPos + 1;
+                int payloadLen = p_uintGetVar(mNode.mPage, pos);
+                pos += calcUnsignedVarIntLength(payloadLen);
+                if (pos + payloadLen > pageSize(mNode.mPage)) {
+                    // Don't bother decoding payload which spills into the next node.
+                    break discardCheck;
+                }
+                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                offsetRef.value = pos;
+                unlen = p_ulongGetVar(mNode.mPage, offsetRef);
+            }
+
+            if (unlen <= length) {
+                // Existing unextend length will truncate at least as much.
+                return;
+            }
+        }
+
         byte[] payload = new byte[9];
         int off = encodeUnsignedVarLong(payload, 0, length);
         doPush(OP_UNEXTEND, payload, 0, off);
@@ -408,17 +455,33 @@ final class _UndoLog implements _DatabaseAccess {
         pushUnwrite(indexId, key, pos, b, 0, len);
     }
 
-    private void setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
-        setActiveIndexId(indexId);
+    /**
+     * @return true if active index and key already match
+     */
+    private boolean setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
+        boolean result = true;
 
-        if (mActiveKey != null) {
-            if (Arrays.equals(mActiveKey, key)) {
-                return;
+        long activeIndexId = mActiveIndexId;
+        if (indexId != activeIndexId) {
+            if (activeIndexId != 0) {
+                byte[] payload = new byte[8];
+                encodeLongLE(payload, 0, activeIndexId);
+                doPush(OP_INDEX, payload, 0, 8, 1);
             }
-            doPush(OP_ACTIVE_KEY, mActiveKey);
+            mActiveIndexId = indexId;
+            result = false;
         }
 
-        mActiveKey = key;
+        byte[] activeKey = mActiveKey;
+        if (!Arrays.equals(key, activeKey)) {
+            if (activeKey != null) {
+                doPush(OP_ACTIVE_KEY, mActiveKey);
+            }
+            mActiveKey = key;
+            result = false;
+        }
+
+        return result;
     }
 
     /**
