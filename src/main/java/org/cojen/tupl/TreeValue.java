@@ -178,7 +178,7 @@ final class TreeValue {
                 }
 
                 if (txn != null) {
-                    txn.pushUninsert(cursor.mTree.mId, cursor.mKey);
+                    txn.pushUncreate(cursor.mTree.mId, cursor.mKey);
                     // No more undo operations to push.
                     txn = null;
                 }
