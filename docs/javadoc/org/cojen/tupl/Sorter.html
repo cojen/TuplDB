@@ -166,14 +166,14 @@ var activeTableTab = "activeTableTab";
 <h4>add</h4>
 <pre>void&nbsp;add(byte[]&nbsp;key,
          byte[]&nbsp;value)
-  throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Add an entry into the sorter. If multiple entries are added with matching keys, only the
  last one added is kept.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -184,13 +184,13 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>finish</h4>
 <pre><a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;finish()
-      throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+      throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code> - if reset by another thread</dd>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -201,12 +201,12 @@ var activeTableTab = "activeTableTab";
 <li class="blockList">
 <h4>reset</h4>
 <pre>void&nbsp;reset()
-    throws <a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Discards all the entries and frees up space in the database. Can be called to interrupt
  any sort which is in progress.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
