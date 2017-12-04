@@ -1545,6 +1545,87 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void undoCreateStream() throws Exception {
+        // Tests creation and undo of a value using a stream.
+
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 39485743;
+        Random rnd = new Random(seed);
+        final byte[] buf = new byte[1000];
+        final int count = 100;
+        final byte[] key = "something".getBytes();
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, key);
+        try (OutputStream out = c.newValueOutputStream(0)) {
+            for (int i=0; i<count; i++) {
+                rnd.nextBytes(buf);
+                out.write(buf);
+            }
+        }
+
+        byte[] value = ix.load(txn, key);
+
+        assertEquals(buf.length * count, value.length);
+
+        rnd = new Random(seed);
+        for (int i=0; i<count; i++) {
+            rnd.nextBytes(buf);
+            int start = i * buf.length;
+            byte[] slice = Arrays.copyOfRange(value, start, start + buf.length);
+            fastAssertArrayEquals(buf, slice);
+        }
+
+        txn.reset();
+
+        assertNull(ix.load(null, key));
+    }
+
+    @Test
+    public void undoAppendStream() throws Exception {
+        // Tests appending and undo of a value using a stream.
+
+        Index ix = mDb.openIndex("test");
+        final byte[] key = "hello".getBytes();
+        final byte[] v1 = "world".getBytes();
+        ix.store(null, key, v1);
+        
+        final long seed = 39485743;
+        Random rnd = new Random(seed);
+        final byte[] buf = new byte[1000];
+        final int count = 100;
+
+        Transaction txn = mDb.newTransaction();
+        Cursor c = ix.newAccessor(txn, key);
+        try (OutputStream out = c.newValueOutputStream(v1.length)) {
+            for (int i=0; i<count; i++) {
+                rnd.nextBytes(buf);
+                out.write(buf);
+            }
+        }
+
+        byte[] value = ix.load(txn, key);
+
+        assertEquals(v1.length + buf.length * count, value.length);
+
+        byte[] slice = Arrays.copyOfRange(value, 0, v1.length);
+        fastAssertArrayEquals(v1, slice);
+
+        rnd = new Random(seed);
+        for (int i=0; i<count; i++) {
+            rnd.nextBytes(buf);
+            int start = v1.length + i * buf.length;
+            slice = Arrays.copyOfRange(value, start, start + buf.length);
+            fastAssertArrayEquals(buf, slice);
+        }
+
+        txn.reset();
+
+        fastAssertArrayEquals(v1, ix.load(null, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 

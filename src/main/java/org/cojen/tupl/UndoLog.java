@@ -90,6 +90,9 @@ final class UndoLog implements DatabaseAccess {
     // Indicates that transaction has been committed and log is partially truncated.
     static final byte OP_COMMIT_TRUNCATE = (byte) 5;
 
+    // Same as OP_UNINSERT, except uses OP_ACTIVE_KEY. (ValueAccessor op)
+    static final byte OP_UNCREATE = (byte) 12;
+
     // All ops less than 16 have no payload.
     private static final byte PAYLOAD_OP = (byte) 16;
 
@@ -116,7 +119,7 @@ final class UndoLog implements DatabaseAccess {
     // Payload is Node-encoded key and trash id, to undo a fragmented value delete.
     static final byte OP_UNDELETE_FRAGMENTED = (byte) 22;
 
-    // Payload is a key for unwrite or unextend operations.
+    // Payload is a key for ValueAccessor operations.
     static final byte OP_ACTIVE_KEY = (byte) 23;
 
     // Payload is custom message.
@@ -133,13 +136,13 @@ final class UndoLog implements DatabaseAccess {
     // Payload is a (large) key and trash id, to undo a fragmented value delete.
     static final byte OP_UNDELETE_LK_FRAGMENTED = (byte) (OP_UNDELETE_FRAGMENTED + LK_ADJUST); //27
 
-    // Payload is the value length to undo a value extension.
+    // Payload is the value length to undo a value extension. (ValueAccessor op)
     static final byte OP_UNEXTEND = (byte) 29;
 
-    // Payload is the value length and position to undo value hole fill.
+    // Payload is the value length and position to undo value hole fill. (ValueAccessor op)
     static final byte OP_UNALLOC = (byte) 30;
 
-    // Payload is the value position and bytes to undo a value write.
+    // Payload is the value position and bytes to undo a value write. (ValueAccessor op)
     static final byte OP_UNWRITE = (byte) 31;
 
     private final LocalDatabase mDatabase;
@@ -347,8 +350,63 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Caller must hold db commit lock.
      */
-    void pushUnextend(long indexId, byte[] key, long length) throws IOException {
+    void pushUncreate(long indexId, byte[] key) throws IOException {
         setActiveIndexIdAndKey(indexId, key);
+        doPush(OP_UNCREATE);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     *
+     * @param savepoint used to check if op isn't necessary
+     */
+    void pushUnextend(long savepoint, long indexId, byte[] key, long length) throws IOException {
+        if (setActiveIndexIdAndKey(indexId, key) && savepoint < mLength) discardCheck: {
+            // Check if op isn't necessary because it's action will be superceded by another.
+
+            long unlen;
+
+            Node node = mNode;
+            if (node == null) {
+                byte op = mBuffer[mBufferPos];
+                if (op == OP_UNCREATE) {
+                    return;
+                }
+                if (op != OP_UNEXTEND) {
+                    break discardCheck;
+                }
+                int pos = mBufferPos + 1;
+                int payloadLen = decodeUnsignedVarInt(mBuffer, pos);
+                pos += calcUnsignedVarIntLength(payloadLen);
+                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                offsetRef.value = pos;
+                unlen = decodeUnsignedVarLong(mBuffer, offsetRef);
+            } else {
+                byte op = p_byteGet(mNode.mPage, mNodeTopPos);
+                if (op == OP_UNCREATE) {
+                    return;
+                }
+                if (op != OP_UNEXTEND) {
+                    break discardCheck;
+                }
+                int pos = mNodeTopPos + 1;
+                int payloadLen = p_uintGetVar(mNode.mPage, pos);
+                pos += calcUnsignedVarIntLength(payloadLen);
+                if (pos + payloadLen > pageSize(mNode.mPage)) {
+                    // Don't bother decoding payload which spills into the next node.
+                    break discardCheck;
+                }
+                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                offsetRef.value = pos;
+                unlen = p_ulongGetVar(mNode.mPage, offsetRef);
+            }
+
+            if (unlen <= length) {
+                // Existing unextend length will truncate at least as much.
+                return;
+            }
+        }
+
         byte[] payload = new byte[9];
         int off = encodeUnsignedVarLong(payload, 0, length);
         doPush(OP_UNEXTEND, payload, 0, off);
@@ -397,17 +455,33 @@ final class UndoLog implements DatabaseAccess {
         pushUnwrite(indexId, key, pos, b, 0, len);
     }
 
-    private void setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
-        setActiveIndexId(indexId);
+    /**
+     * @return true if active index and key already match
+     */
+    private boolean setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
+        boolean result = true;
 
-        if (mActiveKey != null) {
-            if (Arrays.equals(mActiveKey, key)) {
-                return;
+        long activeIndexId = mActiveIndexId;
+        if (indexId != activeIndexId) {
+            if (activeIndexId != 0) {
+                byte[] payload = new byte[8];
+                encodeLongLE(payload, 0, activeIndexId);
+                doPush(OP_INDEX, payload, 0, 8, 1);
             }
-            doPush(OP_ACTIVE_KEY, mActiveKey);
+            mActiveIndexId = indexId;
+            result = false;
         }
 
-        mActiveKey = key;
+        byte[] activeKey = mActiveKey;
+        if (!Arrays.equals(key, activeKey)) {
+            if (activeKey != null) {
+                doPush(OP_ACTIVE_KEY, mActiveKey);
+            }
+            mActiveKey = key;
+            result = false;
+        }
+
+        return result;
     }
 
     /**
@@ -763,6 +837,7 @@ final class UndoLog implements DatabaseAccess {
             case OP_SCOPE_COMMIT:
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
+            case OP_UNCREATE:
             case OP_UNINSERT:
             case OP_UNUPDATE:
             case OP_ACTIVE_KEY:
@@ -847,6 +922,18 @@ final class UndoLog implements DatabaseAccess {
         case OP_INDEX:
             mActiveIndexId = decodeLongLE(entry, 0);
             activeIndex = null;
+            break;
+
+        case OP_UNCREATE:
+            while ((activeIndex = findIndex(activeIndex)) != null) {
+                try {
+                    activeIndex.delete(Transaction.BOGUS, mActiveKey);
+                    break;
+                } catch (ClosedIndexException e) {
+                    // User closed the shared index reference, so re-open it.
+                    activeIndex = null;
+                }
+            }
             break;
 
         case OP_UNINSERT:
@@ -1430,6 +1517,7 @@ final class UndoLog implements DatabaseAccess {
                 }
                 break;
 
+            case OP_UNCREATE:
             case OP_UNEXTEND:
             case OP_UNALLOC:
             case OP_UNWRITE:
@@ -1488,6 +1576,10 @@ final class UndoLog implements DatabaseAccess {
             opStr = "COMMIT_TRUNCATE";
             break;
 
+        case OP_UNCREATE:
+            opStr = "UNCREATE";
+            break;
+
         case OP_LOG_COPY:
             opStr = "LOG_COPY";
             break;
@@ -1521,6 +1613,12 @@ final class UndoLog implements DatabaseAccess {
                 new String(key, StandardCharsets.UTF_8) + ')';
             break;
 
+        case OP_ACTIVE_KEY:
+            opStr = "ACTIVE_KEY";
+            payloadStr = "key=0x" + Utils.toHex(entry) + " (" +
+                new String(entry, StandardCharsets.UTF_8) + ')';
+            break;
+
         case OP_CUSTOM:
             opStr = "CUSTOM";
             payloadStr = "entry=0x" + Utils.toHex(entry);
@@ -1529,28 +1627,47 @@ final class UndoLog implements DatabaseAccess {
         case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
             opStr = op == OP_UNUPDATE ? "UNUPDATE_LK" : "UNDELETE_LK";
 
-            key = new byte[decodeUnsignedVarInt(entry, 0)];
-            int keyLoc = calcUnsignedVarIntLength(key.length);
-            arraycopy(entry, keyLoc, key, 0, key.length);
+            int keyLen = decodeUnsignedVarInt(entry, 0);
+            int keyLoc = calcUnsignedVarIntLength(keyLen);
+            int valueLoc = keyLoc + keyLen;
+            int valueLen = entry.length - valueLoc;
 
-            int valueLoc = keyLoc + key.length;
-            byte[] value = new byte[entry.length - valueLoc];
-            arraycopy(entry, valueLoc, value, 0, value.length);
-
-            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
-                new String(key, StandardCharsets.UTF_8) + ") value=0x" + Utils.toHex(value);
+            payloadStr = "key=0x" + Utils.toHex(entry, keyLoc, keyLen) + " (" +
+                new String(entry, keyLoc, keyLen, StandardCharsets.UTF_8) + ") value=0x" +
+                Utils.toHex(entry, valueLoc, valueLen);
 
             break;
 
         case OP_UNDELETE_LK_FRAGMENTED:
             opStr = "UNDELETE_LK_FRAGMENTED";
 
-            key = new byte[decodeUnsignedVarInt(entry, 0)];
-            arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+            keyLen = decodeUnsignedVarInt(entry, 0);
+            keyLoc = calcUnsignedVarIntLength(keyLen);
 
-            payloadStr = "key=0x" + Utils.toHex(key) + " (" +
-                new String(key, StandardCharsets.UTF_8) + ')';
+            payloadStr = "key=0x" + Utils.toHex(entry, keyLoc, keyLen) + " (" +
+                new String(entry, keyLoc, keyLen, StandardCharsets.UTF_8) + ')';
 
+            break;
+
+        case OP_UNEXTEND:
+            opStr = "UNEXTEND";
+            payloadStr = "length=" + decodeUnsignedVarLong(entry, new IntegerRef.Value());
+            break;
+
+        case OP_UNALLOC:
+            opStr = "UNALLOC";
+            IntegerRef offsetRef = new IntegerRef.Value();
+            long length = decodeUnsignedVarLong(entry, offsetRef);
+            long pos = decodeUnsignedVarLong(entry, offsetRef);
+            payloadStr = "pos=" + pos + ", length=" + length;
+            break;
+
+        case OP_UNWRITE:
+            opStr = "UNWRITE";
+            offsetRef = new IntegerRef.Value();
+            pos = decodeUnsignedVarLong(entry, offsetRef);
+            int off = offsetRef.get();
+            payloadStr = "pos=" + pos + ", value=0x" + Utils.toHex(entry, off, entry.length - off);
             break;
         }
 
