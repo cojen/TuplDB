@@ -45,8 +45,6 @@ final class TransactionContext extends Latch implements Flushable {
     private final static AtomicLongFieldUpdater<TransactionContext> cConfirmedPosUpdater =
         AtomicLongFieldUpdater.newUpdater(TransactionContext.class, "mConfirmedPos");
 
-    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors();
-
     private final int mTxnStride;
 
     // Access to these fields is protected by synchronizing on this context object.
@@ -1126,16 +1124,15 @@ final class TransactionContext extends Latch implements Flushable {
      * @return value of mConfirmedPos to set to release the latch
      */
     private long latchConfirmed() {
-        int trials = 0;
-        while (true) {
+        for (int trials = CursorFrame.SPIN_LIMIT;;) {
             long confirmedPos = mConfirmedPos;
             if (confirmedPos != -1 && cConfirmedPosUpdater.compareAndSet(this, confirmedPos, -1)) {
                 return confirmedPos;
             }
-            trials++;
-            if (trials >= SPIN_LIMIT) {
+            if (--trials < 0) {
+                // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
-                trials = 0;
+                trials = CursorFrame.SPIN_LIMIT << 1;
             }
         }
     }
