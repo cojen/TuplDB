@@ -593,48 +593,40 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
     }
 
     class StoreOpWorker extends AbstractWorker {
-        Random mRandom;
         StoreOpWorker(Database db, Index ix) {
             super(db, ix, 5);
-            mRandom = ThreadLocalRandom.current();
         }
 
         void executeOperation() throws IOException {
             Transaction txn = newTransaction();
-            byte[] key = randomStr(mRandom, 10, 100);
-            byte[] val = randomStr(mRandom, 100, 500);
+            byte[] key = randomStr(ThreadLocalRandom.current(), 10, 100);
+            byte[] val = randomStr(ThreadLocalRandom.current(), 100, 500);
             getIndex().store(txn, key, val);
             txn.commit();
         }
     }
 
     class DeleteOpWorker extends AbstractWorker {
-        Random mRandom;
-
         DeleteOpWorker(Database db, Index ix) {
             super(db, ix, 10);
-            mRandom = ThreadLocalRandom.current();
         }
 
         void executeOperation() throws IOException {
             Transaction txn = newTransaction();
-            byte[] key = randomStr(mRandom, 10, 100);
+            byte[] key = randomStr(ThreadLocalRandom.current(), 10, 100);
             getIndex().delete(txn, key);
             txn.commit();
         }
     }
 
     class ReadOpWorker extends AbstractWorker {
-        Random mRandom;
-
         ReadOpWorker(Database db, Index ix) {
             super(db, ix, 1);
-            mRandom = ThreadLocalRandom.current();
         }
 
         void executeOperation() throws IOException {
             Transaction txn = newTransaction();
-            byte[] key = randomStr(mRandom, 10, 100);
+            byte[] key = randomStr(ThreadLocalRandom.current(), 10, 100);
             getIndex().load(txn, key);
             txn.commit();
         }
