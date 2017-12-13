@@ -157,6 +157,7 @@ public class DatabaseReplicatorTest {
                 if (i <= 0) {
                     throw e;
                 }
+                teardown();
             }
         }
     }
