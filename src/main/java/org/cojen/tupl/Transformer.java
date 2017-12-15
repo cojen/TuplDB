@@ -31,12 +31,15 @@ import java.util.Comparator;
 public interface Transformer {
     /**
      * Returns true by default, indicating that the transform methods always require a value
-     * instance to be provided.
+     * instance to be provided. When false is returned, values aren't loaded unless explicitly
+     * requested. Return null to always use a cursor, in which case the {@link
+     * #transformValue(Cursor, byte[]) transformValue} variant which accepts a cursor should be
+     * overridden. Otherwise, returning null is equivalent to returning true.
      *
      * @return true if a value must always be passed into the transform methods
      */
-    public default boolean requireValue() {
-        return true;
+    public default Boolean requireValue() {
+        return Boolean.TRUE;
     }
 
     /**
@@ -52,6 +55,25 @@ public interface Transformer {
         throws IOException;
 
     /**
+     * Transform or filter out the given value. This method is only called after loading
+     * positioning a cursor. Default implementation always forces the value to be loaded,
+     * unless {@link #requireValue requireValue} returns false.
+     *
+     * @param cursor positioned cursor at the untransformed key and value (not null, might be
+     * {@link Cursor#NOT_LOADED NOT_LOADED})
+     * @param tkey non-null transformed key associated with the value
+     * @return transformed value or null to discard entry
+     */
+    public default byte[] transformValue(Cursor cursor, byte[] tkey) throws IOException {
+        byte[] value = cursor.value();
+        if (value == Cursor.NOT_LOADED && requireValue() != Boolean.FALSE) {
+            cursor.load();
+            value = cursor.value();
+        }
+        return transformValue(value, cursor.key(), tkey);
+    }
+
+    /**
      * Apply an inverse transformation of the given value, if supported. This method is only
      * called when attempting to store the value into the view.
      *
@@ -65,15 +87,15 @@ public interface Transformer {
         throws ViewConstraintException, IOException;
 
     /**
-     * Transform or filter out the given key. This method is only called after loading a value
-     * from a view. Default implementation returns the same key.
+     * Transform or filter out the given key. This method is only called after positioning a
+     * cursor. Default implementation returns the same key.
      *
-     * @param key non-null key to transform
-     * @param value nullable value associated with the key
+     * @param cursor positioned cursor at the untransformed key and value (might be null or
+     * {@link Cursor#NOT_LOADED NOT_LOADED})
      * @return transformed key or null to discard entry
      */
-    public default byte[] transformKey(byte[] key, byte[] value) throws IOException {
-        return key;
+    public default byte[] transformKey(Cursor cursor) throws IOException {
+        return cursor.key();
     }
 
     /**
