@@ -71,8 +71,9 @@ public class CrudBasicTransformTest extends CrudNonDurableTest {
         }
 
         @Override
-        public byte[] transformKey(byte[] key, byte[] value) {
+        public byte[] transformKey(Cursor cursor) {
             // First part of key in underlying index is a copy of the second.
+            byte[] key = cursor.key();
             byte[] tkey = new byte[key.length >> 1];
             System.arraycopy(key, 0, tkey, 0, tkey.length);
             return tkey;
