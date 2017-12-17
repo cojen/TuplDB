@@ -39,10 +39,10 @@ final class LocalTransaction extends Locker implements Transaction {
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
-    final RedoWriter mRedo;
+    RedoWriter mRedo;
     DurabilityMode mDurabilityMode;
 
-    private LockMode mLockMode;
+    LockMode mLockMode;
     long mLockTimeoutNanos;
     private int mHasState;
     private long mSavepoint;
