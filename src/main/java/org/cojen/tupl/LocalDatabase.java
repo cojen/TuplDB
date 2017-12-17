@@ -34,6 +34,7 @@ import java.io.OutputStreamWriter;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.SoftReference;
 
 import java.math.BigInteger;
 
@@ -138,6 +139,7 @@ final class LocalDatabase extends AbstractDatabase {
     final DurabilityMode mDurabilityMode;
     final long mDefaultLockTimeoutNanos;
     final LockManager mLockManager;
+    private final ThreadLocal<SoftReference<LocalTransaction>> mLocalTransaction;
     final RedoWriter mRedoWriter;
     final PageDb mPageDb;
     final int mPageSize;
@@ -341,6 +343,7 @@ final class LocalDatabase extends AbstractDatabase {
         mDurabilityMode = config.mDurabilityMode;
         mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
         mLockManager = new LockManager(this, config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
+        mLocalTransaction = new ThreadLocal<>();
 
         // Initialize NodeMap, the primary cache of Nodes.
         final int procCount = Runtime.getRuntime().availableProcessors();
@@ -1608,13 +1611,13 @@ final class LocalDatabase extends AbstractDatabase {
         return doNewTransaction(durabilityMode == null ? mDurabilityMode : durabilityMode);
     }
 
-    LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
+    private LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
         RedoWriter redo = txnRedoWriter();
         return new LocalTransaction
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
-    LocalTransaction newAlwaysRedoTransaction() {
+    private LocalTransaction newAlwaysRedoTransaction() {
         return doNewTransaction(mDurabilityMode.alwaysRedo());
     }
 
@@ -1622,7 +1625,7 @@ final class LocalDatabase extends AbstractDatabase {
      * Convenience method which returns a transaction intended for locking and undo. Caller can
      * make modifications, but they won't go to the redo log.
      */
-    LocalTransaction newNoRedoTransaction() {
+    private LocalTransaction newNoRedoTransaction() {
         return doNewTransaction(DurabilityMode.NO_REDO);
     }
 
@@ -1632,10 +1635,32 @@ final class LocalDatabase extends AbstractDatabase {
      *
      * @param redoTxnId non-zero if operation is performed by recovery
      */
-    LocalTransaction newNoRedoTransaction(long redoTxnId) {
+    private LocalTransaction newNoRedoTransaction(long redoTxnId) {
         return redoTxnId == 0 ? newNoRedoTransaction() :
             new LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ,
                                  mDefaultLockTimeoutNanos);
+    }
+
+    /**
+     * Returns a transaction which should be briefly used and reset.
+     */
+    LocalTransaction threadLocalTransaction(DurabilityMode durabilityMode) {
+        SoftReference<LocalTransaction> txnRef = mLocalTransaction.get();
+        LocalTransaction txn;
+        if (txnRef == null || (txn = txnRef.get()) == null) {
+            txn = doNewTransaction(durabilityMode);
+            mLocalTransaction.set(new SoftReference<>(txn));
+        } else {
+            txn.mRedo = txnRedoWriter();
+            txn.mDurabilityMode = durabilityMode;
+            txn.mLockMode = LockMode.UPGRADABLE_READ;
+            txn.mLockTimeoutNanos = mDefaultLockTimeoutNanos;
+        }
+        return txn;
+    }
+
+    void removeThreadLocalTransaction() {
+        mLocalTransaction.remove();
     }
 
     /**
