@@ -801,6 +801,10 @@ final class FileStateLog extends Latch implements StateLog {
 
         acquireShared();
         try {
+            if (mClosed) {
+                throw new IllegalStateException("Closed");
+            }
+
             TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
 
             if (termLog != null) {
