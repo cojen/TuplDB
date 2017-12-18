@@ -1838,7 +1838,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private static final int
         VARIANT_REGULAR = 0,
         VARIANT_RETAIN  = 1, // retain node latch
-        VARIANT_CHECK   = 2; // retain node latch, don't lock entry, don't load entry
+        VARIANT_NO_LOCK = 2, // retain node latch, don't lock entry
+        VARIANT_CHECK   = 3; // retain node latch, don't lock entry, don't load entry
 
     @Override
     public final LockResult find(byte[] key) throws IOException {
@@ -2065,14 +2066,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 mLeaf = frame;
 
                 LockResult result;
-                if (variant == VARIANT_CHECK) {
-                    if (pos < 0) {
-                        frame.mNotFoundKey = key;
-                        mValue = null;
-                    } else {
-                        mValue = NOT_LOADED;
-                    }
-                    return LockResult.UNOWNED;
+                if (variant >= VARIANT_NO_LOCK) {
+                    result = LockResult.UNOWNED;
                 } else if ((result = tryLockKey(txn)) == null) {
                     // Unable to immediately acquire the lock.
                     if (pos < 0) {
@@ -2088,6 +2083,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (pos < 0) {
                     frame.mNotFoundKey = key;
                     mValue = null;
+                } else if (variant == VARIANT_CHECK) {
+                    mValue = NOT_LOADED;
+                    return result;
                 } else {
                     try {
                         mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
@@ -3000,34 +2998,18 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         throws IOException
     {
         // Find with no lock because it has already been acquired. Leaf latch is retained too.
-        find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
+        find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
+        byte[] oldValue = mValue;
 
         CursorFrame leaf = mLeaf;
-        Node node = leaf.mNode;
-
-        if (node.mSplit != null || !node.tryUpgrade()) {
-            node.releaseShared();
+        if (!leaf.mNode.tryUpgrade()) {
+            leaf.mNode.releaseShared();
             leaf.acquireExclusive();
-            node = notSplitDirty(leaf);
-        }
-
-        byte[] originalValue;
-
-        int pos = leaf.mNodePos;
-        if (pos < 0) {
-            originalValue = null;
-        } else {
-            try {
-                originalValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
         }
 
         store(txn, leaf, value);
 
-        return originalValue;
+        return oldValue;
     }
 
     static final byte[]
@@ -3172,70 +3154,39 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                     byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        CursorFrame leaf;
-        Node node;
-
-        find: {
-            if (key == null) {
-                leaf = leaf();
-            } else {
-                // Find with no lock because caller must already acquire exclusive lock.
-                find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
-
-                leaf = mLeaf;
-                node = leaf.mNode;
-
-                if (node.mSplit == null && node.tryUpgrade()) {
-                    break find;
-                }
-
-                node.releaseShared();
-            }
-
-            leaf.acquireExclusive();
-            node = notSplitDirty(leaf);
-        }
-
-        byte[] originalValue;
-
-        int pos = leaf.mNodePos;
-        if (pos < 0) {
-            originalValue = null;
+        if (key == null) {
+            leaf().acquireShared();
         } else {
-            try {
-                originalValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
-            }
+            // Find with no lock because caller must already acquire exclusive lock.
+            find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
         }
 
         check: {
             if (oldValue == MODIFY_INSERT) {
-                if (originalValue == null) {
+                if (mValue == null) {
                     // Insert allowed.
                     break check;
                 }
             } else if (oldValue == MODIFY_REPLACE) {
-                if (originalValue != null) {
+                if (mValue != null) {
                     // Replace allowed.
                     break check;
                 }
             } else if (oldValue == MODIFY_UPDATE) {
-                if (!Arrays.equals(originalValue, newValue)) {
+                if (!Arrays.equals(mValue, newValue)) {
                     // Update allowed.
                     break check;
                 }
             } else {
-                if (originalValue != null) {
-                    if (Arrays.equals(oldValue, originalValue)) {
+                if (mValue != null) {
+                    if (Arrays.equals(oldValue, mValue)) {
                         // Update allowed.
                         break check;
                     }
                 } else if (oldValue == null) {
                     if (newValue == null) {
                         // Update allowed, but nothing changed.
-                        node.releaseExclusive();
+                        mLeaf.mNode.releaseShared();
                         return true;
                     } else {
                         // Update allowed.
@@ -3244,8 +3195,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 }
             }
 
-            node.releaseExclusive();
+            mLeaf.mNode.releaseShared();
             return false;
+        }
+
+        CursorFrame leaf = mLeaf;
+        if (!leaf.mNode.tryUpgrade()) {
+            leaf.mNode.releaseShared();
+            leaf.acquireExclusive();
         }
 
         store(txn, leaf, newValue);
@@ -3263,42 +3220,35 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final boolean deleteGhost(byte[] key) throws IOException {
         try {
             // Find with no lock because it has already been acquired.
-            find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
+            find(null, key, VARIANT_NO_LOCK, new CursorFrame(), latchRootNode());
 
             CursorFrame leaf = mLeaf;
             Node node = leaf.mNode;
 
             try {
-                if (node.mSplit != null || !node.tryUpgrade()) {
-                    node.releaseShared();
-                    leaf.acquireExclusive();
-                    node = notSplitDirty(leaf);
-                }
-
                 if (node.mPage == p_closedTreePage()) {
-                    node.releaseExclusive();
+                    node.releaseShared();
                     return false;
                 }
 
-                doDelete: {
-                    try {
-                        int pos = leaf.mNodePos;
-                        if (pos < 0 || node.hasLeafValue(pos) != null) {
-                            break doDelete;
+                if (mValue == null) {
+                    if (!node.tryUpgrade()) {
+                        node.releaseShared();
+                        node = leaf.acquireExclusive();
+                        if (node.mPage == p_closedTreePage()) {
+                            node.releaseExclusive();
+                            return false;
                         }
-                    } catch (Throwable e) {
-                        node.releaseExclusive();
-                        throw e;
                     }
 
                     mKey = key;
                     mKeyHash = 0;
 
                     store(LocalTransaction.BOGUS, leaf, null);
-                    return true;
+                } else {
+                    node.releaseShared();
                 }
 
-                node.releaseExclusive();
                 return true;
             } finally {
                 reset();
