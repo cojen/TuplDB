@@ -719,6 +719,7 @@ final class Lock {
                     break;
                 }
                 TreeCursor c = new TreeCursor((Tree) ix);
+                c.mKeyOnly = true;
                 if (c.deleteGhost(key)) {
                     break;
                 }
