@@ -313,7 +313,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         throws IOException
     {
         if (mRedo == null) {
-            cursor.store(this, cursor.leafExclusive(), value);
+            cursor.storeNoRedo(this, value);
             commit();
             return;
         }
@@ -342,17 +342,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    if (requireUndo) {
-                        final DurabilityMode original = mDurabilityMode;
-                        mDurabilityMode = DurabilityMode.NO_REDO;
-                        try {
-                            cursor.store(this, cursor.leafExclusive(), value);
-                        } finally {
-                            mDurabilityMode = original;
-                        }
-                    } else {
-                        cursor.store(_LocalTransaction.BOGUS, cursor.leafExclusive(), value);
-                    }
+                    cursor.storeNoRedo(requireUndo ? this : _LocalTransaction.BOGUS, value);
 
                     if ((hasState & HAS_SCOPE) == 0) {
                         mContext.redoEnter(mRedo, txnId);
@@ -428,13 +418,8 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 mTxnId = 0;
             } else {
                 try {
-                    final DurabilityMode original = mDurabilityMode;
-                    mDurabilityMode = DurabilityMode.NO_REDO;
-                    try {
-                        cursor.store(this, cursor.leafExclusive(), value);
-                    } finally {
-                        mDurabilityMode = original;
-                    }
+                    // Always undo when inside a scope.
+                    cursor.storeNoRedo(this, value);
 
                     long cursorId = cursor.mCursorId;
                     if (cursorId == 0) {
