@@ -29,6 +29,8 @@ v1.4.0
 * Incomplete database restoration is now detected, causing an IncompleteRestoreException to be
   thrown when opening the database.
 * Unpositioned cursors now throw a specialized exception, still extending IllegalStateException.
+* The index exchange/insert/replace/update operations are now always atomic, even when using
+  the BOGUS transaction.
 
 v1.3.12.3 (2017-05-20)
 ---------

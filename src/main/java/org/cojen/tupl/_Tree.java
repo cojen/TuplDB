@@ -135,7 +135,7 @@ class _Tree implements View, Index {
         try {
             if (highKey != null) {
                 high = newCursor(Transaction.BOGUS);
-                high.autoload(false);
+                high.mKeyOnly = true;
                 high.find(highKey);
                 if (high.mKey == null) {
                     // Found nothing.
@@ -472,7 +472,7 @@ class _Tree implements View, Index {
         keyCheck(key);
         _TreeCursor cursor = newCursor(txn);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
             cursor.findAndStore(key, value);
         } finally {
             cursor.reset();
@@ -495,7 +495,7 @@ class _Tree implements View, Index {
         keyCheck(key);
         _TreeCursor cursor = newCursor(txn);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
             return cursor.findAndModify(key, _TreeCursor.MODIFY_INSERT, value);
         } finally {
             cursor.reset();
@@ -507,7 +507,7 @@ class _Tree implements View, Index {
         keyCheck(key);
         _TreeCursor cursor = newCursor(txn);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
             return cursor.findAndModify(key, _TreeCursor.MODIFY_REPLACE, value);
         } finally {
             cursor.reset();
@@ -723,7 +723,7 @@ class _Tree implements View, Index {
     public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
         _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
             cursor.random(lowKey, highKey);
             return cursor.key() == null ? new Stats(0, 0, 0, 0, 0) : cursor.analyze();
         } catch (Throwable e) {
@@ -758,7 +758,7 @@ class _Tree implements View, Index {
 
         _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
 
             // Find the first node instead of calling first() to ensure that cursor is
             // positioned. Otherwise, empty trees would be skipped even when the root node
@@ -804,7 +804,7 @@ class _Tree implements View, Index {
     final boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
         _TreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
-            cursor.autoload(false);
+            cursor.mKeyOnly = true;
             cursor.first(); // must start with loaded key
             int height = cursor.height();
             if (!observer.indexBegin(view, height)) {
@@ -1382,10 +1382,10 @@ class _Tree implements View, Index {
 
         void prime() {
             try {
-                Cursor c = newCursor(Transaction.BOGUS);
+                _TreeCursor c = newCursor(Transaction.BOGUS);
 
                 try {
-                    c.autoload(false);
+                    c.mKeyOnly = true;
 
                     while (true) {
                         byte[] key;
