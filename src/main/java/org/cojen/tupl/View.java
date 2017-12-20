@@ -839,4 +839,12 @@ public interface View {
      * UnmodifiableViewException} to be thrown.
      */
     public boolean isUnmodifiable();
+
+    /**
+     * Returns true if the value-modifying methods of this view are atomic, even when not using
+     * transactions.
+     */
+    public default boolean isModifyAtomic() {
+        return false;
+    }
 }
