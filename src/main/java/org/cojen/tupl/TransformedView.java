@@ -452,6 +452,11 @@ final class TransformedView implements View {
         return mSource.isUnmodifiable();
     }
 
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
+    }
+
     private byte[] inverseTransformKey(final byte[] tkey) {
         Utils.keyCheck(tkey);
         return mTransformer.inverseTransformKey(tkey);

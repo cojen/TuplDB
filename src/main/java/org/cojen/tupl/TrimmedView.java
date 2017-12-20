@@ -218,6 +218,11 @@ final class TrimmedView implements View {
         return mSource.isUnmodifiable();
     }
 
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
+    }
+
     byte[] applyPrefix(byte[] key) {
         return applyPrefix(key, 0, key.length);
     }

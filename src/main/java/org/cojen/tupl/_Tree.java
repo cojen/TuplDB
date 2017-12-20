@@ -640,6 +640,11 @@ class _Tree implements View, Index {
         return isClosed();
     }
 
+    @Override
+    public final boolean isModifyAtomic() {
+        return true;
+    }
+
     /**
      * Current approach for evicting data is as follows:
      * - Search for a random _Node, steered towards un-cached nodes. 
