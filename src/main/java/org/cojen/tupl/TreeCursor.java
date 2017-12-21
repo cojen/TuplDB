@@ -2064,7 +2064,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 mLeaf = frame;
 
-                LockResult result;
                 if (variant == VARIANT_CHECK) {
                     if (pos < 0) {
                         frame.mNotFoundKey = key;
@@ -2073,7 +2072,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         mValue = NOT_LOADED;
                     }
                     return LockResult.UNOWNED;
-                } else if ((result = tryLockKey(txn)) == null) {
+                }
+
+                LockResult result = tryLockKey(txn);
+
+                if (result == null) {
                     // Unable to immediately acquire the lock.
                     if (pos < 0) {
                         frame.mNotFoundKey = key;
