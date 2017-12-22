@@ -28,6 +28,7 @@ import java.util.Comparator;
  * @author Brian S O'Neill
  * @see View#viewTransformed View.viewTransformed
  */
+@FunctionalInterface
 public interface Transformer {
     /**
      * Returns true by default, indicating that the transform methods always require a value
@@ -75,7 +76,8 @@ public interface Transformer {
 
     /**
      * Apply an inverse transformation of the given value, if supported. This method is only
-     * called when attempting to store the value into the view.
+     * called when attempting to store the value into the view. Default implementation always
+     * throws a {@link ViewConstraintException}.
      *
      * @param tvalue nullable value to transform
      * @param key non-null untransformed key associated with the value
@@ -83,8 +85,11 @@ public interface Transformer {
      * @return inverse transformed value, or null to delete the value
      * @throws ViewConstraintException if inverse transformation of given value is not supported
      */
-    public abstract byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey)
-        throws ViewConstraintException, IOException;
+    public default byte[] inverseTransformValue(byte[] tvalue, byte[] key, byte[] tkey)
+        throws ViewConstraintException, IOException
+    {
+        throw new ViewConstraintException("Inverse transform isn't supported");
+    }
 
     /**
      * Transform or filter out the given key. This method is only called after positioning a
