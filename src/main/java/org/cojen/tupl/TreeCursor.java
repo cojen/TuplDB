@@ -2985,12 +2985,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         CommitLock.Shared shared;
         byte[] originalValue;
 
-        if (value == null) {
-            if (!node.tryUpgrade()) {
-                node.releaseShared();
-                leaf.acquireExclusive();
-            }
+        if (!node.tryUpgrade()) {
+            node.releaseShared();
+            leaf.acquireExclusive();
+        }
 
+        if (value == null) {
             shared = prepareDelete(leaf);
 
             if (shared == null) {
@@ -3011,11 +3011,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             deleteNoRedo(txn, leaf, shared);
         } else {
-            if (!node.tryUpgrade()) {
-                node.releaseShared();
-                leaf.acquireExclusive();
-            }
-
             shared = prepareStore(leaf);
 
             int pos = leaf.mNodePos;
