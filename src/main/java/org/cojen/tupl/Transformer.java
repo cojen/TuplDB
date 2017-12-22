@@ -43,8 +43,8 @@ public interface Transformer {
     }
 
     /**
-     * Transform or filter out the given value. This method is only called after loading a
-     * value from a view.
+     * Transform or filter out the given value. This method is only called when loading a value
+     * from a view.
      *
      * @param value nullable value to transform
      * @param key non-null untransformed key associated with the value
@@ -55,9 +55,9 @@ public interface Transformer {
         throws IOException;
 
     /**
-     * Transform or filter out the given value. This method is only called after loading
-     * positioning a cursor. Default implementation always forces the value to be loaded,
-     * unless {@link #requireValue requireValue} returns false.
+     * Transform or filter out the given value. This method is only called when loading from a
+     * positioned a cursor. Default implementation always forces the value to be loaded, unless
+     * {@link #requireValue requireValue} returns false.
      *
      * @param cursor positioned cursor at the untransformed key and value (not null, might be
      * {@link Cursor#NOT_LOADED NOT_LOADED})
