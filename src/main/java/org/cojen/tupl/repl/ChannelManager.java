@@ -244,6 +244,10 @@ final class ChannelManager {
         return true;
     }
 
+    synchronized boolean isStopped() {
+        return mServerSocket == null;
+    }
+
     /**
      * Enable or disable partitioned mode, which simulates a network partition. New connections
      * are rejected and existing connections are closed.
