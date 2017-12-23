@@ -3347,12 +3347,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             storeNoRedo(txn, leaf, shared, value);
             shared.release();
         }
+
+        mValue = value;
     }
 
     /**
      * Convenience method, which prepares and finishes the store, which assumes that a key
-     * exists and that any necessary locking has been performed. Redo logs are written if
-     * necessary.
+     * exists and that any necessary locking has been performed. Redo logs aren't actually
+     * written if the durability mode is NO_REDO.
      *
      * @param txn can be null
      * @param value pass null to delete
@@ -3364,6 +3366,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         if (value == null) {
             shared = prepareDelete(leaf);
             if (shared == null) {
+                mValue = null;
                 return;
             }
             deleteNoRedo(txn, leaf, shared);
@@ -3372,21 +3375,23 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             storeNoRedo(txn, leaf, shared, value);
         }
 
+        mValue = value;
+
         redoStore(txn, shared, value);
     }
 
     /**
      * Called after delete or store, to write to redo lock and possibly wait for a commit.
      *
+     * @param txn can be null
      * @param shared held commit lock, which is always released by this method
+     * @param value pass null to delete
      */
     private void redoStore(_LocalTransaction txn, CommitLock.Shared shared, byte[] value)
         throws IOException
     {
         long commitPos;
         try {
-            mValue = value;
-
             if (txn == null) {
                 commitPos = mTree.redoStore(mKey, value);
             } else if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
