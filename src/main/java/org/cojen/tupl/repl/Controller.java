@@ -51,7 +51,10 @@ import java.util.logging.Level;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 
-import static org.cojen.tupl.io.Utils.*;
+import org.cojen.tupl.io.Utils;
+import static org.cojen.tupl.io.Utils.closeQuietly;
+import static org.cojen.tupl.io.Utils.encodeLongLE;
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  * Core replicator implementation.
@@ -782,6 +785,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan.stop();
         mScheduler.shutdown();
         mStateLog.close();
+    }
+
+    void uncaught(Throwable e) {
+        if (!mChanMan.isStopped()) {
+            Utils.uncaught(e);
+        }
     }
 
     Scheduler scheduler() {
