@@ -168,7 +168,7 @@ public class ValueAccessorTest {
             if (useWrite) {
                 ValueAccessor accessor = ix.newAccessor(null, key);
                 if (setLength) {
-                    accessor.setValueLength(length);
+                    accessor.valueLength(length);
                 }
                 for (int j=0; j<length; j+=50) {
                     accessor.valueWrite(j, value, j, 50);
@@ -177,7 +177,7 @@ public class ValueAccessorTest {
             } else {
                 if (setLength) {
                     ValueAccessor accessor = ix.newAccessor(null, key);
-                    accessor.setValueLength(length);
+                    accessor.valueLength(length);
                     accessor.close();
                 }
                 ix.store(null, key, value);
@@ -276,7 +276,7 @@ public class ValueAccessorTest {
             if (useWrite) {
                 accessor.valueWrite(i, key, 0, 0);
             } else {
-                accessor.setValueLength(i);
+                accessor.valueLength(i);
             }
 
             assertEquals(i, accessor.valueLength());
@@ -389,7 +389,7 @@ public class ValueAccessorTest {
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
-        accessor.setValueLength(toLen);
+        accessor.valueLength(toLen);
 
         assertEquals(toLen, accessor.valueLength());
 
@@ -544,7 +544,7 @@ public class ValueAccessorTest {
         Transaction txn = undo ? db.newTransaction() : null;
 
         ValueAccessor accessor = ix.newAccessor(txn, key);
-        accessor.setValueLength(to);
+        accessor.valueLength(to);
         accessor.close();
 
         if (txn == null) {
@@ -578,7 +578,7 @@ public class ValueAccessorTest {
         // Truncate: should have inline content and two direct pointers, but only one byte is
         // used in the last page.
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
-        accessor.setValueLength(50 + 512 + 1);
+        accessor.valueLength(50 + 512 + 1);
 
         byte[] loaded = ix.load(Transaction.BOGUS, key);
         assertEquals(50 + 512 + 1, loaded.length);
@@ -588,7 +588,7 @@ public class ValueAccessorTest {
 
         // Extend the value enough to force the inline content to move into the fragment pages.
         int newLen = (250 / 6) * 512;
-        accessor.setValueLength(newLen);
+        accessor.valueLength(newLen);
 
         byte[] loaded2 = ix.load(Transaction.BOGUS, key);
         assertEquals(newLen, loaded2.length);
@@ -708,7 +708,7 @@ public class ValueAccessorTest {
             accessor.link(mDb.newTransaction());
         }
 
-        accessor.setValueLength(newLen);
+        accessor.valueLength(newLen);
 
         assertEquals(newLen, accessor.valueLength());
 
@@ -746,7 +746,7 @@ public class ValueAccessorTest {
 
         if (!undo) {
             // Extending shouldn't reveal old data.
-            accessor.setValueLength(newLen + 10);
+            accessor.valueLength(newLen + 10);
             assertEquals(10, accessor.valueRead(newLen, b2, 0, b2.length));
             for (int j=0; j<10; j++) {
                 assertEquals(0, b2[j]);
@@ -763,21 +763,21 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, "hello".getBytes());
 
-        accessor.setValueLength(100_000_000_000L);
+        accessor.valueLength(100_000_000_000L);
         assertEquals(100_000_000_000L, accessor.valueLength());
-        accessor.setValueLength(0);
+        accessor.valueLength(0);
         assertEquals(0, accessor.valueLength());
         assertEquals(0, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
 
-        accessor.setValueLength(100_000_000_000L);
+        accessor.valueLength(100_000_000_000L);
         assertEquals(100_000_000_000L, accessor.valueLength());
-        accessor.setValueLength(1);
+        accessor.valueLength(1);
         assertEquals(1, accessor.valueLength());
         assertEquals(1, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
 
-        accessor.setValueLength(100_000_000_000L);
+        accessor.valueLength(100_000_000_000L);
         assertEquals(100_000_000_000L, accessor.valueLength());
-        accessor.setValueLength(1000);
+        accessor.valueLength(1000);
         assertEquals(1000, accessor.valueLength());
         assertEquals(1000, ix.load(Transaction.BOGUS, "hello".getBytes()).length);
     }
@@ -1220,7 +1220,7 @@ public class ValueAccessorTest {
         byte[] k2 = "key-2".getBytes();
 
         Cursor c = ix.newAccessor(txn, k1);
-        c.setValueLength(10000);
+        c.valueLength(10000);
 
         c.findNearby(k2);
         byte[] v2 = "hello".getBytes();
@@ -1261,9 +1261,9 @@ public class ValueAccessorTest {
 
         Transaction txn = mDb.newTransaction();
         Cursor c = ix.newAccessor(txn, k1);
-        c.setValueLength(1);
+        c.valueLength(1);
         c.findNearby(k2);
-        c.setValueLength(2);
+        c.valueLength(2);
         assertEquals(2, c.valueLength());
         c.findNearby(k1);
         assertEquals(1, c.valueLength());
@@ -1726,7 +1726,7 @@ public class ValueAccessorTest {
         }
 
         accessor = ix.newAccessor(null, key);
-        accessor.setValueLength(value.length);
+        accessor.valueLength(value.length);
 
         out = accessor.newValueOutputStream(0, 20);
 
@@ -1763,7 +1763,7 @@ public class ValueAccessorTest {
         value = randomStr(rnd, 100000);
 
         accessor = ix.newAccessor(null, key);
-        accessor.setValueLength(value.length);
+        accessor.valueLength(value.length);
 
         out = accessor.newValueOutputStream(0, 20);
 

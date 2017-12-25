@@ -3978,7 +3978,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     @Override
-    public final void setValueLength(long length) throws IOException {
+    public final void valueLength(long length) throws IOException {
         try {
             if (length <= 0) {
                 store(length == 0 ? EMPTY_BYTES : null);

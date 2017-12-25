@@ -278,7 +278,7 @@ final class _RedoLogApplier implements RedoVisitor {
         if (entry != null) {
             _LocalTransaction txn = txn(txnId);
             if (txn != null) {
-                readyCursorValueOp(entry, txn).setValueLength(length);
+                readyCursorValueOp(entry, txn).valueLength(length);
             }
         }
         return true;
