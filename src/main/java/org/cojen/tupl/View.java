@@ -208,6 +208,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default void store(Transaction txn, byte[] key, byte[] value) throws IOException {
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(false);
@@ -218,8 +219,9 @@ public interface View {
                 }
                 throw new ViewConstraintException();
             }
-            c.store(value);
+            c.commit(value);
         } finally {
+            txn.exit();
             c.reset();
         }
     }
@@ -239,6 +241,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.find(key);
@@ -250,9 +253,10 @@ public interface View {
             }
             // NOTE: Not atomic with BOGUS transaction.
             byte[] old = c.value();
-            c.store(value);
+            c.commit(value);
             return old;
         } finally {
+            txn.exit();
             c.reset();
         }
     }
@@ -291,6 +295,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(false);
@@ -302,9 +307,10 @@ public interface View {
             if (c.value() == null) {
                 return false;
             }
-            c.store(value);
+            c.commit(value);
             return true;
         } finally {
+            txn.exit();
             c.reset();
         }
     }
@@ -325,6 +331,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.find(key);
@@ -335,9 +342,10 @@ public interface View {
             if (Arrays.equals(c.value(), value)) {
                 return false;
             }
-            c.store(value);
+            c.commit(value);
             return true;
         } finally {
+            txn.exit();
             c.reset();
         }
     }
@@ -361,6 +369,7 @@ public interface View {
     public default boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(oldValue != null);
@@ -373,10 +382,11 @@ public interface View {
                 return false;
             }
             if (oldValue != null || newValue != null) {
-                c.store(newValue);
+                c.commit(newValue);
             }
             return true;
         } finally {
+            txn.exit();
             c.reset();
         }
     }
