@@ -716,7 +716,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                 do {
                     try {
-                        tc.setValueLength(length);
+                        tc.valueLength(length);
                         break;
                     } catch (ClosedIndexException e) {
                         tc = reopenCursor(e, ce);

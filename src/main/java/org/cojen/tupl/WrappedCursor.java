@@ -49,7 +49,7 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * Always throws UnmodifiableViewException by default.
      */
     @Override
-    public void setValueLength(long length) throws IOException {
+    public void valueLength(long length) throws IOException {
         throw new UnmodifiableViewException();
     }
 

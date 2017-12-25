@@ -52,8 +52,9 @@ public interface ValueAccessor extends Closeable {
      * @param length new value length; a negative length deletes the value
      * @throws IllegalArgumentException if length is too large
      * @throws IllegalStateException if closed
+     * @throws IllegalUpgradeException if not locked for writing
      */
-    public void setValueLength(long length) throws IOException;
+    public void valueLength(long length) throws IOException;
 
     /**
      * Read from the value, starting from any position. The full requested amount of bytes are

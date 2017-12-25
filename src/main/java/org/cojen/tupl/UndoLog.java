@@ -1044,7 +1044,7 @@ final class UndoLog implements DatabaseAccess {
             long length = decodeUnsignedVarLong(entry, new IntegerRef.Value());
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
-                    c.setValueLength(length);
+                    c.valueLength(length);
                     break;
                 } catch (ClosedIndexException e) {
                     // User closed the shared index reference, so re-open it.

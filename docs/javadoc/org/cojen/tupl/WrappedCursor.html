@@ -431,18 +431,12 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 </td>
 </tr>
 <tr id="i38" class="altColor">
-<td class="colFirst"><code>void</code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#setValueLength-long-">setValueLength</a></span>(long&nbsp;length)</code>
-<div class="block">Always throws UnmodifiableViewException by default.</div>
-</td>
-</tr>
-<tr id="i39" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#skip-long-">skip</a></span>(long&nbsp;amount)</code>
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </td>
 </tr>
-<tr id="i40" class="altColor">
+<tr id="i39" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#skip-long-byte:A-boolean-">skip</a></span>(long&nbsp;amount,
     byte[]&nbsp;limitKey,
@@ -451,35 +445,41 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
  reached.</div>
 </td>
 </tr>
-<tr id="i41" class="rowColor">
+<tr id="i40" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#store-byte:A-">store</a></span>(byte[]&nbsp;value)</code>
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i42" class="altColor">
+<tr id="i41" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#unregister--">unregister</a></span>()</code>
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </td>
 </tr>
-<tr id="i43" class="rowColor">
+<tr id="i42" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#value--">value</a></span>()</code>
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </td>
 </tr>
-<tr id="i44" class="altColor">
+<tr id="i43" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueClear-long-long-">valueClear</a></span>(long&nbsp;pos,
           long&nbsp;length)</code>
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i45" class="rowColor">
+<tr id="i44" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueLength--">valueLength</a></span>()</code>
 <div class="block">Returns the total length of the accessed value.</div>
+</td>
+</tr>
+<tr id="i45" class="rowColor">
+<td class="colFirst"><code>void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#valueLength-long-">valueLength</a></span>(long&nbsp;length)</code>
+<div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
 <tr id="i46" class="altColor">
@@ -584,21 +584,22 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="setValueLength-long-">
+<a name="valueLength-long-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>setValueLength</h4>
-<pre>public&nbsp;void&nbsp;setValueLength(long&nbsp;length)
-                    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<h4>valueLength</h4>
+<pre>public&nbsp;void&nbsp;valueLength(long&nbsp;length)
+                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/ValueAccessor.html#setValueLength-long-">setValueLength</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
+<dd><code><a href="../../../org/cojen/tupl/ValueAccessor.html#valueLength-long-">valueLength</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>length</code> - new value length; a negative length deletes the value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
 </dl>
 </li>
