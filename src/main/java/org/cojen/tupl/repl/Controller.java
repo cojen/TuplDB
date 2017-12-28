@@ -72,7 +72,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int JOIN_TIMEOUT_MILLIS = 5000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
 
-    private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2;
+    private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2,
+        CONTROL_OP_UNJOIN = 3;
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
@@ -519,6 +520,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (refresh = mGroupFile.applyUpdateRole(message)) {
                     newRole = mGroupFile.localMemberRole();
                 }
+                break;
+            case CONTROL_OP_UNJOIN:
+                refresh = mGroupFile.applyRemovePeer(message);
                 break;
             }
 
@@ -1097,8 +1101,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestJoin(Socket s) {
         try {
-            if (doRequestJoin(s)) {
-                return;
+            try {
+                if (doRequestJoin(s)) {
+                    return;
+                }
+            } catch (IllegalStateException e) {
+                // Cannot remove local member.
+                OutputStream out = s.getOutputStream();
+                out.write(new byte[] {GroupJoiner.OP_ERROR, ErrorCodes.INVALID_ADDRESS});
             }
         } catch (Throwable e) {
             closeQuietly(s);
@@ -1114,13 +1124,24 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private boolean doRequestJoin(Socket s) throws IOException {
         ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
 
+        SocketAddress addr;
+        long memberId;
+
         int op = in.read();
 
-        if (op != GroupJoiner.OP_ADDRESS) {
+        switch (op) {
+        default:
             return joinFailure(s, ErrorCodes.UNKNOWN_OPERATION);
+        case GroupJoiner.OP_ADDRESS:
+        case GroupJoiner.OP_UNJOIN_ADDRESS:
+            addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
+            memberId = 0;
+            break;
+        case GroupJoiner.OP_UNJOIN_MEMBER:
+            addr = null;
+            memberId = in.readLongLE();
+            break;
         }
-
-        SocketAddress addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
 
         OutputStream out = s.getOutputStream();
 
@@ -1147,52 +1168,102 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             return joinFailure(s, ErrorCodes.NO_ACCEPTOR);
         }
 
-        byte[] message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
-            // Join is accepted, so reply with the log index info and the group file. The index
-            // is immediately after the control message.
+        byte[] message;
 
-            try {
-                if (gfIn == null) {
-                    out.write(new byte[] {
-                        // Assume failure is due to version mismatch, but could be something else.
-                        // TODO: Use more specific error code.
-                        GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH});
-                    return;
-                }
+        switch (op) {
+        case GroupJoiner.OP_ADDRESS:
+            message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
+                // Join is accepted, so reply with the log index info and the group file. The
+                // index is immediately after the control message.
 
-                TermLog termLog = mStateLog.termLogAt(index);
-
-                byte[] buf = new byte[1000];
-                int off = 0;
-                buf[off++] = GroupJoiner.OP_JOINED;
-                encodeLongLE(buf, off, termLog.prevTermAt(index)); off += 8;
-                encodeLongLE(buf, off, termLog.term()); off += 8;
-                encodeLongLE(buf, off, index); off += 8;
-
-                while (true) {
-                    int amt;
-                    try {
-                        amt = gfIn.read(buf, off, buf.length - off);
-                    } catch (IOException e) {
-                        // Report any GroupFile corruption.
-                        uncaught(e);
+                try {
+                    if (gfIn == null) {
+                        out.write(new byte[] {
+                            // Assume failure is due to version mismatch, but could be
+                            // something else.
+                            // TODO: Use more specific error code.
+                            GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
+                        });
                         return;
                     }
-                    if (amt < 0) {
+
+                    TermLog termLog = mStateLog.termLogAt(index);
+
+                    byte[] buf = new byte[1000];
+                    int off = 0;
+                    buf[off++] = GroupJoiner.OP_JOINED;
+                    encodeLongLE(buf, off, termLog.prevTermAt(index)); off += 8;
+                    encodeLongLE(buf, off, termLog.term()); off += 8;
+                    encodeLongLE(buf, off, index); off += 8;
+
+                    while (true) {
+                        int amt;
+                        try {
+                            amt = gfIn.read(buf, off, buf.length - off);
+                        } catch (IOException e) {
+                            // Report any GroupFile corruption.
+                            uncaught(e);
+                            return;
+                        }
+                        if (amt < 0) {
+                            break;
+                        }
+                        out.write(buf, 0, off + amt);
+                        off = 0;
+                    }
+                } catch (IOException e) {
+                    // Ignore.
+                } finally {
+                    closeQuietly(out);
+                }
+            });
+
+            break;
+
+        case GroupJoiner.OP_UNJOIN_ADDRESS:
+            // Find the member and fall through to the next case.
+            if (mGroupFile.localMemberAddress().equals(addr)) {
+                memberId = mGroupFile.localMemberId();
+            } else {
+                for (Peer peer : mGroupFile.allPeers()) {
+                    if (peer.mAddress.equals(addr)) {
+                        memberId = peer.mMemberId;
                         break;
                     }
-                    out.write(buf, 0, off + amt);
-                    off = 0;
                 }
-            } catch (IOException e) {
-                // Ignore.
-            } finally {
-                closeQuietly(out);
             }
-        });
+
+        case GroupJoiner.OP_UNJOIN_MEMBER:
+            message = mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, memberId, success -> {
+                try {
+                    byte[] reply;
+
+                    if (success) {
+                        reply = new byte[] {GroupJoiner.OP_UNJOINED};
+                    } else {
+                        reply = new byte[] {
+                            // Assume failure is due to version mismatch, but could be
+                            // something else.
+                            // TODO: Use more specific error code.
+                            GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
+                        };
+                    }
+
+                    out.write(reply);
+                } catch (IOException e) {
+                    // Ignore.
+                } finally {
+                    closeQuietly(out);
+                }
+            });
+            break;
+
+        default:
+            throw new AssertionError();
+        }
 
         mScheduler.schedule(() -> {
-            if (mGroupFile.discardJoinConsumer(message)) {
+            if (mGroupFile.discardProposeConsumer(message)) {
                 closeQuietly(s);
             }
         }, JOIN_TIMEOUT_MILLIS);
