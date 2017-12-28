@@ -381,7 +381,7 @@ public class GroupFileTest {
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
         Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
 
-        byte[] message = gf.proposeRemovePeer((byte) -1, peer.mMemberId);
+        byte[] message = gf.proposeRemovePeer((byte) -1, peer.mMemberId, null);
 
         assertEquals(-1, message[0]);
 
@@ -393,7 +393,7 @@ public class GroupFileTest {
         assertTrue(allPeers.contains(peer2));
 
         // Capture the version.
-        message = gf.proposeRemovePeer((byte) -1, peer2.mMemberId);
+        message = gf.proposeRemovePeer((byte) -1, peer2.mMemberId, null);
 
         // Update version.
         gf.updateRole(peer2.mMemberId, Role.NORMAL);
@@ -409,7 +409,7 @@ public class GroupFileTest {
 
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.STANDBY);
 
-        assertFalse(gf.discardJoinConsumer(new byte[1]));
+        assertFalse(gf.discardProposeConsumer(new byte[1]));
 
         try {
             gf.applyJoin(123, new byte[1]);
@@ -421,8 +421,8 @@ public class GroupFileTest {
 
         assertEquals(1, message[0]);
 
-        assertTrue(gf.discardJoinConsumer(message));
-        assertFalse(gf.discardJoinConsumer(message));
+        assertTrue(gf.discardProposeConsumer(message));
+        assertFalse(gf.discardProposeConsumer(message));
         assertNull(gf.applyJoin(123, message));
 
         File newFile = TestUtils.newTempBaseFile(getClass());
@@ -446,7 +446,7 @@ public class GroupFileTest {
 
         assertNull(gf.applyJoin(123, message));
         assertNull(gf.applyJoin(123, message));
-        assertFalse(gf.discardJoinConsumer(message));
+        assertFalse(gf.discardProposeConsumer(message));
 
         GroupFile gf2 = GroupFile.open(null, f, new InetSocketAddress("localhost", 1001), false);
 
