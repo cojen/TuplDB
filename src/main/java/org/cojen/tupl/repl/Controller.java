@@ -526,7 +526,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 break;
             }
 
-            // FIXME: Followers should inform the leader very early of their current group
+            // TODO: Followers should inform the leader very early of their current group
             // version, and if they inform the leader again whenever it changes. This speeds up
             // updateRole without forcing the caller to retry.
 
@@ -745,7 +745,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 commitIndex = writer.mCommitIndex;
             }
 
-            // FIXME: stream it
+            // TODO: stream it
             data = Arrays.copyOfRange(data, offset, offset + length);
 
             for (Channel peerChan : peerChannels) {
@@ -870,7 +870,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void requestMissingData(final long startIndex, final long endIndex) {
         event(Level.FINE, () -> "Requesting missing data: [" + startIndex + ", " + endIndex + ')');
 
-        // FIXME: Need a way to abort outstanding requests.
+        // TODO: Need a way to abort outstanding requests.
 
         long remaining = endIndex - startIndex;
         long index = startIndex;
@@ -964,7 +964,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             // Convert to candidate.
-            // FIXME: Don't permit rogue members to steal leadership if process is
+            // TODO: Don't permit rogue members to steal leadership if process is
             // suspended. Need to double check against local clock to detect this. Or perhaps
             // check with peers to see if leader is up.
             mLocalMode = MODE_CANDIDATE;
@@ -1547,7 +1547,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             return true;
         }
 
-        // FIXME: Gracefully handle stale data requests, received after log compaction.
+        // TODO: Gracefully handle stale data requests, received after log compaction.
 
         try {
             LogReader reader = mStateLog.openReader(startIndex);
@@ -1591,7 +1591,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         break;
                     }
 
-                    // FIXME: stream it
+                    // TODO: stream it
                     byte[] data = new byte[amt];
                     System.arraycopy(buf, 0, data, 0, amt);
 
@@ -1654,7 +1654,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
 
             if (writer == null) {
-                // FIXME: stash the write for later (unless it's a stale write)
+                // TODO: stash the write for later (unless it's a stale write)
                 // Cannot write because terms are missing, so request them.
                 long now = System.currentTimeMillis();
                 if (now >= mNextQueryTermTime) {
@@ -1947,7 +1947,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (peer == null || peer.mMemberId != memberId) {
                 // Member doesn't exist.
-                // FIXME: Permit leader to change itself.
+                // TODO: Permit leader to change itself.
                 result = ErrorCodes.UNKNOWN_MEMBER;
                 break tryUpdateRole;
             }
