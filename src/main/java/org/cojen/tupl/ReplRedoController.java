@@ -19,10 +19,6 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.Map;
-
-import java.util.concurrent.ConcurrentSkipListMap;
-
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**
@@ -42,17 +38,11 @@ final class ReplRedoController extends ReplRedoWriter {
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
-    // Maps positions that a replica started receiving from to the corresponding transaction
-    // id. Is used to determine a safe checkpoint position when leadership is lost during a
-    // checkpoint.
-    private final ConcurrentSkipListMap<Long, Long> mStartReceivingPositions;
-
     private long mCheckpointNum;
 
     ReplRedoController(ReplRedoEngine engine) {
         super(engine, null);
         mManager = engine.mManager;
-        mStartReceivingPositions = new ConcurrentSkipListMap<>();
         // Use this instance for replica mode.
         mTxnRedoWriter = this;
     }
@@ -64,9 +54,7 @@ final class ReplRedoController extends ReplRedoWriter {
     }
 
     public void ready(long initialTxnId, ReplicationManager.Accessor accessor) throws IOException {
-        long pos = mManager.readPosition();
-        mStartReceivingPositions.put(pos, initialTxnId);
-        mEngine.startReceiving(pos, initialTxnId);
+        mEngine.startReceiving(mManager.readPosition(), initialTxnId);
         mManager.ready(accessor);
     }
 
@@ -147,35 +135,27 @@ final class ReplRedoController extends ReplRedoWriter {
 
         ReplRedoWriter redo = mCheckpointRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
+        LocalDatabase db = redo.mEngine.mDatabase;
 
         if (writer != null) {
-            LocalDatabase db = redo.mEngine.mDatabase;
-
             if (writer.confirm(mCheckpointPos)) {
                 // Update confirmed state, to prevent false undo if leadership is lost.
                 db.anyTransactionContext().confirmed(mCheckpointPos, mCheckpointTxnId);
             } else {
                 // Leadership lost. Use a known confirmed position for the next checkpoint. If
-                // the database is restored from this position, any in-progress transactions
-                // will re-apply earlier operations. Transactional operations are expected to
-                // be idempotent, but the transactions will roll back because the next leader
-                // always writes a reset operation to the redo log.
+                // restored from the checkpoint, any in-progress transactions will re-apply
+                // earlier operations. Transactional operations are expected to be idempotent,
+                // but the transactions will roll back regardless.
+
+                // FIXME: If becomes a replica, and the confirmed just keeps going higher,
+                // isn't it possible that mCheckpointPos goes higher than is expected? Yes, see
+                // context.confirmed in the leaderNotify method. This requires a flip back to
+                // leader mode, however. Capture this state earlier to be safe?
 
                 long[] result = db.highestTransactionContext().copyConfirmed();
 
-                if (result[0] <= mCheckpointPos) {
-                    mCheckpointPos = result[0];
-                    mCheckpointTxnId = result[1];
-                } else {
-                    // The highest confirmed position might have gone even higher, caused by
-                    // several leadership changes. Fallback to the last position that the
-                    // replica started receiving from.
-                    Map.Entry<Long, Long> posEntry =
-                        mStartReceivingPositions.floorEntry(mCheckpointPos); // findLe
-                    mCheckpointPos = posEntry.getKey();
-                    mCheckpointTxnId = posEntry.getValue();
-                }
-
+                mCheckpointPos = result[0];
+                mCheckpointTxnId = result[1];
                 // Force next checkpoint to behave like a replica
                 mCheckpointRedoWriter = this;
 
@@ -192,10 +172,6 @@ final class ReplRedoController extends ReplRedoWriter {
     void checkpointFinished() throws IOException {
         mManager.checkpointed(mCheckpointPos);
         mCheckpointRedoWriter = null;
-
-        // No need to keep older positions, since they won't be used.
-        mStartReceivingPositions.headMap(mCheckpointPos).clear(); // viewLt
-
         // Keep checkpoint position for the benefit of the shouldCheckpoint method, but flip
         // the bit for the checkpointSwitch method to detect successful completion.
         mCheckpointPos |= 1L << 63;
@@ -330,8 +306,6 @@ final class ReplRedoController extends ReplRedoWriter {
             mEngine.fail(e);
             return;
         }
-
-        mStartReceivingPositions.put(pos, 0L);
 
         redo.flipped(pos);
 
