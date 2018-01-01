@@ -42,9 +42,6 @@ final class TransactionContext extends Latch implements Flushable {
     private final static AtomicLongFieldUpdater<TransactionContext> cHighTxnIdUpdater =
         AtomicLongFieldUpdater.newUpdater(TransactionContext.class, "mHighTxnId");
 
-    private final static AtomicLongFieldUpdater<TransactionContext> cConfirmedPosUpdater =
-        AtomicLongFieldUpdater.newUpdater(TransactionContext.class, "mConfirmedPos");
-
     private final int mTxnStride;
 
     // Access to these fields is protected by synchronizing on this context object.
@@ -62,11 +59,6 @@ final class TransactionContext extends Latch implements Flushable {
     private RedoWriter mRedoWriter;
     private boolean mRedoWriterLatched;
     private long mRedoWriterPos;
-
-    // These fields capture the state of the highest confirmed commit, used by replication.
-    // Access to these fields is protected by spinning on the mConfirmedPos field.
-    private volatile long mConfirmedPos;
-    private long mConfirmedTxnId;
 
     /**
      * @param txnStride transaction id increment
@@ -1055,86 +1047,6 @@ final class TransactionContext extends Latch implements Flushable {
             mRedoWriterLatched = true;
         }
         return redo;
-    }
-
-    /**
-     * Only to be called when commit position which was confirmed doesn't have an associated
-     * transaction. Expected to only be used for replication control operations, so it doesn't
-     * need an optimized implementation.
-     */
-    void confirmed(long commitPos) {
-        if (commitPos == -1) {
-            throw new IllegalArgumentException();
-        }
-        mConfirmedPos = Math.max(latchConfirmed(), commitPos);
-    }
-
-    void confirmed(long commitPos, long txnId) {
-        if (commitPos == -1) {
-            throw new IllegalArgumentException();
-        }
-
-        long confirmedPos = mConfirmedPos;
-
-        check: {
-            if (confirmedPos != -1) {
-                if (commitPos <= confirmedPos) {
-                    return;
-                }
-                if (cConfirmedPosUpdater.compareAndSet(this, confirmedPos, -1)) {
-                    break check;
-                }
-            }
-
-            confirmedPos = latchConfirmed();
-
-            if (commitPos <= confirmedPos) {
-                // Release the latch.
-                mConfirmedPos = confirmedPos;
-                return;
-            }
-        }
-
-        mConfirmedTxnId = txnId;
-        // Set this last, because it releases the latch.
-        mConfirmedPos = commitPos;
-    }
-
-    /**
-     * Returns the context with the higher confirmed position.
-     */
-    TransactionContext higherConfirmed(TransactionContext other) {
-        return mConfirmedPos >= other.mConfirmedPos ? this : other;
-    }
-
-    /**
-     * Copy the confirmed position and transaction id to the returned array.
-     */
-    long[] copyConfirmed() {
-        long[] result = new long[2];
-        long confirmedPos = latchConfirmed();
-        result[0] = confirmedPos;
-        result[1] = mConfirmedTxnId;
-        // Release the latch.
-        mConfirmedPos = confirmedPos;
-        return result;
-    }
-
-    /**
-     * @return value of mConfirmedPos to set to release the latch
-     */
-    private long latchConfirmed() {
-        for (int trials = CursorFrame.SPIN_LIMIT;;) {
-            long confirmedPos = mConfirmedPos;
-            if (confirmedPos != -1 && cConfirmedPosUpdater.compareAndSet(this, confirmedPos, -1)) {
-                return confirmedPos;
-            }
-            if (--trials < 0) {
-                // Spinning too much due to high contention. Back off a tad.
-                Thread.yield();
-                trials = CursorFrame.SPIN_LIMIT << 1;
-            }
-        }
     }
 
     /**

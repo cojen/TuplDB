@@ -96,9 +96,7 @@ class ReplRedoWriter extends RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (writer.confirm(commitPos)) {
-            context.confirmed(commitPos);
-        } else {
+        if (!writer.confirm(commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -109,9 +107,7 @@ class ReplRedoWriter extends RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (writer.confirm(commitPos)) {
-            txn.mContext.confirmed(commitPos, txn.txnId());
-        } else {
+        if (!writer.confirm(commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -185,7 +181,6 @@ class ReplRedoWriter extends RedoWriter {
 
         try {
             if (writer.confirm(commitPos)) {
-                pending.mContext.confirmed(commitPos, pending.mTxnId);
                 return true;
             }
         } catch (IOException e) {
