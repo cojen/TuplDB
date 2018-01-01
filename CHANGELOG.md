@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.0
+v1.4.0  (2018-01-01)
 ------
 
 * Added a RAFT-based replication system.
