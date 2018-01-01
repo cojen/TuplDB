@@ -1698,17 +1698,6 @@ final class LocalDatabase extends AbstractDatabase {
         return mTxnContexts[(num & 0x7fffffff) % mTxnContexts.length];
     }
 
-    /**
-     * Returns the transaction context with the highest confirmed position.
-     */
-    TransactionContext highestTransactionContext() {
-        TransactionContext context = mTxnContexts[0];
-        for (int i=1; i<mTxnContexts.length; i++) {
-            context = context.higherConfirmed(mTxnContexts[i]);
-        }
-        return context;
-    }
-
     @Override
     public long preallocate(long bytes) throws IOException {
         if (!isClosed() && mPageDb.isDurable()) {
