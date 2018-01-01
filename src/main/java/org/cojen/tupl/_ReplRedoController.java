@@ -137,11 +137,14 @@ final class _ReplRedoController extends _ReplRedoWriter {
         ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer != null && !writer.confirm(mCheckpointPos)) {
-            // Leadership lost, so checkpoint at the position that the next leader starts from.
-            // The transaction id can be zero, because the next leader always writes a reset
-            // operation to the redo log.
-            mCheckpointPos = writer.confirmEnd();
-            mCheckpointTxnId = 0;
+            // Leadership lost, so checkpoint no higher than the position that the next leader
+            // starts from. The transaction id can be zero, because the next leader always
+            // writes a reset operation to the redo log.
+            long endPos = writer.confirmEnd();
+            if (endPos < mCheckpointPos) {
+                mCheckpointPos = endPos;
+                mCheckpointTxnId = 0;
+            }
 
             // Force next checkpoint to behave like a replica
             mCheckpointRedoWriter = this;

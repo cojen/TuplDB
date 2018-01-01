@@ -1,9 +1,12 @@
 Changelog
 =========
 
+v1.4.0.1
+--------
+* Fix handling of leadership loss during a checkpoint. Checkpoint position must not advance.
+
 v1.4.0  (2018-01-01)
 ------
-
 * Added a RAFT-based replication system.
 * Added a ValueAccessor interface which supports very large values (>2Gib), random access,
   appending, truncation, zero-filling, and streams.
