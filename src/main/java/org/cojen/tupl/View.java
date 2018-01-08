@@ -43,7 +43,8 @@ public interface View {
     }
 
     /**
-     * @param txn optional transaction for Cursor to {@link Cursor#link link} to
+     * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for
+     * auto-commit mode
      * @return a new unpositioned cursor
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
@@ -52,7 +53,7 @@ public interface View {
     /**
      * Returns a new scanner over this view.
      *
-     * @param txn optional transaction for Scanner to use
+     * @param txn optional transaction for Scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first entry in the view
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
@@ -68,7 +69,7 @@ public interface View {
      * a null transaction are auto-committed and become visible to other transactions as the
      * updater moves along.
      *
-     * @param txn optional transaction for Updater to use
+     * @param txn optional transaction for Updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first entry in the view
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
@@ -263,7 +264,8 @@ public interface View {
 
     /**
      * Associates a value with the given key, unless a corresponding value already
-     * exists. Equivalent to: {@link #update update(txn, key, null, value)}
+     * exists. Equivalent to: {@link #update(Transaction, byte[], byte[], byte[]) update(txn,
+     * key, null, value)}
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
@@ -411,7 +413,8 @@ public interface View {
 
     /**
      * Removes the entry associated with the given key, but only if the given value
-     * matches. Equivalent to: {@link #update update(txn, key, value, null)}
+     * matches. Equivalent to: {@link #update(Transaction, byte[], byte[], byte[]) update(txn,
+     * key, value, null)}
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.
