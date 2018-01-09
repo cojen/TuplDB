@@ -83,6 +83,17 @@ final class LocalTransaction extends Locker implements Transaction {
         mHasState = hasState;
     }
 
+    // Constructor for BOGUS transaction.
+    private LocalTransaction() {
+        super(null);
+        mDatabase = null;
+        mContext = null;
+        mRedo = null;
+        mDurabilityMode = DurabilityMode.NO_REDO;
+        mLockMode = LockMode.UNSAFE;
+        mBorked = this;
+    }
+
     // Used by recovery.
     final void recoveredScope(long savepoint, int hasState) {
         ParentScope parentScope = super.scopeEnter();
@@ -100,15 +111,18 @@ final class LocalTransaction extends Locker implements Transaction {
         mUndoLog = undo;
     }
 
-    // Constructor for BOGUS transaction.
-    private LocalTransaction() {
-        super(null);
-        mDatabase = null;
-        mContext = null;
-        mRedo = null;
-        mDurabilityMode = DurabilityMode.NO_REDO;
-        mLockMode = LockMode.UNSAFE;
-        mBorked = this;
+    // Used by recovery, before passing transaction to a recovery handler.
+    final void recoverPrepared(RedoWriter redo, DurabilityMode durabilityMode,
+                               LockMode lockMode, long timeoutNanos)
+    {
+        // When recovered from the undo log only, the commit state won't be set. Set it
+        // explicitly now, in order for commit and rollback operations to actually work.
+        mHasState |= HAS_COMMIT;
+
+        mRedo = redo;
+        mLockMode = lockMode;
+        mDurabilityMode = durabilityMode;
+        mLockTimeoutNanos = timeoutNanos;
     }
 
     @Override
@@ -811,15 +825,19 @@ final class LocalTransaction extends Locker implements Transaction {
 
         check();
 
-        // Although it might seem like a good idea to not bother writing the redo message if
-        // the HAS_2PC flag is already set, writing it each time makes the prepare method also
-        // useful for performing checked flush operations.
-
         if (mRedo == null) {
             throw new IllegalStateException("No redo log");
         }
 
         try {
+            if ((mHasState & HAS_PREPARE) == 0) {
+                pushUndoPrepare();
+            }
+
+            // Although it might seem like a good idea to not bother writing the redo message
+            // if the HAS_PREPARE flag is already set, writing it each time makes the prepare
+            // method also useful for performing checked flush operations.
+
             long commitPos = mContext.redoPrepare(mRedo, txnId(), mDurabilityMode);
             if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
                 mRedo.txnCommitSync(this, commitPos);
@@ -829,6 +847,31 @@ final class LocalTransaction extends Locker implements Transaction {
         }
 
         mHasState |= HAS_PREPARE;
+    }
+
+    /**
+     * To be called during redo recovery.
+     */
+    final void prepareNoRedo() throws IOException {
+        check();
+
+        try {
+            if ((mHasState & HAS_PREPARE) == 0) {
+                pushUndoPrepare();
+                mHasState |= HAS_PREPARE;
+            }
+        } catch (Throwable e) {
+            borked(e, true, true); // rollback = true, rethrow = true
+        }
+    }
+
+    private void pushUndoPrepare() throws IOException {
+        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            undoLog().pushPrepare();
+        } finally {
+            shared.release();
+        }
     }
 
     /**
@@ -1093,10 +1136,6 @@ final class LocalTransaction extends Locker implements Transaction {
 
     final void setHasTrash() {
         mHasState |= HAS_TRASH;
-    }
-
-    final void setHasPrepare() {
-        mHasState |= HAS_PREPARE;
     }
 
     /**

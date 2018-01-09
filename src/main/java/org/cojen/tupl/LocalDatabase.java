@@ -1046,9 +1046,8 @@ final class LocalDatabase extends AbstractDatabase {
         txns.traverse(entry -> {
             try {
                 LocalTransaction txn = entry.value;
-                txn.mRedo = redo;
-                txn.mDurabilityMode = mDurabilityMode;
-                txn.mLockTimeoutNanos = mDefaultLockTimeoutNanos;
+                txn.recoverPrepared
+                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
                 handler.accept(txn);
             } catch (Throwable e) {
                 uncaught(e);

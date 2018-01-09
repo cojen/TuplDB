@@ -133,7 +133,7 @@ final class RedoLogApplier implements RedoVisitor {
     public boolean txnPrepare(long txnId) throws IOException {
         LocalTransaction txn = txn(txnId);
         if (txn != null) {
-            txn.setHasPrepare();
+            txn.prepareNoRedo();
         }
         return true;
     }
