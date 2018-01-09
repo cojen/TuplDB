@@ -195,7 +195,7 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_2PC:
+            case OP_TXN_PREPARE:
                 try {
                     txnId = readTxnId(in);
                 } catch (EOFException e) {

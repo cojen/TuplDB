@@ -32,11 +32,11 @@ final class LocalTransaction extends Locker implements Transaction {
     static final LocalTransaction BOGUS = new LocalTransaction();
 
     static final int
-        HAS_SCOPE  = 1, // When set, scope has been entered but not logged.
-        HAS_COMMIT = 2, // When set, transaction has committable changes.
-        HAS_TRASH  = 4, /* When set, fragmented values are in the trash and must be
-                           fully deleted after committing the top-level scope. */
-        HAS_2PC    = 8; // When set, transaction is prepared for two-phase commit.
+        HAS_SCOPE   = 1, // When set, scope has been entered but not logged.
+        HAS_COMMIT  = 2, // When set, transaction has committable changes.
+        HAS_TRASH   = 4, /* When set, fragmented values are in the trash and must be
+                            fully deleted after committing the top-level scope. */
+        HAS_PREPARE = 8; // When set, transaction is prepared for two-phase commit.
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
@@ -569,7 +569,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
-                // Use 'or' assignment to keep HAS_TRASH and HAS_2PC state.
+                // Use 'or' assignment to keep HAS_TRASH and HAS_PREPARE state.
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
             }
@@ -828,7 +828,7 @@ final class LocalTransaction extends Locker implements Transaction {
             borked(e, true, true); // rollback = true, rethrow = true
         }
 
-        mHasState |= HAS_2PC;
+        mHasState |= HAS_PREPARE;
     }
 
     /**
@@ -839,7 +839,7 @@ final class LocalTransaction extends Locker implements Transaction {
      * @return true if was reset
      */
     final boolean recoveryCleanup(boolean finish) throws IOException {
-        finish = mTxnId < 0 | (finish & (mHasState & HAS_2PC) == 0);
+        finish = mTxnId < 0 | (finish & (mHasState & HAS_PREPARE) == 0);
 
         UndoLog undo = mUndoLog;
         if (undo != null) {
@@ -1095,8 +1095,8 @@ final class LocalTransaction extends Locker implements Transaction {
         mHasState |= HAS_TRASH;
     }
 
-    final void setHas2PC() {
-        mHasState |= HAS_2PC;
+    final void setHasPrepare() {
+        mHasState |= HAS_PREPARE;
     }
 
     /**

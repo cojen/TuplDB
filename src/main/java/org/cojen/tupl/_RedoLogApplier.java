@@ -133,7 +133,7 @@ final class _RedoLogApplier implements RedoVisitor {
     public boolean txnPrepare(long txnId) throws IOException {
         _LocalTransaction txn = txn(txnId);
         if (txn != null) {
-            txn.setHas2PC();
+            txn.setHasPrepare();
         }
         return true;
     }
