@@ -243,7 +243,16 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String keyStr(byte[] key) {
-        return "0x" + Utils.toHex(key) + " (" + new String(key, StandardCharsets.UTF_8) + ')';
+        char[] chars = new String(key, StandardCharsets.UTF_8).toCharArray();
+
+        for (int i=0; i<chars.length; i++) {
+            if (Character.isISOControl(chars[i])) {
+                chars[i] = '\ufffd';
+            }
+        }
+
+        return new StringBuilder().append("0x").append(Utils.toHex(key)).append(" (")
+            .append(chars).append(')').toString();
     }
 
     private static String valueStr(byte[] value) {
