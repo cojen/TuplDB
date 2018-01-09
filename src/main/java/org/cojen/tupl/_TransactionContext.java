@@ -288,7 +288,7 @@ final class _TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_TXN_2PC, txnId);
+            redoWriteTxnOp(redo, OP_TXN_PREPARE, txnId);
             redoWriteTerminator(redo);
             return redoFlushCommit(mode);
         } finally {

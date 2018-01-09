@@ -382,8 +382,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
 
         runTask(te, new Worker.Task() {
-            public void run() {
-                te.mTxn.setHas2PC();
+            public void run() throws IOException {
+                te.mTxn.setHasPrepare();
             }
         });
 
