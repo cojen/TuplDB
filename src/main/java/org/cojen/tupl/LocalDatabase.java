@@ -56,6 +56,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.util.function.Consumer;
+
 import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
@@ -131,6 +133,9 @@ final class LocalDatabase extends AbstractDatabase {
     final EventListener mEventListener;
 
     final TransactionHandler mCustomTxnHandler;
+
+    final Consumer<Transaction> mRecoveryHandler;
+    private LHashTable.Obj<LocalTransaction> mRecoveredTransactions;
 
     private final File mBaseFile;
     private final boolean mReadOnly;
@@ -289,6 +294,7 @@ final class LocalDatabase extends AbstractDatabase {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
 
         mCustomTxnHandler = config.mTxnHandler;
+        mRecoveryHandler = config.mRecoveryHandler;
 
         mBaseFile = config.mBaseFile;
         mReadOnly = config.mReadOnly;
@@ -811,10 +817,14 @@ final class LocalDatabase extends AbstractDatabase {
                                      "Processing remaining transactions");
                             }
 
-                            txns.traverse((entry) -> {
-                                entry.value.recoveryCleanup(true);
-                                return false;
+                            txns.traverse(entry -> {
+                                return entry.value.recoveryCleanup(true);
                             });
+
+                            if (shouldInvokeRecoveryHandler(txns)) {
+                                // Invoke the handler later, when database is fully opened.
+                                mRecoveredTransactions = txns;
+                            }
 
                             doCheckpoint = true;
                         }
@@ -939,6 +949,14 @@ final class LocalDatabase extends AbstractDatabase {
         }
 
         c.start(initialCheckpoint);
+
+        LHashTable.Obj<LocalTransaction> txns = mRecoveredTransactions;
+        if (txns != null) {
+            new Thread(() -> {
+                invokeRecoveryHandler(txns, mRedoWriter);
+            }).start();
+            mRecoveredTransactions = null;
+        }
     }
 
     private long writeControlMessage(byte[] message) throws IOException {
@@ -996,6 +1014,46 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
         }
+    }
+
+    /**
+     * @return true if a recovery handler exists and should be invoked
+     */
+    boolean shouldInvokeRecoveryHandler(LHashTable.Obj<LocalTransaction> txns) {
+        if (txns != null && txns.size() != 0) {
+            if (mRecoveryHandler != null) {
+                return true;
+            }
+            if (mEventListener != null) {
+                mEventListener.notify
+                    (EventType.RECOVERY_NO_HANDLER,
+                     "No handler is installed for processing the remaining " +
+                     "two-phase commit transactions: %1$d", txns.size());
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * To be called only when shouldInvokeRecoveryHandler returns true.
+     *
+     * @param redo non-null RedoWriter assigned to each transaction
+     */
+    void invokeRecoveryHandler(LHashTable.Obj<LocalTransaction> txns, RedoWriter redo) {
+        Consumer<Transaction> handler = mRecoveryHandler;
+
+        txns.traverse(entry -> {
+            try {
+                LocalTransaction txn = entry.value;
+                txn.mRedo = redo;
+                txn.mDurabilityMode = mDurabilityMode;
+                handler.accept(txn);
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+            return true;
+        });
     }
 
     static class ShutdownPrimer extends ShutdownHook.Weak<LocalDatabase> {
@@ -2102,7 +2160,7 @@ final class LocalDatabase extends AbstractDatabase {
             final long highestNodeId = targetPageCount - 1;
             final CompactionObserver fobserver = observer;
 
-            completed = scanAllIndexes((tree) -> {
+            completed = scanAllIndexes(tree -> {
                 return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
             });
 
@@ -2150,7 +2208,7 @@ final class LocalDatabase extends AbstractDatabase {
         final boolean[] passedRef = {true};
         final VerificationObserver fobserver = observer;
 
-        scanAllIndexes((tree) -> {
+        scanAllIndexes(tree -> {
             Index view = tree.observableView();
             fobserver.failed = false;
             boolean keepGoing = tree.verifyTree(view, fobserver);
@@ -2302,7 +2360,7 @@ final class LocalDatabase extends AbstractDatabase {
                     try {
                         trees = new ArrayList<>(mOpenTreesById.size());
 
-                        mOpenTreesById.traverse((entry) -> {
+                        mOpenTreesById.traverse(entry -> {
                             trees.add(entry.value);
                             return true;
                         });

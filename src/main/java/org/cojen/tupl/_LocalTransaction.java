@@ -34,8 +34,9 @@ final class _LocalTransaction extends _Locker implements Transaction {
     static final int
         HAS_SCOPE  = 1, // When set, scope has been entered but not logged.
         HAS_COMMIT = 2, // When set, transaction has committable changes.
-        HAS_TRASH  = 4; /* When set, fragmented values are in the trash and must be
+        HAS_TRASH  = 4, /* When set, fragmented values are in the trash and must be
                            fully deleted after committing the top-level scope. */
+        HAS_2PC    = 8; // When set, transaction is prepared for two-phase commit.
 
     final _LocalDatabase mDatabase;
     final _TransactionContext mContext;
@@ -568,7 +569,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
-                // Use or assignment to promote HAS_TRASH state.
+                // Use 'or' assignment to keep HAS_TRASH and HAS_2PC state.
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
             }
@@ -786,12 +787,60 @@ final class _LocalTransaction extends _Locker implements Transaction {
         }
     }
 
+    @Override
+    public final long getId() {
+        long txnId = mTxnId;
+
+        if (txnId == 0 && mRedo != null) {
+            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+            try {
+                txnId = assignTransactionId();
+            } finally {
+                shared.release();
+            }
+        }
+
+        return txnId < 0 ? 0 : txnId;
+    }
+
+    @Override
+    public final void prepare() throws IOException {
+        if (mDatabase.mRecoveryHandler == null) {
+            throw new IllegalStateException("Transaction recovery handler is not installed");
+        }
+
+        check();
+
+        // Although it might seem like a good idea to not bother writing the redo message if
+        // the HAS_2PC flag is already set, writing it each time makes the prepare method also
+        // useful for performing checked flush operations.
+
+        if (mRedo == null) {
+            throw new IllegalStateException("No redo log");
+        }
+
+        try {
+            long commitPos = mContext.redoPrepare(mRedo, txnId(), mDurabilityMode);
+            if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
+                mRedo.txnCommitSync(this, commitPos);
+            }
+        } catch (Throwable e) {
+            borked(e, true, true); // rollback = true, rethrow = true
+        }
+
+        mHasState |= HAS_2PC;
+    }
+
     /**
-     * @param resetAlways when false, only resets committed transactions and transactions with
-     * negative identifiers
+     * Recovery cleanup always resets committed transactions, or those with negative
+     * identifiers. When the finish parameter is false, unfinished transactions aren't reset.
+     * When the finish parameter is true, all non-2PC transactions are reset.
+     *
      * @return true if was reset
      */
-    final boolean recoveryCleanup(boolean resetAlways) throws IOException {
+    final boolean recoveryCleanup(boolean finish) throws IOException {
+        finish = mTxnId < 0 | (finish & (mHasState & HAS_2PC) == 0);
+
         _UndoLog undo = mUndoLog;
         if (undo != null) {
             switch (undo.peek(true)) {
@@ -803,23 +852,22 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 // when a checkpoint completes in the middle of the transaction commit
                 // operation. Method truncates undo log as a side-effect.
                 undo.deleteGhosts();
-                resetAlways = true;
+                finish = true;
                 break;
 
             case _UndoLog.OP_COMMIT_TRUNCATE:
                 // Like OP_COMMIT, but ghosts have already been deleted.
                 undo.truncate(false);
-                resetAlways = true;
+                finish = true;
                 break;
             }
         }
 
-        resetAlways |= (mTxnId < 0);
-        if (resetAlways) {
+        if (finish) {
             reset();
         }
 
-        return resetAlways;
+        return finish;
     }
 
     /**
@@ -1045,6 +1093,10 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
     final void setHasTrash() {
         mHasState |= HAS_TRASH;
+    }
+
+    final void setHas2PC() {
+        mHasState |= HAS_2PC;
     }
 
     /**

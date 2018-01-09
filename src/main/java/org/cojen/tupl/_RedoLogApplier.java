@@ -130,6 +130,15 @@ final class _RedoLogApplier implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPrepare(long txnId) throws IOException {
+        _LocalTransaction txn = txn(txnId);
+        if (txn != null) {
+            txn.setHas2PC();
+        }
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         _LocalTransaction txn = txn(txnId);
         if (txn == null) {

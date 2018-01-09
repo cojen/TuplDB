@@ -471,6 +471,37 @@ public interface Transaction extends Flushable {
     void unlockCombine();
 
     /**
+     * Returns the currently assigned identifier for this transaction, which is zero when the
+     * transaction cannot replicate. After the transaction has finished, a new identifier is
+     * generated when requested again.
+     *
+     * @return a positive transaction identifier, or zero if transaction cannot replicate
+     */
+    default long getId() {
+        return 0;
+    }
+
+    /**
+     * Prepares a transaction for finishing a two-phase commit, to be called before fully
+     * committing the transaction. A recovery {@link DatabaseConfig#recoveryHandler handler}
+     * must be installed, and the transaction must be {@link #check valid}.
+     *
+     * <p>Prior to calling prepare, applications are expected to have stored additional state,
+     * keyed by the transaction {@link #getId identifier}. This state should be stored into
+     * indexes of the same database, and within this transaction as well. When the recovery
+     * handler is invoked, it can continue the transaction workflow, by loading the previously
+     * stored state.
+     *
+     * @throws IllegalStateException if transaction isn't a state for supporting two-phase commit
+     * @throws UnmodifiableReplicaException if transaction cannot replicate
+     * @throws UnsupportedOperationException if completely unsupported by the transaction
+     * implementation
+     */
+    default void prepare() throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Attach an arbitrary object to this transaction instance, for tracking it. Attachments
      * can become visible to other threads as a result of a {@link LockTimeoutException}. A
      * happens-before relationship is guaranteed only if the attachment is set before the
@@ -479,6 +510,8 @@ public interface Transaction extends Flushable {
      * must consider thread-safety.
      *
      * @param obj the object to be attached; may be null
+     * @throws UnsupportedOperationException if completely unsupported by the transaction
+     * implementation
      */
     default void attach(Object obj) {
         // Throw an exception for compatibility. All known implementations support the feature.

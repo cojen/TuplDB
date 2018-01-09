@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6,"i34":6};
+var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":18,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":18,"i30":6,"i31":6,"i32":6,"i33":6,"i34":6,"i35":6,"i36":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -247,31 +247,38 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
 </td>
 </tr>
 <tr id="i11" class="rowColor">
+<td class="colFirst"><code>default long</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#getId--">getId</a></span>()</code>
+<div class="block">Returns the currently assigned identifier for this transaction, which is zero when the
+ transaction cannot replicate.</div>
+</td>
+</tr>
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#isNested--">isNested</a></span>()</code>
 <div class="block">Returns true if the current transaction scope is nested.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lastLockedIndex--">lastLockedIndex</a></span>()</code>
 <div class="block">Returns the index id of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lastLockedKey--">lastLockedKey</a></span>()</code>
 <div class="block">Returns the key of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockCheck-long-byte:A-">lockCheck</a></span>(long&nbsp;indexId,
          byte[]&nbsp;key)</code>
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockExclusive-long-byte:A-">lockExclusive</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key)</code>
@@ -279,7 +286,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  additional locks.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockExclusive-long-byte:A-long-">lockExclusive</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -288,19 +295,19 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  additional locks.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockMode.html" title="enum in org.cojen.tupl">LockMode</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockMode--">lockMode</a></span>()</code>
 <div class="block">Returns the current lock mode.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr id="i19" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockMode-org.cojen.tupl.LockMode-">lockMode</a></span>(<a href="../../../org/cojen/tupl/LockMode.html" title="enum in org.cojen.tupl">LockMode</a>&nbsp;mode)</code>
 <div class="block">Sets the lock mode for the current scope.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockShared-long-byte:A-">lockShared</a></span>(long&nbsp;indexId,
           byte[]&nbsp;key)</code>
@@ -308,7 +315,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  locks.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockShared-long-byte:A-long-">lockShared</a></span>(long&nbsp;indexId,
           byte[]&nbsp;key,
@@ -317,20 +324,20 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  locks.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-long-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(long&nbsp;timeout,
            <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Sets the lock timeout for the current scope.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockTimeout-java.util.concurrent.TimeUnit-">lockTimeout</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code>
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockUpgradable-long-byte:A-">lockUpgradable</a></span>(long&nbsp;indexId,
               byte[]&nbsp;key)</code>
@@ -338,7 +345,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#lockUpgradable-long-byte:A-long-">lockUpgradable</a></span>(long&nbsp;indexId,
               byte[]&nbsp;key,
@@ -347,25 +354,32 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#nestingLevel--">nestingLevel</a></span>()</code>
 <div class="block">Counts the current transaction scope nesting level.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i27" class="rowColor">
+<td class="colFirst"><code>default void</code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#prepare--">prepare</a></span>()</code>
+<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
+ committing the transaction.</div>
+</td>
+</tr>
+<tr id="i28" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset--">reset</a></span>()</code>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#reset-java.lang.Throwable-">reset</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang">Throwable</a>&nbsp;cause)</code>
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockExclusive-long-byte:A-long-">tryLockExclusive</a></span>(long&nbsp;indexId,
                 byte[]&nbsp;key,
@@ -374,7 +388,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  additional locks.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockShared-long-byte:A-long-">tryLockShared</a></span>(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -383,7 +397,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  locks.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i32" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#tryLockUpgradable-long-byte:A-long-">tryLockUpgradable</a></span>(long&nbsp;indexId,
                  byte[]&nbsp;key,
@@ -392,26 +406,26 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr id="i33" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlock--">unlock</a></span>()</code>
 <div class="block">Fully releases the last lock or group acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr id="i34" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockCombine--">unlockCombine</a></span>()</code>
 <div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr id="i35" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToShared--">unlockToShared</a></span>()</code>
 <div class="block">Releases the last lock or group acquired, within the current scope, retaining a shared
  lock.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr id="i36" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Transaction.html#unlockToUpgradable--">unlockToUpgradable</a></span>()</code>
 <div class="block">Releases the last lock or group acquired or upgraded, within the current scope,
@@ -1117,6 +1131,49 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
 </dl>
 </li>
 </ul>
+<a name="getId--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>getId</h4>
+<pre>default&nbsp;long&nbsp;getId()</pre>
+<div class="block">Returns the currently assigned identifier for this transaction, which is zero when the
+ transaction cannot replicate. After the transaction has finished, a new identifier is
+ generated when requested again.</div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>a positive transaction identifier, or zero if transaction cannot replicate</dd>
+</dl>
+</li>
+</ul>
+<a name="prepare--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>prepare</h4>
+<pre>default&nbsp;void&nbsp;prepare()
+              throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
+ committing the transaction. A recovery <a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.Consumer-"><code>handler</code></a>
+ must be installed, and the transaction must be <a href="../../../org/cojen/tupl/Transaction.html#check--"><code>valid</code></a>.
+
+ <p>Prior to calling prepare, applications are expected to have stored additional state,
+ keyed by the transaction <a href="../../../org/cojen/tupl/Transaction.html#getId--"><code>identifier</code></a>. This state should be stored into
+ indexes of the same database, and within this transaction as well. When the recovery
+ handler is invoked, it can continue the transaction workflow, by loading the previously
+ stored state.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if transaction isn't a state for supporting two-phase commit</dd>
+<dd><code><a href="../../../org/cojen/tupl/UnmodifiableReplicaException.html" title="class in org.cojen.tupl">UnmodifiableReplicaException</a></code> - if transaction cannot replicate</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
+ implementation</dd>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
 <a name="attach-java.lang.Object-">
 <!--   -->
 </a>
@@ -1133,6 +1190,9 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>obj</code> - the object to be attached; may be null</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
+ implementation</dd>
 </dl>
 </li>
 </ul>
