@@ -280,11 +280,13 @@ final class JavaFileIO extends AbstractFileIO {
         IOException ex = null;
 
         for (FileAccess file : mFilePool) {
-            try {
-                file.close();
-            } catch (IOException e) {
-                if (ex == null) {
-                    ex = e;
+            if (file != null) {
+                try {
+                    file.close();
+                } catch (IOException e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
                 }
             }
         }
