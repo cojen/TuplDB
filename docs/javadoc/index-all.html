@@ -1336,6 +1336,11 @@
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Index.html#getId--">getId()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#getId--">getId()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Returns the currently assigned identifier for this transaction, which is zero when the
+ transaction cannot replicate.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DeadlockSet.html#getIndexId-int-">getIndexId(int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DeadlockSet.html" title="class in org.cojen.tupl">DeadlockSet</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DeadlockSet.html#getIndexName-int-">getIndexName(int)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DeadlockSet.html" title="class in org.cojen.tupl">DeadlockSet</a></dt>
@@ -2384,6 +2389,11 @@
 <div class="block">Returns an instance-specific thread-local ByteBuffer which references any memory
  address.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#prepare--">prepare()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
+ committing the transaction.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Cursor.html#previous--">previous()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Moves to the Cursor to the previous available entry.</div>
@@ -2497,6 +2507,11 @@
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotSender.html#receiverAddress--">receiverAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
 <dd>
 <div class="block">Member address which is receiving the snapshot.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.Consumer-">recoveryHandler(Consumer&lt;Transaction&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Install a transaction recovery handler, which receives unfinished transactions which
+ were <a href="org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo(Database, Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>

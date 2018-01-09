@@ -202,13 +202,15 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
     /**
      * Called by _ReplRedoEngine when local instance has become the leader.
+     *
+     * @return new leader redo writer, or null if failed
      */
-    void leaderNotify() throws UnmodifiableReplicaException, IOException {
+    _ReplRedoWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
         acquireExclusive();
         try {
             if (mTxnRedoWriter.mReplWriter != null) {
                 // Must be in replica mode.
-                return;
+                return null;
             }
 
             ReplicationManager.Writer writer = mManager.writer();
@@ -216,7 +218,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
             if (writer == null) {
                 // Panic.
                 mEngine.fail(new IllegalStateException("No writer for the leader"));
-                return;
+                return null;
             }
 
             _ReplRedoWriter redo = new _ReplRedoWriter(mEngine, writer);
@@ -242,6 +244,8 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 // Don't trust timestamp alone to help detect divergent logs. Use NO_SYNC mode
                 // to flush everything out, but no need to wait for confirmation.
                 context.doRedoNopRandom(redo, DurabilityMode.NO_SYNC);
+
+                return redo;
             } finally {
                 context.releaseRedoLatch();
             }

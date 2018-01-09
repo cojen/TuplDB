@@ -18,7 +18,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -328,23 +328,30 @@ implements <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Cloneabl
 </tr>
 <tr id="i26" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.Consumer-">recoveryHandler</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</code>
+<div class="block">Install a transaction recovery handler, which receives unfinished transactions which
+ were <a href="../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
+</td>
+</tr>
+<tr id="i27" class="rowColor">
+<td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.ext.ReplicationManager-">replicate</a></span>(<a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>&nbsp;manager)</code>
 <div class="block">Enable replication with an explicit <a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.repl.ReplicatorConfig-">replicate</a></span>(<a href="../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code>
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#secondaryCacheSize-long-">secondaryCacheSize</a></span>(long&nbsp;size)</code>
 <div class="block">Set the size of the secondary off-heap cache, which is empty by default.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#syncWrites-boolean-">syncWrites</a></span>(boolean&nbsp;fileSync)</code>
 <div class="block">Set true to ensure all writes to the main database file are immediately
@@ -703,6 +710,22 @@ implements <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Cloneabl
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes. Default is the number of available processors. If a negative number is
  provided, the actual number applied is <code>(-num * availableProcessors)</code>.</div>
+</li>
+</ul>
+<a name="recoveryHandler-java.util.function.Consumer-">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>recoveryHandler</h4>
+<pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;recoveryHandler(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</pre>
+<div class="block">Install a transaction recovery handler, which receives unfinished transactions which
+ were <a href="../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit. When replication is
+ configured, the handler is invoked when the database has become the replication leader.
+ Otherwise, the handler is invoked when the database is opened. The handler is
+ responsible for finishing the transactions, by completing the necessary commit actions,
+ or by fully rolling back. Each unfinished transaction is passed to the handler via a
+ single dedicated thread.</div>
 </li>
 </ul>
 <a name="encrypt-org.cojen.tupl.Crypto-">

@@ -100,6 +100,12 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPrepare(long txnId) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnPrepare", txnId);
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnEnter", txnId);
         return true;
