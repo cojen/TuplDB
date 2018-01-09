@@ -383,7 +383,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
-                te.mTxn.setHasPrepare();
+                te.mTxn.prepareNoRedo();
             }
         });
 
