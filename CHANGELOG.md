@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.4.1
+------
+* Added support two-phase commit, using the new transaction prepare and getId methods.
+
 v1.4.0.1 (2018-01-01)
 --------
 * Added a RAFT-based replication system.
