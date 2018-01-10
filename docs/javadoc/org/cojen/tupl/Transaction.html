@@ -1156,7 +1156,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Flushable.htm
 <pre>default&nbsp;void&nbsp;prepare()
               throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
- committing the transaction. A recovery <a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.BiConsumer-"><code>handler</code></a>
+ committing the transaction. A recovery <a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-"><code>handler</code></a>
  must be installed, and the transaction must be <a href="../../../org/cojen/tupl/Transaction.html#check--"><code>valid</code></a>.
 
  <p>Prior to calling prepare, applications are expected to have stored additional state,

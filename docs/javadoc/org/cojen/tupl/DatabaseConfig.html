@@ -328,7 +328,7 @@ implements <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Cloneabl
 </tr>
 <tr id="i26" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.BiConsumer-">recoveryHandler</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function">BiConsumer</a>&lt;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>,<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</code>
+<td class="colLast"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-">recoveryHandler</a></span>(<a href="../../../org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a>&nbsp;handler)</code>
 <div class="block">Install a transaction recovery handler, which receives unfinished transactions which
  were <a href="../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
 </td>
@@ -712,13 +712,13 @@ implements <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Cloneabl
  provided, the actual number applied is <code>(-num * availableProcessors)</code>.</div>
 </li>
 </ul>
-<a name="recoveryHandler-java.util.function.BiConsumer-">
+<a name="recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>recoveryHandler</h4>
-<pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;recoveryHandler(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function">BiConsumer</a>&lt;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>,<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</pre>
+<pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;recoveryHandler(<a href="../../../org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a>&nbsp;handler)</pre>
 <div class="block">Install a transaction recovery handler, which receives unfinished transactions which
  were <a href="../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit. When replication is
  configured, the handler is invoked when the database has become the replication leader.

@@ -244,51 +244,56 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Enum.html?i
 </td>
 </tr>
 <tr class="rowColor">
+<td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_HANDLER_UNCAUGHT">RECOVERY_HANDLER_UNCAUGHT</a></span></code>
+<div class="block">An uncaught exception from a recovery handler.</div>
+</td>
+</tr>
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_LOAD_UNDO_LOGS">RECOVERY_LOAD_UNDO_LOGS</a></span></code>
 <div class="block">Signals that undo logs of in-flight transactions are being loaded.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_NO_HANDLER">RECOVERY_NO_HANDLER</a></span></code>
 <div class="block">Prepared two-phase commit transactions remain, but no handler is installed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_PROCESS_REMAINING">RECOVERY_PROCESS_REMAINING</a></span></code>
 <div class="block">Signals that transactions not expliticly committed or rolled back are being processed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_PROGRESS">RECOVERY_PROGRESS</a></span></code>
 <div class="block">Generic recovery progress message.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#RECOVERY_REDO_LOG_CORRUPTION">RECOVERY_REDO_LOG_CORRUPTION</a></span></code>
 <div class="block">Signals that some redo operations were not recovered due to log file corruption.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_DEBUG">REPLICATION_DEBUG</a></span></code>
 <div class="block">Generic debug message from the replication system.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_INFO">REPLICATION_INFO</a></span></code>
 <div class="block">Generic info message from the replication system.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_PANIC">REPLICATION_PANIC</a></span></code>
 <div class="block">Unhandled in the replication system, and the database must be shutdown.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_RESTORE">REPLICATION_RESTORE</a></span></code>
 <div class="block">Snapshot restore progress event.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/EventType.html#REPLICATION_WARNING">REPLICATION_WARNING</a></span></code>
 <div class="block">Generic warning message from the replication system.</div>
 </td>
@@ -481,6 +486,16 @@ the order they are declared.</div>
 <h4>RECOVERY_NO_HANDLER</h4>
 <pre>public static final&nbsp;<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a> RECOVERY_NO_HANDLER</pre>
 <div class="block">Prepared two-phase commit transactions remain, but no handler is installed.</div>
+</li>
+</ul>
+<a name="RECOVERY_HANDLER_UNCAUGHT">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>RECOVERY_HANDLER_UNCAUGHT</h4>
+<pre>public static final&nbsp;<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a> RECOVERY_HANDLER_UNCAUGHT</pre>
+<div class="block">An uncaught exception from a recovery handler.</div>
 </li>
 </ul>
 <a name="RECOVERY_DELETE_FRAGMENTS">

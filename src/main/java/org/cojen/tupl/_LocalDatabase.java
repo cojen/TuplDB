@@ -56,12 +56,11 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import java.util.function.BiConsumer;
-
 import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
 
+import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
@@ -134,7 +133,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
     final TransactionHandler mCustomTxnHandler;
 
-    final BiConsumer<Database, Transaction> mRecoveryHandler;
+    final RecoveryHandler mRecoveryHandler;
     private LHashTable.Obj<_LocalTransaction> mRecoveredTransactions;
 
     private final File mBaseFile;
@@ -913,6 +912,10 @@ final class _LocalDatabase extends AbstractDatabase {
             deletion.start();
         }
 
+        if (mRecoveryHandler != null) {
+            mRecoveryHandler.init(this);
+        }
+
         boolean initialCheckpoint = false;
 
         if (mRedoWriter instanceof _ReplRedoController) {
@@ -1041,17 +1044,25 @@ final class _LocalDatabase extends AbstractDatabase {
      * @param redo non-null _RedoWriter assigned to each transaction
      */
     void invokeRecoveryHandler(LHashTable.Obj<_LocalTransaction> txns, _RedoWriter redo) {
-        BiConsumer<Database, Transaction> handler = mRecoveryHandler;
+        RecoveryHandler handler = mRecoveryHandler;
 
         txns.traverse(entry -> {
+            _LocalTransaction txn = entry.value;
+            txn.recoverPrepared
+                (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+
             try {
-                _LocalTransaction txn = entry.value;
-                txn.recoverPrepared
-                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
-                handler.accept(this, txn);
+                handler.recover(txn);
             } catch (Throwable e) {
-                uncaught(e);
+                EventListener listener = mEventListener;
+                if (listener == null) {
+                    uncaught(e);
+                } else {
+                    listener.notify(EventType.RECOVERY_HANDLER_UNCAUGHT,
+                                    "Uncaught exception from recovery handler: %1$s", e);
+                }
             }
+
             return true;
         });
     }
