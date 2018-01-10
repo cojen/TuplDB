@@ -17,14 +17,16 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-import java.util.function.BiConsumer;
-
 import org.junit.*;
 import static org.junit.Assert.*;
+
+import org.cojen.tupl.ext.RecoveryHandler;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -43,11 +45,11 @@ public class TxnPrepareTest {
         deleteTempDatabases(getClass());
     }
 
-    protected DatabaseConfig newConfig(BiConsumer<Database, Transaction> handler) {
+    protected DatabaseConfig newConfig(RecoveryHandler handler) {
         return new DatabaseConfig()
             .recoveryHandler(handler)
             .directPageAccess(false)
-            .lockTimeout(100, TimeUnit.MILLISECONDS)
+            .lockTimeout(1000, TimeUnit.MILLISECONDS)
             .checkpointRate(-1, null);
     }
 
@@ -74,7 +76,13 @@ public class TxnPrepareTest {
         } catch (IllegalStateException e) {
         }
 
-        Database db = newTempDatabase(newConfig((database, txn) -> {}));
+        RecoveryHandler handler = new RecoveryHandler() {
+            public void init(Database db) {}
+            public void recover(Transaction txn) {}
+        };
+
+        Database db = newTempDatabase(newConfig(handler));
+
         Transaction txn = db.newTransaction();
         txn.durabilityMode(DurabilityMode.NO_REDO);
         try {
@@ -186,10 +194,18 @@ public class TxnPrepareTest {
 
         BlockingQueue<Transaction> recovered = new LinkedBlockingQueue<>();
 
-        BiConsumer<Database, Transaction> handler = (db, txn) -> {
-            recovered.add(txn);
+        RecoveryHandler handler = new RecoveryHandler() {
+            private Database db;
 
-            try {
+            @Override
+            public void init(Database db) {
+                this.db = db;
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                recovered.add(txn);
+
                 switch (recoveryAction) {
                 default:
                     // Leak the transaction and keep the locks.
@@ -213,8 +229,6 @@ public class TxnPrepareTest {
                     txn.commit();
                     break;
                 }
-            } catch (Exception e) {
-                Utils.rethrow(e);
             }
         };
 

@@ -35,8 +35,7 @@ import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
-import java.util.function.BiConsumer;
-
+import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
@@ -69,7 +68,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
-    transient BiConsumer<Database, Transaction> mRecoveryHandler;
+    transient RecoveryHandler mRecoveryHandler;
     long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
@@ -406,7 +405,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * or by fully rolling back. Each unfinished transaction is passed to the handler via a
      * single dedicated thread.
      */
-    public DatabaseConfig recoveryHandler(BiConsumer<Database, Transaction> handler) {
+    public DatabaseConfig recoveryHandler(RecoveryHandler handler) {
         mRecoveryHandler = handler;
         return this;
     }

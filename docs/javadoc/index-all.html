@@ -1562,6 +1562,10 @@
 <div class="block">Returns an <a href="org/cojen/tupl/UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
  index names to identifiers.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/RecoveryHandler.html#init-org.cojen.tupl.Database-">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
+<dd>
+<div class="block">Called once when the database is opened, before the recover method is ever called.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-">initCipher(Cipher, int, SecretKey)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to initialize a new or re-used <a href="https://docs.oracle.com/javase/9/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a>, generating a random initialization
@@ -2508,10 +2512,18 @@
 <dd>
 <div class="block">Member address which is receiving the snapshot.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.BiConsumer-">recoveryHandler(BiConsumer&lt;Database, Transaction&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/RecoveryHandler.html#recover-org.cojen.tupl.Transaction-">recover(Transaction)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
+<dd>
+<div class="block">Called for each recovered transaction.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-">recoveryHandler(RecoveryHandler)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Install a transaction recovery handler, which receives unfinished transactions which
  were <a href="org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
+</dd>
+<dt><a href="org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">RecoveryHandler</span></a> - Interface in <a href="org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
+<dd>
+<div class="block">Handler for recovered transactions which were prepared, but aren't finished yet.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo(Database, Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
