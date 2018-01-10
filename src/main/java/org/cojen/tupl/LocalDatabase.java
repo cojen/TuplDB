@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 import static java.lang.System.arraycopy;
 
@@ -134,7 +134,7 @@ final class LocalDatabase extends AbstractDatabase {
 
     final TransactionHandler mCustomTxnHandler;
 
-    final Consumer<Transaction> mRecoveryHandler;
+    final BiConsumer<Database, Transaction> mRecoveryHandler;
     private LHashTable.Obj<LocalTransaction> mRecoveredTransactions;
 
     private final File mBaseFile;
@@ -1041,14 +1041,14 @@ final class LocalDatabase extends AbstractDatabase {
      * @param redo non-null RedoWriter assigned to each transaction
      */
     void invokeRecoveryHandler(LHashTable.Obj<LocalTransaction> txns, RedoWriter redo) {
-        Consumer<Transaction> handler = mRecoveryHandler;
+        BiConsumer<Database, Transaction> handler = mRecoveryHandler;
 
         txns.traverse(entry -> {
             try {
                 LocalTransaction txn = entry.value;
                 txn.recoverPrepared
                     (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
-                handler.accept(txn);
+                handler.accept(this, txn);
             } catch (Throwable e) {
                 uncaught(e);
             }
