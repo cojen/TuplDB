@@ -417,4 +417,48 @@ public class TxnPrepareTest {
         } catch (LockTimeoutException e) {
         }
     }
+
+    @Test
+    public void reopenNoHandler() throws Exception {
+        // When database is reopened without a recovery handler, the recovered transactions
+        // aren't lost.
+
+        RecoveryHandler handler = new RecoveryHandler() {
+            @Override
+            public void init(Database db) {
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                txn.commit();
+            }
+        };
+
+        DatabaseConfig config = newConfig(handler);
+        Database db = newTempDatabase(config);
+        Index ix = db.openIndex("test");
+
+        Transaction txn = db.newTransaction();
+        byte[] key = "hello".getBytes();
+        ix.store(txn, key, "world".getBytes());
+        txn.prepare();
+
+        // Reopen without the handler.
+        config.recoveryHandler(null);
+        db = reopenTempDatabase(getClass(), db, config);
+
+        // Still locked.
+        ix = db.openIndex("test");
+        txn = db.newTransaction();
+        assertEquals(LockResult.TIMED_OUT_LOCK, ix.tryLockShared(txn, key, 0));
+        txn.reset();
+
+        // Reopen with the handler installed.
+        config.recoveryHandler(handler);
+        db = reopenTempDatabase(getClass(), db, config);
+
+        // Verify that the handler has committed the recovereed transaction.
+        ix = db.openIndex("test");
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, key));
+    }
 }
