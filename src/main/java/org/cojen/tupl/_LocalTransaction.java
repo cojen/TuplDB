@@ -819,14 +819,14 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
     @Override
     public final void prepare() throws IOException {
+        check();
+
         if (mDatabase.mRecoveryHandler == null) {
             throw new IllegalStateException("Transaction recovery handler is not installed");
         }
 
-        check();
-
-        if (mRedo == null) {
-            throw new IllegalStateException("No redo log");
+        if (mRedo == null || mDurabilityMode == DurabilityMode.NO_REDO) {
+            throw new IllegalStateException("Cannot prepare a no-redo transaction");
         }
 
         try {
