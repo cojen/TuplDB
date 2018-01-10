@@ -379,7 +379,7 @@
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<td class="colLast"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.Consumer-">recoveryHandler</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function">Consumer</a>&lt;<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</code>
+<td class="colLast"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-java.util.function.BiConsumer-">recoveryHandler</a></span>(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function">BiConsumer</a>&lt;<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>,<a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&gt;&nbsp;handler)</code>
 <div class="block">Install a transaction recovery handler, which receives unfinished transactions which
  were <a href="../../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
 </td>
