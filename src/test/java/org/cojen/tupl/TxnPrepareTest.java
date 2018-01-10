@@ -329,4 +329,92 @@ public class TxnPrepareTest {
             // Transaction should stick around each time the database is reopened.
         }
     }
+
+    @Test
+    public void basicMix() throws Exception {
+        // Test that unprepared transactions don't get passed to the recover handler, testing
+        // also with multiple recovered transactions.
+
+        BlockingQueue<Transaction> recovered = new LinkedBlockingQueue<>();
+
+        RecoveryHandler handler = new RecoveryHandler() {
+            @Override
+            public void init(Database db) {
+            }
+
+            @Override
+            public void recover(Transaction txn) {
+                recovered.add(txn);
+            }
+        };
+
+        DatabaseConfig config = newConfig(handler);
+        Database db = newTempDatabase(config);
+        Index ix = db.openIndex("test");
+
+        // Should rollback and not be passed to the handler.
+        Transaction txn1 = db.newTransaction();
+        ix.store(txn1, "key-1".getBytes(), "value-1".getBytes());
+
+        // Should be passed to the handler.
+        Transaction txn2 = db.newTransaction();
+        ix.store(txn2, "key-2".getBytes(), "value-2".getBytes());
+        txn2.prepare();
+
+        // Should be passed to the handler.
+        Transaction txn3 = db.newTransaction();
+        ix.store(txn3, "key-3".getBytes(), "value-3".getBytes());
+        txn3.prepare();
+
+        // Should rollback and not be passed to the handler.
+        Transaction txn4 = db.newTransaction();
+        ix.store(txn4, "key-4".getBytes(), "value-4".getBytes());
+
+        // Should commit and not be passed to the handler.
+        Transaction txn5 = db.newTransaction();
+        ix.store(txn5, "key-5".getBytes(), "value-5".getBytes());
+        txn5.prepare();
+        txn5.commit();
+
+        // Should rollback and not be passed to the handler.
+        Transaction txn6 = db.newTransaction();
+        ix.store(txn6, "key-6".getBytes(), "value-6".getBytes());
+        txn6.prepare();
+        txn6.exit();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+
+        Transaction t1 = recovered.take();
+        Transaction t2 = recovered.take();
+        assertTrue(recovered.isEmpty());
+
+        // Transactions can be recovered in any order.
+        if (t1.getId() == txn2.getId()) {
+            assertEquals(t2.getId(), txn3.getId());
+        } else {
+            assertEquals(t1.getId(), txn3.getId());
+            assertEquals(t2.getId(), txn2.getId());
+        }
+
+        // Rollback of txn1, txn4, and txn6.
+        assertNull(ix.load(null, "key-1".getBytes()));
+        assertNull(ix.load(null, "key-4".getBytes()));
+        assertNull(ix.load(null, "key-6".getBytes()));
+
+        // Commit of txn5.
+        fastAssertArrayEquals("value-5".getBytes(), ix.load(null, "key-5".getBytes()));
+
+        // Recovered transactions are still locked.
+        try {
+            ix.load(null, "key-2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+        try {
+            ix.load(null, "key-3".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+    }
 }
