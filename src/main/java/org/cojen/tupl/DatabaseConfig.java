@@ -402,7 +402,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * configured, the handler is invoked when the database has become the replication leader.
      * Otherwise, the handler is invoked when the database is opened. The handler is
      * responsible for finishing the transactions, by completing the necessary commit actions,
-     * or by fully rolling back. Each unfinished transaction is passed to the handler via a
+     * or by fully rolling back. All unfinished transactions are passed to the handler via a
      * single dedicated thread.
      */
     public DatabaseConfig recoveryHandler(RecoveryHandler handler) {
