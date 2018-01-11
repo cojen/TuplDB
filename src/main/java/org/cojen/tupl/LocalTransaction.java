@@ -32,17 +32,18 @@ final class LocalTransaction extends Locker implements Transaction {
     static final LocalTransaction BOGUS = new LocalTransaction();
 
     static final int
-        HAS_SCOPE  = 1, // When set, scope has been entered but not logged.
-        HAS_COMMIT = 2, // When set, transaction has committable changes.
-        HAS_TRASH  = 4; /* When set, fragmented values are in the trash and must be
-                           fully deleted after committing the top-level scope. */
+        HAS_SCOPE   = 1, // When set, scope has been entered but not logged.
+        HAS_COMMIT  = 2, // When set, transaction has committable changes.
+        HAS_TRASH   = 4, /* When set, fragmented values are in the trash and must be
+                            fully deleted after committing the top-level scope. */
+        HAS_PREPARE = 8; // When set, transaction is prepared for two-phase commit.
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
-    final RedoWriter mRedo;
+    RedoWriter mRedo;
     DurabilityMode mDurabilityMode;
 
-    private LockMode mLockMode;
+    LockMode mLockMode;
     long mLockTimeoutNanos;
     private int mHasState;
     private long mSavepoint;
@@ -82,6 +83,17 @@ final class LocalTransaction extends Locker implements Transaction {
         mHasState = hasState;
     }
 
+    // Constructor for BOGUS transaction.
+    private LocalTransaction() {
+        super(null);
+        mDatabase = null;
+        mContext = null;
+        mRedo = null;
+        mDurabilityMode = DurabilityMode.NO_REDO;
+        mLockMode = LockMode.UNSAFE;
+        mBorked = this;
+    }
+
     // Used by recovery.
     final void recoveredScope(long savepoint, int hasState) {
         ParentScope parentScope = super.scopeEnter();
@@ -99,15 +111,18 @@ final class LocalTransaction extends Locker implements Transaction {
         mUndoLog = undo;
     }
 
-    // Constructor for BOGUS transaction.
-    private LocalTransaction() {
-        super(null);
-        mDatabase = null;
-        mContext = null;
-        mRedo = null;
-        mDurabilityMode = DurabilityMode.NO_REDO;
-        mLockMode = LockMode.UNSAFE;
-        mBorked = this;
+    // Used by recovery, before passing transaction to a recovery handler.
+    final void recoverPrepared(RedoWriter redo, DurabilityMode durabilityMode,
+                               LockMode lockMode, long timeoutNanos)
+    {
+        // When recovered from the undo log only, the commit state won't be set. Set it
+        // explicitly now, in order for commit and rollback operations to actually work.
+        mHasState |= HAS_COMMIT;
+
+        mRedo = redo;
+        mLockMode = lockMode;
+        mDurabilityMode = durabilityMode;
+        mLockTimeoutNanos = timeoutNanos;
     }
 
     @Override
@@ -313,7 +328,7 @@ final class LocalTransaction extends Locker implements Transaction {
         throws IOException
     {
         if (mRedo == null) {
-            cursor.store(this, cursor.leafExclusive(), value);
+            cursor.storeNoRedo(this, value);
             commit();
             return;
         }
@@ -342,17 +357,7 @@ final class LocalTransaction extends Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    if (requireUndo) {
-                        final DurabilityMode original = mDurabilityMode;
-                        mDurabilityMode = DurabilityMode.NO_REDO;
-                        try {
-                            cursor.store(this, cursor.leafExclusive(), value);
-                        } finally {
-                            mDurabilityMode = original;
-                        }
-                    } else {
-                        cursor.store(LocalTransaction.BOGUS, cursor.leafExclusive(), value);
-                    }
+                    cursor.storeNoRedo(requireUndo ? this : LocalTransaction.BOGUS, value);
 
                     if ((hasState & HAS_SCOPE) == 0) {
                         mContext.redoEnter(mRedo, txnId);
@@ -428,13 +433,8 @@ final class LocalTransaction extends Locker implements Transaction {
                 mTxnId = 0;
             } else {
                 try {
-                    final DurabilityMode original = mDurabilityMode;
-                    mDurabilityMode = DurabilityMode.NO_REDO;
-                    try {
-                        cursor.store(this, cursor.leafExclusive(), value);
-                    } finally {
-                        mDurabilityMode = original;
-                    }
+                    // Always undo when inside a scope.
+                    cursor.storeNoRedo(this, value);
 
                     long cursorId = cursor.mCursorId;
                     if (cursorId == 0) {
@@ -583,7 +583,7 @@ final class LocalTransaction extends Locker implements Transaction {
 
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
-                // Use or assignment to promote HAS_TRASH state.
+                // Use 'or' assignment to keep HAS_TRASH and HAS_PREPARE state.
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
             }
@@ -801,12 +801,89 @@ final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
+    @Override
+    public final long getId() {
+        long txnId = mTxnId;
+
+        if (txnId == 0 && mRedo != null) {
+            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+            try {
+                txnId = assignTransactionId();
+            } finally {
+                shared.release();
+            }
+        }
+
+        return txnId < 0 ? 0 : txnId;
+    }
+
+    @Override
+    public final void prepare() throws IOException {
+        check();
+
+        if (mDatabase.mRecoveryHandler == null) {
+            throw new IllegalStateException("Transaction recovery handler is not installed");
+        }
+
+        if (mRedo == null || mDurabilityMode == DurabilityMode.NO_REDO) {
+            throw new IllegalStateException("Cannot prepare a no-redo transaction");
+        }
+
+        try {
+            if ((mHasState & HAS_PREPARE) == 0) {
+                pushUndoPrepare();
+            }
+
+            // Although it might seem like a good idea to not bother writing the redo message
+            // if the HAS_PREPARE flag is already set, writing it each time makes the prepare
+            // method also useful for performing checked flush operations.
+
+            long commitPos = mContext.redoPrepare(mRedo, txnId(), mDurabilityMode);
+            if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
+                mRedo.txnCommitSync(this, commitPos);
+            }
+        } catch (Throwable e) {
+            borked(e, true, true); // rollback = true, rethrow = true
+        }
+
+        mHasState |= HAS_PREPARE;
+    }
+
     /**
-     * @param resetAlways when false, only resets committed transactions and transactions with
-     * negative identifiers
+     * To be called during redo recovery.
+     */
+    final void prepareNoRedo() throws IOException {
+        check();
+
+        try {
+            if ((mHasState & HAS_PREPARE) == 0) {
+                pushUndoPrepare();
+                mHasState |= HAS_PREPARE;
+            }
+        } catch (Throwable e) {
+            borked(e, true, true); // rollback = true, rethrow = true
+        }
+    }
+
+    private void pushUndoPrepare() throws IOException {
+        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            undoLog().pushPrepare();
+        } finally {
+            shared.release();
+        }
+    }
+
+    /**
+     * Recovery cleanup always resets committed transactions, or those with negative
+     * identifiers. When the finish parameter is false, unfinished transactions aren't reset.
+     * When the finish parameter is true, all non-2PC transactions are reset.
+     *
      * @return true if was reset
      */
-    final boolean recoveryCleanup(boolean resetAlways) throws IOException {
+    final boolean recoveryCleanup(boolean finish) throws IOException {
+        finish = mTxnId < 0 | (finish & (mHasState & HAS_PREPARE) == 0);
+
         UndoLog undo = mUndoLog;
         if (undo != null) {
             switch (undo.peek(true)) {
@@ -818,23 +895,22 @@ final class LocalTransaction extends Locker implements Transaction {
                 // when a checkpoint completes in the middle of the transaction commit
                 // operation. Method truncates undo log as a side-effect.
                 undo.deleteGhosts();
-                resetAlways = true;
+                finish = true;
                 break;
 
             case UndoLog.OP_COMMIT_TRUNCATE:
                 // Like OP_COMMIT, but ghosts have already been deleted.
                 undo.truncate(false);
-                resetAlways = true;
+                finish = true;
                 break;
             }
         }
 
-        resetAlways |= (mTxnId < 0);
-        if (resetAlways) {
+        if (finish) {
             reset();
         }
 
-        return resetAlways;
+        return finish;
     }
 
     /**

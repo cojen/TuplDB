@@ -38,7 +38,7 @@ final class KeyOnlyCursor extends WrappedCursor<Cursor> {
     }
 
     @Override
-    public void setValueLength(long length) throws IOException {
+    public void valueLength(long length) throws IOException {
         if (length >= 0) {
             throw new ViewConstraintException();
         }

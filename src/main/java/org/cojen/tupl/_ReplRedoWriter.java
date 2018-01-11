@@ -96,9 +96,7 @@ class _ReplRedoWriter extends _RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (writer.confirm(commitPos)) {
-            context.confirmed(commitPos);
-        } else {
+        if (!writer.confirm(commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -109,9 +107,7 @@ class _ReplRedoWriter extends _RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (writer.confirm(commitPos)) {
-            txn.mContext.confirmed(commitPos, txn.txnId());
-        } else {
+        if (!writer.confirm(commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -185,7 +181,6 @@ class _ReplRedoWriter extends _RedoWriter {
 
         try {
             if (writer.confirm(commitPos)) {
-                pending.mContext.confirmed(commitPos, pending.mTxnId);
                 return true;
             }
         } catch (IOException e) {
@@ -358,7 +353,7 @@ class _ReplRedoWriter extends _RedoWriter {
                         mBufferTail = 0;
                     }
 
-                    // FIXME: If consumer is parked, attempt to do the write immediately.
+                    // TODO: If consumer is parked, attempt to do the write immediately.
                     // Still do the arraycopy, to support auto-tuning. Release the latch and
                     // then do the write. This creates a race condition with the consumer
                     // thread, and so something extra is needed.

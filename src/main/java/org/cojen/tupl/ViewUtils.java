@@ -286,6 +286,15 @@ class ViewUtils {
         }
     }
 
+    static Transaction enterScope(View view, Transaction txn) throws IOException {
+        if (txn == null) {
+            txn = view.newTransaction(null);
+        } else if (txn != Transaction.BOGUS) {
+            txn.enter();
+        }
+        return txn;
+    }
+
     static void commit(Cursor c, byte[] value) throws IOException {
         try {
             c.store(value);

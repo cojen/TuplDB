@@ -307,7 +307,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
             return LockResult.UNOWNED;
         }
         mValue = NOT_LOADED;
-        return transformCurrent(mSource.find(key), key, tkey);
+        return transformCurrent(mSource.find(key), tkey);
     }
 
     @Override
@@ -412,7 +412,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
             return LockResult.UNOWNED;
         }
         mValue = NOT_LOADED;
-        return transformCurrent(mSource.findNearby(key), key, tkey);
+        return transformCurrent(mSource.findNearby(key), tkey);
     }
 
     @Override
@@ -485,8 +485,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
             throw TransformedView.fail();
         }
         mValue = NOT_LOADED;
-        final Cursor c = mSource;
-        return transformCurrent(c.load(), c.key(), tkey);
+        return transformCurrent(mSource.load(), tkey);
     }
 
     @Override
@@ -541,7 +540,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
-    public void setValueLength(long length) throws IOException {
+    public void valueLength(long length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -578,7 +577,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     private LockFailureException transformCurrent(LockFailureException e) throws IOException {
         mValue = NOT_LOADED;
         try {
-            mKey = mTransformer.transformKey(mSource.key(), NOT_LOADED);
+            mKey = mTransformer.transformKey(mSource);
         } catch (Throwable e2) {
             reset();
             throw e2;
@@ -603,27 +602,18 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
             return LockResult.UNOWNED;
         }
 
-        byte[] value = c.value();
+        byte[] tkey = mTransformer.transformKey(c);
+        mKey = tkey;
 
-        if (value == null) {
-            byte[] tkey = mTransformer.transformKey(key, null);
-            mKey = tkey;
+        if (c.value() == null) {
             mValue = null;
             if (tkey != null) {
                 // Retain the position and lock when value doesn't exist.
                 return result;
             }
         } else {
-            if (value == NOT_LOADED && mTransformer.requireValue()) {
-                // Disabling autoload mode makes little sense when using a value
-                // transformer, because the value must be loaded anyhow.
-                c.load();
-                value = c.value();
-            }
-            byte[] tkey = mTransformer.transformKey(key, value);
-            mKey = tkey;
             if (tkey != null) {
-                byte[] tvalue = mTransformer.transformValue(value, key, tkey);
+                byte[] tvalue = mTransformer.transformValue(c, tkey);
                 if (tvalue != null) {
                     mValue = tvalue;
                     return result;
@@ -645,29 +635,16 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     /**
      * @param tkey mKey must have been set to this non-null key already
      */
-    private LockResult transformCurrent(LockResult result, final byte[] key, final byte[] tkey)
-        throws IOException
-    {
+    private LockResult transformCurrent(LockResult result, final byte[] tkey) throws IOException {
         final Cursor c = mSource;
-        final byte[] value = c.value();
 
-        if (value == null) {
+        if (c.value() == null) {
             // Retain the position and lock when value doesn't exist.
             mValue = null;
             return result;
         }
 
-        byte[] tvalue;
-
-        if (value != NOT_LOADED || !mTransformer.requireValue()) {
-            tvalue = mTransformer.transformValue(value, key, tkey);
-        } else {
-            // Disabling autoload mode makes little sense when using a value transformer,
-            // because the value must be loaded anyhow.
-            c.load();
-            tvalue = mTransformer.transformValue(c.value(), key, tkey);
-        }
-
+        byte[] tvalue = mTransformer.transformValue(c, tkey);
         mValue = tvalue;
 
         if (tvalue == null && result == LockResult.ACQUIRED) {

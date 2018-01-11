@@ -65,11 +65,27 @@ final class TransformedView implements View {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return ViewUtils.count(this, mTransformer.requireValue(), lowKey, highKey);
+        return ViewUtils.count(this, mTransformer.requireValue() == Boolean.TRUE, lowKey, highKey);
     }
 
     @Override
     public byte[] load(final Transaction txn, final byte[] tkey) throws IOException {
+        if (mTransformer.requireValue() == null) {
+            Cursor c = newCursor(txn);
+            try {
+                c.autoload(false);
+                c.find(tkey);
+                byte[] value = c.value();
+                if (value == Cursor.NOT_LOADED) {
+                    c.load();
+                    value = c.value();
+                }
+                return value;
+            } finally {
+                c.reset();
+            }
+        }
+
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
@@ -98,13 +114,26 @@ final class TransformedView implements View {
 
     @Override
     public boolean exists(final Transaction txn, final byte[] tkey) throws IOException {
+        final Boolean requireValue = mTransformer.requireValue();
+
+        if (requireValue == null) {
+            Cursor c = newCursor(txn);
+            try {
+                c.autoload(false);
+                c.find(tkey);
+                return c.value() != null;
+            } finally {
+                c.reset();
+            }
+        }
+
         final byte[] key = inverseTransformKey(tkey);
 
         if (key == null) {
             return false;
         }
 
-        if (!mTransformer.requireValue()) {
+        if (requireValue == Boolean.FALSE) {
             return mSource.exists(txn, key);
         }
 
@@ -421,6 +450,11 @@ final class TransformedView implements View {
     @Override
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();
+    }
+
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
     }
 
     private byte[] inverseTransformKey(final byte[] tkey) {

@@ -195,6 +195,17 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_TXN_PREPARE:
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnPrepare(txnId)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_ENTER:
                 try {
                     txnId = readTxnId(in);

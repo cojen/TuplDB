@@ -163,15 +163,38 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        // Reset and discard all transactions.
-        mTransactions.traverse(te -> {
-            runTask(te, new Worker.Task() {
-                public void run() throws IOException {
-                    te.mTxn.recoveryCleanup(true);
-                }
+        doReset();
+        return true;
+    }
+
+    /**
+     * @return remaining 2PC transactions, or null if none
+     */
+    private LHashTable.Obj<LocalTransaction> doReset() throws IOException {
+        // Reset and discard all non-2PC transactions.
+
+        final LHashTable.Obj<LocalTransaction> remaining;
+
+        if (mTransactions.size() == 0) {
+            remaining = null;
+        } else {
+            remaining = new LHashTable.Obj<>(16); 
+
+            mTransactions.traverse(te -> {
+                runTask(te, new Worker.Task() {
+                    public void run() throws IOException {
+                        LocalTransaction txn = te.mTxn;
+                        if (!txn.recoveryCleanup(true)) {
+                            synchronized (remaining) {
+                                remaining.insert(te.key).value = txn;
+                            }
+                        }
+                    }
+                });
+
+                return true;
             });
-            return true;
-        });
+        }
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
@@ -185,12 +208,16 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        // Although it might seem like a good time to clean out any lingering trash, concurrent
-        // transactions are still active and need the trash to rollback properly. Waiting for
-        // the worker group to finish isn't sufficient. Not all transactions are replicated.
-        //mDatabase.emptyAllFragmentedTrash(false);
+        if (remaining == null || remaining.size() == 0) {
+            return null;
+        }
 
-        return true;
+        remaining.traverse(entry -> {
+            mTransactions.insert(entry.key).mTxn = entry.value;
+            return false;
+        });
+
+        return remaining;
     }
 
     @Override
@@ -344,6 +371,19 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                         // Index will get fully deleted when database is re-opened.
                     }
                 }
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean txnPrepare(long txnId) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                te.mTxn.prepareNoRedo();
             }
         });
 
@@ -716,7 +756,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                 do {
                     try {
-                        tc.setValueLength(length);
+                        tc.valueLength(length);
                         break;
                     } catch (ClosedIndexException e) {
                         tc = reopenCursor(e, ce);
@@ -1212,6 +1252,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     private void decode() {
         final ReplRedoDecoder decoder = mDecoder;
+        LHashTable.Obj<LocalTransaction> remaining;
 
         try {
             while (!decoder.run(this));
@@ -1223,8 +1264,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 mWorkerGroup.join(false);
             }
 
-            // Rollback any lingering transactions.
-            reset();
+            // Rollback any lingering non-2PC transactions.
+            remaining = doReset();
         } catch (Throwable e) {
             fail(e);
             return;
@@ -1232,13 +1273,21 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             decoder.mDeactivated = true;
         }
 
+        RedoWriter redo;
+
         try {
-            mController.leaderNotify();
+            redo = mController.leaderNotify();
         } catch (UnmodifiableReplicaException e) {
             // Should already be receiving again due to this exception.
+            return;
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
             closeQuietly(mDatabase, e);
+            return;
+        }
+
+        if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
+            mDatabase.invokeRecoveryHandler(remaining, redo);
         }
     }
 

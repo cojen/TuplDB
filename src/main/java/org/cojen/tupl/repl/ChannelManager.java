@@ -63,7 +63,7 @@ final class ChannelManager {
       8:  Group token (long)
       16: Group id (long)
       24: Member id (long)
-      32: Connection type (int)  -- 0: control, 1: plain, etc. FIXME: use a bit to enable CRCs
+      32: Connection type (int)  -- 0: control, 1: plain, etc. TODO: use a bit to enable CRCs
       36: CRC32C (int)
 
       Command header structure: (little endian fields)
@@ -242,6 +242,10 @@ final class ChannelManager {
         mChannels.clear();
 
         return true;
+    }
+
+    synchronized boolean isStopped() {
+        return mServerSocket == null;
     }
 
     /**
@@ -789,7 +793,7 @@ final class ChannelManager {
                 while (true) {
                     long header = in.readLongLE();
 
-                    // FIXME: Process the read delta such that Channels can be ordered by
+                    // TODO: Process the read delta such that Channels can be ordered by
                     // number of outstanding bytes, in a PriorityQueue.
                     long readDelta = header >>> 32;
 
@@ -997,7 +1001,7 @@ final class ChannelManager {
                                       long prevTerm, long term, long index, byte[] data)
         {
             if (data.length > ((1 << 24) - (8 * 3))) {
-                // FIXME: break it up into several commands
+                // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
             }
 
@@ -1025,7 +1029,7 @@ final class ChannelManager {
                                  long highestIndex, long commitIndex, byte[] data)
         {
             if (data.length > ((1 << 24) - (8 * 5))) {
-                // FIXME: break it up into several commands
+                // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
             }
 

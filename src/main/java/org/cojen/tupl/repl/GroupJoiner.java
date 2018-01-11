@@ -38,19 +38,21 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import java.util.logging.Level;
 
 import org.cojen.tupl.io.Utils;
 
 /**
- * Used to join a replication group by connecting to a set of seed members. At least one needs
- * to respond, as the current group leader, or provide the leader address instead.
+ * Used to join/unjoin a replication group by connecting to a set of seed members. At least one
+ * needs to respond, as the current group leader, or provide the leader address instead.
  *
  * @author Brian S O'Neill
  */
 class GroupJoiner {
-    static final int OP_NOP = 0, OP_ERROR = 1, OP_ADDRESS = 2, OP_JOINED = 3;
+    static final int OP_NOP = 0, OP_ERROR = 1, OP_ADDRESS = 2, OP_JOINED = 3,
+        OP_UNJOIN_ADDRESS = 4, OP_UNJOIN_MEMBER = 5, OP_UNJOINED = 6;
 
     private final BiConsumer<Level, String> mEventListener;
     private final File mFile;
@@ -64,6 +66,7 @@ class GroupJoiner {
 
     // Assigned if join succeeds.
     GroupFile mGroupFile;
+    boolean mReplySuccess;
 
     // Log index and term to start receiving from.
     long mPrevTerm;
@@ -92,17 +95,60 @@ class GroupJoiner {
     }
 
     /**
+     * Constructor which can be used to unjoin.
+     */
+    GroupJoiner(long groupToken) {
+        this(null, null, groupToken, null, null);
+    }
+
+    /**
      * @throws IllegalStateException if already called
      */
     void join(Set<SocketAddress> seeds, int timeoutMillis) throws IOException {
         try {
-            doJoin(seeds, timeoutMillis);
+            doJoin(seeds, timeoutMillis, out -> {
+                out.write(OP_ADDRESS);
+                out.encodeStr(mLocalAddress.toString());
+            });
         } finally {
             close();
         }
     }
 
-    private void doJoin(Set<SocketAddress> seeds, long timeoutMillis) throws IOException {
+    /**
+     * @throws IllegalStateException if already called
+     */
+    void unjoin(Set<SocketAddress> seeds, int timeoutMillis, long memberId) throws IOException {
+        try {
+            doJoin(seeds, timeoutMillis, out -> {
+                out.write(OP_UNJOIN_MEMBER);
+                out.encodeLongLE(memberId);
+            });
+        } finally {
+            close();
+        }
+    }
+
+    /**
+     * @throws IllegalStateException if already called
+     */
+    void unjoin(Set<SocketAddress> seeds, int timeoutMillis, SocketAddress memberAddr)
+        throws IOException
+    {
+        try {
+            doJoin(seeds, timeoutMillis, out -> {
+                out.write(OP_UNJOIN_ADDRESS);
+                out.encodeStr(memberAddr.toString());
+            });
+        } finally {
+            close();
+        }
+    }
+
+    private void doJoin(Set<SocketAddress> seeds, long timeoutMillis,
+                        Consumer<EncodingOutputStream> cout)
+        throws IOException
+    {
         if (seeds == null) {
             throw new IllegalArgumentException();
         }
@@ -117,8 +163,8 @@ class GroupJoiner {
 
         EncodingOutputStream out = new EncodingOutputStream();
         out.write(ChannelManager.newConnectHeader(mGroupToken, 0, 0, ChannelManager.TYPE_JOIN));
-        out.write(OP_ADDRESS);
-        out.encodeStr(mLocalAddress.toString());
+
+        cout.accept(out);
 
         final byte[] command = out.toByteArray();
 
@@ -182,7 +228,7 @@ class GroupJoiner {
 
             keys.clear();
 
-            if (mGroupFile != null) {
+            if (mReplySuccess) {
                 return;
             }
 
@@ -272,6 +318,9 @@ class GroupJoiner {
                     cin.drainTo(out);
                 }
                 mGroupFile = GroupFile.open(mEventListener, mFile, mLocalAddress, false);
+                mReplySuccess = true;
+            } else if (op == OP_UNJOINED) {
+                mReplySuccess = true;
             } else if (op == OP_ERROR) {
                 throw new JoinException(ErrorCodes.toString(cin.readByte()));
             }

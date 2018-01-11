@@ -257,4 +257,36 @@ public class TempIndexTest {
         txn.exit();
         assertNull(temp.load(Transaction.BOGUS, key));
     }
+
+    @Test
+    public void cursorValue() throws Exception {
+        // Verifies that cursor value is updated after a successful store.
+
+        Index temp = mDb.newTemporaryIndex();
+
+        final byte[] key = "k1".getBytes();
+        final byte[] v1 = "v1".getBytes();
+
+        {
+            Cursor c = temp.newCursor(null);
+            c.find(key);
+            c.store(v1);
+            assertEquals(v1, c.value());
+            c.store(null);
+            assertNull(c.value());
+            c.reset();
+        }
+
+        {
+            Transaction txn = mDb.newTransaction();
+            Cursor c = temp.newCursor(txn);
+            c.find(key);
+            c.store(v1);
+            assertEquals(v1, c.value());
+            c.store(null);
+            assertNull(c.value());
+            c.reset();
+            txn.reset();
+        }
+    }
 }

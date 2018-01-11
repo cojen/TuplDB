@@ -89,7 +89,8 @@ public interface DirectReplicator extends Replicator {
      * @param index index to start reading from, known to have been committed
      * @param follow pass true to obtain an active reader, even if local member is the leader
      * @return reader or possibly null when follow is false
-     * @throws IllegalStateException if index is lower than the start index
+     * @throws IllegalStateException if index is lower than the start index, or if replicator
+     * is closed
      */
     Reader newReader(long index, boolean follow);
 

@@ -104,6 +104,12 @@ class RedoPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPrepare(long txnId) {
+        mOut.println("txnPrepare: txnId=" + txnId);
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mOut.println("txnEnter: txnId=" + txnId);
         return true;
