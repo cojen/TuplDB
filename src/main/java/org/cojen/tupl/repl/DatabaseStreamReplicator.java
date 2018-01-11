@@ -385,6 +385,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     private final class DbWriter implements ReplicationManager.Writer {
         final StreamReplicator.Writer mWriter;
 
+        private boolean mEndConfirmed;
+
         DbWriter(StreamReplicator.Writer writer) {
             mWriter = writer;
         }
@@ -439,6 +441,13 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 throw new ConfirmationInterruptedException();
             }
             if (pos >= 0) {
+                synchronized (this) {
+                    if (mEndConfirmed) {
+                        // Don't call toReplica again.
+                        return pos;
+                    }
+                    mEndConfirmed = true;
+                }
                 toReplica(this, pos);
                 return pos;
             }

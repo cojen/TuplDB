@@ -135,32 +135,21 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
         _ReplRedoWriter redo = mCheckpointRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
-        _LocalDatabase db = redo.mEngine.mDatabase;
 
-        if (writer != null) {
-            if (writer.confirm(mCheckpointPos)) {
-                // Update confirmed state, to prevent false undo if leadership is lost.
-                db.anyTransactionContext().confirmed(mCheckpointPos, mCheckpointTxnId);
-            } else {
-                // Leadership lost. Use a known confirmed position for the next checkpoint. If
-                // restored from the checkpoint, any in-progress transactions will re-apply
-                // earlier operations. Transactional operations are expected to be idempotent,
-                // but the transactions will roll back regardless.
-
-                // FIXME: If becomes a replica, and the confirmed just keeps going higher,
-                // isn't it possible that mCheckpointPos goes higher than is expected? Yes, see
-                // context.confirmed in the leaderNotify method. This requires a flip back to
-                // leader mode, however. Capture this state earlier to be safe?
-
-                long[] result = db.highestTransactionContext().copyConfirmed();
-
-                mCheckpointPos = result[0];
-                mCheckpointTxnId = result[1];
-                // Force next checkpoint to behave like a replica
-                mCheckpointRedoWriter = this;
-
-                throw nowUnmodifiable(writer);
+        if (writer != null && !writer.confirm(mCheckpointPos)) {
+            // Leadership lost, so checkpoint no higher than the position that the next leader
+            // starts from. The transaction id can be zero, because the next leader always
+            // writes a reset operation to the redo log.
+            long endPos = writer.confirmEnd();
+            if (endPos < mCheckpointPos) {
+                mCheckpointPos = endPos;
+                mCheckpointTxnId = 0;
             }
+
+            // Force next checkpoint to behave like a replica
+            mCheckpointRedoWriter = this;
+
+            throw nowUnmodifiable(writer);
         }
 
         // Make sure that durable replication data is caught up to the local database.
@@ -213,13 +202,15 @@ final class _ReplRedoController extends _ReplRedoWriter {
 
     /**
      * Called by _ReplRedoEngine when local instance has become the leader.
+     *
+     * @return new leader redo writer, or null if failed
      */
-    void leaderNotify() throws UnmodifiableReplicaException, IOException {
+    _ReplRedoWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
         acquireExclusive();
         try {
             if (mTxnRedoWriter.mReplWriter != null) {
                 // Must be in replica mode.
-                return;
+                return null;
             }
 
             ReplicationManager.Writer writer = mManager.writer();
@@ -227,7 +218,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
             if (writer == null) {
                 // Panic.
                 mEngine.fail(new IllegalStateException("No writer for the leader"));
-                return;
+                return null;
             }
 
             _ReplRedoWriter redo = new _ReplRedoWriter(mEngine, writer);
@@ -239,11 +230,6 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 // If these initial redo ops fail because leadership is immediately lost, the
                 // unmodifiable method will be called and needs to see the redo writer.
                 mTxnRedoWriter = redo;
-
-                // If replication system makes us the leader at this position, it's confirmed.
-                // Note that transaction id is 0, because the reset operation also sets the
-                // last transaction id to 0. Delta encoding will continue to work correctly.
-                context.confirmed(redo.mLastCommitPos = writer.position(), 0);
 
                 if (!writer.leaderNotify(() -> switchToReplica(writer))) {
                     throw nowUnmodifiable(writer);
@@ -258,6 +244,8 @@ final class _ReplRedoController extends _ReplRedoWriter {
                 // Don't trust timestamp alone to help detect divergent logs. Use NO_SYNC mode
                 // to flush everything out, but no need to wait for confirmation.
                 context.doRedoNopRandom(redo, DurabilityMode.NO_SYNC);
+
+                return redo;
             } finally {
                 context.releaseRedoLatch();
             }

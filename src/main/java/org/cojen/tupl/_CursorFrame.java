@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 class _CursorFrame extends AtomicReference<_CursorFrame> {
     // Under contention a thread will initially spin up to SPIN_LIMIT before yielding, after
     // which it more aggressively spins up to 2 * SPIN_LIMIT before additional yields.
-    private static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 0;
+    static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 0;
 
     private static final _CursorFrame REBIND_FRAME = new _CursorFrame();
 

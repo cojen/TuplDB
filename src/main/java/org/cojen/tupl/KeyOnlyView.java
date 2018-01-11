@@ -226,4 +226,9 @@ final class KeyOnlyView implements View {
     public boolean isUnmodifiable() {
         return mSource.isUnmodifiable();
     }
+
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
+    }
 }

@@ -100,6 +100,12 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPrepare(long txnId) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnPrepare", txnId);
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnEnter", txnId);
         return true;
@@ -243,7 +249,16 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String keyStr(byte[] key) {
-        return "0x" + Utils.toHex(key) + " (" + new String(key, StandardCharsets.UTF_8) + ')';
+        char[] chars = new String(key, StandardCharsets.UTF_8).toCharArray();
+
+        for (int i=0; i<chars.length; i++) {
+            if (Character.isISOControl(chars[i])) {
+                chars[i] = '\ufffd';
+            }
+        }
+
+        return new StringBuilder().append("0x").append(Utils.toHex(key)).append(" (")
+            .append(chars).append(')').toString();
     }
 
     private static String valueStr(byte[] value) {

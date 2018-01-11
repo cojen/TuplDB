@@ -90,6 +90,9 @@ final class _UndoLog implements _DatabaseAccess {
     // Indicates that transaction has been committed and log is partially truncated.
     static final byte OP_COMMIT_TRUNCATE = (byte) 5;
 
+    // Indicates that transaction has been prepared for two-phase commit.
+    static final byte OP_PREPARE = (byte) 6;
+
     // Same as OP_UNINSERT, except uses OP_ACTIVE_KEY. (ValueAccessor op)
     static final byte OP_UNCREATE = (byte) 12;
 
@@ -338,6 +341,13 @@ final class _UndoLog implements _DatabaseAccess {
      */
     void pushCommit() throws IOException {
         doPush(OP_COMMIT);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    void pushPrepare() throws IOException {
+        doPush(OP_PREPARE);
     }
 
     /**
@@ -837,6 +847,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_SCOPE_COMMIT:
             case OP_COMMIT:
             case OP_COMMIT_TRUNCATE:
+            case OP_PREPARE:
             case OP_UNCREATE:
             case OP_UNINSERT:
             case OP_UNUPDATE:
@@ -916,6 +927,7 @@ final class _UndoLog implements _DatabaseAccess {
         case OP_SCOPE_COMMIT:
         case OP_COMMIT:
         case OP_COMMIT_TRUNCATE:
+        case OP_PREPARE:
             // Only needed by recovery.
             break;
 
@@ -1044,7 +1056,7 @@ final class _UndoLog implements _DatabaseAccess {
             long length = decodeUnsignedVarLong(entry, new IntegerRef.Value());
             while ((activeIndex = findIndex(activeIndex)) != null) {
                 try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
-                    c.setValueLength(length);
+                    c.valueLength(length);
                     break;
                 } catch (ClosedIndexException e) {
                     // User closed the shared index reference, so re-open it.
@@ -1424,6 +1436,9 @@ final class _UndoLog implements _DatabaseAccess {
         boolean acquireLocks = true;
         int depth = 1;
 
+        // Blindly assume trash must be deleted. No harm if none exists.
+        int hasState = _LocalTransaction.HAS_TRASH;
+
         loop: while (mLength > 0) {
             byte[] entry = pop(opRef, false);
             if (entry == null) {
@@ -1455,6 +1470,10 @@ final class _UndoLog implements _DatabaseAccess {
                     mNodeTopPos = 0;
                 }
                 break loop;
+
+            case OP_PREPARE:
+                hasState |= _LocalTransaction.HAS_PREPARE;
+                break;
 
             case OP_SCOPE_ENTER:
                 depth++;
@@ -1531,9 +1550,7 @@ final class _UndoLog implements _DatabaseAccess {
         }
 
         _LocalTransaction txn = new _LocalTransaction
-            (mDatabase, mTxnId, lockMode, timeoutNanos,
-             // Blindly assume trash must be deleted. No harm if none exists.
-             _LocalTransaction.HAS_TRASH);
+            (mDatabase, mTxnId, lockMode, timeoutNanos, hasState);
 
         scope = scopes.pollFirst();
         if (acquireLocks) {
@@ -1574,6 +1591,10 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_COMMIT_TRUNCATE:
             opStr = "COMMIT_TRUNCATE";
+            break;
+
+        case OP_PREPARE:
+            opStr = "PREPARE";
             break;
 
         case OP_UNCREATE:

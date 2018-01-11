@@ -23,8 +23,8 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class UnmodifiableViewException extends DatabaseException {
-    private static final long serialVersionUID = 1L;
+public class UnmodifiableViewException extends ViewConstraintException {
+    private static final long serialVersionUID = 2L;
 
     public UnmodifiableViewException() {
     }

@@ -48,6 +48,10 @@ public enum EventType {
     RECOVERY_REDO_LOG_CORRUPTION(Category.RECOVERY, Level.WARNING),
     /** Signals that transactions not expliticly committed or rolled back are being processed. */
     RECOVERY_PROCESS_REMAINING(Category.RECOVERY, Level.INFO),
+    /** Prepared two-phase commit transactions remain, but no handler is installed. */
+    RECOVERY_NO_HANDLER(Category.RECOVERY, Level.SEVERE),
+    /** An uncaught exception from a recovery handler. */
+    RECOVERY_HANDLER_UNCAUGHT(Category.RECOVERY, Level.SEVERE),
     /** Signals that large value fragments in the trash are being deleted. */
     RECOVERY_DELETE_FRAGMENTS(Category.RECOVERY, Level.INFO),
     /** Signals the end of database recovery, reporting the duration. */

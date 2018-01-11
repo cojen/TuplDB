@@ -213,6 +213,11 @@ final class ReverseView implements View {
         return mSource.isUnmodifiable();
     }
 
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
+    }
+
     static byte[] appendZero(byte[] key) {
         return key == null ? null : ViewUtils.appendZero(key);
     }

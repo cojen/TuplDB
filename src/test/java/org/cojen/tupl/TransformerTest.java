@@ -333,8 +333,8 @@ public class TransformerTest {
 
     static class KeyFlipper implements Transformer {
         @Override
-        public boolean requireValue() {
-            return false;
+        public Boolean requireValue() {
+            return Boolean.FALSE;
         }
 
         @Override
@@ -348,8 +348,8 @@ public class TransformerTest {
         }
 
         @Override
-        public byte[] transformKey(byte[] key, byte[] value) {
-            return flip(key);
+        public byte[] transformKey(Cursor cursor) {
+            return flip(cursor.key());
         }
 
         @Override

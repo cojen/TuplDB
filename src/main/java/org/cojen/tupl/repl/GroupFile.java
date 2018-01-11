@@ -49,6 +49,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.ObjLongConsumer;
 
 import java.util.logging.Level;
@@ -88,7 +89,7 @@ final class GroupFile extends Latch {
     private long mLocalMemberId;
     private Role mLocalMemberRole;
 
-    private Map<byte[], ObjLongConsumer<InputStream>> mJoinConsumers;
+    private Map<byte[], Object> mProposeConsumers;
 
     /**
      * @return null if file doesn't exist and create is false
@@ -566,44 +567,66 @@ final class GroupFile extends Latch {
 
         if (dest != null) {
             acquireExclusive();
-            Map<byte[], ObjLongConsumer<InputStream>> consumers = mJoinConsumers;
-            try {
-                if (consumers == null) {
-                    consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
-                    mJoinConsumers = consumers;
-                }
-            } finally {
-                releaseExclusive();
-            }
-
-            consumers.put(message, dest);
+            addProposeConsumer(message, dest);
         }
 
         return message;
     }
 
     /**
-     * Discard the file consumer associated with a proposed join message. This action doesn't
-     * cancel the join proposal itself -- the member might still be added to the group.
+     * Caller must acquire exclusive latch, which is always released by this method.
+     */
+    private void addProposeConsumer(byte[] message, Object consumer) {
+        Map<byte[], Object> consumers = mProposeConsumers;
+        try {
+            if (consumers == null) {
+                consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
+                mProposeConsumers = consumers;
+            }
+        } finally {
+            releaseExclusive();
+        }
+
+        consumers.put(message, consumer);
+    }
+
+    /**
+     * Discard the consumer associated with a proposal message. This action doesn't cancel the
+     * proposal itself -- the member might still be added or removed.
      *
-     * @param message exact message as returned by proposeJoin
+     * @param message exact message as returned by the propose method
      * @return false if no consumer was found
      */
-    public boolean discardJoinConsumer(byte[] message) {
+    public boolean discardProposeConsumer(byte[] message) {
         acquireExclusive();
 
         boolean removed = false;
 
-        if (mJoinConsumers != null && mJoinConsumers.remove(message) != null) {
+        if (mProposeConsumers != null && mProposeConsumers.remove(message) != null) {
             removed = true;
-            if (mJoinConsumers.isEmpty()) {
-                mJoinConsumers = null;
+            if (mProposeConsumers.isEmpty()) {
+                mProposeConsumers = null;
             }
         }
 
         releaseExclusive();
 
         return removed;
+    }
+
+    /**
+     * Caller must hold exclusive latch.
+     */
+    @SuppressWarnings("unchecked")
+    private <C> C removeProposeConsumer(byte[] message) {
+        C consumer = null;
+        if (mProposeConsumers != null) {
+            consumer = (C) mProposeConsumers.remove(message);
+            if (mProposeConsumers.isEmpty()) {
+                mProposeConsumers = null;
+            }
+        }
+        return consumer;
     }
 
     /**
@@ -617,17 +640,12 @@ final class GroupFile extends Latch {
      * @return peer if joined, else null
      */
     public Peer applyJoin(long index, byte[] message) throws IOException {
-        ObjLongConsumer<InputStream> consumer = null;
+        ObjLongConsumer<InputStream> consumer;
         Peer peer = null;
 
         acquireExclusive();
         try {
-            if (mJoinConsumers != null) {
-                consumer = mJoinConsumers.remove(message);
-                if (mJoinConsumers.isEmpty()) {
-                    mJoinConsumers = null;
-                }
-            }
+            consumer = removeProposeConsumer(message);
 
             DecodingInputStream din = new DecodingInputStream(message);
             din.read(); // skip opcode
@@ -932,23 +950,37 @@ final class GroupFile extends Latch {
      *
      * @param op opcode used to identify the removePeer control message
      * @return control message; first byte is the opcode
+     * @param result optional callback which is registered and invoked when message is accepted
      * @throws IllegalStateException if removing the local member
      */
-    public byte[] proposeRemovePeer(byte op, long memberId) {
+    public byte[] proposeRemovePeer(byte op, long memberId, Consumer<Boolean> result) {
+        byte[] message;
+
         acquireShared();
         try {
             checkRemovePeer(memberId);
 
-            byte[] message = new byte[1 + 8 + 8];
+            message = new byte[1 + 8 + 8];
 
             message[0] = op;
             Utils.encodeLongLE(message, 1, mVersion);
             Utils.encodeLongLE(message, 1 + 8, memberId);
-
-            return message;
-        } finally {
+        } catch (Throwable e) {
             releaseShared();
+            throw e;
         }
+
+        if (result == null) {
+            releaseShared();
+        } else {
+            if (!tryUpgrade()) {
+                releaseShared();
+                acquireExclusive();
+            }
+            addProposeConsumer(message, result);
+        }
+
+        return message;
     }
 
     /**
@@ -960,7 +992,23 @@ final class GroupFile extends Latch {
     public boolean applyRemovePeer(byte[] message) throws IOException {
         long version = Utils.decodeLongLE(message, 1);
         long memberId = Utils.decodeLongLE(message, 1 + 8);
-        return removePeer(version, memberId);
+
+        Consumer<Boolean> consumer;
+        boolean result;
+
+        acquireExclusive();
+        try {
+            consumer = removeProposeConsumer(message);
+            result = doRemovePeer(version, memberId);
+        } finally {
+            releaseExclusive();
+        }
+
+        if (consumer != null) {
+            consumer.accept(result);
+        }
+
+        return result;
     }
 
     /**

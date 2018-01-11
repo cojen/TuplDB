@@ -35,6 +35,7 @@ import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
@@ -67,6 +68,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
     FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
+    transient RecoveryHandler mRecoveryHandler;
     long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
@@ -391,6 +393,20 @@ public class DatabaseConfig implements Cloneable, Serializable {
      */
     public DatabaseConfig maxReplicaThreads(int num) {
         mMaxReplicaThreads = num;
+        return this;
+    }
+
+    /**
+     * Install a transaction recovery handler, which receives unfinished transactions which
+     * were {@link Transaction#prepare prepared} for two-phase commit. When replication is
+     * configured, the handler is invoked when the database has become the replication leader.
+     * Otherwise, the handler is invoked when the database is opened. The handler is
+     * responsible for finishing the transactions, by completing the necessary commit actions,
+     * or by fully rolling back. All unfinished transactions are passed to the handler via a
+     * single dedicated thread.
+     */
+    public DatabaseConfig recoveryHandler(RecoveryHandler handler) {
+        mRecoveryHandler = handler;
         return this;
     }
 

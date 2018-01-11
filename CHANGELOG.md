@@ -1,9 +1,12 @@
 Changelog
 =========
 
-v1.4.0
+v1.4.1
 ------
+* Added support two-phase commit, using the new transaction prepare and getId methods.
 
+v1.4.0.1 (2018-01-01)
+--------
 * Added a RAFT-based replication system.
 * Added a ValueAccessor interface which supports very large values (>2Gib), random access,
   appending, truncation, zero-filling, and streams.
@@ -29,6 +32,8 @@ v1.4.0
 * Incomplete database restoration is now detected, causing an IncompleteRestoreException to be
   thrown when opening the database.
 * Unpositioned cursors now throw a specialized exception, still extending IllegalStateException.
+* The index exchange/insert/replace/update operations are now always atomic, even when using
+  the BOGUS transaction.
 
 v1.3.12.3 (2017-05-20)
 ---------

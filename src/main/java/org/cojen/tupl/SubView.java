@@ -209,6 +209,11 @@ abstract class SubView implements View {
         return mSource.isUnmodifiable();
     }
 
+    @Override
+    public boolean isModifyAtomic() {
+        return mSource.isModifyAtomic();
+    }
+
     abstract boolean inRange(byte[] key);
 
     static void prefixCheck(byte[] prefix, int trim) {

@@ -116,6 +116,7 @@ public class TestAll {
             UnionViewTest.class,
             ScannerTest.class,
             UpdaterTest.class,
+            TxnPrepareTest.class,
         };
 
         String[] names = new String[classes.length];

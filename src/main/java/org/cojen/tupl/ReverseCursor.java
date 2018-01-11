@@ -41,8 +41,8 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
-    public void setValueLength(long length) throws IOException {
-        mSource.setValueLength(length);
+    public void valueLength(long length) throws IOException {
+        mSource.valueLength(length);
     }
 
     @Override

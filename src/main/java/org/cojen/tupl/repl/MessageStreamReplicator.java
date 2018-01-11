@@ -217,19 +217,24 @@ final class MessageStreamReplicator implements MessageReplicator {
             return;
         }
 
-        writer.uponCommit(index, ix -> {
-            if (ix >= 0) {
-                // If the application is also reading, then the message might be observed
-                // twice. This is harmless because control messages are versioned (by the
-                // GroupFile class), and are therefore idempotent.
-                try {
-                    mRepl.controlMessageReceived(ix, message);
-                } catch (Throwable e) {
-                    Utils.closeQuietly(this);
-                    Utils.uncaught(e);
-                }
+        long commitIndex;
+        try {
+            commitIndex = writer.waitForCommit(index, 1_000_000_000L); // 1 second timeout
+        } catch (InterruptedIOException e) {
+            return;
+        }
+
+        if (commitIndex >= 0) {
+            // If the application is also reading, then the message might be observed
+            // twice. This is harmless because control messages are versioned (by the
+            // GroupFile class), and are therefore idempotent.
+            try {
+                mRepl.controlMessageReceived(index, message);
+            } catch (Throwable e) {
+                Utils.closeQuietly(this);
+                Utils.uncaught(e);
             }
-        });
+        }
     }
 
     synchronized void closed(MsgWriter writer) {
