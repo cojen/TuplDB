@@ -1133,6 +1133,103 @@ class _Tree implements View, Index {
         }
     }
 
+    private class Primer {
+        private final DataInput mDin;
+        private final int mTaskLimit;
+
+        private int mTaskCount;
+        private boolean mFinished;
+        private IOException mEx;
+
+        Primer(DataInput din) {
+            mDin = din;
+            // TODO: Limit should be based on the concurrency level of the I/O system.
+            // TODO: Cache primer order should be scrambled, to improve cuncurrent priming.
+            mTaskLimit = Runtime.getRuntime().availableProcessors() * 8;
+        }
+
+        void run() throws IOException {
+            synchronized (this) {
+                mTaskCount++;
+            }
+
+            prime();
+
+            // Wait for other task threads to finish.
+            synchronized (this) {
+                while (true) {
+                    if (mEx != null) {
+                        throw mEx;
+                    }
+                    if (mTaskCount <= 0) {
+                        break;
+                    }
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                }
+            }
+        }
+
+        void prime() {
+            try {
+                _TreeCursor c = newCursor(Transaction.BOGUS);
+
+                try {
+                    c.mKeyOnly = true;
+
+                    while (true) {
+                        byte[] key;
+
+                        synchronized (this) {
+                            if (mFinished) {
+                                return;
+                            }
+
+                            int len = mDin.readUnsignedShort();
+
+                            if (len == 0xffff) {
+                                mFinished = true;
+                                return;
+                            }
+
+                            key = new byte[len];
+                            mDin.readFully(key);
+
+                            if (mTaskCount < mTaskLimit) spawn: {
+                                Thread task;
+                                try {
+                                    task = new Thread(() -> prime());
+                                } catch (Throwable e) {
+                                    break spawn;
+                                }
+                                mTaskCount++;
+                                task.start();
+                            }
+                        }
+
+                        c.findNearby(key);
+                    }
+                } catch (IOException e) {
+                    synchronized (this) {
+                        if (mEx == null) {
+                            mEx = e;
+                        }
+                    }
+                } finally {
+                    c.reset();
+                }
+            } finally {
+                synchronized (this) {
+                    mTaskCount--;
+                    notifyAll();
+                }
+            }
+        }
+    }
+
     final boolean allowStoredCounts() {
         // TODO: make configurable
         return true;
@@ -1343,102 +1440,5 @@ class _Tree implements View, Index {
      */
     final boolean markDirty(_Node node) throws IOException {
         return mDatabase.markDirty(this, node);
-    }
-
-    private class Primer {
-        private final DataInput mDin;
-        private final int mTaskLimit;
-
-        private int mTaskCount;
-        private boolean mFinished;
-        private IOException mEx;
-
-        Primer(DataInput din) {
-            mDin = din;
-            // TODO: Limit should be based on the concurrency level of the I/O system.
-            // TODO: Cache primer order should be scrambled, to improve cuncurrent priming.
-            mTaskLimit = Runtime.getRuntime().availableProcessors() * 8;
-        }
-
-        void run() throws IOException {
-            synchronized (this) {
-                mTaskCount++;
-            }
-
-            prime();
-
-            // Wait for other task threads to finish.
-            synchronized (this) {
-                while (true) {
-                    if (mEx != null) {
-                        throw mEx;
-                    }
-                    if (mTaskCount <= 0) {
-                        break;
-                    }
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        throw new InterruptedIOException();
-                    }
-                }
-            }
-        }
-
-        void prime() {
-            try {
-                _TreeCursor c = newCursor(Transaction.BOGUS);
-
-                try {
-                    c.mKeyOnly = true;
-
-                    while (true) {
-                        byte[] key;
-
-                        synchronized (this) {
-                            if (mFinished) {
-                                return;
-                            }
-
-                            int len = mDin.readUnsignedShort();
-
-                            if (len == 0xffff) {
-                                mFinished = true;
-                                return;
-                            }
-
-                            key = new byte[len];
-                            mDin.readFully(key);
-
-                            if (mTaskCount < mTaskLimit) spawn: {
-                                Thread task;
-                                try {
-                                    task = new Thread(() -> prime());
-                                } catch (Throwable e) {
-                                    break spawn;
-                                }
-                                mTaskCount++;
-                                task.start();
-                            }
-                        }
-
-                        c.findNearby(key);
-                    }
-                } catch (IOException e) {
-                    synchronized (this) {
-                        if (mEx == null) {
-                            mEx = e;
-                        }
-                    }
-                } finally {
-                    c.reset();
-                }
-            } finally {
-                synchronized (this) {
-                    mTaskCount--;
-                    notifyAll();
-                }
-            }
-        }
     }
 }
