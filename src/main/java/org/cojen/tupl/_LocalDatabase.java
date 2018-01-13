@@ -3519,6 +3519,161 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * With parent held shared, returns child with shared latch held, releasing the parent
+     * latch. If an exception is thrown, parent and child latches are always released.
+     *
+     * @return child node, possibly split
+     */
+    final _Node latchToChild(_Node parent, int childPos) throws IOException {
+        return latchChild(parent, childPos, _Node.OPTION_PARENT_RELEASE_SHARED);
+    }
+
+    /**
+     * With parent held shared, returns child with shared latch held, retaining the parent
+     * latch. If an exception is thrown, parent and child latches are always released.
+     *
+     * @return child node, possibly split
+     */
+    final _Node latchChildRetainParent(_Node parent, int childPos) throws IOException {
+        return latchChild(parent, childPos, 0);
+    }
+
+    /**
+     * With parent held shared, returns child with shared latch held. If an exception is
+     * thrown, parent and child latches are always released.
+     *
+     * @param option _Node.OPTION_PARENT_RELEASE_SHARED or 0 to retain latch
+     * @return child node, possibly split
+     */
+    final _Node latchChild(_Node parent, int childPos, int option) throws IOException {
+        long childId = parent.retrieveChildRefId(childPos);
+        _Node childNode = nodeMapGetShared(childId);
+
+        tryFind: if (childNode != null) {
+            checkChild: {
+                evictChild: if (childNode.mCachedState != _Node.CACHED_CLEAN
+                                && parent.mCachedState == _Node.CACHED_CLEAN
+                                // Must be a valid parent -- not a stub from _Node.rootDelete.
+                                && parent.mId > 1)
+                {
+                    // Parent was evicted before child. Evict child now and mark as clean. If
+                    // this isn't done, the notSplitDirty method will short-circuit and not
+                    // ensure that all the parent nodes are dirty. The splitting and merging
+                    // code assumes that all nodes referenced by the cursor are dirty. The
+                    // short-circuit check could be skipped, but then every change would
+                    // require a full latch up the tree. Another option is to remark the parent
+                    // as dirty, but this is dodgy and also requires a full latch up the tree.
+                    // Parent-before-child eviction is infrequent, and so simple is better.
+
+                    if (!childNode.tryUpgrade()) {
+                        childNode.releaseShared();
+                        childNode = nodeMapGetExclusive(childId);
+                        if (childNode == null) {
+                            break tryFind;
+                        }
+                        if (childNode.mCachedState == _Node.CACHED_CLEAN) {
+                            // Child state which was checked earlier changed when its latch was
+                            // released, and now it shoudn't be evicted.
+                            childNode.downgrade();
+                            break evictChild;
+                        }
+                    }
+
+                    if (option == _Node.OPTION_PARENT_RELEASE_SHARED) {
+                        parent.releaseShared();
+                    }
+
+                    try {
+                        childNode.write(mPageDb);
+                    } catch (Throwable e) {
+                        childNode.releaseExclusive();
+                        if (option == 0) {
+                            // Release due to exception.
+                            parent.releaseShared();
+                        }
+                        throw e;
+                    }
+
+                    childNode.mCachedState = _Node.CACHED_CLEAN;
+                    childNode.downgrade();
+                    break checkChild;
+                }
+
+                if (option == _Node.OPTION_PARENT_RELEASE_SHARED) {
+                    parent.releaseShared();
+                }
+            }
+
+            childNode.used(ThreadLocalRandom.current());
+            return childNode;
+        }
+
+        return parent.loadChild(this, childId, option);
+    }
+
+    /**
+     * Variant of latchChildRetainParent which uses exclusive latches. With parent held
+     * exclusively, returns child with exclusive latch held, retaining the parent latch. If an
+     * exception is thrown, parent and child latches are always released.
+     *
+     * @param required pass false to allow null to be returned when child isn't immediately
+     * latchable; passing false still permits the child to be loaded if necessary
+     * @return child node, possibly split
+     */
+    final _Node latchChildRetainParentEx(_Node parent, int childPos, boolean required)
+        throws IOException
+    {
+        long childId = parent.retrieveChildRefId(childPos);
+
+        _Node childNode;
+        while (true) {
+            childNode = nodeMapGet(childId);
+
+            if (childNode != null) {
+                if (required) {
+                    childNode.acquireExclusive();
+                } else if (!childNode.tryAcquireExclusive()) {
+                    return null;
+                }
+                if (childId == childNode.mId) {
+                    break;
+                }
+                childNode.releaseExclusive();
+                continue;
+            }
+
+            return parent.loadChild(this, childId, _Node.OPTION_CHILD_ACQUIRE_EXCLUSIVE);
+        }
+
+        if (childNode.mCachedState != _Node.CACHED_CLEAN
+            && parent.mCachedState == _Node.CACHED_CLEAN
+            // Must be a valid parent -- not a stub from _Node.rootDelete.
+            && parent.mId > 1)
+        {
+            // Parent was evicted before child. Evict child now and mark as clean. If
+            // this isn't done, the notSplitDirty method will short-circuit and not
+            // ensure that all the parent nodes are dirty. The splitting and merging
+            // code assumes that all nodes referenced by the cursor are dirty. The
+            // short-circuit check could be skipped, but then every change would
+            // require a full latch up the tree. Another option is to remark the parent
+            // as dirty, but this is dodgy and also requires a full latch up the tree.
+            // Parent-before-child eviction is infrequent, and so simple is better.
+            try {
+                childNode.write(mPageDb);
+            } catch (Throwable e) {
+                childNode.releaseExclusive();
+                // Release due to exception.
+                parent.releaseExclusive();
+                throw e;
+            }
+            childNode.mCachedState = _Node.CACHED_CLEAN;
+        }
+
+        childNode.used(ThreadLocalRandom.current());
+        return childNode;
+    }
+
+    /**
      * Returns a new or recycled _Node instance, latched exclusively, with an undefined id and a
      * clean state.
      *

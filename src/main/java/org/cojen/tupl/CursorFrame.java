@@ -373,14 +373,7 @@ class CursorFrame extends AtomicReference<CursorFrame> {
     }
 
     /**
-     * Returns the parent frame. No latch is required.
-     */
-    final CursorFrame peek() {
-        return mParentFrame;
-    }
-
-    /**
-     * Pop this, the leaf frame, returning the parent frame. No latch is required.
+     * Pop this frame, returning the parent frame. No latch is required.
      */
     final CursorFrame pop() {
         unbind(null);
@@ -392,7 +385,7 @@ class CursorFrame extends AtomicReference<CursorFrame> {
     }
 
     /**
-     * Pop this, the leaf frame, returning void. No latch is required.
+     * Pop this frame, returning void. No latch is required.
      */
     final void popv() {
         unbind(null);
