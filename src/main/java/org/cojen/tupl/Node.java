@@ -2257,7 +2257,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
     }
 
-    private void cleanupFragments(Throwable cause, byte[] fragmented) {
+    void cleanupFragments(Throwable cause, byte[] fragmented) {
         if (fragmented != null) {
             /*P*/ byte[] copy = p_transfer(fragmented, false);
             try {
@@ -4228,7 +4228,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * Calculate encoded key length, including header. Returns -1 if key is too large and must
      * be fragmented.
      */
-    private static int calculateAllowedKeyLength(LocalDatabase db, byte[] key) {
+    static int calculateAllowedKeyLength(LocalDatabase db, byte[] key) {
         int len = key.length;
         if (((len - 1) & ~(SMALL_KEY_LIMIT - 1)) == 0) {
             // Always safe because minimum node size is 512 bytes.
@@ -4527,7 +4527,7 @@ final class Node extends Clutch implements DatabaseAccess {
             try {
                 split = newSplitLeft(newNode);
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, split, midKey(okey, 0));
+                split.setKey(tree, midKey(okey, 0));
             } catch (Throwable e) {
                 cleanupSplit(e, newNode, split);
                 throw e;
@@ -4565,7 +4565,7 @@ final class Node extends Clutch implements DatabaseAccess {
             try {
                 split = newSplitRight(newNode);
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, split, midKey(pos - searchVecStart - 2, okey));
+                split.setKey(tree, midKey(pos - searchVecStart - 2, okey));
             } catch (Throwable e) {
                 cleanupSplit(e, newNode, split);
                 throw e;
@@ -4705,7 +4705,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, mSplit, newNode.midKey(newNode.highestKeyPos(), this, 0));
+                mSplit.setKey(tree, newNode.midKey(newNode.highestKeyPos(), this, 0));
 
                 newNode.rightSegTail(destLoc - 1);
                 newNode.releaseExclusive();
@@ -4851,7 +4851,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 // Choose an appropriate middle key for suffix compression.
-                setSplitKey(tree, mSplit, this.midKey(this.highestKeyPos(), newNode, 0));
+                mSplit.setKey(tree, this.midKey(this.highestKeyPos(), newNode, 0));
 
                 newNode.leftSegTail(destLoc);
                 newNode.releaseExclusive();
@@ -5165,7 +5165,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitLeft(newNode);
-                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
+                                split.setKey(tree, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;
@@ -5270,7 +5270,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitRight(newNode);
-                                setSplitKey(tree, split, retrieveKeyAtLoc(page, entryLoc));
+                                split.setKey(tree, retrieveKeyAtLoc(page, entryLoc));
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;
@@ -5350,18 +5350,6 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Write pointer to key entry.
         p_shortPutLE(newPage, newKeyLoc, result.mEntryLoc);
-    }
-
-    private void setSplitKey(Tree tree, Split split, byte[] fullKey) throws IOException {
-        byte[] actualKey = fullKey;
-
-        LocalDatabase db = tree.mDatabase;
-        if (calculateAllowedKeyLength(db, fullKey) < 0) {
-            // Key must be fragmented.
-            actualKey = db.fragmentKey(fullKey);
-        }
-
-        split.setKey(fullKey, actualKey);
     }
 
     /**

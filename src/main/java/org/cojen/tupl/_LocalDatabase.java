@@ -2607,6 +2607,29 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
+     * Removes all references to a temporary tree which was grafted to another one. Caller must
+     * hold shared commit lock.
+     */
+    void removeGraftedTempTree(_Tree tree) throws IOException {
+        try {
+            mOpenTreesLatch.acquireExclusive();
+            try {
+                _TreeRef ref = mOpenTreesById.removeValue(tree.mId);
+                if (ref != null && ref.get() == tree) {
+                    ref.clear();
+                }
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
+            }
+            byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+            mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
+            mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
+        } catch (Throwable e) {
+            throw closeOnFailure(this, e);
+        }
+    }
+
+    /**
      * @param treeId pass zero if unknown or not applicable
      * @param rootId pass zero to create
      * @return unlatched and unevictable root node
