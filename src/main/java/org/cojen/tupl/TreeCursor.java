@@ -42,7 +42,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     LocalTransaction mTxn;
 
     // Top stack frame for cursor, always a leaf except during cleanup.
-    private CursorFrame mLeaf;
+    CursorFrame mLeaf;
 
     byte[] mKey;
     byte[] mValue;

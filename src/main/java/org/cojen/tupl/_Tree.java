@@ -1002,6 +1002,221 @@ class _Tree implements View, Index {
         return newCursor(Transaction.BOGUS).deleteAll();
     }
 
+    /**
+     * Graft two non-empty temporary trees together into a single surviving tree, which is
+     * returned. The victim tree is deleted. All keys of this tree must be less than all keys
+     * of the other tree, which isn't verified or concurrently enforced. No cursors or threads
+     * can be active in either tree when grafting them together.
+     */
+    static _Tree graftTempTree(_Tree lowTree, _Tree highTree) throws IOException {
+        // Note: Supporting non-temporary trees would require special redo and replication
+        // code. Also, all active cursors must be reset and the root latch would need to be
+        // held the whole time.
+
+        _TreeCursor lowCursor, highCursor;
+
+        lowCursor = lowTree.newCursor(Transaction.BOGUS);
+        try {
+            lowCursor.mKeyOnly = true;
+            lowCursor.last();
+
+            highCursor = highTree.newCursor(Transaction.BOGUS);
+            try {
+                highCursor.mKeyOnly = true;
+                highCursor.first();
+
+                CommitLock.Shared shared = lowTree.mDatabase.commitLock().acquireShared();
+                try {
+                    return doGraftTempTree(lowTree, highTree, lowCursor, highCursor);
+                } finally {
+                    shared.release();
+                }
+            } finally {
+                highCursor.reset();
+            }
+        } finally {
+            lowCursor.reset();
+        }
+    }
+
+    private static _Tree doGraftTempTree(_Tree lowTree, _Tree highTree,
+                                        _TreeCursor lowCursor, _TreeCursor highCursor)
+        throws IOException
+    {
+
+        // Dirty the edge nodes and find the mid key.
+
+        byte[] midKey;
+        _CursorFrame lowFrame, highFrame;
+        {
+            lowFrame = lowCursor.leafExclusive();
+            _Node lowNode = lowCursor.notSplitDirty(lowFrame);
+            try {
+                highFrame = highCursor.leafExclusive();
+                _Node highNode = highCursor.notSplitDirty(highFrame);
+                try {
+                    midKey = lowNode.midKey(lowNode.highestLeafPos(), highNode, 0);
+                } finally {
+                    highNode.releaseExclusive();
+                }
+            } finally {
+                lowNode.releaseExclusive();
+            }
+        }
+
+        // Find the level to perform the graft, which is at the victim root node.
+
+        _Tree survivor, victim;
+        _CursorFrame survivorFrame;
+        _Node victimNode;
+
+        while (true) {
+            _CursorFrame lowParent = lowFrame.mParentFrame;
+            _CursorFrame highParent = highFrame.mParentFrame;
+
+            if (highParent == null) {
+                survivor = lowTree;
+                survivorFrame = lowFrame;
+                victim = highTree;
+                victimNode = highFrame.acquireExclusive();
+                break;
+            } else if (lowParent == null) {
+                survivor = highTree;
+                survivorFrame = highFrame;
+                victim = lowTree;
+                victimNode = lowFrame.acquireExclusive();
+                break;
+            }
+
+            lowFrame = lowParent;
+            highFrame = highParent;
+        }
+
+        _Node survivorNode;
+        try {
+            _Split split = new _Split(lowTree == survivor, victimNode);
+            split.setKey(survivor, midKey);
+            survivorNode = survivorFrame.acquireExclusive();
+            survivorNode.mSplit = split;
+        } finally {
+            victimNode.releaseExclusive();
+        }
+
+        try {
+            // Clear the extremity bits, before any exception from finishSplit.
+            clearExtremityBits(lowCursor.mLeaf, survivorFrame, ~_Node.HIGH_EXTREMITY);
+            clearExtremityBits(highCursor.mLeaf, survivorFrame, ~_Node.LOW_EXTREMITY);
+
+            survivor.finishSplit(survivorFrame, survivorNode).releaseExclusive();
+        } catch (Throwable e) {
+            survivorNode.cleanupFragments(e, survivorNode.mSplit.fragmentedKey());
+            throw e;
+        }
+
+        victim.mDatabase.removeGraftedTempTree(victim);
+
+        _Node rootNode = survivor.mRoot;
+        rootNode.acquireExclusive();
+
+        if (rootNode.numKeys() == 1 && rootNode.isInternal()) {
+            // Try to remove a level, which was likely created by the split.
+
+            _LocalDatabase db = survivor.mDatabase;
+            _Node leftNode = db.latchChildRetainParentEx(rootNode, 0, true);
+            _Node rightNode;
+            try {
+                rightNode = db.latchChildRetainParentEx(rootNode, 2, true);
+            } catch (Throwable e) {
+                leftNode.releaseExclusive();
+                throw e;
+            }
+
+            tryMerge: {
+                if (leftNode.isLeaf()) {
+                    // See _TreeCursor.mergeLeaf method.
+
+                    int leftAvail = leftNode.availableLeafBytes();
+                    int rightAvail = rightNode.availableLeafBytes();
+
+                    int remaining = leftAvail
+                        + rightAvail - survivor.pageSize() + _Node.TN_HEADER_SIZE;
+
+                    if (remaining < 0) {
+                        // No room to merge.
+                        break tryMerge;
+                    }
+
+                    try {
+                        _Node.moveLeafToLeftAndDelete(survivor, leftNode, rightNode);
+                    } catch (Throwable e) {
+                        leftNode.releaseExclusive();
+                        rootNode.releaseExclusive();
+                        throw e;
+                    }
+                } else {
+                    // See _TreeCursor.mergeInternal method.
+
+                    long rootPage = rootNode.mPage;
+                    int rootEntryLoc = p_ushortGetLE(rootPage, rootNode.searchVecStart());
+                    int rootEntryLen = _Node.keyLengthAtLoc(rootPage, rootEntryLoc);
+
+                    int leftAvail = leftNode.availableInternalBytes();
+                    int rightAvail = rightNode.availableInternalBytes();
+
+                    int remaining = leftAvail - rootEntryLen
+                        + rightAvail - survivor.pageSize() + (_Node.TN_HEADER_SIZE - 2);
+
+                    if (remaining < 0) {
+                        // No room to merge.
+                        break tryMerge;
+                    }
+
+                    try {
+                        _Node.moveInternalToLeftAndDelete
+                            (survivor, leftNode, rightNode, rootPage, rootEntryLoc, rootEntryLen);
+                    } catch (Throwable e) {
+                        leftNode.releaseExclusive();
+                        rootNode.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                // Success!
+                rootNode.deleteRightChildRef(2);
+                survivor.rootDelete(leftNode);
+                return survivor;
+            }
+
+            rightNode.releaseExclusive();
+            leftNode.releaseExclusive();
+        }
+
+        rootNode.releaseExclusive();
+
+        return survivor;
+    }
+
+    /**
+     * Called by the graft method.
+     *
+     * @param frame leaf frame
+     * @param stop latched frame to stop at after being cleared (if found)
+     * @param mask ~HIGH_EXTREMITY or ~LOW_EXTREMITY
+     */
+    private static void clearExtremityBits(_CursorFrame frame, _CursorFrame stop, int mask) {
+        do {
+            if (frame == stop) {
+                _Node node = frame.mNode;
+                node.type((byte) (node.type() & mask));
+                break;
+            }
+            _Node node = frame.acquireExclusive();
+            node.type((byte) (node.type() & mask));
+            node.releaseExclusive();
+            frame = frame.mParentFrame;
+        } while (frame != null);
+    }
+
     @FunctionalInterface
     static interface NodeVisitor {
         void visit(_Node node) throws IOException;

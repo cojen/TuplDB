@@ -34,19 +34,39 @@ final class _Split {
     // reason, _Split is always constructed with a copied key.
 
     private byte[] mFullKey;
-    private byte[] mActualKey;
+    private byte[] mActualKey; // might be fragmented
 
     _Split(boolean splitRight, _Node sibling) {
         mSplitRight = splitRight;
         mSibling = sibling;
     }
 
+    /**
+     * Set full and actual key.
+     */
     final void setKey(_Split split) {
         mFullKey = split.mFullKey;
         mActualKey = split.mActualKey;
     }
 
-    final void setKey(byte[] fullKey, byte[] actualKey) {
+    /**
+     * Set full and actual key.
+     */
+    final void setKey(_Tree tree, byte[] fullKey) throws IOException {
+        setKey(tree.mDatabase, fullKey);
+    }
+
+    /**
+     * Set full and actual key.
+     */
+    final void setKey(_LocalDatabase db, byte[] fullKey) throws IOException {
+        byte[] actualKey = fullKey;
+
+        if (_Node.calculateAllowedKeyLength(db, fullKey) < 0) {
+            // Key must be fragmented.
+            actualKey = db.fragmentKey(fullKey);
+        }
+
         mFullKey = fullKey;
         mActualKey = actualKey;
     }
