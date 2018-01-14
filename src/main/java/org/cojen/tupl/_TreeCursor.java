@@ -4217,6 +4217,134 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     /**
+     * _Split leaf to an empty right node. Intended for preparing an empty tree for use by
+     * _TreeMerger. Caller must hold shared commit lock.
+     */
+    final void splitLeafRight(byte[] splitKey) throws IOException {
+        try {
+            final _CursorFrame leaf = mLeaf;
+            _Node node = leaf.acquireExclusive();
+            node = notSplitDirty(leaf);
+            try {
+                node.splitLeafRight(mTree, splitKey);
+                node = mTree.finishSplit(leaf, node);
+            } finally {
+                node.releaseExclusive();
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
+    /**
+     * Non-transactionally moves the first entry from the source into the tree, as the highest
+     * overall. No other cursors can be active in the target subtree, and no check is performed
+     * to verify that the entry is the highest and unique. The garbage field of the source node
+     * is untouched.
+     *
+     * Caller must hold shared commit lock and exclusive node latch.
+     */
+    final void appendTransfer(_Node source) throws IOException {
+        try {
+            final _CursorFrame tleaf = mLeaf;
+            _Node tnode = tleaf.acquireExclusive();
+            tnode = notSplitDirty(tleaf);
+
+            try {
+                final long spage = source.mPage;
+                final int sloc = p_ushortGetLE(spage, source.searchVecStart());
+                final int encodedLen = _Node.leafEntryLengthAtLoc(spage, sloc);
+
+                final int tpos = tleaf.mNodePos;
+                // Pass a null frame to disable rebalancing. It's not useful here, and it
+                // interferes with the neighboring subtrees.
+                final int tloc = tnode.createLeafEntry(null, mTree, tpos, encodedLen);
+
+                if (tloc < 0) {
+                    tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen, tpos);
+                    tnode = mTree.finishSplit(tleaf, tnode);
+                } else {
+                    p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                }
+
+                // Prepare for next append.
+                tleaf.mNodePos += 2;
+            } finally {
+                tnode.releaseExclusive();
+            }
+
+            source.searchVecStart(source.searchVecStart() + 2);
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        }
+    }
+
+    /**
+     * Non-transactionally moves the first entry from the source into the tree, as the highest
+     * overall. No other cursors can be active in the target subtree, and no check is performed
+     * to verify that the entry is the highest and unique. This source is positioned at the
+     * next entry as a side effect, and nodes are deleted only when empty.
+     */
+    final void appendTransfer(_TreeCursor source) throws IOException {
+        final CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
+        try {
+            final _CursorFrame tleaf = mLeaf;
+            _Node tnode = tleaf.acquireExclusive();
+            tnode = notSplitDirty(tleaf);
+
+            _CursorFrame sleaf = source.mLeaf;
+            _Node snode = sleaf.acquireExclusive();
+
+            try {
+                snode = source.notSplitDirty(sleaf);
+                final int spos = sleaf.mNodePos;
+
+                try {
+                    final long spage = snode.mPage;
+                    final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
+                    final int encodedLen = _Node.leafEntryLengthAtLoc(spage, sloc);
+
+                    final int tpos = tleaf.mNodePos;
+                    // Pass a null frame to disable rebalancing. It's not useful here, and it
+                    // interferes with the neighboring subtrees.
+                    final int tloc = tnode.createLeafEntry(null, mTree, tpos, encodedLen);
+
+                    if (tloc < 0) {
+                        tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen, tpos);
+                        tnode = mTree.finishSplit(tleaf, tnode);
+                    } else {
+                        p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
+                    }
+
+                    // Prepare for next append.
+                    tleaf.mNodePos += 2;
+
+                    snode.finishDeleteLeafEntry(spos, encodedLen);
+                    snode.postDelete(spos, null);
+                } catch (Throwable e) {
+                    snode.releaseExclusive();
+                    throw e;
+                }
+            } finally {
+                tnode.releaseExclusive();
+            }
+
+            if (snode.hasKeys()) {
+                snode.downgrade();
+            } else {
+                source.mergeLeaf(sleaf, snode);
+                sleaf = source.leafSharedNotSplit();
+            }
+
+            source.next(_LocalTransaction.BOGUS, sleaf);
+        } catch (Throwable e) {
+            throw handleException(e, false);
+        } finally {
+            shared.release();
+        }
+    }
+
+    /**
      * @param txn non-null
      */
     private void doUnregister(_LocalTransaction txn, long cursorId) {

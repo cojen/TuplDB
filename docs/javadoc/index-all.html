@@ -115,6 +115,10 @@
 <dd>
 <div class="block">Adds stats into a new object.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Sorter.html#add-byte:A-byte:A-">add(byte[], byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
+<dd>
+<div class="block">Add an entry into the sorter.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/ReplicatorConfig.html#addSeed-java.lang.String-">addSeed(String)</a></span> - Method in class org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
@@ -1268,6 +1272,10 @@
 <div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
  the given key is in close proximity to the current one.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Sorter.html#finish--">finish()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
+<dd>
+<div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Combiner.html#first--">first()</a></span> - Static method in interface org.cojen.tupl.<a href="org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
 <div class="block">Returns a Combiner that chooses the first value and discards the second value.</div>
@@ -2108,6 +2116,11 @@
 <dd>
 <div class="block">Returns a new scanner over this view.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#newSorter-java.util.concurrent.Executor-">newSorter(Executor)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Returns a new Sorter instance, which uses the given executor for running any parallel
+ tasks.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#newStreamCipher--">newStreamCipher()</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/javase/9/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
@@ -2648,6 +2661,10 @@
 <dd>
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Sorter.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
+<dd>
+<div class="block">Discards all the entries and frees up space in the database.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Transaction.html#reset--">reset()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications.</div>
@@ -2845,6 +2862,10 @@
 <dd>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member.</div>
+</dd>
+<dt><a href="org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Sorter</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Utility for sorting and filling up new indexes.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/WrappedCursor.html#source">source</a></span> - Variable in class org.cojen.tupl.<a href="org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></dt>
 <dd>&nbsp;</dd>

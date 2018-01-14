@@ -123,6 +123,35 @@ class _Tree implements View, Index {
         return new _TreeCursor(this, txn);
     }
 
+    /**
+     * Prepares an empty tree for use by _TreeMerger by creating a root node which is split by
+     * the given partition keys, pointing to empty leaf nodes. The number of leaf nodes is one
+     * more than the number of partitions.
+     *
+     * @param partitions ordered split keys
+     */
+    void prepareForMerge(byte[][] partitions) throws IOException {
+        _TreeCursor cursor = new _TreeCursor(this, Transaction.BOGUS);
+        try {
+            // This will bind the cursor to the first leaf, at position 0, which doesn't really
+            // exist. Because of how the _Split.rebindFrame method works, the binding always
+            // moves to the new right node.
+            cursor.firstAny();
+
+            CommitLock commitLock = mDatabase.commitLock();
+            for (byte[] splitKey : partitions) {
+                CommitLock.Shared shared = commitLock.acquireShared();
+                try {
+                    cursor.splitLeafRight(splitKey);
+                } finally {
+                    shared.release();
+                }
+            }
+        } finally {
+            cursor.reset();
+        }
+    }
+
     @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mDatabase.newTransaction(durabilityMode);
