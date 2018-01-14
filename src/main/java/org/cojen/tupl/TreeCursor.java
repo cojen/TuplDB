@@ -248,8 +248,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     /**
      * Non-transactionally moves the cursor to the first leaf node, which might be empty or
-     * full of ghosts. Leaf frame remains latched when method returns normally. Key and value
-     * are not loaded.
+     * full of ghosts. Key and value are not loaded.
      */
     final void firstAny() throws IOException {
         reset();
