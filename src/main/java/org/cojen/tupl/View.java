@@ -754,10 +754,13 @@ public interface View {
     }
 
     /**
-     * Returns a view which represents the <i>set union</i> of this view and a second one. A
-     * union eliminates duplicate keys, by relying on a combiner to decide how to deal with
-     * them. If the combiner chooses to {@link Combiner#discard discard} duplicate keys, then
-     * the returned view represents the <i>symmetric set difference</i> instead.
+     * Returns a view which represents the <a
+     * href="https://en.wikipedia.org/wiki/Union_(set_theory)"><cite>set union</cite></a> of
+     * this view and a second one. A union eliminates duplicate keys, by relying on a combiner
+     * to decide how to deal with them. If the combiner chooses to {@link Combiner#discard
+     * discard} duplicate keys, then the returned view represents the <a
+     * href="https://en.wikipedia.org/wiki/Symmetric_difference"><cite>symmetric set
+     * difference</cite></a> instead.
      *
      * <p>Storing entries in the union is permitted, if the combiner supports {@link
      * Combiner#separate separation}. The separator must supply at least one non-null value, or
@@ -778,9 +781,10 @@ public interface View {
     }
 
     /**
-     * Returns a view which represents the <i>set intersection</i> of this view and a second
-     * one. An intersection eliminates duplicate keys, by relying on a combiner to decide how
-     * to deal with them.
+     * Returns a view which represents the <a
+     * href="https://en.wikipedia.org/wiki/Intersection_(set_theory)"><cite>set
+     * intersection</cite></a> of this view and a second one. An intersection eliminates
+     * duplicate keys, by relying on a combiner to decide how to deal with them.
      *
      * <p>Storing entries in the intersection is permitted, if the combiner supports {@link
      * Combiner#separate separation}. The separator must supply two non-null values, or else a
@@ -801,9 +805,10 @@ public interface View {
     }
 
     /**
-     * Returns a view which represents the <i>set difference</i> of this view and a second
-     * one. A difference eliminates duplicate keys, by relying on a combiner to decide how to
-     * deal with them.
+     * Returns a view which represents the <a
+     * href="https://en.wikipedia.org/wiki/Complement_(set_theory)#Relative_complement"><cite>set
+     * difference</cite></a> of this view and a second one. A difference eliminates duplicate
+     * keys, by relying on a combiner to decide how to deal with them.
      *
      * <p>Storing entries in the difference is permitted, if the combiner supports {@link
      * Combiner#separate separation}.  The separator must supply a non-null first value, or
