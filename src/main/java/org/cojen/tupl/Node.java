@@ -4520,7 +4520,7 @@ final class Node extends Clutch implements DatabaseAccess {
         Split split = null;
         try {
             split = newSplitRight(newNode);
-            setSplitKey(tree, split, splitKey);
+            split.setKey(tree, splitKey);
         } catch (Throwable e) {
             cleanupSplit(e, newNode, split);
             throw e;
@@ -4571,7 +4571,7 @@ final class Node extends Clutch implements DatabaseAccess {
         try {
             split = newSplitRight(newNode);
             // Choose an appropriate middle key for suffix compression.
-            setSplitKey(tree, split, midKey(highestLeafPos(), snode, spos));
+            split.setKey(tree, midKey(highestLeafPos(), snode, spos));
         } catch (Throwable e) {
             cleanupSplit(e, newNode, split);
             throw e;
