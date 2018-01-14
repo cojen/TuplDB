@@ -356,8 +356,30 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     void asTrimmedRoot() {
-        type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
+        asEmptyLeaf(LOW_EXTREMITY | HIGH_EXTREMITY);
+    }
+
+    void asEmptyLeaf(int extremity) {
+        type((byte) (TYPE_TN_LEAF | extremity));
         clearEntries();
+    }
+
+    /**
+     * Prepares the node for appending entries out-of-order, and then sorting them.
+     *
+     * @see appendToSortLeaf
+     */
+    void asSortLeaf() {
+        type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
+        garbage(0);
+        leftSegTail(TN_HEADER_SIZE);
+        int pageSize = pageSize(mPage);
+        rightSegTail(pageSize - 1);
+        // Position search vector on the left side, but appendToSortLeaf will move it to the
+        // right. It's not safe to position an empty search vector on the right side, because
+        // the inclusive start position would wrap around for the largest page size.
+        searchVecStart(TN_HEADER_SIZE);
+        searchVecEnd(TN_HEADER_SIZE - 2); // inclusive
     }
 
     /**
@@ -1030,7 +1052,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     /**
      * Set the search vector start pointer.
      */
-    private void searchVecStart(int start) {
+    void searchVecStart(int start) {
         /*P*/ // [
         // mSearchVecStart = start;
         /*P*/ // |
@@ -4477,6 +4499,103 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     /**
+     * _Split leaf to an empty right node. Intended for preparing an empty tree for use by
+     * _TreeMerger.
+     */
+    void splitLeafRight(_Tree tree, byte[] splitKey) throws IOException {
+        if (mSplit != null) {
+            throw new AssertionError("Node is already split");
+        }
+
+        if (mPage == p_closedTreePage()) {
+            // _Node is a closed tree root.
+            throw new ClosedIndexException();
+        }
+
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+        tree.mDatabase.nodeMapPut(newNode);
+
+        newNode.clearEntries();
+
+        _Split split = null;
+        try {
+            split = newSplitRight(newNode);
+            setSplitKey(tree, split, splitKey);
+        } catch (Throwable e) {
+            cleanupSplit(e, newNode, split);
+            throw e;
+        }
+
+        mSplit = split;
+
+        newNode.releaseExclusive();
+    }
+
+    /**
+     * _Split leaf for ascending order, and copy an entry from another page. The source entry
+     * must be ordered higher than all the entries of this target leaf node.
+     *
+     * @param snode source node to copy entry from
+     * @param spos source position to copy entry from
+     * @param encodedLen length of new entry to allocate
+     * @param pos normalized search vector position of entry to insert
+     */
+    void splitLeafAscendingAndCopyEntry(_Tree tree, _Node snode, int spos, int encodedLen, int pos)
+        throws IOException
+    {
+        // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
+
+        if (mSplit != null) {
+            throw new AssertionError("Node is already split");
+        }
+
+        long page = mPage;
+
+        if (page == p_closedTreePage()) {
+            // _Node is a closed tree root.
+            throw new ClosedIndexException();
+        }
+
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+        tree.mDatabase.nodeMapPut(newNode);
+
+        long newPage = newNode.mPage;
+
+        /*P*/ // [
+        // newNode.garbage(0);
+        /*P*/ // |
+        p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
+        /*P*/ // ]
+
+        _Split split = null;
+        try {
+            split = newSplitRight(newNode);
+            // Choose an appropriate middle key for suffix compression.
+            setSplitKey(tree, split, midKey(highestLeafPos(), snode, spos));
+        } catch (Throwable e) {
+            cleanupSplit(e, newNode, split);
+            throw e;
+        }
+
+        mSplit = split;
+
+        // Position search vector at extreme right, allowing new entries to be placed in a
+        // natural ascending order.
+        newNode.rightSegTail(pageSize(newPage) - 1);
+        int newSearchVecStart = pageSize(newPage) - 2;
+        newNode.searchVecStart(newSearchVecStart);
+        newNode.searchVecEnd(newSearchVecStart);
+
+        final long spage = snode.mPage;
+        final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
+        p_copy(spage, sloc, newPage, TN_HEADER_SIZE, encodedLen);
+        p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
+
+        newNode.leftSegTail(TN_HEADER_SIZE + encodedLen);
+        newNode.releaseExclusive();
+    }
+
+    /**
      * @param okey original key
      * @param akey key to actually store
      * @param vfrag 0 or ENTRY_FRAGMENTED
@@ -5484,6 +5603,227 @@ final class _Node extends Clutch implements _DatabaseAccess {
         newNode.type((byte) (type() & ~LOW_EXTREMITY));
         type((byte) (type() & ~HIGH_EXTREMITY));
         return split;
+    }
+
+    @FunctionalInterface
+    static interface Supplier {
+        /**
+         * @param current full node
+         * @return next node, properly initialized
+         */
+        _Node next(_Node current) throws IOException;
+    }
+
+    /**
+     * Appends an entry to a node, in no particular order. _Node must have been originally
+     * initialized with the asSortLeaf method. Call sortLeaf to sort the entries by key and
+     * delete any duplicates. The duplicates added last are kept.
+     *
+     * <p>If this node is full, the given supplier is called. It must supply a node which was
+     * properly initialized for receiving appended entries.
+     *
+     * @param node node to append to
+     * @param okey original key
+     * @return given node, or the next node from the supplier
+     */
+    static _Node appendToSortLeaf(_Node node, _LocalDatabase db,
+                                 byte[] okey, byte[] value, Supplier supplier)
+        throws IOException
+    {
+        byte[] akey = okey;
+        int encodedKeyLen = calculateAllowedKeyLength(db, okey);
+
+        if (encodedKeyLen < 0) {
+            // Key must be fragmented.
+            akey = db.fragmentKey(okey);
+            encodedKeyLen = 2 + akey.length;
+        }
+
+        try {
+            int encodedLen = encodedKeyLen + calculateLeafValueLength(value);
+
+            int vfrag;
+            if (encodedLen <= db.mMaxEntrySize) {
+                vfrag = 0;
+            } else {
+                value = db.fragment(value, value.length,
+                                    db.mMaxFragmentedEntrySize - encodedKeyLen);
+                if (value == null) {
+                    throw new AssertionError();
+                }
+                encodedLen = encodedKeyLen + calculateFragmentedValueLength(value);
+                vfrag = ENTRY_FRAGMENTED;
+            }
+
+            try {
+                while (true) {
+                    long page = node.mPage;
+                    int tail = node.leftSegTail();
+
+                    int start;
+                    if (tail == TN_HEADER_SIZE) {
+                        // Freshly initialized node.
+                        start = node.pageSize(page) - 2;
+                        node.searchVecEnd(start);
+                    } else {
+                        start = node.searchVecStart() - 2;
+                        if (encodedLen > (start - tail)) {
+                            // Entry doesn't fit, so get another node.
+                            node = supplier.next(node);
+                            continue;
+                        }
+                    }
+
+                    node.copyToLeafEntry(okey, akey, vfrag, value, tail);
+                    node.leftSegTail(tail + encodedLen);
+
+                    p_shortPutLE(page, start, tail);
+                    node.searchVecStart(start);
+                    return node;
+                }
+            } catch (Throwable e) {
+                if (vfrag == ENTRY_FRAGMENTED) {
+                    node.cleanupFragments(e, value);
+                }
+                throw e;
+            }
+        } catch (Throwable e) {
+            if (okey != akey) {
+                node.cleanupFragments(e, akey);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Sorts all the entries in a leaf node by key, and deletes any duplicates. The duplicates
+     * at the highest node locations are kept.
+     */
+    void sortLeaf() throws IOException {
+        final int len = searchVecEnd() + 2 - searchVecStart();
+        if (len <= 2) { // two-based length; actual length is half
+            return;
+        }
+
+        // First heapify, highest at the root.
+
+        final int halfPos = (len >>> 1) & ~1;
+        for (int pos = halfPos; (pos -= 2) >= 0; ) {
+            siftDownLeaf(pos, len, halfPos);
+        }
+
+        // Now finish the sort, reversing the heap order.
+
+        final long page = mPage;
+        final int start = searchVecStart();
+
+        int lastHighLoc = -1;
+        int vecPos = start + len;
+        int pos = len - 2;
+        do {
+            int highLoc = p_ushortGetLE(page, start);
+            p_shortPutLE(page, start, p_ushortGetLE(page, start + pos));
+            if (highLoc != lastHighLoc) {
+                // Add a non-duplicated pointer.
+                p_shortPutLE(page, vecPos -= 2, highLoc);
+                lastHighLoc = highLoc;
+            }
+            if (pos > 2) {
+                siftDownLeaf(0, pos, (pos >>> 1) & ~1);
+            }
+        } while ((pos -= 2) >= 0);
+
+        searchVecStart(vecPos);
+    }
+
+    /**
+     * @param pos two-based position in search vector
+     * @param endPos two-based exclusive end position in search vector
+     * @param halfPos (endPos >>> 1) & ~1
+     */
+    private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
+        final long page = mPage;
+        final int start = searchVecStart();
+        int loc = p_ushortGetLE(page, start + pos);
+
+        do {
+            int childPos = (pos << 1) + 2;
+            int childLoc = p_ushortGetLE(page, start + childPos);
+            int rightPos = childPos + 2;
+            if (rightPos < endPos) {
+                int rightLoc = p_ushortGetLE(page, start + rightPos);
+                int compare = compareKeys(this, childLoc, this, rightLoc);
+                if (compare < 0) {
+                    childPos = rightPos;
+                    childLoc = rightLoc;
+                } else if (compare == 0) {
+                    // Found a duplicate key. Use a common pointer, favoring the higher one.
+                    if (childLoc < rightLoc) {
+                        replaceDuplicateLeafEntry(page, childLoc, rightLoc);
+                        if (loc == childLoc) {
+                            return;
+                        }
+                        childLoc = rightLoc;
+                    } else if (childLoc > rightLoc) {
+                        replaceDuplicateLeafEntry(page, rightLoc, childLoc);
+                        if (loc == rightLoc) {
+                            return;
+                        }
+                    }
+                }
+            }
+            int compare = compareKeys(this, loc, this, childLoc);
+            if (compare < 0) {
+                p_shortPutLE(page, start + pos, childLoc);
+                pos = childPos;
+            } else {
+                if (compare == 0) {
+                    // Found a duplicate key. Use a common pointer, favoring the higher one.
+                    if (loc < childLoc) {
+                        replaceDuplicateLeafEntry(page, loc, childLoc);
+                        loc = childLoc;
+                    } else if (loc > childLoc) {
+                        replaceDuplicateLeafEntry(page, childLoc, loc);
+                    }
+                }
+                break;
+            }
+        } while (pos < halfPos);
+
+        p_shortPutLE(page, start + pos, loc);
+    }
+
+    private void replaceDuplicateLeafEntry(long page, int loc, int newLoc)
+        throws IOException
+    {
+        int entryLen = doDeleteLeafEntry(page, loc) - loc;
+
+        // Increment garbage by the size of the encoded entry.
+        garbage(garbage() + entryLen);
+
+        // Encode an empty key and a ghost value, to faciliate cleanup when an exception
+        // occurs. This ensures that cleanup won't double-delete fragmented keys or values.
+        p_shortPutLE(page, loc, 0x8000); // encoding for an empty key
+        p_bytePut(page, loc + 2, -1); // encoding for a ghost value
+
+        // Replace all references to the old location.
+        int pos = searchVecStart();
+        int endPos = searchVecEnd();
+        for (; pos<=endPos; pos+=2) {
+            if (p_ushortGetLE(page, pos) == loc) {
+                p_shortPutLE(page, pos, newLoc);
+            }
+        }
+    }
+
+    /**
+     * Deletes the first entry, and leaves the garbage field alone.
+     */
+    void deleteFirstSortLeafEntry() throws IOException {
+        long page = mPage;
+        int start = searchVecStart();
+        doDeleteLeafEntry(page, p_ushortGetLE(page, start));
+        searchVecStart(start + 2);
     }
 
     /**

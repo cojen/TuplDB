@@ -902,6 +902,33 @@ class Utils extends org.cojen.tupl.io.Utils {
         return true;
     }
 
+    /**
+     * Augments the stack trace of the given exception with the local stack
+     * trace. Useful for rethrowing exceptions from asynchronous callbacks.
+     */
+    public static void addLocalTrace(Throwable e) {
+        String message = "--- thread transfer ---";
+
+        StackTraceElement[] original = e.getStackTrace();
+        StackTraceElement[] local = new Exception().getStackTrace();
+        if (local.length == 0) {
+            return;
+        }
+
+        StackTraceElement[] merged = new StackTraceElement[local.length + original.length];
+
+        // Append original.
+        System.arraycopy(original, 0, merged, 0, original.length);
+
+        // Append separator.
+        merged[original.length] = new StackTraceElement(message, "", null, -1);
+
+        // Append local trace and omit this method.
+        System.arraycopy(local, 1, merged, original.length + 1, local.length - 1);
+
+        e.setStackTrace(merged);
+    }
+
     static String toMiniString(Object obj) {
         StringBuilder b = new StringBuilder();
         appendMiniString(b, obj);

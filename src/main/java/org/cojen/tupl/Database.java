@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
+import java.util.concurrent.Executor;
+
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -220,6 +222,14 @@ public interface Database extends CauseCloseable, Flushable {
      * {@link DatabaseConfig#durabilityMode default} is used.
      */
     public abstract Transaction newTransaction(DurabilityMode durabilityMode);
+
+    /**
+     * Returns a new Sorter instance, which uses the given executor for running any parallel
+     * tasks. Pass null to use a default executor.
+     */
+    public default Sorter newSorter(Executor executor) throws IOException {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Preallocates pages for immediate use. The actual amount allocated
