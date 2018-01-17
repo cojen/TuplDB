@@ -4217,26 +4217,6 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     /**
-     * _Split leaf to an empty right node. Intended for preparing an empty tree for use by
-     * _TreeMerger. Caller must hold shared commit lock.
-     */
-    final void splitLeafRight(byte[] splitKey) throws IOException {
-        try {
-            final _CursorFrame leaf = mLeaf;
-            _Node node = leaf.acquireExclusive();
-            node = notSplitDirty(leaf);
-            try {
-                node.splitLeafRight(mTree, splitKey);
-                node = mTree.finishSplit(leaf, node);
-            } finally {
-                node.releaseExclusive();
-            }
-        } catch (Throwable e) {
-            throw handleException(e, false);
-        }
-    }
-
-    /**
      * Non-transactionally moves the first entry from the source into the tree, as the highest
      * overall. No other cursors can be active in the target subtree, and no check is performed
      * to verify that the entry is the highest and unique. The garbage field of the source node

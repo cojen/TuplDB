@@ -4499,39 +4499,6 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
-     * Split leaf to an empty right node. Intended for preparing an empty tree for use by
-     * TreeMerger.
-     */
-    void splitLeafRight(Tree tree, byte[] splitKey) throws IOException {
-        if (mSplit != null) {
-            throw new AssertionError("Node is already split");
-        }
-
-        if (mPage == p_closedTreePage()) {
-            // Node is a closed tree root.
-            throw new ClosedIndexException();
-        }
-
-        Node newNode = tree.mDatabase.allocDirtyNode(NodeContext.MODE_UNEVICTABLE);
-        tree.mDatabase.nodeMapPut(newNode);
-
-        newNode.clearEntries();
-
-        Split split = null;
-        try {
-            split = newSplitRight(newNode);
-            split.setKey(tree, splitKey);
-        } catch (Throwable e) {
-            cleanupSplit(e, newNode, split);
-            throw e;
-        }
-
-        mSplit = split;
-
-        newNode.releaseExclusive();
-    }
-
-    /**
      * Split leaf for ascending order, and copy an entry from another page. The source entry
      * must be ordered higher than all the entries of this target leaf node.
      *

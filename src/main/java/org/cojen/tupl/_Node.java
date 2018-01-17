@@ -4499,39 +4499,6 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     /**
-     * _Split leaf to an empty right node. Intended for preparing an empty tree for use by
-     * _TreeMerger.
-     */
-    void splitLeafRight(_Tree tree, byte[] splitKey) throws IOException {
-        if (mSplit != null) {
-            throw new AssertionError("Node is already split");
-        }
-
-        if (mPage == p_closedTreePage()) {
-            // _Node is a closed tree root.
-            throw new ClosedIndexException();
-        }
-
-        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
-        tree.mDatabase.nodeMapPut(newNode);
-
-        newNode.clearEntries();
-
-        _Split split = null;
-        try {
-            split = newSplitRight(newNode);
-            split.setKey(tree, splitKey);
-        } catch (Throwable e) {
-            cleanupSplit(e, newNode, split);
-            throw e;
-        }
-
-        mSplit = split;
-
-        newNode.releaseExclusive();
-    }
-
-    /**
      * _Split leaf for ascending order, and copy an entry from another page. The source entry
      * must be ordered higher than all the entries of this target leaf node.
      *

@@ -77,8 +77,7 @@ class _ParallelSorter implements Sorter {
 
     @Override
     public synchronized void add(byte[] key, byte[] value) throws IOException {
-        CommitLock lock = mDatabase.commitLock();
-        lock.lock();
+        CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             _Node node;
             if (mSortTreesSize == 0) {
@@ -97,7 +96,7 @@ class _ParallelSorter implements Sorter {
                 node.releaseExclusive();
             }
         } finally {
-            lock.unlock();
+            shared.release();
         }
     }
 
@@ -536,7 +535,7 @@ class _ParallelSorter implements Sorter {
     // Must have called initForMerging.
     private void mergeTrees(_Tree[] toMerge, int targetLevel) throws IOException {
         _TreeMerger tm = new _TreeMerger
-            (mDatabase, MERGE_THREAD_COUNT, toMerge, (merger, target) -> {
+            (mDatabase, toMerge, mExecutor, MERGE_THREAD_COUNT, (merger, target) -> {
                 if (target == null) {
                     finished(merger);
                 } else {
@@ -557,7 +556,7 @@ class _ParallelSorter implements Sorter {
             mActiveMergersLatch.releaseExclusive();
         }
 
-        tm.start(mExecutor);
+        tm.start();
     }
 
     private void finished(_TreeMerger merger) {
