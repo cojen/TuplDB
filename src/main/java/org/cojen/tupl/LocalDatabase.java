@@ -1588,7 +1588,6 @@ final class LocalDatabase extends AbstractDatabase {
                     removeFromTrash(mTrashed, root);
                 } else {
                     // Database is closed.
-                    mTrashed = null;
                     return;
                 }
 
@@ -1599,8 +1598,6 @@ final class LocalDatabase extends AbstractDatabase {
                                      "duration: %3$1.3f seconds",
                                      mTrashed.getId(), mTrashed.getNameString(), duration);
                 }
-
-                mTrashed = null;
             } catch (IOException e) {
                 if (!isClosed() && mListener != null) {
                     mListener.notify
@@ -1610,6 +1607,8 @@ final class LocalDatabase extends AbstractDatabase {
                 }
                 closeQuietly(mTrashed);
                 return;
+            } finally {
+                mTrashed = null;
             }
 
             if (mResumed) {
