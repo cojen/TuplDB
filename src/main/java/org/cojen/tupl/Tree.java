@@ -1004,9 +1004,12 @@ class Tree implements View, Index {
 
     /**
      * Graft two non-empty temporary trees together into a single surviving tree, which is
-     * returned. The victim tree is deleted. All keys of this tree must be less than all keys
-     * of the other tree, which isn't verified or concurrently enforced. No cursors or threads
-     * can be active in either tree when grafting them together.
+     * returned. All keys of this tree must be less than all keys of the other tree, which
+     * isn't verified or concurrently enforced. No cursors or threads can be active in either
+     * tree when grafting them together.
+     *
+     * <p>The victim tree is deleted, although the Tree object isn't completely invalidated.
+     * Just discard it and don't close it.
      */
     static Tree graftTempTree(Tree lowTree, Tree highTree) throws IOException {
         // Note: Supporting non-temporary trees would require special redo and replication
