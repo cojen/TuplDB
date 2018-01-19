@@ -60,12 +60,17 @@ class _ParallelSorter implements Sorter {
     private _Tree[] mSortTreePool;
     private int mSortTreePoolSize;
 
+    // Count of mergers which are acting on sort trees (one root node). For higher levels,
+    // TreeMergers are used. Unlike TreeMergers, sort tree mergers cannot be stopped. A thread
+    // can only wait for them to finish naturally.
+    private int mActiveSortTreeMergers;
+
+    // The trees in these levels are expected to contain more than one node.
     private List<List<_Tree>> mSortTreeLevels;
 
     private Latch mActiveMergersLatch;
     private LatchCondition mActiveMergersCondition;
     private Set<_TreeMerger> mActiveMergers;
-    private int mActiveNodeMergers;
 
     private int mState;
     private Throwable mException;
@@ -171,10 +176,53 @@ class _ParallelSorter implements Sorter {
 
     @Override
     public void reset() throws IOException {
-        // FIXME: stop any active merging
-
+        Object shouldWait;
         synchronized (this) {
             mState = S_RESET;
+
+            _Tree[] sortTrees = mSortTrees;
+            int size = mSortTreesSize;
+            mSortTrees = null;
+            mSortTreesSize = 0;
+
+            while (mActiveSortTreeMergers > 0) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
+            }
+
+            for (int i=0; i<size; i++) {
+                sortTrees[i].drop(false).run();
+            }
+
+            shouldWait = mActiveMergersLatch;
+        }
+
+        if (shouldWait != null) {
+            waitForInactivity(true);
+        }
+
+        List<List<_Tree>> toDrop = null;
+
+        synchronized (this) {
+            if (mSortTreeLevels != null && !mSortTreeLevels.isEmpty()) {
+                toDrop = mSortTreeLevels;
+                mSortTreeLevels = null;
+            }
+        }
+
+        if (toDrop != null) {
+            for (int i = toDrop.size(); --i >= 0; ) {
+                List<_Tree> trees = toDrop.get(i);
+                for (int j = trees.size(); --j >= 0; ) {
+                    trees.get(j).drop(false).run();
+                }
+            }
+        }
+
+        synchronized (this) {
             finishComplete();
         }
     }
@@ -208,7 +256,7 @@ class _ParallelSorter implements Sorter {
             mSortTrees = null;
             mSortTreesSize = 0;
 
-            while (mActiveNodeMergers > 0) {
+            while (mActiveSortTreeMergers > 0) {
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -308,8 +356,12 @@ class _ParallelSorter implements Sorter {
     // Caller must be synchronized.
     private void finishComplete() throws IOException {
         // Drain the pool.
-        while (mSortTreePoolSize > 0) {
-            mDatabase.quickDeleteTemporaryTree(mSortTreePool[--mSortTreePoolSize]);
+        if (mSortTreePoolSize > 0) {
+            do {
+                _Tree tree = mSortTreePool[--mSortTreePoolSize];
+                mSortTreePool[mSortTreePoolSize] = null;
+                mDatabase.quickDeleteTemporaryTree(tree);
+            } while (mSortTreePoolSize > 0);
         }
 
         if (mState == S_EXCEPTION) {
@@ -348,7 +400,7 @@ class _ParallelSorter implements Sorter {
         mSortTrees = null;
         mSortTreesSize = 0;
 
-        mActiveNodeMergers++;
+        mActiveSortTreeMergers++;
         try {
             mExecutor.execute(() -> {
                 _Tree tree;
@@ -356,7 +408,7 @@ class _ParallelSorter implements Sorter {
                     tree = doMergeSortTrees(sortTrees, size);
                 } catch (Throwable e) {
                     synchronized (this) {
-                        mActiveNodeMergers--;
+                        mActiveSortTreeMergers--;
                         exception(e);
                         notifyAll();
                     }
@@ -364,18 +416,19 @@ class _ParallelSorter implements Sorter {
                 }
 
                 synchronized (this) {
-                    mActiveNodeMergers--;
+                    mActiveSortTreeMergers--;
                     try {
                         addToLevel(tree, 0, L0_MAX_SIZE);
                     } catch (Throwable e) {
                         exception(e);
-                    } finally {
+                    }
+                    if (mActiveSortTreeMergers == 0) {
                         notifyAll();
                     }
                 }
             });
         } catch (Throwable e) {
-            mActiveNodeMergers--;
+            mActiveSortTreeMergers--;
             notifyAll();
             throw e;
         }
