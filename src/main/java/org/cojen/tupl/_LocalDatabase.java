@@ -2480,8 +2480,6 @@ final class _LocalDatabase extends AbstractDatabase {
                 lock.acquireExclusive();
             }
             try {
-                // FIXME: need to reset all the sorters; they still reference sort nodes
-
                 if (mSorterExecutor != null) {
                     mSorterExecutor.shutdown();
                     mSorterExecutor = null;
