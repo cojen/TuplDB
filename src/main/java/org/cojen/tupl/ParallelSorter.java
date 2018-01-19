@@ -41,7 +41,7 @@ import static org.cojen.tupl.PageOps.*;
 /*P*/
 class ParallelSorter implements Sorter {
     private static final int MIN_SORT_TREES = 8;
-    private static final int MAX_SORT_TREES = 64; // absolute max allowed is 32768
+    private static final int MAX_SORT_TREES = 64; // absolute max allowed is 32768 (garbage field)
     private static final int L0_MAX_SIZE = 256;   // max number of trees at first level
     private static final int L1_MAX_SIZE = 1024;  // max number of trees at higher levels
 
@@ -142,6 +142,7 @@ class ParallelSorter implements Sorter {
         return tree;
     }
 
+    // Caller must hold commit lock.
     private Node latchRootDirty(Tree tree) throws IOException {
         Node root = tree.mRoot;
         root.acquireExclusive();
@@ -225,7 +226,13 @@ class ParallelSorter implements Sorter {
                 Tree tree;
                 if (size == 1) {
                     tree = sortTrees[0];
-                    Node node = latchRootDirty(tree);
+                    CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+                    Node node;
+                    try {
+                        node = latchRootDirty(tree);
+                    } finally {
+                        shared.release();
+                    }
                     node.sortLeaf();
                     node.releaseExclusive();
                 } else {
@@ -378,54 +385,73 @@ class ParallelSorter implements Sorter {
      * @return new temporary index
      */
     private Tree doMergeSortTrees(Tree[] sortTrees, final int size) throws IOException {
-        // Latch and sort all the nodes.
-        for (int i=0; i<size; i++) {
-            Node node = latchRootDirty(sortTrees[i]);
-            node.sortLeaf();
-            // Use the garbage field for encoding the node order. Bit 0 is used for detecting
-            // duplicates.
-            node.garbage(i << 1);
-        }
-
-        // Heapify.
-        for (int i=size >>> 1; --i>=0; ) {
-            siftDown(sortTrees, size, i, sortTrees[i]);
-        }
-
         Tree dest = mDatabase.newTemporaryIndex();
 
         TreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
             appender.firstAny();
-            int len = size;
 
-            while (true) {
-                Tree sortTree = sortTrees[0];
-                Node node = sortTree.mRoot;
+            final CommitLock commitLock = mDatabase.commitLock();
+            CommitLock.Shared shared = commitLock.acquireShared();
+            try {
+                // Latch and sort all the nodes.
+                for (int i=0; i<size; i++) {
+                    Node node = latchRootDirty(sortTrees[i]);
+                    node.sortLeaf();
 
-                int order = node.garbage();
-                if ((order & 1) == 0) {
-                    appender.appendTransfer(node);
-                } else {
-                    // Node has a duplicate entry which must be deleted.
-                    node.deleteFirstSortLeafEntry();
-                    node.garbage(order & ~1);
+                    // Use the garbage field for encoding the node order. Bit 0 is used for
+                    // detecting duplicates.
+                    node.garbage(i << 1);
                 }
 
-                if (!node.hasKeys()) {
-                    // Shrink the heap, and stash the tree at the end.
-                    len--;
-                    if (len == 0) {
-                        // All done.
-                        break;
+                // Heapify.
+                for (int i=size >>> 1; --i>=0; ) {
+                    siftDown(sortTrees, size, i, sortTrees[i]);
+                }
+
+                if (commitLock.hasQueuedThreads()) {
+                    // Release and re-acquire, to unblock any threads waiting for
+                    // checkpoint to begin.
+                    shared.release();
+                    shared = commitLock.acquireShared();
+                    for (int i=0; i<size; i++) {
+                        Tree sortTree = sortTrees[i];
+                        mDatabase.markDirty(sortTree, sortTree.mRoot);
                     }
-                    Tree last = sortTrees[len];
-                    sortTrees[len] = sortTree;
-                    sortTree = last;
                 }
 
-                // Fix the heap.
-                siftDown(sortTrees, len, 0, sortTree);
+                int len = size;
+
+                while (true) {
+                    Tree sortTree = sortTrees[0];
+                    Node node = sortTree.mRoot;
+
+                    int order = node.garbage();
+                    if ((order & 1) == 0) {
+                        appender.appendTransfer(node);
+                    } else {
+                        // Node has a duplicate entry which must be deleted.
+                        node.deleteFirstSortLeafEntry();
+                        node.garbage(order & ~1);
+                    }
+
+                    if (!node.hasKeys()) {
+                        // Shrink the heap, and stash the tree at the end.
+                        len--;
+                        if (len == 0) {
+                            // All done.
+                            break;
+                        }
+                        Tree last = sortTrees[len];
+                        sortTrees[len] = sortTree;
+                        sortTree = last;
+                    }
+
+                    // Fix the heap.
+                    siftDown(sortTrees, len, 0, sortTree);
+                }
+            } finally {
+                shared.release();
             }
         } finally {
             appender.reset();
