@@ -207,10 +207,8 @@ class ParallelSorter implements Sorter {
         List<List<Tree>> toDrop = null;
 
         synchronized (this) {
-            if (mSortTreeLevels != null && !mSortTreeLevels.isEmpty()) {
-                toDrop = mSortTreeLevels;
-                mSortTreeLevels = null;
-            }
+            toDrop = mSortTreeLevels;
+            mSortTreeLevels = null;
         }
 
         if (toDrop != null) {
@@ -447,6 +445,8 @@ class ParallelSorter implements Sorter {
             final CommitLock commitLock = mDatabase.commitLock();
             CommitLock.Shared shared = commitLock.acquireShared();
             try {
+                mDatabase.checkClosed();
+
                 // Latch and sort all the nodes.
                 for (int i=0; i<size; i++) {
                     Node node = latchRootDirty(sortTrees[i]);

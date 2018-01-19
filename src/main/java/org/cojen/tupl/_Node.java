@@ -5630,6 +5630,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     int start;
                     if (tail == TN_HEADER_SIZE) {
                         // Freshly initialized node.
+                        if (page == p_closedTreePage()) {
+                            throw new DatabaseException("Closed");
+                        }
                         start = node.pageSize(page) - 2;
                         node.searchVecEnd(start);
                     } else {
