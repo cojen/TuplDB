@@ -224,12 +224,12 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Transaction newTransaction(DurabilityMode durabilityMode);
 
     /**
-     * Returns a new Sorter instance, which uses the given executor for running any parallel
-     * tasks. Pass null to use a default executor.
+     * Returns a new Sorter instance, which uses the given executor for running parallel
+     * tasks. Pass null to use a default executor. The standard algorithm is a parallel
+     * external mergesort, which attempts to use all available processors. All external storage
+     * is maintained in the database itself, in the form of temporary indexes.
      */
-    public default Sorter newSorter(Executor executor) throws IOException {
-        throw new UnsupportedOperationException();
-    }
+    public abstract Sorter newSorter(Executor executor) throws IOException;
 
     /**
      * Preallocates pages for immediate use. The actual amount allocated
