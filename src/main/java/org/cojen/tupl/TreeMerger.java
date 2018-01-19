@@ -65,7 +65,11 @@ final class TreeMerger extends TreeSeparator {
     protected void finished(Throwable exception) {
         final ArrayList<Target> targets = mTargets;
 
-        synchronized (targets) {
+        graft: synchronized (targets) {
+            if (targets.isEmpty()) {
+                break graft;
+            }
+
             Collections.sort(targets);
 
             Tree merged = targets.get(0).mTree;

@@ -118,6 +118,7 @@ public class TestAll {
             UpdaterTest.class,
             TxnPrepareTest.class,
             TreeGraftTest.class,
+            TreeMergerTest.class,
         };
 
         String[] names = new String[classes.length];
