@@ -24,7 +24,7 @@ import java.io.IOException;
  * Utility for sorting and filling up new indexes.
  *
  * @author Brian S O'Neill
- * @see Database
+ * @see Database#newSorter Database.newSorter
  */
 public interface Sorter {
     /**
