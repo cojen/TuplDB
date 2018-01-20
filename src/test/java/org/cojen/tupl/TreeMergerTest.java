@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
@@ -127,16 +128,30 @@ public class TreeMergerTest {
 
         final List<Tree> results = new ArrayList<>();
 
-        BiConsumer<TreeMerger, Tree> consumer = (merger, tree) -> {
-            synchronized (results) {
-                results.add(tree);
-                if (tree == null) {
-                    results.notifyAll();
+        class Merger extends TreeMerger {
+            Merger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
+                super(db, sources, executor, workerCount);
+            }
+
+            @Override
+            protected void merged(Tree tree) {
+                synchronized (results) {
+                    results.add(tree);
                 }
             }
-        };
 
-        TreeMerger merger = new TreeMerger(mDatabase, sources, executor, numThreads, consumer);
+            @Override
+            protected void remainder(Tree tree) {
+                synchronized (results) {
+                    results.add(tree);
+                    if (tree == null) {
+                        results.notifyAll();
+                }
+                }
+            }
+        }
+
+        TreeMerger merger = new Merger(mDatabase, sources, executor, numThreads);
 
         if (stopAndResume) {
             new Thread(() -> {
@@ -170,8 +185,7 @@ public class TreeMergerTest {
 
             results.clear();
 
-            TreeMerger remainingMerger =
-                new TreeMerger(mDatabase, remaining, executor, numThreads, consumer);
+            TreeMerger remainingMerger = new Merger(mDatabase, remaining, executor, numThreads);
             remainingMerger.start();
 
             synchronized (results) {

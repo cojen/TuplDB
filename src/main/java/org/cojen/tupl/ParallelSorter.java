@@ -66,7 +66,7 @@ class ParallelSorter implements Sorter {
     private int mActiveSortTreeMergers;
 
     // The trees in these levels are expected to contain more than one node.
-    private List<List<Tree>> mSortTreeLevels;
+    private List<ReserveQueue<Tree>> mSortTreeLevels;
 
     private Latch mActiveMergersLatch;
     private LatchCondition mActiveMergersCondition;
@@ -204,7 +204,7 @@ class ParallelSorter implements Sorter {
             waitForInactivity(true);
         }
 
-        List<List<Tree>> toDrop = null;
+        List<ReserveQueue<Tree>> toDrop = null;
 
         synchronized (this) {
             toDrop = mSortTreeLevels;
@@ -213,10 +213,13 @@ class ParallelSorter implements Sorter {
 
         if (toDrop != null) {
             for (int i = toDrop.size(); --i >= 0; ) {
-                List<Tree> trees = toDrop.get(i);
-                for (int j = trees.size(); --j >= 0; ) {
-                    trees.get(j).drop(false).run();
-                }
+                toDrop.get(i).scan(tree -> {
+                    try {
+                        tree.drop(false).run();
+                    } catch (Throwable e) {
+                        Utils.rethrow(e);
+                    }
+                });
             }
         }
 
@@ -288,7 +291,10 @@ class ParallelSorter implements Sorter {
                     finishComplete();
                     return tree;
                 }
-                addToLevel(tree, 0, L0_MAX_SIZE);
+
+                ReserveQueue<Tree> level = selectLevel(0);
+                int levelPos = reserveLevelPos(0, level, L0_MAX_SIZE);
+                level.set(levelPos, tree);
             }
 
             shouldWait = mActiveMergersLatch;
@@ -301,9 +307,12 @@ class ParallelSorter implements Sorter {
         Tree[] allTrees;
         synchronized (this) {
             if (mSortTreeLevels.size() == 1) {
-                List<Tree> trees = mSortTreeLevels.get(0);
-                allTrees = trees.toArray(new Tree[trees.size()]);
-                trees.clear();
+                ReserveQueue<Tree> level = mSortTreeLevels.get(0);
+                allTrees = new Tree[level.size()];
+                level.poll(allTrees, 0, allTrees.length);
+                if (level.size() != 0) {
+                    throw new AssertionError();
+                }
             } else {
                 int allTreeCount = 0;
                 for (int i=mSortTreeLevels.size(); --i>=0; ) {
@@ -314,13 +323,12 @@ class ParallelSorter implements Sorter {
 
                 // Iterate in reverse order to favor duplicates at lower levels, which were
                 // added more recently.
-                int pos = 0;
-                for (int i=mSortTreeLevels.size(); --i>=0; ) {
-                    List<Tree> trees = mSortTreeLevels.get(i);
-                    for (int j=0; j<trees.size(); j++) {
-                        allTrees[pos++] = trees.get(j);
+                for (int i = mSortTreeLevels.size(), pos = 0; --i >= 0; ) {
+                    ReserveQueue<Tree> level = mSortTreeLevels.get(i);
+                    pos += level.poll(allTrees, pos, level.size());
+                    if (level.size() != 0) {
+                        throw new AssertionError();
                     }
-                    trees.clear();
                 }
             }
 
@@ -344,8 +352,11 @@ class ParallelSorter implements Sorter {
         waitForInactivity(false);
 
         synchronized (this) {
-            Tree tree = mSortTreeLevels.get(0).get(0);
-            mSortTreeLevels.clear();
+            ReserveQueue<Tree> level = mSortTreeLevels.get(0);
+            Tree tree = level.poll();
+            if (level.size() != 0) {
+                throw new AssertionError();
+            }
             finishComplete();
             return tree;
         }
@@ -398,6 +409,12 @@ class ParallelSorter implements Sorter {
         mSortTrees = null;
         mSortTreesSize = 0;
 
+        // Select the level and reserve the position early. The merge tasks run in parallel and
+        // finish out of order. Reserving the position is necessary to properly select the last
+        // added entry when duplicate keys are encountered.
+        ReserveQueue<Tree> level = selectLevel(0);
+        int levelPos = reserveLevelPos(0, level, L0_MAX_SIZE);
+
         mActiveSortTreeMergers++;
         try {
             mExecutor.execute(() -> {
@@ -414,13 +431,8 @@ class ParallelSorter implements Sorter {
                 }
 
                 synchronized (this) {
-                    mActiveSortTreeMergers--;
-                    try {
-                        addToLevel(tree, 0, L0_MAX_SIZE);
-                    } catch (Throwable e) {
-                        exception(e);
-                    }
-                    if (mActiveSortTreeMergers == 0) {
+                    level.set(levelPos, tree);
+                    if (--mActiveSortTreeMergers == 0) {
                         notifyAll();
                     }
                 }
@@ -592,41 +604,57 @@ class ParallelSorter implements Sorter {
     }
 
     // Caller must be synchronized.
-    private void addToLevel(Tree tree, int level, int maxLevelSize) throws IOException {
+    private ReserveQueue<Tree> selectLevel(int levelNum) {
         if (mSortTreeLevels == null) {
             mSortTreeLevels = new ArrayList<>();
-        } else if (level < mSortTreeLevels.size()) {
-            List<Tree> trees = mSortTreeLevels.get(level);
-            trees.add(tree);
-            if (trees.size() >= maxLevelSize && mState == S_READY) {
-                Tree[] toMerge = trees.toArray(new Tree[trees.size()]);
-                trees.clear();
-                initForMerging();
-                mergeTrees(toMerge, level + 1);
-            }
-            return;
+        } else if (levelNum < mSortTreeLevels.size()) {
+            return mSortTreeLevels.get(levelNum);
         }
-        List<Tree> trees = new ArrayList<>();
-        trees.add(tree);
-        mSortTreeLevels.add(trees);
+        ReserveQueue<Tree> level = new ReserveQueue<>(MIN_SORT_TREES);
+        mSortTreeLevels.add(level);
+        return level;
+    }
+
+    // Caller must be synchronized.
+    private int reserveLevelPos(int levelNum, ReserveQueue<Tree> level, int maxLevelSize)
+        throws IOException
+    {
+        if (level.size() >= maxLevelSize && mState == S_READY) {
+            int avail = level.available();
+            if (avail > 1) {
+                Tree[] toMerge = new Tree[avail];
+                level.poll(toMerge, 0, toMerge.length);
+                initForMerging();
+                mergeTrees(toMerge, levelNum + 1);
+            }
+        }
+        return level.reserve();
     }
 
     // Must have called initForMerging.
     private void mergeTrees(Tree[] toMerge, int targetLevel) throws IOException {
-        TreeMerger tm = new TreeMerger
-            (mDatabase, toMerge, mExecutor, MERGE_THREAD_COUNT, (merger, target) -> {
-                if (target == null) {
-                    finished(merger);
-                } else {
-                    try {
-                        synchronized (this) {
-                            addToLevel(target, targetLevel, L1_MAX_SIZE);
-                        }
-                    } catch (Throwable e) {
-                        throw Utils.rethrow(e);
+        ReserveQueue<Tree> level = selectLevel(targetLevel);
+        int levelPos = reserveLevelPos(targetLevel, level, L1_MAX_SIZE);
+
+        TreeMerger tm = new TreeMerger(mDatabase, toMerge, mExecutor, MERGE_THREAD_COUNT) {
+            @Override
+            protected void merged(Tree tree) {
+                synchronized (ParallelSorter.this) {
+                    level.set(levelPos, tree);
+                }
+            }
+
+            @Override
+            protected void remainder(Tree tree) {
+                synchronized (ParallelSorter.this) {
+                    if (tree == null) {
+                        ParallelSorter.this.finished(this);
+                    } else {
+                        level.add(tree);
                     }
                 }
-            });
+            }
+        };
 
         mActiveMergersLatch.acquireExclusive();
         try {
