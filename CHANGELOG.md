@@ -4,6 +4,7 @@ Changelog
 v1.4.1
 ------
 * Added support two-phase commit, using the new transaction prepare and getId methods.
+* Added a parallel external mergesort utility.
 
 v1.4.0.1 (2018-01-01)
 --------
