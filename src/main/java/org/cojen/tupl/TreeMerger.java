@@ -22,8 +22,6 @@ import java.util.Collections;
 
 import java.util.concurrent.Executor;
 
-import java.util.function.BiConsumer;
-
 /**
  * Parallel tree merging utility. All entries from the source trees (assumed to be temporary
  * trees) are merged into a new target tree, and all sources are deleted.
@@ -31,25 +29,15 @@ import java.util.function.BiConsumer;
  * @author Brian S O'Neill
  */
 /*P*/
-final class TreeMerger extends TreeSeparator {
-    private final BiConsumer<TreeMerger, Tree> mConsumer;
-
+abstract class TreeMerger extends TreeSeparator {
     private final ArrayList<Target> mTargets;
 
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
-     * @param consumer receives the target tree, plus any source trees if aborted, and then
-     * null when merger is finished
      */
-    TreeMerger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount,
-               BiConsumer<TreeMerger, Tree> consumer)
-    {
+    TreeMerger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
         super(db, sources, executor, workerCount);
-        if (consumer == null) {
-            throw new IllegalArgumentException();
-        }
-        mConsumer = consumer;
         mTargets = new ArrayList<>();
     }
 
@@ -84,7 +72,7 @@ final class TreeMerger extends TreeSeparator {
                 failed(e);
             }
 
-            mConsumer.accept(this, merged);
+            merged(merged);
 
             for (Tree source : mSources) {
                 if (isEmpty(source)) {
@@ -96,17 +84,27 @@ final class TreeMerger extends TreeSeparator {
                     }
                 }
 
-                mConsumer.accept(this, source);
+                remainder(source);
             }
 
             // Pass along targets that didn't get merged.
             for (; i<size; i++) {
-                mConsumer.accept(this, targets.get(i).mTree);
+                remainder(targets.get(i).mTree);
             }
         }
 
-        mConsumer.accept(this, null);
+        remainder(null);
     }
+
+    /**
+     * Receives the target tree; called at most once.
+     */
+    protected abstract void merged(Tree tree);
+
+    /**
+     * Receives any remaining source trees when merger is stopped. Is null when all finished.
+     */
+    protected abstract void remainder(Tree tree);
 
     private static boolean isEmpty(Tree tree) {
         Node root = tree.mRoot;
