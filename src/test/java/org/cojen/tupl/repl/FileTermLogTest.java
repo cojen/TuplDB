@@ -652,7 +652,7 @@ public class FileTermLogTest {
         Random rnd = new Random(seed);
 
         final int threadCount = 10;
-        final int sliceLength = 100_000;
+        final int sliceLength = 10_000;
         Range[] ranges = new Range[sliceLength * threadCount];
 
         long index = 0;
