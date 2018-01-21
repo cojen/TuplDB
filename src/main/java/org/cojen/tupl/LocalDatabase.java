@@ -1059,12 +1059,14 @@ final class LocalDatabase extends AbstractDatabase {
             try {
                 handler.recover(txn);
             } catch (Throwable e) {
-                EventListener listener = mEventListener;
-                if (listener == null) {
-                    uncaught(e);
-                } else {
-                    listener.notify(EventType.RECOVERY_HANDLER_UNCAUGHT,
-                                    "Uncaught exception from recovery handler: %1$s", e);
+                if (!isClosed()) {
+                    EventListener listener = mEventListener;
+                    if (listener == null) {
+                        uncaught(e);
+                    } else {
+                        listener.notify(EventType.RECOVERY_HANDLER_UNCAUGHT,
+                                        "Uncaught exception from recovery handler: %1$s", e);
+                    }
                 }
             }
 
