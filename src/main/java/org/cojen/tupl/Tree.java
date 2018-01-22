@@ -1626,27 +1626,33 @@ class Tree implements View, Index {
     }
 
     /**
+     * Writes to the redo log if defined and the default durability mode isn't NO_REDO.
+     *
      * @return non-zero position if caller should call txnCommitSync
      */
-    final long redoStore(byte[] key, byte[] value) throws IOException {
+    final long redoStoreNullTxn(byte[] key, byte[] value) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
-        if (redo == null) {
+        DurabilityMode mode;
+        if (redo == null || (mode = mDatabase.mDurabilityMode) == DurabilityMode.NO_REDO) {
             return 0;
         }
         return mDatabase.anyTransactionContext().redoStoreAutoCommit
-            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
+            (redo.txnRedoWriter(), mId, key, value, mode);
     }
 
     /**
+     * Writes to the redo log if defined.
+     *
+     * @param mode must not be NO_REDO
      * @return non-zero position if caller should call txnCommitSync
      */
-    final long redoStoreNoLock(byte[] key, byte[] value) throws IOException {
+    final long redoStoreNoLock(byte[] key, byte[] value, DurabilityMode mode) throws IOException {
         RedoWriter redo = mDatabase.mRedoWriter;
         if (redo == null) {
             return 0;
         }
         return mDatabase.anyTransactionContext().redoStoreNoLockAutoCommit
-            (redo.txnRedoWriter(), mId, key, value, mDatabase.mDurabilityMode);
+            (redo.txnRedoWriter(), mId, key, value, mode);
     }
 
     final void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
