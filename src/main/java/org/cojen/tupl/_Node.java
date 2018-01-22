@@ -3890,7 +3890,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
-        if (pos < ((searchVecEnd - searchVecStart + 2) >> 1)) {
+        // When current size is odd, favor shifting left. This ensures that when the page size
+        // is 65536 and the last entry is deleted, the search vector start is in bounds.
+        if (pos < ((searchVecEnd - searchVecStart) >> 1)) {
             // Shift left side of search vector to the right.
             p_copy(page, searchVecStart, page, searchVecStart += 2, pos);
             searchVecStart(searchVecStart);
