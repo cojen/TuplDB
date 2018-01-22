@@ -3,6 +3,11 @@ Changelog
 
 v1.4.1
 ------
+
+* Honor the default durability mode when using a null transaction. Previously, when the default
+  mode is NO_REDO and the transaction is null, a redo log entry would still be created. Also
+  honor the transaction-specified durability mode when using the unsafe locking mode. Previously,
+  the default durability mode would be used.
 * Added support two-phase commit, using the new transaction prepare and getId methods.
 * Added a parallel external mergesort utility.
 

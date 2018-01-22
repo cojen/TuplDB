@@ -42,10 +42,14 @@ public class RecoverTest {
 
     @Before
     public void createTempDb() throws Exception {
+        createTempDb(DurabilityMode.NO_FLUSH);
+    }
+
+    private void createTempDb(DurabilityMode mode) throws Exception {
         mConfig = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
-            .durabilityMode(DurabilityMode.NO_FLUSH);
+            .durabilityMode(mode);
         decorate(mConfig);
         mDb = newTempDatabase(getClass(), mConfig);
     }
@@ -141,6 +145,28 @@ public class RecoverTest {
         assertNull(ix.load(txn, key));
         ix.store(txn, key, value);
         txn.commit();
+        mDb.checkpoint();
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertArrayEquals(value, ix.load(null, key));
+    }
+
+    @Test
+    public void nullTxnNoLog() throws Exception {
+        teardown();
+        createTempDb(DurabilityMode.NO_REDO);
+
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+
+        Index ix = mDb.openIndex("test");
+        ix.store(null, key, value);
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, key));
+        ix.store(null, key, value);
         mDb.checkpoint();
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
