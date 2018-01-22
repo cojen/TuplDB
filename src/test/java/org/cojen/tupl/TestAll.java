@@ -61,6 +61,7 @@ public class TestAll {
             ExtraLargeValueTest.class,
             ExtraLargeValueDirectTest.class,
             ExtraLargeValueNonDurableTest.class,
+            LargePageTest.class,
             FileIOTest.class,
             LockTest.class,
             DeadlockTest.class,

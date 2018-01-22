@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.4.0.2 (2018-01-21)
+--------
+* Fix bug when deleting entries from the largest allowed page size, 65536 bytes. Under the right
+  conditions, the internal search vector pointer would overflow the 16-bit range.
+
 v1.4.0.1 (2018-01-01)
 --------
 * Added a RAFT-based replication system.
