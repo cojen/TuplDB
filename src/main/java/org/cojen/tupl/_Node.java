@@ -1074,7 +1074,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     /**
      * Set the search vector end pointer.
      */
-    private void searchVecEnd(int end) {
+    void searchVecEnd(int end) {
         /*P*/ // [
         // mSearchVecEnd = end;
         /*P*/ // |

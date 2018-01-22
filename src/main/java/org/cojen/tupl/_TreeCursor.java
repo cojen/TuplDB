@@ -4253,7 +4253,16 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 tnode.releaseExclusive();
             }
 
-            source.searchVecStart(source.searchVecStart() + 2);
+            int searchVecStart = source.searchVecStart();
+            int searchVecEnd = source.searchVecEnd();
+
+            if (searchVecStart == searchVecEnd) {
+                // After removing the last entry, adjust the end pointer instead of the start
+                // pointer. If the start pointer was incremented, it could go out of bounds.
+                source.searchVecEnd(searchVecEnd - 2);
+            } else {
+                source.searchVecStart(searchVecStart + 2);
+            }
         } catch (Throwable e) {
             throw handleException(e, false);
         }
