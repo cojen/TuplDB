@@ -53,26 +53,29 @@ abstract class TreeMerger extends TreeSeparator {
     protected void finished(Throwable exception) {
         final ArrayList<Target> targets = mTargets;
 
-        graft: synchronized (targets) {
-            if (targets.isEmpty()) {
-                break graft;
-            }
+        synchronized (targets) {
+            if (!targets.isEmpty()) {
+                Collections.sort(targets);
 
-            Collections.sort(targets);
+                Tree merged = targets.get(0).mTree;
 
-            Tree merged = targets.get(0).mTree;
-
-            int i = 1;
-            final int size = targets.size();
-            try {
-                for (; i<size; i++) {
-                    merged = Tree.graftTempTree(merged, targets.get(i).mTree);
+                int i = 1;
+                final int size = targets.size();
+                try {
+                    for (; i<size; i++) {
+                        merged = Tree.graftTempTree(merged, targets.get(i).mTree);
+                    }
+                } catch (Throwable e) {
+                    failed(e);
                 }
-            } catch (Throwable e) {
-                failed(e);
-            }
 
-            merged(merged);
+                merged(merged);
+
+                // Pass along targets that didn't get merged.
+                for (; i<size; i++) {
+                    remainder(targets.get(i).mTree);
+                }
+            }
 
             for (Tree source : mSources) {
                 if (isEmpty(source)) {
@@ -85,11 +88,6 @@ abstract class TreeMerger extends TreeSeparator {
                 }
 
                 remainder(source);
-            }
-
-            // Pass along targets that didn't get merged.
-            for (; i<size; i++) {
-                remainder(targets.get(i).mTree);
             }
         }
 
