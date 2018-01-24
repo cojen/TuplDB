@@ -90,7 +90,7 @@ public class SchedulerTest {
         for (Task task : tasks) {
             task.runCheck();
             long deviation = task.actualTime - task.expectedTime;
-            assertTrue("" + deviation, deviation >= 0 && deviation <= 150); 
+            assertTrue("" + deviation, deviation >= 0 && deviation <= 500); 
         }
     }
 
