@@ -57,7 +57,7 @@ public class SchedulerTest {
         assertTrue(mScheduler.schedule(task, 100));
         task.runCheck();
         long delay = System.currentTimeMillis() - start;
-        assertTrue("" + delay, delay >= 100 && delay <= 200);
+        assertTrue("" + delay, delay >= 100 && delay <= 500);
 
         task = new Task();
         assertTrue(mScheduler.schedule(task, 100));
