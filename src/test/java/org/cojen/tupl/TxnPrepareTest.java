@@ -192,7 +192,18 @@ public class TxnPrepareTest {
         byte[] key1 = "key-1".getBytes();
         byte[] key2 = "key-2".getBytes();
 
-        BlockingQueue<Transaction> recovered = new LinkedBlockingQueue<>();
+        class Recovered {
+            final long mTxnId;
+            final Transaction mTxn;
+
+            Recovered(Transaction txn) {
+                // Capture the transaction id before the transaction is reset.
+                mTxnId = txn.getId();
+                mTxn = txn;
+            }
+        }
+
+        BlockingQueue<Recovered> recoveredQueue = new LinkedBlockingQueue<>();
 
         RecoveryHandler handler = new RecoveryHandler() {
             private Database db;
@@ -204,7 +215,7 @@ public class TxnPrepareTest {
 
             @Override
             public void recover(Transaction txn) throws IOException {
-                recovered.add(txn);
+                recoveredQueue.add(new Recovered(txn));
 
                 switch (recoveryAction) {
                 default:
@@ -268,9 +279,9 @@ public class TxnPrepareTest {
         for (int i=0; i<3; i++) {
             db = reopenTempDatabase(getClass(), db, config);
 
-            Transaction txn = recovered.take();
-            assertEquals(txnId, txn.getId());
-            assertTrue(recovered.isEmpty());
+            Recovered recovered = recoveredQueue.take();
+            assertEquals(txnId, recovered.mTxnId);
+            assertTrue(recoveredQueue.isEmpty());
 
             Index ix1 = db.openIndex("test1");
             Index ix2 = db.openIndex("test2");
@@ -299,7 +310,7 @@ public class TxnPrepareTest {
                     break;
                 }
 
-                txn.reset();
+                recovered.mTxn.reset();
 
                 // Fallthrough to the next case and verify rollback.
 
