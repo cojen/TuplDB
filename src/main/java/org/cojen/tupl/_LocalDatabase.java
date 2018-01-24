@@ -49,9 +49,9 @@ import java.util.Set;
 
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -232,7 +232,7 @@ final class _LocalDatabase extends AbstractDatabase {
     final boolean mFullyMapped;
     /*P*/ // ]
 
-    private volatile ExecutorService mSorterExecutor;
+    private volatile ThreadPoolExecutor mSorterExecutor;
 
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
@@ -1842,14 +1842,23 @@ final class _LocalDatabase extends AbstractDatabase {
                 checkClosed();
                 executor = mSorterExecutor;
                 if (executor == null) {
-                    ExecutorService es = Executors.newCachedThreadPool(r -> {
-                        Thread t = new Thread(r);
-                        t.setDaemon(true);
-                        t.setName("Sorter-" + Long.toUnsignedString(t.getId()));
-                        return t;
-                    });
-                    mSorterExecutor = es;
-                    executor = es;
+                    // Limit the amount of threads.
+                    int maxThreads = Runtime.getRuntime().availableProcessors() * 4;
+
+                    ThreadPoolExecutor pool = new ThreadPoolExecutor
+                        (maxThreads, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
+                         new LinkedBlockingQueue<Runnable>(),
+                         r -> {
+                             Thread t = new Thread(r);
+                             t.setDaemon(true);
+                             t.setName("Sorter-" + Long.toUnsignedString(t.getId()));
+                             return t;
+                         });
+
+                    pool.allowCoreThreadTimeOut(true);
+
+                    mSorterExecutor = pool;
+                    executor = pool;
                 }
             } finally {
                 mOpenTreesLatch.releaseExclusive();
