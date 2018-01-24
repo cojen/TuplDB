@@ -49,7 +49,7 @@ public class TxnPrepareTest {
         return new DatabaseConfig()
             .recoveryHandler(handler)
             .directPageAccess(false)
-            .lockTimeout(1000, TimeUnit.MILLISECONDS)
+            .lockTimeout(2000, TimeUnit.MILLISECONDS)
             .checkpointRate(-1, null);
     }
 

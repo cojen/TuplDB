@@ -36,6 +36,8 @@ import static org.cojen.tupl.repl.MessageReplicator.*;
  *
  * @author Brian S O'Neill
  */
+// High load causes spurious timeouts.
+@net.jcip.annotations.NotThreadSafe
 public class MessageReplicatorTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(MessageReplicatorTest.class.getName());
