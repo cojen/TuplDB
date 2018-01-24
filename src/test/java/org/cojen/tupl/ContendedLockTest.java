@@ -39,7 +39,7 @@ public class ContendedLockTest {
         DatabaseConfig config = new DatabaseConfig()
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .directPageAccess(false)
-            .lockTimeout(3, TimeUnit.SECONDS);
+            .lockTimeout(5, TimeUnit.SECONDS);
         mDb = newTempDatabase(getClass(), config);
     }
 
