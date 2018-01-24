@@ -319,7 +319,7 @@ public class MessageReplicatorTest {
 
     @Test
     public void largeGroupNoWaitToJoin() throws Exception {
-        final int count = 30;
+        final int count = 10;
 
         MessageReplicator[] repls = startGroup(count, Role.STANDBY, false);
 
