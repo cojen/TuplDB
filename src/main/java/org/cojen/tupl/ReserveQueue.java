@@ -30,6 +30,7 @@ import java.util.function.Consumer;
  */
 class ReserveQueue<E> {
     private E[] mElements;
+    private int[] mReservations;
     private int mHead; // inclusive
     private int mTail; // exclusive
     private int mSize;
@@ -37,6 +38,7 @@ class ReserveQueue<E> {
     @SuppressWarnings("unchecked")
     ReserveQueue(int initialCapacity) {
         mElements = (E[]) new Object[initialCapacity];
+        mReservations = new int[initialCapacity];
     }
 
     /**
@@ -53,15 +55,38 @@ class ReserveQueue<E> {
     public final int reserve() {
         E[] elements = mElements;
         int size = mSize;
+
         if (size >= elements.length) {
+            // Expand the capacity.
+
             E[] newElements = (E[]) new Object[elements.length << 1];
-            int len = elements.length - mHead;
-            System.arraycopy(elements, mHead, newElements, 0, len);
-            System.arraycopy(elements, 0, newElements, len, mTail);
+            int[] newReservations = new int[newElements.length];
+
+            // Store reverse lookups in the new array, for convenience. These entries will be
+            // discarded as new reservations are made.
+            for (int i=0; i<mReservations.length; i++) {
+                newReservations[mReservations.length + mReservations[i]] = i;
+            }
+
+            int head = mHead;
+            int i = 0;
+            for (; i<elements.length; i++) {
+                E obj = elements[head];
+                newElements[i] = obj;
+                // Use the reverse lookup to remap unfilled reservations.
+                newReservations[newReservations[mReservations.length + head]] = i;
+                head++;
+                if (head >= elements.length) {
+                    head = 0;
+                }
+            }
+
             mHead = 0;
             mTail = elements.length;
             mElements = elements = newElements;
+            mReservations = newReservations;
         }
+
         mSize = size + 1;
         int slot = mTail;
         int tail = slot + 1;
@@ -69,6 +94,10 @@ class ReserveQueue<E> {
             tail = 0;
         }
         mTail = tail;
+
+        // Store the reservation in case the capacity needs to be increased later.
+        mReservations[slot] = slot;
+
         return slot;
     }
 
@@ -77,14 +106,15 @@ class ReserveQueue<E> {
      * @param obj cannot be null
      */
     public final void set(int slot, E obj) {
-        mElements[slot] = Objects.requireNonNull(obj);
+        mElements[mReservations[slot]] = Objects.requireNonNull(obj);
     }
 
     /**
      * @param obj cannot be null
      */
     public final void add(E obj) {
-        set(reserve(), Objects.requireNonNull(obj));
+        Objects.requireNonNull(obj);
+        set(reserve(), obj);
     }
 
     /**
