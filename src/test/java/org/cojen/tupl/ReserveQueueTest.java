@@ -161,4 +161,39 @@ public class ReserveQueueTest {
 
         assertEquals(0, queue.available());
     }
+
+    @Test
+    public void slotSwap() throws Exception {
+        // Test that increasing capacity doesn't mess up the slots.
+
+        ReserveQueue<Integer> queue = new ReserveQueue<>(4);
+
+        queue.add(1);
+        queue.add(2);
+        assertEquals(1, (Object) queue.poll());
+        assertEquals(1, queue.size());
+        queue.add(3);
+        queue.add(4);
+        int slot = queue.reserve();
+        assertEquals(4, queue.size());
+        assertEquals(3, queue.available());
+
+        // Force the array to grow a few times.
+        for (int i=6; i<=10; i++) {
+            queue.add(i);
+        }
+
+        assertEquals(9, queue.size());
+        assertEquals(3, queue.available());
+
+        // Fill in slot which was reserved earlier.
+        queue.set(slot, 5);
+
+        assertEquals(9, queue.size());
+        assertEquals(9, queue.available());
+
+        for (int i=2; i<=9; i++) {
+            assertEquals(i, (Object) queue.poll());
+        }
+    }
 }
