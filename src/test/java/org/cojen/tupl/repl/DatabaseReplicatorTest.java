@@ -233,6 +233,22 @@ public class DatabaseReplicatorTest {
 
     @Test
     public void txnPrepare() throws Exception {
+        for (int i=3; --i>=0; ) {
+            try {
+                doTxnPrepare();
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Test is load sensitive and leadership is sometimes lost.
+                // https://github.com/cojen/Tupl/issues/70
+                if (i <= 0) {
+                    throw e;
+                }
+                teardown();
+            }
+        }
+    }
+
+    private void doTxnPrepare() throws Exception {
         // Test that unfinished prepared transactions are passed to the new leader.
 
         TransferQueue<Database> recovered = new LinkedTransferQueue<>();
