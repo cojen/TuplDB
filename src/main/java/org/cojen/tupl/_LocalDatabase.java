@@ -1632,33 +1632,35 @@ final class _LocalDatabase extends AbstractDatabase {
     public _Tree newTemporaryIndex() throws IOException {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
-            return newTemporaryTree(null);
+            return newTemporaryTree(false);
         } finally {
             shared.release();
         }
     }
 
     /**
-     * Caller must hold commit lock.
-     *
-     * @param root pass null to create an empty index; pass an unevictable node otherwise
+     * Caller must hold commit lock. Pass true to preallocate a dirty root node for the tree,
+     * which will be held exclusive. Caller is then responsible for initializing it
      */
-    _Tree newTemporaryTree(_Node root) throws IOException {
+    _Tree newTemporaryTree(boolean preallocate) throws IOException {
         checkClosed();
 
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        byte[] rootIdBytes;
-        if (root == null) {
-            rootIdBytes = EMPTY_BYTES;
-        } else {
-            rootIdBytes = new byte[8];
-            encodeLongLE(rootIdBytes, 0, root.mId);
-        }
-
         long treeId;
         byte[] treeIdBytes = new byte[8];
+
+        long rootId;
+        byte[] rootIdBytes;
+
+        if (preallocate) {
+            rootId = mPageDb.allocPage();
+            rootIdBytes = new byte[8];
+        } else {
+            rootId = 0;
+            rootIdBytes = EMPTY_BYTES;
+        }
 
         try {
             do {
@@ -1678,6 +1680,46 @@ final class _LocalDatabase extends AbstractDatabase {
             } finally {
                 createTxn.reset();
             }
+
+            _Node root;
+            if (rootId != 0) {
+                root = allocLatchedNode(rootId, _NodeContext.MODE_UNEVICTABLE);
+                root.mId = rootId;
+                try {
+                    // Note: Same as redirty method, except mPage is assigned when fully mapped.
+                    // The redirty method assumes that the page doesn't change.
+                    /*P*/ // [|
+                    if (mFullyMapped) {
+                        root.mPage = mPageDb.dirtyPage(rootId);
+                    }
+                    /*P*/ // ]
+                    root.mContext.addDirty(root, mCommitState);
+                } catch (Throwable e) {
+                    root.releaseExclusive();
+                    throw e;
+                }
+            } else {
+                root = loadTreeRoot(treeId, 0);
+            }
+
+            try {
+                _Tree tree = new _TempTree(this, treeId, treeIdBytes, root);
+                _TreeRef treeRef = new _TreeRef(tree, mOpenTreesRefQueue);
+
+                mOpenTreesLatch.acquireExclusive();
+                try {
+                    mOpenTreesById.insert(treeId).value = treeRef;
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
+                }
+
+                return tree;
+            } catch (Throwable e) {
+                if (rootId != 0) {
+                    root.releaseExclusive();
+                }
+                throw e;
+            }
         } catch (Throwable e) {
             try {
                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
@@ -1685,24 +1727,15 @@ final class _LocalDatabase extends AbstractDatabase {
                 // Panic.
                 throw closeOnFailure(this, e);
             }
+            if (rootId != 0) {
+                try {
+                    mPageDb.recyclePage(rootId);
+                } catch (Throwable e2) {
+                    Utils.suppress(e, e2);
+                }
+            }
             throw e;
         }
-
-        if (root == null) {
-            root = loadTreeRoot(treeId, 0);
-        }
-
-        _Tree tree = new _TempTree(this, treeId, treeIdBytes, root);
-        _TreeRef treeRef = new _TreeRef(tree, mOpenTreesRefQueue);
-
-        mOpenTreesLatch.acquireExclusive();
-        try {
-            mOpenTreesById.insert(treeId).value = treeRef;
-        } finally {
-            mOpenTreesLatch.releaseExclusive();
-        }
-
-        return tree;
     }
 
     @Override
