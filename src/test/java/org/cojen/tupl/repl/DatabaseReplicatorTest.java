@@ -26,6 +26,7 @@ import java.util.Arrays;
 
 import java.util.concurrent.TransferQueue;
 import java.util.concurrent.LinkedTransferQueue;
+import java.util.concurrent.TimeUnit;
 
 import java.util.function.Supplier;
 
@@ -132,6 +133,7 @@ public class DatabaseReplicatorTest {
                 .baseFile(mReplBaseFiles[i])
                 .replicate(mReplicators[i])
                 //.eventListener(new EventPrinter())
+                .lockTimeout(5, TimeUnit.SECONDS)
                 .directPageAccess(false);
 
             if (handlerSupplier != null) {
