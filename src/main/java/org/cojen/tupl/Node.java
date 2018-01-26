@@ -5577,10 +5577,9 @@ final class Node extends Clutch implements DatabaseAccess {
     @FunctionalInterface
     static interface Supplier {
         /**
-         * @param current full node
-         * @return next node, properly initialized
+         * @return new node, properly initialized
          */
-        Node next(Node current) throws IOException;
+        Node newNode() throws IOException;
     }
 
     /**
@@ -5641,7 +5640,8 @@ final class Node extends Clutch implements DatabaseAccess {
                         start = node.searchVecStart() - 2;
                         if (encodedLen > (start - tail)) {
                             // Entry doesn't fit, so get another node.
-                            node = supplier.next(node);
+                            node.releaseExclusive();
+                            node = supplier.newNode();
                             continue;
                         }
                     }
