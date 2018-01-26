@@ -70,7 +70,7 @@ abstract class TreeSeparator {
      * Separates the sources into new temporary trees. No other threads can be acting on the
      * sources, which shrink during the separation.
      */
-    public void start() throws IOException {
+    public void start() {
         startWorker(null, mWorkerCount - 1, null, null);
     }
 
@@ -128,9 +128,7 @@ abstract class TreeSeparator {
      */
     protected abstract void finished(Throwable exception);
 
-    private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey)
-        throws IOException
-    {
+    private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
  
         Worker[] hashtable = mWorkerHashtable;
@@ -344,7 +342,7 @@ abstract class TreeSeparator {
                         // Signalled to stop.
                         mHighKey = scursor.key();
                         for (int i=0; i<queueSize; i++) {
-                            queue[0].mSource.reset();
+                            queue[i].mSource.reset();
                         }
                         break;
                     }
