@@ -45,6 +45,12 @@ public interface Sorter {
     public Index finish() throws IOException;
 
     /**
+     * Returns an approximate count of entries which have finished, which is only updated when
+     * the finish method is running.
+     */
+    public long progress();
+
+    /**
      * Discards all the entries and frees up space in the database. Can be called to interrupt
      * any sort which is in progress.
      */

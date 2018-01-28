@@ -69,6 +69,9 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     // The trees in these levels are expected to contain more than one node.
     private volatile List<Level> mSortTreeLevels;
 
+    private TreeMerger mFinishMerger;
+    private long mFinishCount;
+
     private int mState;
     private Throwable mException;
 
@@ -170,6 +173,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             checkState();
 
             mState = S_FINISHING;
+            mFinishCount = 0;
 
             try {
                 while (mMergerCount != 0) {
@@ -250,6 +254,8 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             TreeMerger merger = newTreeMerger(allTrees, finishLevel, finishLevel);
             finishLevel.mMerger = merger;
             merger.start();
+
+            mFinishMerger = merger;
         }
 
         synchronized (finishLevel) {
@@ -292,6 +298,11 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     private synchronized void finishComplete() throws IOException {
+        if (mFinishMerger != null) {
+            mFinishCount = mFinishMerger.sum();
+            mFinishMerger = null;
+        }
+
         // Drain the pool.
         if (mSortTreePoolSize > 0) {
             do {
@@ -310,11 +321,18 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
+    public synchronized long progress() {
+        return mFinishMerger != null ? mFinishMerger.sum() : mFinishCount;
+    }
+
+    @Override
     public void reset() throws IOException {
         List<Tree> toDrop = null;
 
         synchronized (this) {
             mState = S_RESET;
+            mFinishMerger = null;
+            mFinishCount = 0;
 
             try {
                 while (mMergerCount != 0) {
