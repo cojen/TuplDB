@@ -121,6 +121,7 @@ public class TestAll {
             TreeGraftTest.class,
             TreeMergerTest.class,
             SorterTest.class,
+            SorterDirectTest.class,
         };
 
         String[] names = new String[classes.length];
