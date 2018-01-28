@@ -148,12 +148,13 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public synchronized Index finish() throws IOException {
+    public Index finish() throws IOException {
         try {
             Tree tree = doFinish();
             finishComplete();
             return tree;
         } catch (Throwable e) {
+            e.printStackTrace(System.out);
             try {
                 reset();
             } catch (Exception e2) {
@@ -163,95 +164,98 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    // Caller must be synchronized.
     private Tree doFinish() throws IOException {
-        checkState();
+        Level finishLevel;
 
-        mState = S_FINISHING;
+        synchronized (this) {
+            checkState();
 
-        try {
-            while (mMergerCount != 0) {
-                wait();
-            }
-            if (mLastMerger != null) {
-                throw new AssertionError();
-            }
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
+            mState = S_FINISHING;
 
-        Level[] levels = stopTreeMergers();
-        int numLevelTrees = 0;
-
-        if (levels != null) {
-            for (Level level : levels) {
-                synchronized (level) {
-                    numLevelTrees += level.mSize;
+            try {
+                while (mMergerCount != 0) {
+                    wait();
                 }
-            }
-            mSortTreeLevels = null;
-        }
-
-        final Tree[] sortTrees = mSortTrees;
-        final int size = mSortTreesSize;
-        mSortTrees = null;
-        mSortTreesSize = 0;
-
-        Tree[] allTrees;
-
-        if (size == 0) {
-            if (numLevelTrees == 0) {
-                return mDatabase.newTemporaryIndex();
-            }
-            if (numLevelTrees == 1) {
-                return levels[0].mTrees[0];
-            }
-            allTrees = new Tree[numLevelTrees];
-        } else {
-            Tree tree;
-            if (size == 1) {
-                tree = sortTrees[0];
-                CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-                Node node;
-                try {
-                    node = latchRootDirty(tree);
-                } finally {
-                    shared.release();
+                if (mLastMerger != null) {
+                    throw new AssertionError();
                 }
-                node.sortLeaf();
-                node.releaseExclusive();
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+
+            Level[] levels = stopTreeMergers();
+            int numLevelTrees = 0;
+
+            if (levels != null) {
+                for (Level level : levels) {
+                    synchronized (level) {
+                        numLevelTrees += level.mSize;
+                    }
+                }
+                mSortTreeLevels = null;
+            }
+
+            final Tree[] sortTrees = mSortTrees;
+            final int size = mSortTreesSize;
+            mSortTrees = null;
+            mSortTreesSize = 0;
+
+            Tree[] allTrees;
+
+            if (size == 0) {
+                if (numLevelTrees == 0) {
+                    return mDatabase.newTemporaryIndex();
+                }
+                if (numLevelTrees == 1) {
+                    return levels[0].mTrees[0];
+                }
+                allTrees = new Tree[numLevelTrees];
             } else {
-                tree = mDatabase.newTemporaryIndex();
-                doMergeSortTrees(null, sortTrees, size, tree);
+                Tree tree;
+                if (size == 1) {
+                    tree = sortTrees[0];
+                    CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+                    Node node;
+                    try {
+                        node = latchRootDirty(tree);
+                    } finally {
+                        shared.release();
+                    }
+                    node.sortLeaf();
+                    node.releaseExclusive();
+                } else {
+                    tree = mDatabase.newTemporaryIndex();
+                    doMergeSortTrees(null, sortTrees, size, tree);
+                }
+
+                if (numLevelTrees == 0) {
+                    return tree;
+                }
+
+                allTrees = new Tree[numLevelTrees + 1];
+                // Place newest tree at the end, to favor its entries if any duplicates exist.
+                allTrees[numLevelTrees] = tree;
             }
 
-            if (numLevelTrees == 0) {
-                return tree;
+            // Iterate in reverse order, to favor entries at lower levels if any duplicates exist.
+            for (int i = levels.length, pos = 0; --i >= 0; ) {
+                Level level = levels[i];
+                System.arraycopy(level.mTrees, 0, allTrees, pos, level.mSize);
+                pos += level.mSize;
             }
 
-            allTrees = new Tree[numLevelTrees + 1];
-            // Place newest tree at the end, to favor its entries if any duplicates exist.
-            allTrees[numLevelTrees] = tree;
+            // Merge the remaining trees and store into an existing level object.
+            finishLevel = levels[0];
+            levels = null;
+            finishLevel.mSize = 0;
+            TreeMerger merger = newTreeMerger(allTrees, finishLevel, finishLevel);
+            finishLevel.mMerger = merger;
+            merger.start();
         }
 
-        // Iterate in reverse order, to favor entries at lower levels if any duplicates exist.
-        for (int i = levels.length, pos = 0; --i >= 0; ) {
-            Level level = levels[i];
-            System.arraycopy(level.mTrees, 0, allTrees, pos, level.mSize);
-            pos += level.mSize;
-        }
-
-        // Merge the remaining trees and store into an existing level object.
-        Level level = levels[0];
-        levels = null;
-        level.mSize = 0;
-        TreeMerger merger = newTreeMerger(allTrees, level, level);
-        level.mMerger = merger;
-        merger.start();
-
-        synchronized (level) {
-            level.waitUntilFinished();
-            return level.mTrees[0];
+        synchronized (finishLevel) {
+            finishLevel.waitUntilFinished();
+            return finishLevel.mTrees[0];
         }
     }
 
@@ -288,8 +292,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    // Caller must be synchronized.
-    private void finishComplete() throws IOException {
+    private synchronized void finishComplete() throws IOException {
         // Drain the pool.
         if (mSortTreePoolSize > 0) {
             do {
@@ -308,43 +311,61 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public synchronized void reset() throws IOException {
-        mState = S_RESET;
+    public void reset() throws IOException {
+        List<Tree> toDrop = null;
 
-        try {
-            while (mMergerCount != 0) {
-                wait();
+        synchronized (this) {
+            mState = S_RESET;
+
+            try {
+                while (mMergerCount != 0) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
             }
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
 
-        Level[] levels = stopTreeMergers();
+            Level[] levels = stopTreeMergers();
 
-        if (levels != null) {
-            for (Level level : levels) {
-                Tree[] trees;
-                int size;
-                synchronized (level) {
-                    trees = level.mTrees;
-                    size = level.mSize;
-                    level.mSize = 0;
+            if (levels != null) {
+                for (Level level : levels) {
+                    Tree[] trees;
+                    int size;
+                    synchronized (level) {
+                        trees = level.mTrees;
+                        size = level.mSize;
+                        level.mSize = 0;
+                    }
+                    if (size != 0) {
+                        if (toDrop == null) {
+                            toDrop = new ArrayList<>();
+                        }
+                        for (int i=0; i<size; i++) {
+                            toDrop.add(trees[i]);
+                        }
+                    }
+                }
+
+                mSortTreeLevels = null;
+            }
+
+            Tree[] sortTrees = mSortTrees;
+            int size = mSortTreesSize;
+            mSortTrees = null;
+            mSortTreesSize = 0;
+
+            if (size != 0) {
+                if (toDrop == null) {
+                    toDrop = new ArrayList<>();
                 }
                 for (int i=0; i<size; i++) {
-                    trees[i].drop(false).run();
+                    toDrop.add(sortTrees[i]);
                 }
             }
-
-            mSortTreeLevels = null;
         }
 
-        final Tree[] sortTrees = mSortTrees;
-        final int size = mSortTreesSize;
-        mSortTrees = null;
-        mSortTreesSize = 0;
-
-        for (int i=0; i<size; i++) {
-            sortTrees[i].drop(false).run();
+        if (toDrop != null) for (Tree tree : toDrop) {
+            tree.drop(false).run();
         }
 
         finishComplete();
