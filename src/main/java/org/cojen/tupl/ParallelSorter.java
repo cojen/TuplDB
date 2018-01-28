@@ -154,7 +154,6 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             finishComplete();
             return tree;
         } catch (Throwable e) {
-            e.printStackTrace(System.out);
             try {
                 reset();
             } catch (Exception e2) {
