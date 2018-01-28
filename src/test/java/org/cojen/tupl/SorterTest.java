@@ -46,7 +46,7 @@ public class SorterTest {
             .maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
-        mDatabase = (LocalDatabase) TestUtils.newTempDatabase(getClass(), config);
+        mDatabase = TestUtils.newTempDatabase(getClass(), config);
     }
 
     @After
@@ -54,7 +54,7 @@ public class SorterTest {
         deleteTempDatabases(getClass());
     }
 
-    private LocalDatabase mDatabase;
+    protected Database mDatabase;
 
     @Test
     public void sortNothing() throws Exception {
