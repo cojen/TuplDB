@@ -79,7 +79,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
     static final int ENTRY_FRAGMENTED = 0x40;
 
-    // Context this node belongs to, for tracking dirty nodes and most recentl used nodes.
+    // Context this node belongs to, for tracking dirty nodes and most recently used nodes.
     final NodeContext mContext;
 
     // Links within usage list, guarded by NodeContext.
