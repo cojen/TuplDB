@@ -199,7 +199,7 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void sync(boolean metadata) throws IOException {
+    public synchronized void sync(boolean metadata) throws IOException {
         Syncer[] syncers = mSyncers;
         int i;
         for (i=0; i<syncers.length; i++) {
