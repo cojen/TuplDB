@@ -281,7 +281,8 @@ public interface Index extends View, Closeable {
      * Fully closes and removes an empty index. An exception is thrown if the index isn't empty
      * or if an in-progress transaction is modifying it.
      *
-     * @throws IllegalStateException if index isn't empty or any pending transactional changes
+     * @throws IllegalStateException if index isn't empty or if any pending transactional
+     * changes exist
      * @throws ClosedIndexException if this index reference is closed
      * @see Database#deleteIndex Database.deleteIndex
      */
