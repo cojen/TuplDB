@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.1
+v1.4.1 (2018-02-02)
 ------
 
 * Fix bug when using the new cursor registration feature. When the database is restarted,
@@ -10,7 +10,7 @@ v1.4.1
   mode is NO_REDO and the transaction is null, a redo log entry would still be created. Also
   honor the transaction-specified durability mode when using the unsafe locking mode. Previously,
   the default durability mode would be used.
-* Added support two-phase commit, using the new transaction prepare and getId methods.
+* Added support for two-phase commit, using the new transaction prepare and getId methods.
 * Added a parallel external mergesort utility.
 
 v1.4.0.2 (2018-01-21)
