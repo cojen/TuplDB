@@ -77,7 +77,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,
-                   LocalDatabase db, LHashTable.Obj<LocalTransaction> txns)
+                   LocalDatabase db, LHashTable.Obj<LocalTransaction> txns,
+                   LHashTable.Obj<TreeCursor> cursors)
         throws IOException
     {
         if (maxThreads <= 0) {
@@ -127,7 +128,21 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         mIndexes = new LHashTable.Obj<>(16);
 
-        mCursors = new CursorTable(4);
+        final CursorTable cursorTable;
+        if (cursors == null) {
+            cursorTable = new CursorTable(4);
+        } else {
+            cursorTable = new CursorTable(cursors.size());
+
+            cursors.traverse(ce -> {
+                long scrambledCursorId = mix(ce.key);
+                cursorTable.insert(scrambledCursorId).mCursor = ce.value;
+                // Delete entry.
+                return true;
+            });
+        }
+
+        mCursors = cursorTable;
     }
 
     public RedoWriter initWriter(long redoNum) {
@@ -203,7 +218,10 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         synchronized (mCursors) {
             mCursors.traverse(entry -> {
-                entry.mCursor.close();
+                TreeCursor cursor = entry.mCursor;
+                // Unregister first, to prevent close from writing a redo log entry.
+                mDatabase.unregisterCursor(cursor);
+                cursor.close();
                 return true;
             });
         }
@@ -622,7 +640,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Index ix = getIndex(indexId);
         if (ix != null) {
             TreeCursor tc = (TreeCursor) ix.newCursor(Transaction.BOGUS);
-            tc.autoload(false);
+            tc.mKeyOnly = true;
             synchronized (mCursors) {
                 mCursors.insert(scrambledCursorId).mCursor = tc;
             }
@@ -1220,7 +1238,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             tc.reset();
 
             tc = (TreeCursor) ix.newCursor(txn);
-            tc.autoload(false);
+            tc.mKeyOnly = true;
             tc.mTxn = txn;
             tc.find(key);
 

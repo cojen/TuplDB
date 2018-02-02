@@ -36,16 +36,21 @@ final class _RedoLogApplier implements RedoVisitor {
 
     long mHighestTxnId;
 
-    _RedoLogApplier(_LocalDatabase db, LHashTable.Obj<_LocalTransaction> txns) {
+    _RedoLogApplier(_LocalDatabase db, LHashTable.Obj<_LocalTransaction> txns,
+                   LHashTable.Obj<_TreeCursor> cursors)
+    {
         mDatabase = db;
         mTransactions = txns;
         mIndexes = new LHashTable.Obj<>(16);
-        mCursors = new LHashTable.Obj<>(4);
+        mCursors = cursors;
     }
 
     void resetCursors() {
         mCursors.traverse(entry -> {
-            entry.value.close();
+            _TreeCursor cursor = entry.value;
+            // Unregister first, to prevent close from writing a redo log entry.
+            mDatabase.unregisterCursor(cursor);
+            cursor.close();
             return false;
         });
     }

@@ -150,7 +150,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (mCursorId == 0) {
             LocalTransaction txn = mTxn;
             if (txn == null) {
-                if (storeMode() < 1) {
+                if (storeMode() > 1) {
                     // Never redo.
                     return false;
                 }
@@ -163,12 +163,15 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     return false;
                 }
 
+                Tree cursorRegistry = db.openCursorRegistry();
+
                 CommitLock.Shared shared = db.commitLock().acquireShared();
                 try {
                     TransactionContext context = db.anyTransactionContext();
                     long cursorId = context.nextTransactionId();
                     context.redoCursorRegister(redo, cursorId, mTree.mId);
                     mCursorId = cursorId;
+                    db.registerCursor(cursorRegistry, this);
                 } catch (UnmodifiableReplicaException e) {
                     return false;
                 } finally {
@@ -178,9 +181,16 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (txn.durabilityMode() == DurabilityMode.NO_REDO) {
                     return false;
                 }
-                CommitLock.Shared shared = txn.mDatabase.commitLock().acquireShared();
+
+                LocalDatabase db = mTree.mDatabase;
+                Tree cursorRegistry = db.openCursorRegistry();
+
+                CommitLock.Shared shared = db.commitLock().acquireShared();
                 try {
-                    return txn.tryRedoCursorRegister(this);
+                    if (!txn.tryRedoCursorRegister(this)) {
+                        return false;
+                    }
+                    db.registerCursor(cursorRegistry, this);
                 } catch (UnmodifiableReplicaException e) {
                     return false;
                 } finally {
@@ -4340,10 +4350,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         cursorId &= ~(1L << 63);
 
         try {
+            LocalDatabase db = mTree.mDatabase;
+
             TransactionContext context;
             RedoWriter redo;
             if (txn == null) {
-                LocalDatabase db = mTree.mDatabase;
                 context = db.anyTransactionContext();
                 redo = db.txnRedoWriter();
             } else {
@@ -4352,6 +4363,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             }
 
             context.redoCursorUnregister(redo, cursorId);
+
+            // Sets mCursorId to 0 as a side-effect.
+            db.unregisterCursor(this);
         } catch (UnmodifiableReplicaException e) {
             // Ignore.
         } catch (IOException e) {
@@ -4359,8 +4373,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             // an IOException, so throw it as unchecked for compatibility.
             throw rethrow(e);
         }
-
-        mCursorId = 0;
     }
 
     final int height() {

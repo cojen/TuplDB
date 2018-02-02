@@ -4,6 +4,8 @@ Changelog
 v1.4.1
 ------
 
+* Fix bug when using the new cursor registration feature. When the database is restarted,
+  registered cursors could get lost, causing redo operations against them to be lost too.
 * Honor the default durability mode when using a null transaction. Previously, when the default
   mode is NO_REDO and the transaction is null, a redo log entry would still be created. Also
   honor the transaction-specified durability mode when using the unsafe locking mode. Previously,

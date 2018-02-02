@@ -157,8 +157,10 @@ public class ReplicatorConfig implements Cloneable, Serializable {
         return this;
     }
 
-    // Intended only for testing.
-    ReplicatorConfig localSocket(ServerSocket ss) throws UnknownHostException {
+    /**
+     * Explicitly specify a connected local socket, intended only for testing.
+     */
+    public ReplicatorConfig localSocket(ServerSocket ss) throws UnknownHostException {
         mLocalSocket = ss;
         mListenAddress = ss.getLocalSocketAddress();
         mLocalAddress = mListenAddress;

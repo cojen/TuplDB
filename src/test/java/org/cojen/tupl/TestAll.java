@@ -122,6 +122,7 @@ public class TestAll {
             TreeMergerTest.class,
             SorterTest.class,
             SorterDirectTest.class,
+            CursorRegisterTest.class,
         };
 
         String[] names = new String[classes.length];
