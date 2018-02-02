@@ -445,7 +445,7 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    long write(boolean flush, byte[] bytes, int offset, int length, int commitLen)
+    long write(boolean flush, byte[] bytes, int offset, final int length, int commitLen)
         throws IOException
     {
         try {
@@ -469,13 +469,13 @@ final class RedoLog extends RedoWriter {
                 mBufferPos = buf.length;
                 mOut.write(buf, 0, mBufferPos);
                 offset += avail;
-                length -= avail;
-                if (length >= buf.length || flush || mAlwaysFlush) {
+                int rem = length - avail;
+                if (rem >= buf.length || flush || mAlwaysFlush) {
                     mBufferPos = 0;
-                    mOut.write(bytes, offset, length);
+                    mOut.write(bytes, offset, rem);
                 } else {
-                    System.arraycopy(bytes, offset, buf, 0, length);
-                    mBufferPos = length;
+                    System.arraycopy(bytes, offset, buf, 0, rem);
+                    mBufferPos = rem;
                 }
             }
 

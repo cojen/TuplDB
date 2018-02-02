@@ -134,6 +134,13 @@ public class TestUtils {
         }
     }
 
+    public static void closeTempDatabases(Class context) {
+        TempFiles files = tempFilesFor(context);
+        if (files != null) {
+            files.closeTempDatabases();
+        }
+    }
+
     private static synchronized TempFiles tempFilesFor(Class context) {
         TempFiles files = cTempFiles.get(context);
         if (files == null) {
@@ -481,13 +488,17 @@ public class TestUtils {
             }
         }
 
-        synchronized void deleteTempDatabases() {
+        synchronized void closeTempDatabases() {
             for (Database db : mTempDatabases.keySet()) {
                 try {
                     db.close();
                 } catch (IOException e) {
                 }
             }
+        }
+
+        synchronized void deleteTempDatabases() {
+            closeTempDatabases();
 
             for (File baseFile : mTempBaseFiles) {
                 deleteDbFiles(baseFile);

@@ -495,8 +495,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_STORE, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_STORE, cursorId, txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, false);
             redoWriteUnsignedVarInt(value.length);
@@ -515,8 +514,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_DELETE, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_DELETE, cursorId, txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, true);
             redoWriteTerminator(redo);
@@ -532,8 +530,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_FIND, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_FIND, cursorId, txnId);
             redoWriteUnsignedVarInt(key.length);
             redoWriteBytes(key, true);
             redoWriteTerminator(redo);
@@ -549,8 +546,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_VALUE_SET_LENGTH, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_VALUE_SET_LENGTH, cursorId, txnId);
             redoWriteUnsignedVarLong(length);
             redoWriteTerminator(redo);
         } finally {
@@ -566,8 +562,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_VALUE_WRITE, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_VALUE_WRITE, cursorId, txnId);
             redoWriteUnsignedVarLong(pos);
             redoWriteUnsignedVarInt(len);
             redoWriteBytes(buf, off, len, true);
@@ -584,8 +579,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_CURSOR_VALUE_CLEAR, cursorId);
-            redoWriteTxnId(txnId);
+            redoWriteCursorOp(redo, OP_CURSOR_VALUE_CLEAR, cursorId, txnId);
             redoWriteUnsignedVarLong(pos);
             redoWriteUnsignedVarLong(length);
             redoWriteTerminator(redo);
@@ -936,22 +930,31 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     // Caller must hold redo latch.
-    private void redoWriteTxnId(long txnId) throws IOException {
+    private void redoWriteCursorOp(RedoWriter redo, byte op, long cursorId, long txnId)
+        throws IOException
+    {
+        if (redo != mRedoWriter) {
+            switchRedo(redo);
+        }
+
         byte[] buffer = mRedoBuffer;
         int pos = mRedoPos;
 
         prepare: {
-            if (pos > buffer.length - 9) { // up to 9 for txn delta
+            if (pos > buffer.length - ((1 + 9) << 1)) { // 2 ops and 2 deltas (max length)
                 redoFlush(false);
                 pos = 0;
             } else if (pos != 0) {
-                mRedoPos = Utils.encodeSignedVarLong(buffer, pos, txnId - mRedoLastTxnId);
+                buffer[pos] = op;
+                pos = Utils.encodeSignedVarLong(buffer, pos + 1, cursorId - mRedoLastTxnId);
                 break prepare;
             }
-            mRedoFirstTxnId = txnId;
-            mRedoPos = 9; // reserve 9 for txn delta
+            buffer[0] = op;
+            pos = 1 + 9;  // 1 for op, and reserve 9 for txn delta (cursorId actually)
+            mRedoFirstTxnId = cursorId;
         }
 
+        mRedoPos = Utils.encodeSignedVarLong(buffer, pos, txnId - cursorId);
         mRedoLastTxnId = txnId;
     }
 
