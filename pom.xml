@@ -5,7 +5,7 @@
   <artifactId>tupl</artifactId>
   <packaging>jar</packaging>
   <name>Tupl</name>
- <version>1.4.1</version>
+ <version>1.4.2-SNAPSHOT</version>
   <description>
     The Unnamed Persistence Library.
   </description>
