@@ -924,9 +924,9 @@ public class RecoverTest {
     @Test
     public void testUndoNonReplicatedTransaction() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
-                .directPageAccess(false)
-                .checkpointRate(-1, null)
-                .durabilityMode(DurabilityMode.SYNC);
+            .directPageAccess(false)
+            .checkpointRate(-1, null)
+            .durabilityMode(DurabilityMode.SYNC);
 
         decorate(config);
 

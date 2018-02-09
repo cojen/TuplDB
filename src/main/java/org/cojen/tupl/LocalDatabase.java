@@ -60,6 +60,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.util.function.BiConsumer;
+
 import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
@@ -201,6 +203,7 @@ final class LocalDatabase extends AbstractDatabase {
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
+    private final BiConsumer<Database, Index> mIndexOpenListener;
 
     // Map of all loaded nodes.
     private final Node[] mNodeMapTable;
@@ -300,6 +303,7 @@ final class LocalDatabase extends AbstractDatabase {
      */
     private LocalDatabase(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
+        mIndexOpenListener = config.mIndexOpenListener;
 
         mCustomTxnHandler = config.mTxnHandler;
         mRecoveryHandler = config.mRecoveryHandler;
@@ -3127,9 +3131,13 @@ final class LocalDatabase extends AbstractDatabase {
 
         // Use a transaction to ensure that only one thread loads the requested tree. Nothing
         // is written into it.
-        Transaction txn = newNoRedoTransaction();
+        Transaction txn = threadLocalTransaction(DurabilityMode.NO_REDO);
         try {
             txn.lockTimeout(-1, null);
+
+            if (txn.lockCheck(mRegistry.getId(), treeIdBytes) != LockResult.UNOWNED) {
+                throw new LockFailureException("Index open listener self deadlock");
+            }
 
             // Pass the transaction to acquire the lock.
             byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
@@ -3146,14 +3154,29 @@ final class LocalDatabase extends AbstractDatabase {
             Node root = loadTreeRoot(treeId, rootId);
 
             tree = newTreeInstance(treeId, treeIdBytes, name, root);
-            TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
-            mOpenTreesLatch.acquireExclusive();
             try {
-                mOpenTrees.put(name, treeRef);
-                mOpenTreesById.insert(treeId).value = treeRef;
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
+                if (mIndexOpenListener != null) {
+                    mIndexOpenListener.accept(this, tree);
+                }
+
+                TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
+
+                mOpenTreesLatch.acquireExclusive();
+                try {
+                    mOpenTrees.put(name, treeRef);
+                    try {
+                        mOpenTreesById.insert(treeId).value = treeRef;
+                    } catch (Throwable e) {
+                        mOpenTrees.remove(name);
+                        throw e;
+                    }
+                } finally {
+                    mOpenTreesLatch.releaseExclusive();
+                }
+            } catch (Throwable e) {
+                tree.close();
+                throw e;
             }
 
             return tree;
