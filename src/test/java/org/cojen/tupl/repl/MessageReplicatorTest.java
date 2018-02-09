@@ -43,7 +43,7 @@ public class MessageReplicatorTest {
         org.junit.runner.JUnitCore.main(MessageReplicatorTest.class.getName());
     }
 
-    private static final long COMMIT_TIMEOUT_NANOS = 5_000_000_000L;
+    private static final long COMMIT_TIMEOUT_NANOS = 10_000_000_000L;
 
     @Before
     public void setup() throws Exception {
