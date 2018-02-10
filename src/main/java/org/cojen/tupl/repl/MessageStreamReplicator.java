@@ -385,7 +385,7 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         /**
-         * @param avail must be >= 1
+         * @param avail {@literal must be >= 1}
          * @return length; high bit is set for control messages
          */
         private int readLength(int avail) throws IOException {

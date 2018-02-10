@@ -841,7 +841,7 @@ class Utils extends org.cojen.tupl.io.Utils {
 
     /**
      * Deletes all files in the base file's directory which are named like
-     * "base<pattern><number>". For example, mybase.redo.123
+     * {@literal "base<pattern><number>"}. For example, mybase.redo.123
      */
     static void deleteNumberedFiles(File baseFile, String pattern) throws IOException {
         deleteNumberedFiles(baseFile, pattern, 0);
@@ -849,7 +849,7 @@ class Utils extends org.cojen.tupl.io.Utils {
 
     /**
      * Deletes all files in the base file's directory which are named like
-     * "base<pattern><number>". For example, mybase.redo.123
+     * {@literal "base<pattern><number>"}. For example, mybase.redo.123
      *
      * @param min delete numbers greater than or equal to this
      */

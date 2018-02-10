@@ -121,7 +121,7 @@ public enum LockResult {
     /**
      * Returns the lowest common owned level.
      *
-     * UNOWNED < OWNED_SHARED < OWNED_UPGRADABLE < OWNED_EXCLUSIVE
+     * {@literal UNOWNED < OWNED_SHARED < OWNED_UPGRADABLE < OWNED_EXCLUSIVE}
      */
     LockResult commonOwned(LockResult other) {
         if (this == UNOWNED) {

@@ -156,7 +156,7 @@ final class BoundedView extends SubView {
 
     /**
      * @param key must not be null
-     * @return <0 if less than start, 0 if equal (in range), >0 if higher (in range)
+     * @return {@literal <0 if less than start, 0 if equal (in range), >0 if higher (in range)}
      */
     int startRangeCompare(byte[] key) {
         byte[] start = mStart;
@@ -166,7 +166,7 @@ final class BoundedView extends SubView {
     /**
      * @param start must not be null
      * @param key must not be null
-     * @return <0 if less than start, 0 if equal (in range), >0 if higher (in range)
+     * @return {@literal <0 if less than start, 0 if equal (in range), >0 if higher (in range)}
      */
     int startRangeCompare(byte[] start, byte[] key) {
         int result = compareUnsigned(key, 0, key.length, start, 0, start.length);
@@ -175,7 +175,7 @@ final class BoundedView extends SubView {
 
     /**
      * @param key must not be null
-     * @return <0 if less than end (in range), 0 if equal (in range), >0 if higher
+     * @return {@literal <0 if less than end (in range), 0 if equal (in range), >0 if higher}
      */
     int endRangeCompare(byte[] key) {
         byte[] end = mEnd;
@@ -185,7 +185,7 @@ final class BoundedView extends SubView {
     /**
      * @param end must not be null
      * @param key must not be null
-     * @return <0 if less than end (in range), 0 if equal (in range), >0 if higher
+     * @return {@literal <0 if less than end (in range), 0 if equal (in range), >0 if higher}
      */
     int endRangeCompare(byte[] end, byte[] key) {
         int result = compareUnsigned(key, 0, key.length, end, 0, end.length);

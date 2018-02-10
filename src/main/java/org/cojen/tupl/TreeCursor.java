@@ -3877,7 +3877,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param node non-null latched node
      * @param lowKey start of range, inclusive. pass null for open range
      * @param highKey end of range, exclusive. pass null for open range
-     * @return <0 if node is empty or out of bounds
+     * @return {@literal <0 if node is empty or out of bounds}
      */
     private int randomPosition(ThreadLocalRandom rnd, Node node, byte[] lowKey, byte[] highKey)
         throws IOException

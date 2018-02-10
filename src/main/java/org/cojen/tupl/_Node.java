@@ -1525,7 +1525,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
+     * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveKeyStats(int pos, long[] stats) throws IOException {
         final long page = mPage;
@@ -1801,7 +1801,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     /**
      * @param pos position as provided by binarySearch; must be positive
-     * @param stats [0]: full length, [1]: number of pages (>0 if fragmented)
+     * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveLeafValueStats(int pos, long[] stats) throws IOException {
         final long page = mPage;
@@ -5711,7 +5711,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     /**
      * @param pos two-based position in search vector
      * @param endPos two-based exclusive end position in search vector
-     * @param halfPos (endPos >>> 1) & ~1
+     * @param halfPos {@literal (endPos >>> 1) & ~1}
      */
     private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
         final long page = mPage;

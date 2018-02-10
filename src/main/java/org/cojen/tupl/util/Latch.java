@@ -775,8 +775,8 @@ public class Latch {
         }
 
         /**
-         * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
-         * if acquired and node should not be removed
+         * @return {@literal <0 if thread should park; 0 if acquired and node should also be
+         * removed; >0 if acquired and node should not be removed}
          */
         int tryAcquire(Latch latch) {
             int trials = 0;
@@ -849,8 +849,8 @@ public class Latch {
     @SuppressWarnings("serial")
     static class Shared extends WaitNode {
         /**
-         * @return <0 if thread should park; 0 if acquired and node should also be removed; >0
-         * if acquired and node should not be removed
+         * @return {@literal <0 if thread should park; 0 if acquired and node should also be
+         * removed; >0 if acquired and node should not be removed}
          */
         @Override
         final int tryAcquire(Latch latch) {

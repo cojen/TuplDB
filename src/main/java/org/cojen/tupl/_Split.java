@@ -79,8 +79,8 @@ final class _Split {
     }
 
     /**
-     * Compares to the split key, returning <0 if given key is lower, 0 if
-     * equal, >0 if greater.
+     * {@literal Compares to the split key, returning <0 if given key is lower, 0 if
+     * equal, >0 if greater.}
      */
     final int compare(byte[] key) {
         return Utils.compareUnsigned(key, 0, key.length, mFullKey, 0, mFullKey.length);

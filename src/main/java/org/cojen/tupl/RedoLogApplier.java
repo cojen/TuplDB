@@ -25,7 +25,6 @@ import org.cojen.tupl.ext.TransactionHandler;
  * 
  *
  * @author Brian S O'Neill
- * @see RedoLogRecovery
  */
 /*P*/
 final class RedoLogApplier implements RedoVisitor {
