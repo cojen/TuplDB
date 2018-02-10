@@ -83,7 +83,7 @@ interface Channel {
      *
      * @param prevTerm previous term
      * @param term term number
-     * @param index index at start of term
+     * @param startIndex index at start of term
      * @return false if not sent or processed
      */
     boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex);

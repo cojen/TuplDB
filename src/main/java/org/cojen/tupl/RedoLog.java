@@ -88,7 +88,6 @@ final class RedoLog extends RedoWriter {
     /**
      * Open after replay.
      *
-     * @param logId first log id to open
      * @param context used for creating next log file; must not be null
      */
     RedoLog(DatabaseConfig config, RedoLog replayed, TransactionContext context)

@@ -1579,7 +1579,7 @@ final class TreeValue {
      *
      * The node latch is released if an exception is thrown.
      *
-     * @param node latched exclusive and dirtied
+     * @param frame latched exclusive and dirtied
      * @param vHeaderLoc location of raw value header
      * @param vLen length of raw value sans header
      * @param fHeaderLoc location of fragmented value header

@@ -857,7 +857,7 @@ class _Locker extends _LockOwner {
         }
 
         /**
-         * @param 0 or 1L << 63
+         * @param upgrade {@literal 0 or 1L << 63}
          */
         private Block(Block prev, _Lock first, long upgrade) {
             mPrev = prev;
@@ -873,7 +873,7 @@ class _Locker extends _LockOwner {
         }
 
         /**
-         * @param 0 or 1L << 63
+         * @param upgrade {@literal 0 or 1L << 63}
          */
         void pushLock(_Locker locker, _Lock lock, long upgrade) {
             _Lock[] locks = mLocks;

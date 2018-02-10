@@ -1660,7 +1660,7 @@ class _Tree implements View, Index {
     }
 
     /**
-     * @see Database#markDirty
+     * @see _LocalDatabase#markDirty
      */
     final boolean markDirty(_Node node) throws IOException {
         return mDatabase.markDirty(this, node);

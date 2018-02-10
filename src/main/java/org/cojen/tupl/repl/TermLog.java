@@ -117,7 +117,6 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * Set the end index for this term instance, truncating all higher data. The highest index
      * will also be set, if the given index is within the contiguous region of data.
      *
-     * @return the commit index; might be higher than what's appliable
      * @throws IllegalStateException if the given index is lower than the commit index
      */
     void finishTerm(long endIndex);

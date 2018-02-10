@@ -140,7 +140,7 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
     /**
      * Negate the identifier if a replica, but leave alone otherwise.
      *
-     * @param id new transaction identifier; greater than zero
+     * @param txnId new transaction identifier; greater than zero
      */
     long adjustTransactionId(long txnId) {
         // Non-replica by default.
@@ -164,8 +164,8 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
      *
      * @param flush true to immediately flush the log
      * @param length never 0
-     * @param commitLen length of message which is fully committable (no torn operations); pass
-     * <= 0 if nothing is committable
+     * @param commitLen {@literal length of message which is fully committable (no torn
+     * operations); pass <= 0 if nothing is committable}
      * @return highest log position afterwards
      */
     // Caller must hold exclusive latch.

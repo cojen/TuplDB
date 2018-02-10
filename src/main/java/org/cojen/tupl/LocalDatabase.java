@@ -4366,7 +4366,7 @@ final class LocalDatabase extends AbstractDatabase {
      *
      * @param value can be null if value is all zeros
      * @param max maximum allowed size for returned byte array; must not be
-     * less than 11 (can be 9 if full value length is < 65536)
+     * less than 11 {@literal (can be 9 if full value length is < 65536)}
      * @param maxInline maximum allowed inline size; must not be more than 65535
      * @return null if max is too small
      */
@@ -4709,7 +4709,8 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Reconstruct a fragmented value.
      *
-     * @param stats non-null for stats: [0]: full length, [1]: number of pages (>0 if fragmented)
+     * @param stats non-null for stats: [0]: full length, [1]: number of pages
+     * {@literal (>0 if fragmented)}
      * @return null if stats requested
      */
     byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len, long[] stats)
