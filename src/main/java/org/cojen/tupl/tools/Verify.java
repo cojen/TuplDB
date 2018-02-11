@@ -20,20 +20,31 @@ package org.cojen.tupl.tools;
 import org.cojen.tupl.*;
 
 /**
- * Simple database verification utility. Main method accepts a single argument &mdash; a base
- * file path for the database. Main method exits with a status of 1 if verification failed, 0
- * if succeeded.
+ * Simple database verification utility. Main method requires a single argument &mdash; a base
+ * file path for the database. An optional cache size can be provided too. Main method exits
+ * with a status of 1 if verification failed, 0 if succeeded.
  *
  * @author Brian S O'Neill
  * @see Database#verify Database.verify
  */
 public class Verify extends VerificationObserver {
     /**
-     * @param args only argument is a base file path for the database
+     * @param args first argument is a base file path for the database, second optional
+     * argument is the cache size
      */
     public static void main(String[] args) throws Exception {
-        Database db = Database.open(new DatabaseConfig().baseFilePath(args[0]));
+        DatabaseConfig config = new DatabaseConfig()
+            .baseFilePath(args[0])
+            .eventListener(new EventPrinter());
+
+        if (args.length > 1) {
+            config.minCacheSize(Long.parseLong(args[1]));
+        }
+        
+        Database db = Database.open(config);
+
         System.out.println(db.stats());
+
         Verify v = new Verify();
         db.verify(v);
         System.out.println(v);

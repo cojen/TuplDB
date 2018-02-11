@@ -21,22 +21,31 @@ import org.cojen.tupl.*;
 
 /**
  * Simple database file compaction utility. Main method accepts two arguments &mdash; a base
- * file path for the database and a compaction target.
+ * file path for the database and a compaction target. An optional cache size can be provided
+ * too.
  *
  * @author Brian S O'Neill
  * @see Database#compactFile Database.compactFile
  */
 public class Compact {
     /**
-     * @param args a base file path for the database and a compaction target
+     * @param args a base file path for the database, a compaction target, and an optional
+     * cache size
      */
     public static void main(String[] args) throws Exception {
-        Database db = Database.open(new DatabaseConfig()
-                                    .baseFilePath(args[0])
-                                    .checkpointSizeThreshold(0));
+        DatabaseConfig config = new DatabaseConfig()
+            .baseFilePath(args[0])
+            .eventListener(new EventPrinter())
+            .checkpointSizeThreshold(0);
 
         double target = Double.parseDouble(args[1]);
                                     
+        if (args.length > 2) {
+            config.minCacheSize(Long.parseLong(args[2]));
+        }
+
+        Database db = Database.open(config);
+
         System.out.println("Before: " + db.stats());
 
         db.compactFile(null, target);
