@@ -35,7 +35,7 @@ public class Compact {
     public static void main(String[] args) throws Exception {
         DatabaseConfig config = new DatabaseConfig()
             .baseFilePath(args[0])
-            .eventListener(new EventPrinter())
+            .eventListener(new EventPrinter().ignore(EventType.Category.CHECKPOINT))
             .checkpointSizeThreshold(0);
 
         double target = Double.parseDouble(args[1]);
