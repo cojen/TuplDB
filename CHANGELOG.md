@@ -1,9 +1,15 @@
 Changelog
 =========
 
+v1.4.2
+------
+* Fix temporary stall when calling the sorter progress method. The finish method didn't stop
+  all the internal sorts as quickly as possible.
+* Add feature to listen for when indexes are opened.
+* Log events when running the verify and compact tools, and also allow the cache size to be set.
+
 v1.4.1 (2018-02-02)
 ------
-
 * Fix bug when using the new cursor registration feature. When the database is restarted,
   registered cursors could get lost, causing redo operations against them to be lost too.
 * Honor the default durability mode when using a null transaction. Previously, when the default
