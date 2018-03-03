@@ -85,17 +85,17 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         Tree[] mTrees;
         int mSize;
         TreeMerger mMerger;
+        boolean mStopped;
 
         Level(int levelNum) {
             mLevelNum = levelNum;
             mTrees = new Tree[LEVEL_MIN_SIZE];
         }
 
-        // Caller must be synchronized on this object.
-        void stopAndWaitUntilFinished() throws InterruptedIOException {
+        synchronized void stop() {
+            mStopped = true;
             if (mMerger != null) {
                 mMerger.stop();
-                waitUntilFinished();
             }
         }
 
@@ -284,8 +284,12 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             }
 
             for (Level level : levels) {
+                level.stop();
+            }
+
+            for (Level level : levels) {
                 synchronized (level) {
-                    level.stopAndWaitUntilFinished();
+                    level.waitUntilFinished();
                 }
             }
 
@@ -715,7 +719,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
                 trees[size++] = tree;
 
-                if (size < maxSize) {
+                if (size < maxSize || level.mStopped) {
                     level.mSize = size;
                     return;
                 }
