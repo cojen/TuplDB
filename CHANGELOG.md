@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.2
+v1.4.2 (2018-03-11)
 ------
 * Fix temporary stall when calling the sorter progress method. The finish method didn't stop
   all the internal sorts as quickly as possible.
