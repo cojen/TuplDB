@@ -97,7 +97,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      * By default, values are loaded automatically, as they are seen. When disabled, values
      * might need to be {@link Cursor#load manually loaded}. When a {@link Transformer} is
      * used, the value might still be loaded automatically. When the value exists but hasn't
-     * been loaded, the value field of the cursor is set to {@link NOT_LOADED}.
+     * been loaded, the value field of the cursor is set to {@link #NOT_LOADED}.
      *
      * @param mode false to disable
      * @return prior autoload mode
