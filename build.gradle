@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 
 group = 'org.cojen'
-version = '1.4.2.1-SNAPSHOT'
+version = '1.4.2'
 
 description = 'Tupl'
 
