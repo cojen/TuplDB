@@ -17,9 +17,14 @@
 
 package org.cojen.tupl.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.concurrent.locks.LockSupport;
+
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  * A clutch is a specialized latch which can support highly concurrent shared requests, under
@@ -39,6 +44,18 @@ import java.util.concurrent.locks.LockSupport;
  */
 public abstract class Clutch extends Latch {
     // Inherited latch methods are used for non-contended mode, and for switching to it.
+
+    private static final VarHandle cContendedSlotHandle;
+
+    static {
+        try {
+            cContendedSlotHandle =
+                MethodHandles.lookup().findVarHandle
+                (Clutch.class, "mContendedSlot", int.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     // Is >=0 when in contended mode.
     private volatile int mContendedSlot = -1;
@@ -345,13 +362,12 @@ public abstract class Clutch extends Latch {
     public final boolean tryUpgrade() {
         // With shared clutch held, another thread cannot switch to contended mode. Hence, no
         // double check is required here.
-        return mContendedSlot < 0 && super.tryUpgrade();
+        return ((int) cContendedSlotHandle.get(this)) < 0 && super.tryUpgrade();
     }
 
     @Override
     public final void releaseShared() {
-        // TODO: can be non-volatile read
-        int slot = mContendedSlot;
+        int slot = (int) cContendedSlotHandle.get(this);
         if (slot < 0) {
             super.releaseShared();
         } else {
@@ -381,18 +397,12 @@ public abstract class Clutch extends Latch {
      * should be at least 16, to minimize cache line contention. As a convenience, this class
      * also extends the Latch class, but the latching features are not used here.
      */
-    @SuppressWarnings("restriction")
     public static class Pack extends Latch {
-        private static final int OBJECT_ARRAY_BASE;
-        private static final int OBJECT_ARRAY_SHIFT;
-        private static final int INT_ARRAY_BASE;
-        private static final int INT_ARRAY_SHIFT;
+        private static final VarHandle cObjectArrayHandle, cIntArrayHandle;
 
         static {
-            OBJECT_ARRAY_BASE = UNSAFE.arrayBaseOffset(Object[].class);
-            OBJECT_ARRAY_SHIFT = computeShift(UNSAFE.arrayIndexScale(Object[].class));
-            INT_ARRAY_BASE = UNSAFE.arrayBaseOffset(int[].class);
-            INT_ARRAY_SHIFT = computeShift(UNSAFE.arrayIndexScale(int[].class));
+            cObjectArrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
+            cIntArrayHandle = MethodHandles.arrayElementVarHandle(int[].class);
         }
 
         private static int computeShift(int scale) {
@@ -435,12 +445,12 @@ public abstract class Clutch extends Latch {
             Object[] slots = mSlots;
             int slot = ThreadLocalRandom.current().nextInt(slots.length);
 
-            Object existing = get(slots, slot);
+            Object existing = cObjectArrayHandle.getVolatile(slots, slot);
             if (existing == null) {
-                if (compareAndSet(slots, slot, null, clutch)) {
+                if (cObjectArrayHandle.compareAndSet(slots, slot, null, clutch)) {
                     return slot;
                 }
-                existing = get(slots, slot);
+                existing = cObjectArrayHandle.getVolatile(slots, slot);
             }
 
             // Try to steal the slot.
@@ -449,7 +459,7 @@ public abstract class Clutch extends Latch {
                 if (existingClutch.tryAcquireExclusive()) {
                     // If acquired exclusive, then slot has been potentially freed.
                     existingClutch.releaseExclusive();
-                    if (compareAndSet(slots, slot, null, clutch)) {
+                    if (cObjectArrayHandle.compareAndSet(slots, slot, null, clutch)) {
                         return slot;
                     }
                 }
@@ -465,12 +475,12 @@ public abstract class Clutch extends Latch {
         final boolean tryUnregisterExclusive(int slot, Clutch clutch) {
             if (isZero(slot)) {
                 // Store marker to signal that exclusive is requested, but don't unpark.
-                set(mSlots, slot, this);
+                cObjectArrayHandle.setVolatile(mSlots, slot, this);
                 if (isZero(slot)) {
-                    set(mSlots, slot, null);
+                    cObjectArrayHandle.setVolatile(mSlots, slot, null);
                     return true;
                 }
-                set(mSlots, slot, clutch);
+                cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
             }
             return false;
         }
@@ -485,13 +495,13 @@ public abstract class Clutch extends Latch {
             throws InterruptedException
         {
             // Store thread to signal that exclusive is requested, and to call unpark.
-            set(mSlots, slot, Thread.currentThread());
+            cObjectArrayHandle.setVolatile(mSlots, slot, Thread.currentThread());
 
             if (nanosTimeout < 0) {
                 while (!isZero(slot)) {
                     LockSupport.park(this);
                     if (Thread.interrupted()) {
-                        set(mSlots, slot, clutch);
+                        cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
                         throw new InterruptedException();
                     }
                 }
@@ -500,7 +510,7 @@ public abstract class Clutch extends Latch {
                 while (true) {
                     LockSupport.parkNanos(this, nanosTimeout);
                     if (Thread.interrupted()) {
-                        set(mSlots, slot, clutch);
+                        cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
                         throw new InterruptedException();
                     }
                     if (isZero(slot)) {
@@ -509,14 +519,14 @@ public abstract class Clutch extends Latch {
                     long now = System.nanoTime();
                     nanosTimeout -= (now - start);
                     if (nanosTimeout <= 0) {
-                        set(mSlots, slot, clutch);
+                        cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
                         return false;
                     }
                     start = now;
                 }
             }
 
-            set(mSlots, slot, null);
+            cObjectArrayHandle.setVolatile(mSlots, slot, null);
             return true;
         }
 
@@ -526,13 +536,13 @@ public abstract class Clutch extends Latch {
          */
         final void unregisterExclusive(int slot) {
             // Store thread to signal that exclusive is requested, and to call unpark.
-            set(mSlots, slot, Thread.currentThread());
+            cObjectArrayHandle.setVolatile(mSlots, slot, Thread.currentThread());
             while (!isZero(slot)) {
                 LockSupport.park(this);
                 // Clear the interrupted flag.
                 Thread.interrupted();
             }
-            set(mSlots, slot, null);
+            cObjectArrayHandle.setVolatile(mSlots, slot, null);
         }
 
         /**
@@ -540,7 +550,7 @@ public abstract class Clutch extends Latch {
          */
         final boolean tryAcquireShared(int slot, Clutch clutch) {
             int stripe = add(slot, +1);
-            if (get(mSlots, slot) == clutch) {
+            if (cObjectArrayHandle.getVolatile(mSlots, slot) == clutch) {
                 return true;
             }
             releaseShared(slot, stripe);
@@ -553,7 +563,7 @@ public abstract class Clutch extends Latch {
 
         private void releaseShared(int slot, int stripe) {
             add(slot, -1, stripe);
-            Object entry = get(mSlots, slot);
+            Object entry = cObjectArrayHandle.getVolatile(mSlots, slot);
             if (entry instanceof Thread && isZero(slot)) {
                 LockSupport.unpark((Thread) entry);
             }
@@ -564,11 +574,10 @@ public abstract class Clutch extends Latch {
          */
         private int add(int slot, int delta) {
             int stripe = threadStripe();
-            long offset = intArrayByteOffset(slot + stripe);
             int[] counters = mCounters;
-            int cv = UNSAFE.getIntVolatile(counters, offset);
+            int cv = (int) cIntArrayHandle.getVolatile(counters, slot + stripe);
 
-            if (!UNSAFE.compareAndSwapInt(counters, offset, cv, cv + delta)) {
+            if (!cIntArrayHandle.compareAndSet(counters, slot + stripe, cv, cv + delta)) {
                 stripe = ThreadLocalRandom.current().nextInt(mCores) * mSlots.length;
                 int id = xorshift((int) Thread.currentThread().getId());
                 mThreadStripes[id & (mThreadStripes.length - 1)] = stripe;
@@ -579,7 +588,7 @@ public abstract class Clutch extends Latch {
         }
 
         private void add(int slot, int delta, int stripe) {
-            UNSAFE.getAndAddInt(mCounters, intArrayByteOffset(slot + stripe), delta);
+            cIntArrayHandle.getAndAdd(mCounters, slot + stripe, delta);
         }
 
         private int threadStripe() {
@@ -599,29 +608,9 @@ public abstract class Clutch extends Latch {
             int stride = mSlots.length;
             long sum = 0;
             for (int i = 0; i < mCores; i++, slot += stride) {
-                sum += UNSAFE.getIntVolatile(counters, intArrayByteOffset(slot));
+                sum += (int) cIntArrayHandle.getVolatile(counters, slot);
             }
             return sum == 0;
-        }
-
-        private static Object get(Object[] array, int i) {
-            return UNSAFE.getObjectVolatile(array, objectArrayByteOffset(i));
-        }
-
-        private static void set(Object[] array, int i, Object value) {
-            UNSAFE.putObjectVolatile(array, objectArrayByteOffset(i), value);
-        }
-
-        private static boolean compareAndSet(Object[] array, int i, Object expect, Object update) {
-            return UNSAFE.compareAndSwapObject(array, objectArrayByteOffset(i), expect, update);
-        }
-
-        private static long objectArrayByteOffset(int i) {
-            return ((long) i << OBJECT_ARRAY_SHIFT) + OBJECT_ARRAY_BASE;
-        }
-
-        private static long intArrayByteOffset(int i) {
-            return ((long) i << INT_ARRAY_SHIFT) + INT_ARRAY_BASE;
         }
     }
 }

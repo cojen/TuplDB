@@ -17,11 +17,11 @@
 
 package org.cojen.tupl.util;
 
-import java.util.concurrent.atomic.AtomicReference;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.locks.LockSupport;
 
-import org.cojen.tupl.io.UnsafeAccess;
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -33,18 +33,12 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  * @see LatchCondition
  */
-@SuppressWarnings("restriction")
 public class Latch {
     public static final int UNLATCHED = 0, EXCLUSIVE = 0x80000000, SHARED = 1;
 
     static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 1;
 
-    // TODO: Switch to VarHandle when available and utilize specialized operations. 
-
-    static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
-
-    static final long STATE_OFFSET, FIRST_OFFSET, LAST_OFFSET;
-    static final long WAITER_OFFSET;
+    static final VarHandle cStateHandle, cFirstHandle, cLastHandle, cWaiterHandle, cNextHandle;
 
     static {
         try {
@@ -52,13 +46,25 @@ public class Latch {
             // https://bugs.openjdk.java.net/browse/JDK-8074773
             Class<?> clazz = LockSupport.class;
 
-            clazz = Latch.class;
-            STATE_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchState"));
-            FIRST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchFirst"));
-            LAST_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mLatchLast"));
+            cStateHandle =
+                MethodHandles.lookup().findVarHandle
+                (Latch.class, "mLatchState", int.class);
 
-            clazz = WaitNode.class;
-            WAITER_OFFSET = UNSAFE.objectFieldOffset(clazz.getDeclaredField("mWaiter"));
+            cFirstHandle =
+                MethodHandles.lookup().findVarHandle
+                (Latch.class, "mLatchFirst", WaitNode.class);
+
+            cLastHandle =
+                MethodHandles.lookup().findVarHandle
+                (Latch.class, "mLatchLast", WaitNode.class);
+
+            cWaiterHandle =
+                MethodHandles.lookup().findVarHandle
+                (WaitNode.class, "mWaiter", Thread.class);
+
+            cNextHandle =
+                MethodHandles.lookup().findVarHandle
+                (WaitNode.class, "mNext", WaitNode.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -85,7 +91,7 @@ public class Latch {
     public Latch(int initialState) {
         // Assume that this latch instance is published to other threads safely, and so a
         // volatile store isn't required.
-        UNSAFE.putInt(this, STATE_OFFSET, initialState);
+        cStateHandle.set(this, initialState);
     }
 
     boolean isHeldExclusive() {
@@ -100,7 +106,7 @@ public class Latch {
     }
 
     private boolean doTryAcquireExclusive() {
-        return mLatchState == 0 && UNSAFE.compareAndSwapInt(this, STATE_OFFSET, 0, EXCLUSIVE);
+        return mLatchState == 0 && cStateHandle.compareAndSet(this, 0, EXCLUSIVE);
     }
 
     /**
@@ -184,12 +190,12 @@ public class Latch {
                 Thread waiter = node.mWaiter;
                 if (waiter != null) {
                     if (node instanceof Shared) {
-                        UNSAFE.getAndAddInt(this, STATE_OFFSET, 1);
-                        if (UNSAFE.compareAndSwapObject(node, WAITER_OFFSET, waiter, null)) {
+                        cStateHandle.getAndAdd(this, 1);
+                        if (cWaiterHandle.compareAndSet(node, waiter, null)) {
                             LockSupport.unpark(waiter);
                         } else {
                             // Already unparked, so fix the share count.
-                            UNSAFE.getAndAddInt(this, STATE_OFFSET, -1);
+                            cStateHandle.getAndAdd(this, -1);
                         }
                     } else {
                         if (node != first) {
@@ -200,12 +206,12 @@ public class Latch {
                     }
                 }
 
-                WaitNode next = node.get();
+                WaitNode next = node.mNext;
 
                 if (next == null) {
                     // Queue is now empty, unless an enqueue is in progress.
-                    if (UNSAFE.compareAndSwapObject(this, LAST_OFFSET, node, null)) {
-                        UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, first, null);
+                    if (cLastHandle.compareAndSet(this, node, null)) {
+                        cFirstHandle.compareAndSet(this, first, null);
                         return;
                     }
                     // Sweep from the start again.
@@ -233,7 +239,7 @@ public class Latch {
                 // immediately re-acquire the latch, then let the new owner (which barged in)
                 // unpark the waiters when it releases the latch.
                 last = mLatchLast;
-                if (last == null || !UNSAFE.compareAndSwapInt(this, STATE_OFFSET, 0, EXCLUSIVE)) {
+                if (last == null || !cStateHandle.compareAndSet(this, 0, EXCLUSIVE)) {
                     return;
                 }
             }
@@ -263,23 +269,19 @@ public class Latch {
 
                 // Remove first from the queue.
                 {
-                    WaitNode next = first.get();
+                    WaitNode next = first.mNext;
                     if (next != null) {
                         mLatchFirst = next;
                     } else {
                         // Queue is now empty, unless an enqueue is in progress.
-                        if (last != first ||
-                            !UNSAFE.compareAndSwapObject(this, LAST_OFFSET, last, null))
-                        {
+                        if (last != first || !cLastHandle.compareAndSet(this, last, null)) {
                             break unpark;
                         }
-                        UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, last, null);
+                        cFirstHandle.compareAndSet(this, last, null);
                     }
                 }
 
-                if (waiter != null &&
-                    UNSAFE.compareAndSwapObject(first, WAITER_OFFSET, waiter, null))
-                {
+                if (waiter != null && cWaiterHandle.compareAndSet(first, waiter, null)) {
                     // Fair handoff to waiting thread.
                     LockSupport.unpark(waiter);
                     return;
@@ -307,8 +309,7 @@ public class Latch {
      * Releases an exclusive or shared latch.
      */
     public final void releaseEither() {
-        // TODO: can be non-volatile read
-        if (mLatchState == EXCLUSIVE) {
+        if (((int) cStateHandle.get(this)) == EXCLUSIVE) {
             releaseExclusive();
         } else {
             releaseShared();
@@ -328,7 +329,7 @@ public class Latch {
             return false;
         }
         int state = mLatchState;
-        return state >= 0 && UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1);
+        return state >= 0 && cStateHandle.compareAndSet(this, state, state + 1);
     }
 
     /**
@@ -346,7 +347,7 @@ public class Latch {
             int trials = 0;
             int state;
             while ((state = mLatchState) >= 0) {
-                if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1)) {
+                if (cStateHandle.compareAndSet(this, state, state + 1)) {
                     return true;
                 }
                 // Spin even if timeout is zero. The timeout applies to a blocking acquire.
@@ -404,7 +405,7 @@ public class Latch {
         if (first == null || first instanceof Shared) {
             int state = mLatchState;
             if (state >= 0) {
-                return UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1);
+                return cStateHandle.compareAndSet(this, state, state + 1);
             }
         }
 
@@ -430,7 +431,7 @@ public class Latch {
         if (first == null || first instanceof Shared) {
             int state = mLatchState;
             if (state >= 0) {
-                return UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1) ? 1 : -1;
+                return cStateHandle.compareAndSet(this, state, state + 1) ? 1 : -1;
             }
         }
 
@@ -470,7 +471,7 @@ public class Latch {
             int trials = 0;
             int state;
             while ((state = mLatchState) >= 0) {
-                if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, state + 1)) {
+                if (cStateHandle.compareAndSet(this, state, state + 1)) {
                     return true;
                 }
                 trials = spin(trials);
@@ -501,7 +502,7 @@ public class Latch {
             if ((state & ~EXCLUSIVE) != 1) {
                 return false;
             }
-            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, EXCLUSIVE)) {
+            if (cStateHandle.compareAndSet(this, state, EXCLUSIVE)) {
                 return true;
             }
             // Try again if exclusive bit flipped. Don't bother with spin yielding, because the
@@ -524,15 +525,13 @@ public class Latch {
             WaitNode last = mLatchLast;
             if (last == null) {
                 // No waiters, so release the latch.
-                if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, --state)) {
+                if (cStateHandle.compareAndSet(this, state, --state)) {
                     if (state == 0) {
                         // Need to check if any waiters again, due to race with enqueue. If
                         // cannot immediately re-acquire the latch, then let the new owner
                         // (which barged in) unpark the waiters when it releases the latch.
                         last = mLatchLast;
-                        if (last != null &&
-                            UNSAFE.compareAndSwapInt(this, STATE_OFFSET, 0, EXCLUSIVE))
-                        {
+                        if (last != null && cStateHandle.compareAndSet(this, 0, EXCLUSIVE)) {
                             releaseExclusive();
                         }
                     }
@@ -541,11 +540,11 @@ public class Latch {
             } else if (state == 1) {
                 // Try to switch to exclusive, and then let releaseExclusive deal with
                 // unparking the waiters.
-                if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, 1, EXCLUSIVE) || doTryUpgrade()) {
+                if (cStateHandle.compareAndSet(this, 1, EXCLUSIVE) || doTryUpgrade()) {
                     releaseExclusive();
                     return;
                 }
-            } else if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, --state)) {
+            } else if (cStateHandle.compareAndSet(this, state, --state)) {
                 return;
             }
 
@@ -571,9 +570,7 @@ public class Latch {
                 }
 
                 if (parkAbort) {
-                    if (!UNSAFE.compareAndSwapObject
-                        (node, WAITER_OFFSET, Thread.currentThread(), null))
-                    {
+                    if (!cWaiterHandle.compareAndSet(node, Thread.currentThread(), null)) {
                         // Fair handoff just occurred.
                         return true;
                     }
@@ -612,15 +609,15 @@ public class Latch {
         // the current thread, no other dequeues are in progress, but enqueues still are.
 
         while (true) {
-            WaitNode next = node.get();
+            WaitNode next = node.mNext;
             if (next != null) {
                 mLatchFirst = next;
                 return true;
             } else {
                 // Queue is now empty, unless an enqueue is in progress.
                 WaitNode last = mLatchLast;
-                if (last == node && UNSAFE.compareAndSwapObject(this, LAST_OFFSET, last, null)) {
-                    UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, last, null);
+                if (last == node && cLastHandle.compareAndSet(this, last, null)) {
+                    cFirstHandle.compareAndSet(this, last, null);
                     return true;
                 }
             }
@@ -628,18 +625,18 @@ public class Latch {
     }
 
     private WaitNode enqueue(final WaitNode node) {
-        WaitNode prev = (WaitNode) UNSAFE.getAndSetObject(this, LAST_OFFSET, node);
+        WaitNode prev = (WaitNode) cLastHandle.getAndSet(this, node);
 
         if (prev == null) {
             mLatchFirst = node;
         } else {
-            prev.set(node);
+            prev.mNext = node;
             WaitNode pp = prev.mPrev;
             if (pp != null) {
                 // The old last node was intended to be removed, but the last node cannot
                 // be removed unless it's also the first. Bypass it now that a new last
                 // node has been enqueued.
-                pp.lazySet(node);
+                cNextHandle.setRelease(pp, node);
             }
         }
 
@@ -651,14 +648,14 @@ public class Latch {
      * @param prev previous node, not null
      */
     private void remove(final WaitNode node, final WaitNode prev) {
-        WaitNode next = node.get();
+        WaitNode next = node.mNext;
 
         if (next == null) {
             // Removing the last node creates race conditions with enqueues. Instead, stash a
             // reference to the previous node and let the enqueue deal with it after a new node
             // has been enqueued.
             node.mPrev = prev;
-            next = node.get();
+            next = node.mNext;
             // Double check in case an enqueue just occurred that may have failed to notice the
             // previous node assignment.
             if (next == null) {
@@ -668,7 +665,7 @@ public class Latch {
 
         while (next.mWaiter == null) {
             // Skip more nodes if possible.
-            WaitNode nextNext = next.get();
+            WaitNode nextNext = next.mNext;
             if (nextNext == null) {
                 break;
             }
@@ -676,7 +673,7 @@ public class Latch {
         }
 
         // Bypass the removed node, allowing it to be released.
-        prev.lazySet(next);
+        cNextHandle.setRelease(prev, next);
     }
 
     private WaitNode first() {
@@ -755,16 +752,14 @@ public class Latch {
         return trials;
     }
 
-    /**
-     * Atomic reference is to the next node in the chain.
-     */
     @SuppressWarnings("serial")
-    static class WaitNode extends AtomicReference<WaitNode> {
+    static class WaitNode {
         volatile Thread mWaiter;
         volatile boolean mFair;
 
         // Only set if node was deleted and must be bypassed when a new node is enqueued.
         volatile WaitNode mPrev;
+        volatile WaitNode mNext;
 
         /**
          * @return true if timed out or interrupted
@@ -793,8 +788,8 @@ public class Latch {
                     }
                     // Acquired, so no need to reference the waiter anymore.
                     if (!mFair) {
-                        UNSAFE.putOrderedObject(this, WAITER_OFFSET, null);
-                    } else if (!UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null)) {
+                        cWaiterHandle.setRelease(this, null);
+                    } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
                     }
                     return 0;
@@ -813,7 +808,7 @@ public class Latch {
             appendMiniString(b, this);
             b.append(" {waiter=").append(mWaiter);
             b.append(", fair=").append(mFair);
-            b.append(", next="); appendMiniString(b, get());
+            b.append(", next="); appendMiniString(b, mNext);
             b.append(", prev="); appendMiniString(b, mPrev);
             return b.append('}').toString();
         }
@@ -873,14 +868,12 @@ public class Latch {
                     return state;
                 }
 
-                if (UNSAFE.compareAndSwapInt(latch, STATE_OFFSET, state, state + 1)) {
+                if (cStateHandle.compareAndSet(latch, state, state + 1)) {
                     // Acquired, so no need to reference the thread anymore.
                     Object waiter = mWaiter;
-                    if (waiter == null ||
-                        !UNSAFE.compareAndSwapObject(this, WAITER_OFFSET, waiter, null))
-                    {
-                        if (!UNSAFE.compareAndSwapInt(latch, STATE_OFFSET, state + 1, state)) {
-                            UNSAFE.getAndAddInt(latch, STATE_OFFSET, -1);
+                    if (waiter == null || !cWaiterHandle.compareAndSet(this, waiter, null)) {
+                        if (!cStateHandle.compareAndSet(latch, state + 1, state)) {
+                            cStateHandle.getAndAdd(latch, -1);
                         }
                         return 1;
                     }

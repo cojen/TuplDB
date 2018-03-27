@@ -533,6 +533,7 @@ class _Tree implements View, Index {
         keyCheck(key);
         _TreeCursor cursor = newCursor(txn);
         try {
+            // TODO: Optimize by disabling autoload and do an in-place comparison.
             return cursor.findAndModify(key, oldValue, newValue);
         } finally {
             cursor.reset();

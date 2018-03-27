@@ -17,13 +17,15 @@
 
 package org.cojen.tupl.util;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.LockSupport;
 
-import org.cojen.tupl.io.UnsafeAccess;
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -34,7 +36,6 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  * @see WorkerGroup
  */
-@SuppressWarnings("restriction")
 public class Worker {
     /**
      * @param maxSize maximum amount of tasks which can be enqueued
@@ -56,9 +57,7 @@ public class Worker {
         return new Worker(maxSize, keepAliveTime, unit, threadFactory);
     }
 
-    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
-
-    static final long SIZE_OFFSET, FIRST_OFFSET, LAST_OFFSET, STATE_OFFSET, THREAD_OFFSET;
+    static final VarHandle cSizeHandle, cFirstHandle, cLastHandle, cStateHandle, cThreadHandle;
 
     static {
         try {
@@ -66,11 +65,25 @@ public class Worker {
             // https://bugs.openjdk.java.net/browse/JDK-8074773
             Class<?> clazz = LockSupport.class;
 
-            SIZE_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mSize"));
-            FIRST_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mFirst"));
-            LAST_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mLast"));
-            STATE_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mThreadState"));
-            THREAD_OFFSET = UNSAFE.objectFieldOffset(Worker.class.getDeclaredField("mThread"));
+            cSizeHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mSize", int.class);
+
+            cFirstHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mFirst", Task.class);
+
+            cLastHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mLast", Task.class);
+
+            cStateHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mThreadState", int.class);
+
+            cThreadHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mThread", Thread.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -123,11 +136,11 @@ public class Worker {
             return false;
         }
 
-        if (!UNSAFE.compareAndSwapInt(this, SIZE_OFFSET, size, size + 1)) {
-            UNSAFE.getAndAddInt(this, SIZE_OFFSET, 1);
+        if (!cSizeHandle.compareAndSet(this, size, size + 1)) {
+            cSizeHandle.getAndAdd(this, 1);
         }
 
-        Task prev = (Task) UNSAFE.getAndSetObject(this, LAST_OFFSET, task);
+        Task prev = (Task) cLastHandle.getAndSet(this, task);
         if (prev == null) {
             mFirst = task;
         } else {
@@ -148,7 +161,7 @@ public class Worker {
                     t = mThreadFactory.newThread(this::runTasks);
                     t.start();
                 } catch (Throwable e) {
-                    UNSAFE.getAndAddInt(this, SIZE_OFFSET, -1);
+                    cSizeHandle.getAndAdd(this, -1);
                     mThreadState = THREAD_NONE;
                     throw e;
                 }
@@ -158,7 +171,7 @@ public class Worker {
 
             // assert state == THREAD_IDLE
 
-            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, state, THREAD_RUNNING)) {
+            if (cStateHandle.compareAndSet(this, state, THREAD_RUNNING)) {
                 LockSupport.unpark(mThread);
                 return true;
             }
@@ -182,7 +195,7 @@ public class Worker {
                 return;
             }
             mWaiter = Thread.currentThread();
-            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_BLOCKED)) {
+            if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
                 LockSupport.park(this);
             }
             mWaiter = null;
@@ -208,7 +221,7 @@ public class Worker {
                 break;
             }
             mWaiter = Thread.currentThread();
-            if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_BLOCKED)) {
+            if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
                 LockSupport.park(this);
             }
             mWaiter = null;
@@ -248,9 +261,9 @@ public class Worker {
                     } else {
                         // Queue is now empty, unless an enqueue is in progress.
                         if (task == mLast &&
-                            UNSAFE.compareAndSwapObject(this, LAST_OFFSET, task, null))
+                            cLastHandle.compareAndSet(this, task, null))
                         {
-                            UNSAFE.compareAndSwapObject(this, FIRST_OFFSET, task, null);
+                            cFirstHandle.compareAndSet(this, task, null);
                             break;
                         }
                     }
@@ -262,7 +275,7 @@ public class Worker {
                     Utils.uncaught(e);
                 }
 
-                size = UNSAFE.getAndAddInt(this, SIZE_OFFSET, -1) - 1;
+                size = ((int) cSizeHandle.getAndAdd(this, -1)) - 1;
 
                 if (mThreadState == THREAD_BLOCKED) {
                     mThreadState = THREAD_RUNNING;
@@ -291,7 +304,7 @@ public class Worker {
                 continue;
             }
 
-            if (!UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_RUNNING, THREAD_IDLE)) {
+            if (!cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_IDLE)) {
                 continue;
             }
 
@@ -313,10 +326,10 @@ public class Worker {
                 }
 
                 if (parkNanos == 0 || interrupted) {
-                    if (!UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_IDLE, THREAD_NONE)) {
+                    if (!cStateHandle.compareAndSet(this, THREAD_IDLE, THREAD_NONE)) {
                         continue outer;
                     }
-                    UNSAFE.compareAndSwapObject(this, THREAD_OFFSET, Thread.currentThread(), null);
+                    cThreadHandle.compareAndSet(this, Thread.currentThread(), null);
                     return;
                 }
 
@@ -325,7 +338,7 @@ public class Worker {
                 }
             }
 
-            UNSAFE.compareAndSwapInt(this, STATE_OFFSET, THREAD_IDLE, THREAD_RUNNING);
+            cStateHandle.compareAndSet(this, THREAD_IDLE, THREAD_RUNNING);
         }
     }
 }

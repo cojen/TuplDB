@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.repl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
@@ -31,8 +34,6 @@ import java.util.PriorityQueue;
 import java.util.SortedSet;
 
 import java.util.concurrent.ConcurrentSkipListSet;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -896,7 +897,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (startSegment != null && index < startSegment.endIndex()) {
                 mSegmentCache.remove(startSegment.cacheKey());
-                cRefCountUpdater.getAndIncrement(startSegment);
+                cRefCountHandle.getAndAdd(startSegment, 1);
                 return startSegment;
             }
 
@@ -944,7 +945,7 @@ final class FileTermLog extends Latch implements TermLog {
         try {
             Segment segment = (Segment) mSegments.floor(key); // findLe
             if (segment != null && index < segment.endIndex()) {
-                cRefCountUpdater.getAndIncrement(segment);
+                cRefCountHandle.getAndAdd(segment, 1);
                 return segment;
             }
 
@@ -1099,7 +1100,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     void unreferenced(Segment segment) {
-        if (cRefCountUpdater.getAndDecrement(segment) > 0) {
+        if (((int) cRefCountHandle.getAndAdd(segment, -1)) > 0) {
             return;
         }
 
@@ -1152,7 +1153,7 @@ final class FileTermLog extends Latch implements TermLog {
         Worker.Task task = new Worker.Task() {
             @Override
             public void run() {
-                cRefCountUpdater.getAndIncrement(segment);
+                cRefCountHandle.getAndAdd(segment, 1);
 
                 try {
                     segment.truncate();
@@ -1160,7 +1161,7 @@ final class FileTermLog extends Latch implements TermLog {
                     uncaught(e);
                 }
 
-                if (cRefCountUpdater.getAndDecrement(segment) <= 0) {
+                if (((int) cRefCountHandle.getAndAdd(segment, -1)) <= 0) {
                     try {
                         doUnreferenced(segment, mSegmentCache.add(segment));
                     } catch (IOException e) {
@@ -1558,11 +1559,21 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static final AtomicIntegerFieldUpdater<Segment> cRefCountUpdater =
-        AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mRefCount");
+    static final VarHandle cRefCountHandle, cDirtyHandle;
 
-    static final AtomicIntegerFieldUpdater<Segment> cDirtyUpdater =
-        AtomicIntegerFieldUpdater.newUpdater(Segment.class, "mDirty");
+    static {
+        try {
+            cRefCountHandle =
+                MethodHandles.lookup().findVarHandle
+                (Segment.class, "mRefCount", int.class);
+
+            cDirtyHandle =
+                MethodHandles.lookup().findVarHandle
+                (Segment.class, "mDirty", int.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
         private static final int OPEN_HANDLE_COUNT = 8;
@@ -1644,7 +1655,7 @@ final class FileTermLog extends Latch implements TermLog {
                         throw e;
                     }
 
-                    if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
+                    if (mDirty == 0 && ((int) cDirtyHandle.getAndSet(this, 1)) == 0) {
                         addToDirtyList(this);
                     }
 
@@ -1812,12 +1823,12 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         void sync() throws IOException {
-            if (mDirty != 0 && cDirtyUpdater.getAndSet(this, 0) != 0) {
-                cRefCountUpdater.getAndIncrement(this);
+            if (mDirty != 0 && ((int) cDirtyHandle.getAndSet(this, 0)) != 0) {
+                cRefCountHandle.getAndAdd(this, 1);
                 try {
                     doSync();
                 } catch (IOException e) {
-                    if (mDirty == 0 && cDirtyUpdater.getAndSet(this, 1) == 0) {
+                    if (mDirty == 0 && ((int) cDirtyHandle.getAndSet(this, 1)) == 0) {
                         addToDirtyList(this);
                     }
                     throw e;

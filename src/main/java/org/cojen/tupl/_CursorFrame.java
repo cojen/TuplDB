@@ -17,8 +17,10 @@
 
 package org.cojen.tupl;
 
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  *
@@ -28,19 +30,32 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 @SuppressWarnings("serial")
 /*P*/
 // Note: Atomic reference is to the next frame bound to a _Node.
-class _CursorFrame extends AtomicReference<_CursorFrame> {
+class _CursorFrame {
     // Under contention a thread will initially spin up to SPIN_LIMIT before yielding, after
     // which it more aggressively spins up to 2 * SPIN_LIMIT before additional yields.
     static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 0;
 
     private static final _CursorFrame REBIND_FRAME = new _CursorFrame();
 
-    static final AtomicReferenceFieldUpdater<_Node, _CursorFrame>
-        cLastUpdater = AtomicReferenceFieldUpdater.newUpdater
-        (_Node.class, _CursorFrame.class, "mLastCursorFrame");
+    static final VarHandle cNextCousinHandle, cLastHandle;
 
-    // Linked list of CursorFrames bound to a _Node. Atomic reference is the next frame.
+    static {
+        try {
+            cNextCousinHandle =
+                MethodHandles.lookup().findVarHandle
+                (_CursorFrame.class, "mNextCousin", _CursorFrame.class);
+
+            cLastHandle =
+                MethodHandles.lookup().findVarHandle
+                (_Node.class, "mLastCursorFrame", _CursorFrame.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
+
+    // Linked list of CursorFrames bound to a _Node.
     volatile _CursorFrame mPrevCousin;
+    volatile _CursorFrame mNextCousin;
 
     // _Node and position this _CursorFrame is bound to.
     _Node mNode;
@@ -170,16 +185,18 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
         mNodePos = nodePos;
 
         // Next is set to self to indicate that this frame is the last.
-        this.set(this);
+        mNextCousin = this;
 
         for (int trials = SPIN_LIMIT;;) {
             _CursorFrame last = node.mLastCursorFrame;
             mPrevCousin = last;
             if (last == null) {
-                if (cLastUpdater.compareAndSet(node, null, this)) {
+                if (cLastHandle.compareAndSet(node, null, this)) {
                     return;
                 }
-            } else if (last.get() == last && last.compareAndSet(last, this)) {
+            } else if (last.mNextCousin == last
+                       && cNextCousinHandle.compareAndSet(last, last, this))
+            {
                 // Note: The above check gets confused if the frame was recycled. Converting a
                 // last frame to an interior frame doesn't imply that the frame is owned by the
                 // same linked list.
@@ -259,7 +276,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
      */
     private boolean unbind(_CursorFrame to) {
         for (int trials = SPIN_LIMIT;;) {
-            _CursorFrame n = this.get(); // get next frame
+            _CursorFrame n = this.mNextCousin;
 
             if (n == null) {
                 // Not in the list.
@@ -269,17 +286,20 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
             if (n == this) {
                 // Unbinding the last frame.
                 _Node node = mNode;
-                if (node != null && node.mLastCursorFrame == this && this.compareAndSet(n, to)) {
+                if (node != null && node.mLastCursorFrame == this
+                    && cNextCousinHandle.compareAndSet(this, n, to))
+                {
                     if (node != mNode || node.mLastCursorFrame != this) {
                         // Frame is now locked, but node has changed due to a concurrent
                         // rebinding of this frame. Unlock and try again.
-                        this.set(n);
+                        mNextCousin = n;
                     } else {
                         // Update previous frame to be the new last frame.
                         _CursorFrame p;
                         do {
                             p = this.mPrevCousin;
-                        } while (p != null && (p.get() != this || !p.compareAndSet(this, p)));
+                        } while (p != null && (p.mNextCousin != this
+                                               || !cNextCousinHandle.compareAndSet(p, this, p)));
                         // Update the last frame reference.
                         node.mLastCursorFrame = p;
                         return true;
@@ -287,12 +307,13 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
                 }
             } else {
                 // Unbinding an interior or first frame.
-                if (n.mPrevCousin == this && this.compareAndSet(n, to)) {
+                if (n.mPrevCousin == this && cNextCousinHandle.compareAndSet(this, n, to)) {
                     // Update next reference chain to skip over the unbound frame.
                     _CursorFrame p;
                     do {
                         p = this.mPrevCousin;
-                    } while (p != null && (p.get() != this || !p.compareAndSet(this, n)));
+                    } while (p != null && (p.mNextCousin != this
+                                           || !cNextCousinHandle.compareAndSet(p, this, n)));
                     // Update previous reference chain to skip over the unbound frame.
                     n.mPrevCousin = p;
                     return true;
@@ -315,7 +336,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
      */
     final _CursorFrame tryLock(_CursorFrame lock) {
         for (int trials = SPIN_LIMIT;;) {
-            _CursorFrame n = this.get(); // get next frame
+            _CursorFrame n = this.mNextCousin;
 
             if (n == null) {
                 // Not in the list.
@@ -325,18 +346,20 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
             if (n == this) {
                 // Locking the last frame.
                 _Node node = mNode;
-                if (node != null && node.mLastCursorFrame == this && this.compareAndSet(n, lock)) {
+                if (node != null && node.mLastCursorFrame == this
+                    && cNextCousinHandle.compareAndSet(this, n, lock))
+                {
                     if (node != mNode || node.mLastCursorFrame != this) {
                         // Frame is now locked, but node has changed due to a concurrent
                         // rebinding of this frame. Unlock and try again.
-                        this.set(n);
+                        mNextCousin = n;
                     } else {
                         return n;
                     }
                 }
             } else {
                 // Locking an interior or first frame.
-                if (n.mPrevCousin == this && this.compareAndSet(n, lock)) {
+                if (n.mPrevCousin == this && cNextCousinHandle.compareAndSet(this, n, lock)) {
                     return n;
                 }
             }
@@ -359,7 +382,8 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
         _CursorFrame p;
         do {
             p = this.mPrevCousin;
-        } while (p != null && (p.get() != this || !p.compareAndSet(this, lock)));
+        } while (p != null && (p.mNextCousin != this
+                               || !cNextCousinHandle.compareAndSet(p, this, lock)));
         return p;
     }
 
@@ -369,7 +393,7 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
      * @param n non-null next frame, as provided by the tryLock method
      */
     final void unlock(_CursorFrame n) {
-        this.set(n);
+        mNextCousin = n;
     }
 
     /**

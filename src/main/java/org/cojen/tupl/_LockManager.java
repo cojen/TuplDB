@@ -17,10 +17,10 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
-
-import org.cojen.tupl.io.UnsafeAccess;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
@@ -242,7 +242,6 @@ final class _LockManager {
     @SuppressWarnings({"unused", "restriction"})
     static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
-        private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
         private _Lock[] mEntries;
         private int mSize;
@@ -339,7 +338,7 @@ final class _LockManager {
             lock.mLockManagerNext = entries[index];
 
             // Fence so that the isAvailable method doesn't observe a broken chain.
-            UNSAFE.storeFence();
+            VarHandle.storeStoreFence();
             entries[index] = lock;
 
             mSize++;
@@ -397,7 +396,7 @@ final class _LockManager {
                         }
 
                         // Fence so that the isAvailable method doesn't observe a broken chain.
-                        UNSAFE.storeFence();
+                        VarHandle.storeStoreFence();
                         entries[index] = lock;
 
                         mSize++;
@@ -461,7 +460,7 @@ final class _LockManager {
                     lock.mOwner = locker;
 
                     // Fence so that the isAvailable method doesn't observe a broken chain.
-                    UNSAFE.storeFence();
+                    VarHandle.storeStoreFence();
                     entries[index] = lock;
 
                     mSize++;

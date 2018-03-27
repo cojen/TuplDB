@@ -17,14 +17,16 @@
 
 package org.cojen.tupl.repl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.net.SocketAddress;
 
 import java.util.Objects;
 
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  * Peers are ordered by match index, for determining the commit index.
@@ -32,11 +34,21 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * @author Brian S O'Neill
  */
 final class Peer implements Comparable<Peer> {
-    private static final AtomicLongFieldUpdater<Peer> cGroupVersionUpdater =
-        AtomicLongFieldUpdater.newUpdater(Peer.class, "mGroupVersion");
+    private static final VarHandle cGroupVersionHandle, cSnapshotScoreHandle;
 
-    private static final AtomicReferenceFieldUpdater<Peer, SnapshotScore> cSnapshotScoreUpdater =
-        AtomicReferenceFieldUpdater.newUpdater(Peer.class, SnapshotScore.class, "mSnapshotScore");
+    static {
+        try {
+            cGroupVersionHandle =
+                MethodHandles.lookup().findVarHandle
+                (Peer.class, "mGroupVersion", long.class);
+
+            cSnapshotScoreHandle =
+                MethodHandles.lookup().findVarHandle
+                (Peer.class, "mSnapshotScore", SnapshotScore.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     final long mMemberId;
     final SocketAddress mAddress;
@@ -74,7 +86,7 @@ final class Peer implements Comparable<Peer> {
         while (true) {
             long currentVersion = mGroupVersion;
             if (groupVersion <= currentVersion ||
-                cGroupVersionUpdater.compareAndSet(this, currentVersion, groupVersion))
+                cGroupVersionHandle.compareAndSet(this, currentVersion, groupVersion))
             {
                 return currentVersion;
             }
@@ -99,7 +111,7 @@ final class Peer implements Comparable<Peer> {
             }
 
             if (waitFor.mRequestedBy == requestedBy) {
-                cSnapshotScoreUpdater.compareAndSet(this, waitFor, null);
+                cSnapshotScoreHandle.compareAndSet(this, waitFor, null);
             }
         }
 

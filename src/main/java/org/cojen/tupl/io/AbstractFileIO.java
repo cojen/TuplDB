@@ -17,13 +17,14 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.RWLock;
@@ -48,8 +49,7 @@ abstract class AbstractFileIO extends FileIO {
     // Max amount of time to stall access if sync is taking longer than the threshold above.
     private static final long SYNC_YIELD_MAX_NANOS = 100L * 1000 * 1000;
 
-    private static final AtomicLongFieldUpdater<AbstractFileIO> cSyncStartNanosUpdater =
-        AtomicLongFieldUpdater.newUpdater(AbstractFileIO.class, "mSyncStartNanos");
+    private static final VarHandle cSyncStartNanosHandle;
 
     static {
         int pageSize = 4096;
@@ -59,6 +59,13 @@ abstract class AbstractFileIO extends FileIO {
             // Ignore. Use default value.
         }
         PAGE_SIZE = pageSize;
+
+        try {
+            cSyncStartNanosHandle = MethodHandles.lookup().findVarHandle
+                (AbstractFileIO.class, "mSyncStartNanos", long.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
     }
 
     private final boolean mReadOnly;
@@ -327,9 +334,8 @@ abstract class AbstractFileIO extends FileIO {
 
         // Set the start time if there's not already an ongoing sync. Ignore
         // cas fails; first writer wins.
-        long startNs = mSyncStartNanos;
-        boolean shouldReset = startNs == 0 && 
-            cSyncStartNanosUpdater.compareAndSet(this, startNs, System.nanoTime());
+        boolean shouldReset = mSyncStartNanos == 0 && 
+            cSyncStartNanosHandle.compareAndSet(this, 0, System.nanoTime());
         try {
             mSyncLatch.acquireShared();
             try {
@@ -355,7 +361,7 @@ abstract class AbstractFileIO extends FileIO {
         } finally {
             // Reset sync state to unblock read/write ops.
             if (shouldReset) {
-                cSyncStartNanosUpdater.set(this, 0);
+                mSyncStartNanos = 0;
             }
         }
     }

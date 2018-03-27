@@ -17,13 +17,14 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 
 import java.util.concurrent.ThreadLocalRandom;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import static java.lang.System.arraycopy;
 
@@ -315,8 +316,17 @@ final class _SnapshotPageArray extends PageArray {
 
     // This should be declared in the SnapshotImpl class, but the Java compiler prohibits this
     // for no good reason. This also requires that the field be declared as package-private.
-    static final AtomicLongFieldUpdater<SnapshotImpl> mProgressUpdater =
-        AtomicLongFieldUpdater.newUpdater(SnapshotImpl.class, "mProgress");
+    static final VarHandle cProgressHandle;
+
+    static {
+        try {
+            cProgressHandle =
+                MethodHandles.lookup().findVarHandle
+                (SnapshotImpl.class, "mProgress", long.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     class SnapshotImpl implements CauseCloseable, Snapshot {
         private final _LocalDatabase mNodeCache;
@@ -480,7 +490,7 @@ final class _SnapshotPageArray extends PageArray {
         }
 
         private void advanceProgress(long index) {
-            if (!mProgressUpdater.compareAndSet(this, index - 1, index)) {
+            if (!cProgressHandle.compareAndSet(this, index - 1, index)) {
                 // If closed, the caller's exception handler must detect this.
                 throw new IllegalStateException();
             }

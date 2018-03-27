@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.repl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -26,8 +29,6 @@ import java.net.SocketAddress;
 
 import java.util.Collections;
 import java.util.Map;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.cojen.tupl.io.Utils;
 
@@ -42,8 +43,17 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     private final OutputStream mOut;
     private final Map<String, String> mOptions;
 
-    private static final AtomicIntegerFieldUpdater<SocketSnapshotSender> cSendingUpdater =
-        AtomicIntegerFieldUpdater.newUpdater(SocketSnapshotSender.class, "mSending");
+    private static final VarHandle cSendingHandle;
+
+    static {
+        try {
+            cSendingHandle =
+                MethodHandles.lookup().findVarHandle
+                (SocketSnapshotSender.class, "mSending", int.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     private volatile int mSending;
 
@@ -82,7 +92,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     public final OutputStream begin(long length, long index, Map<String, String> options)
         throws IOException
     {
-        if (!cSendingUpdater.compareAndSet(this, 0, 1)) {
+        if (!cSendingHandle.compareAndSet(this, 0, 1)) {
             throw new IllegalStateException("Already began");
         }
 

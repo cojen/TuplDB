@@ -17,12 +17,13 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.Flushable;
 import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.cojen.tupl.util.Latch;
 
@@ -39,8 +40,17 @@ import static org.cojen.tupl.Utils.*;
  */
 /*P*/
 final class _TransactionContext extends Latch implements Flushable {
-    private final static AtomicLongFieldUpdater<_TransactionContext> cHighTxnIdUpdater =
-        AtomicLongFieldUpdater.newUpdater(_TransactionContext.class, "mHighTxnId");
+    private final static VarHandle cHighTxnIdHandle;
+
+    static {
+        try {
+            cHighTxnIdHandle =
+                MethodHandles.lookup().findVarHandle
+                (_TransactionContext.class, "mHighTxnId", long.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     private final int mTxnStride;
 
@@ -96,7 +106,7 @@ final class _TransactionContext extends Latch implements Flushable {
      * @return positive non-zero transaction id
      */
     long nextTransactionId() {
-        long txnId = cHighTxnIdUpdater.addAndGet(this, mTxnStride);
+        long txnId = (long) cHighTxnIdHandle.getAndAdd(this, mTxnStride) + mTxnStride;
 
         if (txnId <= 0) {
             // Improbably, the transaction identifier has wrapped around. Only vend positive

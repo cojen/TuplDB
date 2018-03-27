@@ -32,6 +32,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -54,9 +57,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -174,8 +174,7 @@ final class LocalDatabase extends AbstractDatabase {
     private byte[] mCommitHeader;
     /*P*/ // |
     /*P*/ // private volatile long mCommitHeader = p_null();
-    /*P*/ // private static final AtomicLongFieldUpdater<LocalDatabase> cCommitHeaderUpdater =
-    /*P*/ //     AtomicLongFieldUpdater.newUpdater(LocalDatabase.class, "mCommitHeader");
+    /*P*/ // private static final VarHandle cCommitHeaderHandle;
     /*P*/ // ]
     private UndoLog mCommitMasterUndoLog;
 
@@ -244,8 +243,24 @@ final class LocalDatabase extends AbstractDatabase {
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
 
-    private static final AtomicIntegerFieldUpdater<LocalDatabase>
-        cClosedUpdater = AtomicIntegerFieldUpdater.newUpdater(LocalDatabase.class, "mClosed");
+    private static final VarHandle cClosedHandle;
+
+    static {
+        try {
+            cClosedHandle =
+                MethodHandles.lookup().findVarHandle
+                (LocalDatabase.class, "mClosed", int.class);
+
+            /*P*/ // [|
+            /*P*/ // cCommitHeaderHandle =
+            /*P*/ //     MethodHandles.lookup().findVarHandle
+            /*P*/ //     (LocalDatabase.class, "mCommitHeader", long.class);
+            /*P*/ // ]
+
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     /**
      * Open a database, creating it if necessary.
@@ -2428,7 +2443,7 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
-        if (!cClosedUpdater.compareAndSet(this, 0, 1)) {
+        if (!cClosedHandle.compareAndSet(this, 0, 1)) {
             return;
         }
 
@@ -2623,7 +2638,7 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ // [
         mCommitHeader = null;
         /*P*/ // |
-        /*P*/ // p_delete(cCommitHeaderUpdater.getAndSet(this, p_null()));
+        /*P*/ // p_delete((long) cCommitHeaderHandle.getAndSet(this, p_null()));
         /*P*/ // ]
     }
 

@@ -17,13 +17,14 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.IOException;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
@@ -43,11 +44,21 @@ abstract class _TreeSeparator extends LongAdder {
 
     private volatile Throwable mException;
 
-    static final AtomicReferenceFieldUpdater<_TreeSeparator, Throwable> cExceptionUpdater =
-        AtomicReferenceFieldUpdater.newUpdater(_TreeSeparator.class, Throwable.class, "mException");
+    static final VarHandle cExceptionHandle, cSpawnCountHandle;
 
-    static final AtomicIntegerFieldUpdater<Worker> cSpawnCountUpdater =
-        AtomicIntegerFieldUpdater.newUpdater(Worker.class, "mSpawnCount");
+    static {
+        try {
+            cExceptionHandle =
+                MethodHandles.lookup().findVarHandle
+                (_TreeSeparator.class, "mException", Throwable.class);
+
+            cSpawnCountHandle =
+                MethodHandles.lookup().findVarHandle
+                (Worker.class, "mSpawnCount", int.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread
@@ -87,7 +98,7 @@ abstract class _TreeSeparator extends LongAdder {
                     // Signal to stop by setting the sign bit.
                     while (true) {
                         int spawnCount = w.mSpawnCount;
-                        if (cSpawnCountUpdater.compareAndSet
+                        if (cSpawnCountHandle.compareAndSet
                             (w, spawnCount, spawnCount | (1 << 31)))
                         {
                             break;
@@ -108,7 +119,7 @@ abstract class _TreeSeparator extends LongAdder {
     }
 
     protected void failed(Throwable cause) {
-        cExceptionUpdater.compareAndSet(this, null, cause);
+        cExceptionHandle.compareAndSet(this, null, cause);
         stop();
     }
 
@@ -223,7 +234,7 @@ abstract class _TreeSeparator extends LongAdder {
                 while (true) {
                     Worker w = hashtable[randomSlot];
                     if (w != null) {
-                        cSpawnCountUpdater.getAndAdd(w, addCount);
+                        cSpawnCountHandle.getAndAdd(w, addCount);
                         return;
                     }
                     // Slot is empty, so keep looking.
@@ -359,7 +370,7 @@ abstract class _TreeSeparator extends LongAdder {
                     if (splitKey != null) {
                         startWorker(this, 0, splitKey, highKey);
                         mHighKey = highKey = splitKey;
-                        cSpawnCountUpdater.decrementAndGet(this);
+                        cSpawnCountHandle.getAndAdd(this, -1);
                     }
                 }
             }

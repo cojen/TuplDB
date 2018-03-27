@@ -4169,15 +4169,15 @@ final class _Node extends Clutch implements _DatabaseAccess {
         // ...now they can be moved around...
 
         // 1. Frames from child move to this node, the root.
-        if (!_CursorFrame.cLastUpdater.compareAndSet(this, thisLastFrame, childLastFrame)) {
+        if (!_CursorFrame.cLastHandle.compareAndSet(this, thisLastFrame, childLastFrame)) {
             throw new AssertionError();
         }
         // 2. Frames of child node are cleared.
-        if (!_CursorFrame.cLastUpdater.compareAndSet(child, childLastFrame, null)) {
+        if (!_CursorFrame.cLastHandle.compareAndSet(child, childLastFrame, null)) {
             throw new AssertionError();
         }
         // 3. Frames from empty root move to the stub.
-        if (!_CursorFrame.cLastUpdater.compareAndSet(stub, null, thisLastFrame)) {
+        if (!_CursorFrame.cLastHandle.compareAndSet(stub, null, thisLastFrame)) {
             throw new AssertionError();
         }
 

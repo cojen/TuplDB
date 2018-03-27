@@ -71,7 +71,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
+    public final Comparator<byte[]> getComparator() {
         return KeyComparator.THE;
     }
 

@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -24,12 +27,11 @@ import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
 
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
 import com.sun.jna.Platform;
 
 import org.cojen.tupl.DatabaseFullException;
+
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  * {@link PageArray} implementation which accesses a fixed sized file, fully mapped to memory.
@@ -38,11 +40,21 @@ import org.cojen.tupl.DatabaseFullException;
  */
 @SuppressWarnings("restriction")
 public abstract class MappedPageArray extends PageArray {
-    private static AtomicLongFieldUpdater<MappedPageArray> cMappingPtrUpdater =
-        AtomicLongFieldUpdater.newUpdater(MappedPageArray.class, "mMappingPtr");
+    private static final VarHandle cMappingPtrHandle, cCauseHandle;
 
-    private static AtomicReferenceFieldUpdater<MappedPageArray, Throwable> cCauseUpdater =
-        AtomicReferenceFieldUpdater.newUpdater(MappedPageArray.class, Throwable.class, "mCause");
+    static {
+        try {
+            cMappingPtrHandle =
+                MethodHandles.lookup().findVarHandle
+                (MappedPageArray.class, "mMappingPtr", long.class);
+
+            cCauseHandle =
+                MethodHandles.lookup().findVarHandle
+                (MappedPageArray.class, "mCause", Throwable.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
 
     private final long mPageCount;
     private final boolean mReadOnly;
@@ -207,8 +219,8 @@ public abstract class MappedPageArray extends PageArray {
             if (ptr == 0) {
                 return;
             }
-            cCauseUpdater.compareAndSet(this, null, cause);
-            if (cMappingPtrUpdater.compareAndSet(this, ptr, 0)) {
+            cCauseHandle.compareAndSet(this, null, cause);
+            if (cMappingPtrHandle.compareAndSet(this, ptr, 0)) {
                 mCause = cause;
                 doClose(ptr);
                 return;
@@ -222,7 +234,7 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     void setMappingPtr(long ptr) throws IOException {
-        while (!cMappingPtrUpdater.compareAndSet(this, 0, ptr)) {
+        while (!cMappingPtrHandle.compareAndSet(this, 0, ptr)) {
             if (mMappingPtr != 0) {
                 throw new IllegalStateException();
             }
