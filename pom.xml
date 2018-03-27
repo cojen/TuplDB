@@ -60,8 +60,8 @@
 
   <properties>
     <!--  compiler settings -->
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>1.9</maven.compiler.source>
+    <maven.compiler.target>1.9</maven.compiler.target>
 
     <!-- encoding -->
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -97,7 +97,7 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>2.9.1</version>
           <configuration>
-            <javadocVersion>1.8</javadocVersion>
+            <javadocVersion>1.9</javadocVersion>
             <detectJavaApiLink>true</detectJavaApiLink>
             <links>
               <link>https://docs.oracle.com/javase/9/docs/api</link>
@@ -219,7 +219,7 @@
               </execution>
             </executions>
             <configuration>
-              <javadocVersion>1.8</javadocVersion>
+              <javadocVersion>1.9</javadocVersion>
               <detectJavaApiLink>true</detectJavaApiLink>
               <links>
                 <link>https://docs.oracle.com/javase/9/docs/api</link>
