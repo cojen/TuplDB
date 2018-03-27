@@ -55,8 +55,8 @@ import java.util.function.ObjLongConsumer;
 import java.util.logging.Level;
 
 import java.util.zip.Checksum;
+import java.util.zip.CRC32C;
 
-import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
@@ -407,7 +407,7 @@ final class GroupFile extends Latch {
      */
     public void writeTo(OutputStream out) throws IOException {
         byte[] buf = new byte[1000];
-        Checksum checksum = CRC32C.newInstance();
+        Checksum checksum = new CRC32C();
 
         acquireShared();
         try {
@@ -458,7 +458,7 @@ final class GroupFile extends Latch {
      */
     public boolean readFrom(InputStream in) throws IOException {
         byte[] buf = new byte[1000];
-        Checksum checksum = CRC32C.newInstance();
+        Checksum checksum = new CRC32C();
 
         long version, length;
 

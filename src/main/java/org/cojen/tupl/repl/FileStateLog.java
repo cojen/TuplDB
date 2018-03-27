@@ -41,11 +41,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import java.util.zip.Checksum;
+import java.util.zip.CRC32C;
 
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.TimeUnit;
 
-import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
@@ -156,7 +156,7 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
-        mMetadataCrc = CRC32C.newInstance();
+        mMetadataCrc = new CRC32C();
         mMetadataInfo = new LogInfo();
         mMetadataLatch = new Latch();
 
@@ -331,7 +331,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.position(offset);
 
         mMetadataCrc.reset();
-        CRC32C.update(mMetadataCrc, bb);
+        mMetadataCrc.update(bb);
 
         bb.limit(offset + METADATA_SIZE);
         bb.putInt((int) mMetadataCrc.getValue());
@@ -355,7 +355,7 @@ final class FileStateLog extends Latch implements StateLog {
         bb.position(offset);
 
         mMetadataCrc.reset();
-        CRC32C.update(mMetadataCrc, bb);
+        mMetadataCrc.update(bb);
 
         bb.limit(offset + METADATA_SIZE);
         int actual = bb.getInt();
@@ -994,7 +994,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         bb.position(offset);
         mMetadataCrc.reset();
-        CRC32C.update(mMetadataCrc, bb);
+        mMetadataCrc.update(bb);
 
         bb.limit(offset + METADATA_SIZE);
         bb.putInt((int) mMetadataCrc.getValue());

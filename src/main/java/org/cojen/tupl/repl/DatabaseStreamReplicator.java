@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import java.util.zip.Checksum;
+import java.util.zip.CRC32C;
 
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationInterruptedException;
@@ -41,7 +42,6 @@ import org.cojen.tupl.EventType;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
-import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.ext.ReplicationManager;
@@ -112,7 +112,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
             if (checksumOption != null) {
                 if (checksumOption.equals("CRC32C")) {
-                    in = new CheckedInputStream(in, CRC32C.newInstance(), receiver.length());
+                    in = new CheckedInputStream(in, new CRC32C(), receiver.length());
                 } else {
                     throw new IOException("Unknown checksum option: " + checksumOption);
                 }
@@ -263,7 +263,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
         if ("CRC32C".equals(sender.options().get("checksum"))) {
             options = Collections.singletonMap("checksum", "CRC32C");
-            checksum = CRC32C.newInstance();
+            checksum = new CRC32C();
         }
 
         try (Snapshot snapshot = db.beginSnapshot();

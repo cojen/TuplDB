@@ -44,8 +44,8 @@ import java.util.function.Consumer;
 import java.util.function.LongPredicate;
 
 import java.util.zip.Checksum;
+import java.util.zip.CRC32C;
 
-import org.cojen.tupl.io.CRC32C;
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.io.Utils.*;
@@ -573,7 +573,7 @@ final class ChannelManager {
     }
 
     static void encodeHeaderCrc(byte[] header) {
-        Checksum crc = CRC32C.newInstance();
+        Checksum crc = new CRC32C();
         crc.update(header, 0, header.length - 4);
         encodeIntLE(header, header.length - 4, (int) crc.getValue());
     }
@@ -621,7 +621,7 @@ final class ChannelManager {
             return null;
         }
 
-        Checksum crc = CRC32C.newInstance();
+        Checksum crc = new CRC32C();
         crc.update(header, 0, header.length - 4);
         if (decodeIntLE(header, header.length - 4) != (int) crc.getValue()) {
             return null;
