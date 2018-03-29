@@ -29,7 +29,6 @@ import static org.cojen.tupl.io.Utils.rethrow;
  */
 @SuppressWarnings("serial")
 /*P*/
-// Note: Atomic reference is to the next frame bound to a _Node.
 class _CursorFrame {
     // Under contention a thread will initially spin up to SPIN_LIMIT before yielding, after
     // which it more aggressively spins up to 2 * SPIN_LIMIT before additional yields.
