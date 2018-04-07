@@ -23,6 +23,11 @@ import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -67,13 +72,50 @@ final class Checkpointer implements Runnable {
         if (!initialCheckpoint) {
             mState = STATE_RUNNING;
         }
+        mThread = newThread(this);
+        mThread.start();
+    }
 
-        Thread t = new Thread(this);
+    private static Thread newThread(Runnable r) {
+        Thread t = new Thread(r);
         t.setDaemon(true);
         t.setName("Checkpointer-" + Long.toUnsignedString(t.getId()));
-        t.start();
+        return t;
+    }
 
-        mThread = t;
+    /**
+     * @return null if no extra threads should be used for checkpoints
+     */
+    static ExecutorService newExtraExecutor(DatabaseConfig config, int limit) {
+        int max = config.mMaxCheckpointThreads;
+        if (max < 0) {
+            max = (-max * Runtime.getRuntime().availableProcessors());
+        }
+
+        max = Math.min(max, limit) - 1;
+
+        if (max <= 0) {
+            return null;
+        }
+
+        long timeoutNanos = Math.max
+            (config.mCheckpointRateNanos, config.mCheckpointDelayThresholdNanos);
+        if (timeoutNanos < 0) {
+            // One minute default.
+            timeoutNanos = TimeUnit.MINUTES.toNanos(1);
+        }
+        // Add one more second, with wraparound check.
+        timeoutNanos += TimeUnit.SECONDS.toNanos(1);
+        if (timeoutNanos < 0) {
+            timeoutNanos = Long.MAX_VALUE;
+        }
+
+        ThreadPoolExecutor executor = new ThreadPoolExecutor
+            (max, max, timeoutNanos, TimeUnit.NANOSECONDS,
+             new LinkedBlockingQueue<>(), Checkpointer::newThread);
+
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
     }
 
     @Override

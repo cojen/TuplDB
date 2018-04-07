@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -48,10 +49,11 @@ import java.util.Map;
 import java.util.Set;
 
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -229,6 +231,9 @@ final class _LocalDatabase extends AbstractDatabase {
     private long mLastCheckpointNanos;
 
     private volatile Checkpointer mCheckpointer;
+
+    // Is null when extra checkpoint threads aren't enabled.
+    private final ExecutorService mCheckpointExecutor;
 
     final TempFileManager mTempFileManager;
 
@@ -710,7 +715,10 @@ final class _LocalDatabase extends AbstractDatabase {
             long recoveryStart = 0;
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mRedoWriter = null;
+                mCheckpointExecutor = null;
             } else {
+                mCheckpointExecutor = Checkpointer.newExtraExecutor(config, mNodeContexts.length);
+
                 // Perform recovery by examining redo and undo logs.
 
                 if (mEventListener != null) {
@@ -2476,6 +2484,10 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
         } finally {
+            if (mCheckpointExecutor != null) {
+                mCheckpointExecutor.shutdownNow();
+            }
+
             if (ct != null) {
                 ct.interrupt();
             }
@@ -5390,9 +5402,51 @@ final class _LocalDatabase extends AbstractDatabase {
             mEventListener.notify(EventType.CHECKPOINT_FLUSH, "Flushing all dirty nodes");
         }
 
+        final int dirtyState = stateToFlush;
+
         try {
-            for (_NodeContext context : mNodeContexts) {
-                context.flushDirty(stateToFlush);
+            if (mCheckpointExecutor == null) {
+                for (_NodeContext context : mNodeContexts) {
+                    context.flushDirty(dirtyState);
+                }
+            } else {
+                Throwable ex = null;
+
+                Future[] tasks = new Future[mNodeContexts.length - 1];
+                for (int i=0; i<tasks.length; i++) {
+                    _NodeContext context = mNodeContexts[i + 1];
+                    tasks[i] = mCheckpointExecutor.submit(() -> {
+                        context.flushDirty(dirtyState);
+                        return null;
+                    });
+                }
+
+                try {
+                    mNodeContexts[0].flushDirty(dirtyState);
+                } catch (Throwable e) {
+                    ex = e;
+                }
+
+                for (Future task : tasks) {
+                    try {
+                        task.get();
+                    } catch (ExecutionException e) {
+                        if (ex == null) {
+                            ex = e.getCause();
+                        }
+                    } catch (Throwable e) {
+                        if (ex == null) {
+                            ex = e;
+                        }
+                    }
+                }
+
+                if (ex != null) {
+                    if (ex instanceof InterruptedException) {
+                        throw new InterruptedIOException();
+                    }
+                    Utils.rethrow(ex);
+                }
             }
 
             if (mRedoWriter != null) {

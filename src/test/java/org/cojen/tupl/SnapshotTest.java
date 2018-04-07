@@ -151,20 +151,30 @@ public class SnapshotTest {
 
     @Test
     public void snapshot() throws Exception {
+        snapshot(0);
+    }
+
+    @Test
+    public void snapshotExtraCheckpointThreads() throws Exception {
+        snapshot(4);
+    }
+
+    private void snapshot(int extraThreads) throws Exception {
         File base = newTempBaseFile(getClass());
         File snapshotBase = newTempBaseFile(getClass());
-        snapshot(base, snapshotBase);
+        snapshot(base, snapshotBase, extraThreads);
         deleteTempDatabases(getClass());
     }
 
-    private void snapshot(File base, File snapshotBase) throws Exception {
+    private void snapshot(File base, File snapshotBase, int extraThreads) throws Exception {
         File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(100000000)
-            .durabilityMode(DurabilityMode.NO_FLUSH);
+            .durabilityMode(DurabilityMode.NO_FLUSH)
+            .maxCheckpointThreads(extraThreads);
 
         decorate(config);
 
