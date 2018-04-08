@@ -34,7 +34,7 @@ import static org.cojen.tupl.PageOps.*;
  *
  * @author Brian S O'Neill
  */
-final class NodeContext extends Clutch.Pack {
+final class NodeContext extends Clutch.Pack implements Checkpointer.DirtySet {
     // Allocate an unevictable node.
     static final int MODE_UNEVICTABLE = 1;
 
@@ -506,7 +506,8 @@ final class NodeContext extends Clutch.Pack {
      *
      * @param dirtyState the old dirty state to match on; CACHED_DIRTY_0 or CACHED_DIRTY_1
      */
-    void flushDirty(final int dirtyState) throws IOException {
+    @Override
+    public void flushDirty(final int dirtyState) throws IOException {
         final PageDb pageDb = mDatabase.mPageDb;
 
         synchronized (this) {

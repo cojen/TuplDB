@@ -17,13 +17,17 @@
 
 package org.cojen.tupl;
 
+import java.io.InterruptedIOException;
+import java.io.IOException;
+
 import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +53,13 @@ final class Checkpointer implements Runnable {
     private Thread mShutdownHook;
     private List<ShutdownHook> mToShutdown;
 
-    Checkpointer(AbstractDatabase db, DatabaseConfig config) {
+    // Is null when extra checkpoint threads aren't enabled.
+    private final ThreadPoolExecutor mExtraExecutor;
+
+    /**
+     * @param extraLimit maximum number of extra checkpoint threads to use
+     */
+    Checkpointer(AbstractDatabase db, DatabaseConfig config, int extraLimit) {
         mSuspendCount = new AtomicInteger();
 
         mRateNanos = config.mCheckpointRateNanos;
@@ -63,6 +73,40 @@ final class Checkpointer implements Runnable {
             mRefQueue = null;
             mDatabaseRef = new WeakReference<>(db);
         }
+
+        ThreadPoolExecutor extraExecutor;
+        {
+            int max = config.mMaxCheckpointThreads;
+            if (max < 0) {
+                max = (-max * Runtime.getRuntime().availableProcessors());
+            }
+
+            max = Math.min(max, extraLimit) - 1;
+
+            if (max <= 0) {
+                extraExecutor = null;
+            } else {
+                long timeoutNanos = Math.max
+                    (config.mCheckpointRateNanos, config.mCheckpointDelayThresholdNanos);
+                if (timeoutNanos < 0) {
+                    // One minute default.
+                    timeoutNanos = TimeUnit.MINUTES.toNanos(1);
+                }
+                // Add one more second, with wraparound check.
+                timeoutNanos += TimeUnit.SECONDS.toNanos(1);
+                if (timeoutNanos < 0) {
+                    timeoutNanos = Long.MAX_VALUE;
+                }
+
+                extraExecutor = new ThreadPoolExecutor
+                    (max, max, timeoutNanos, TimeUnit.NANOSECONDS,
+                     new LinkedBlockingQueue<>(), Checkpointer::newThread);
+
+                extraExecutor.allowCoreThreadTimeOut(true);
+            }
+        }
+
+        mExtraExecutor = extraExecutor;
     }
 
     /**
@@ -81,41 +125,6 @@ final class Checkpointer implements Runnable {
         t.setDaemon(true);
         t.setName("Checkpointer-" + Long.toUnsignedString(t.getId()));
         return t;
-    }
-
-    /**
-     * @return null if no extra threads should be used for checkpoints
-     */
-    static ExecutorService newExtraExecutor(DatabaseConfig config, int limit) {
-        int max = config.mMaxCheckpointThreads;
-        if (max < 0) {
-            max = (-max * Runtime.getRuntime().availableProcessors());
-        }
-
-        max = Math.min(max, limit) - 1;
-
-        if (max <= 0) {
-            return null;
-        }
-
-        long timeoutNanos = Math.max
-            (config.mCheckpointRateNanos, config.mCheckpointDelayThresholdNanos);
-        if (timeoutNanos < 0) {
-            // One minute default.
-            timeoutNanos = TimeUnit.MINUTES.toNanos(1);
-        }
-        // Add one more second, with wraparound check.
-        timeoutNanos += TimeUnit.SECONDS.toNanos(1);
-        if (timeoutNanos < 0) {
-            timeoutNanos = Long.MAX_VALUE;
-        }
-
-        ThreadPoolExecutor executor = new ThreadPoolExecutor
-            (max, max, timeoutNanos, TimeUnit.NANOSECONDS,
-             new LinkedBlockingQueue<>(), Checkpointer::newThread);
-
-        executor.allowCoreThreadTimeOut(true);
-        return executor;
     }
 
     @Override
@@ -247,14 +256,69 @@ final class Checkpointer implements Runnable {
         }
     }
 
+    /**
+     * Expected to only be implemented by the NodeContext class.
+     */
+    static interface DirtySet {
+        /**
+         * Flush all nodes matching the given state. Only one flush at a time is allowed.
+         *
+         * @param dirtyState the old dirty state to match on; CACHED_DIRTY_0 or CACHED_DIRTY_1
+         */
+        void flushDirty(int dirtyState) throws IOException;
+    }
+
+    void flushDirty(DirtySet[] dirtySets, int dirtyState) throws IOException {
+        if (mExtraExecutor == null) {
+            for (DirtySet set : dirtySets) {
+                set.flushDirty(dirtyState);
+            }
+        } else {
+            Throwable ex = null;
+
+            Future[] tasks = new Future[dirtySets.length - 1];
+            for (int i=0; i<tasks.length; i++) {
+                DirtySet set = dirtySets[i + 1];
+                tasks[i] = mExtraExecutor.submit(() -> {
+                    set.flushDirty(dirtyState);
+                    return null;
+                });
+            }
+
+            try {
+                dirtySets[0].flushDirty(dirtyState);
+            } catch (Throwable e) {
+                ex = e;
+            }
+
+            for (Future task : tasks) {
+                try {
+                    task.get();
+                } catch (ExecutionException e) {
+                    if (ex == null) {
+                        ex = e.getCause();
+                    }
+                } catch (Throwable e) {
+                    if (ex == null) {
+                        ex = e;
+                    }
+                }
+            }
+
+            if (ex != null) {
+                if (ex instanceof InterruptedException) {
+                    throw new InterruptedIOException();
+                }
+                Utils.rethrow(ex);
+            }
+        }
+    }
+
     boolean isClosed() {
         return mState == STATE_CLOSED;
     }
 
-    /**
-     * @return thread to interrupt, when no checkpoint is in progress
-     */
-    Thread close(Throwable cause) {
+    void close(Throwable cause) {
         mState = STATE_CLOSED;
         mDatabaseRef.enqueue();
         mDatabaseRef.clear();
@@ -284,7 +348,23 @@ final class Checkpointer implements Runnable {
                 obj.shutdown();
             }
         }
+    }
 
-        return mThread;
+    /**
+     * Interrupt all running threads, after calling close. Returns a thread to join, unless
+     * checkpointer was never started.
+     */
+    Thread interrupt() {
+        if (mExtraExecutor != null) {
+            mExtraExecutor.shutdownNow();
+        }
+
+        Thread t = mThread;
+        if (t != null) {
+            mThread = null;
+            t.interrupt();
+        }
+
+        return t;
     }
 }
