@@ -17,7 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.lang.ref.WeakReference;
@@ -26,13 +25,13 @@ import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.List;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.cojen.tupl.util.Latch;
 
 /**
  * 
@@ -273,44 +272,50 @@ final class Checkpointer implements Runnable {
             for (DirtySet set : dirtySets) {
                 set.flushDirty(dirtyState);
             }
-        } else {
-            Throwable ex = null;
+            return;
+        }
 
-            Future[] tasks = new Future[dirtySets.length - 1];
-            for (int i=0; i<tasks.length; i++) {
-                DirtySet set = dirtySets[i + 1];
-                tasks[i] = mExtraExecutor.submit(() -> {
-                    set.flushDirty(dirtyState);
-                    return null;
-                });
+        final class Countdown extends Latch {
+            volatile Throwable mException;
+
+            Countdown(int count) {
+                super(count);
             }
 
-            try {
-                dirtySets[0].flushDirty(dirtyState);
-            } catch (Throwable e) {
-                ex = e;
+            void failed(Throwable ex) {
+                if (mException == null) {
+                    // Compare-and-set is probably overkill here.
+                    mException = ex;
+                }
+                releaseShared();
             }
+        }
 
-            for (Future task : tasks) {
+        final Countdown cd = new Countdown(dirtySets.length);
+
+        for (DirtySet set : dirtySets) {
+            mExtraExecutor.execute(() -> {
                 try {
-                    task.get();
-                } catch (ExecutionException e) {
-                    if (ex == null) {
-                        ex = e.getCause();
-                    }
+                    set.flushDirty(dirtyState);
                 } catch (Throwable e) {
-                    if (ex == null) {
-                        ex = e;
-                    }
+                    cd.failed(e);
+                    return;
                 }
-            }
+                cd.releaseShared();
+            });
+        }
 
-            if (ex != null) {
-                if (ex instanceof InterruptedException) {
-                    throw new InterruptedIOException();
-                }
-                Utils.rethrow(ex);
-            }
+        Runnable task;
+        while ((task = mExtraExecutor.getQueue().poll()) != null) {
+            task.run();
+        }
+
+        cd.acquireExclusive();
+
+        Throwable ex = cd.mException;
+
+        if (ex != null) {
+            Utils.rethrow(ex);
         }
     }
 
