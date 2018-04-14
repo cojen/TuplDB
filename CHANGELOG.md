@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.4.3 (2018-04-14)
+------
+* Added maxCheckpointThreads option, which can speed up checkpoints.
+
 v1.4.2 (2018-03-11)
 ------
 * Fix temporary stall when calling the sorter progress method. The finish method didn't stop
