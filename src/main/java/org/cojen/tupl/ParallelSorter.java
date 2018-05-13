@@ -20,8 +20,6 @@ package org.cojen.tupl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.lang.ref.WeakReference;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -267,7 +265,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     /**
      * Caller must be synchronized.
      *
-     * @return null of no levels exist
+     * @return null if no levels exist
      */
     private Level[] stopTreeMergers() throws InterruptedIOException {
         List<Level> list = mSortTreeLevels;
@@ -472,19 +470,20 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     /**
-     * Merger of sort trees, which only consist of a single node. Weak reference is to the
-     * peviously added worker.
+     * Merger of sort trees, which only consist of a single node.
      */
-    private final class Merger extends WeakReference<Merger> implements Runnable {
+    private final class Merger implements Runnable {
         private Tree[] mSortTrees;
         private int mSize;
         private Tree mDest;
+
+        Merger mPrev;
 
         // Is set when more trees must be added when merge is done.
         Merger mNext;
 
         Merger(Merger prev, Tree[] sortTrees, int size, Tree dest) {
-            super(prev);
+            mPrev = prev;
             mSortTrees = sortTrees;
             mSize = size;
             mDest = dest;
@@ -605,7 +604,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                 merger.mSortTrees = null;
                 merger.mSize = 0;
 
-                Merger prev = merger.get();
+                Merger prev = merger.mPrev;
                 if (prev != null && prev.mDest != null) {
                     // Cannot add destination tree out of order. Leave the merge count alone
                     // for now, preventing unbounded growth of the merger stack.
@@ -616,6 +615,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                 while (true) {
                     addToLevel(selectLevel(0), L0_MAX_SIZE, merger.mDest);
                     merger.mDest = null;
+                    merger.mPrev = null;
                     mMergerCount--;
 
                     Merger next = merger.mNext;
