@@ -453,19 +453,18 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             mSortTreeLevels = new ArrayList<>();
         }
 
-        Merger merger;
+        Merger merger = new Merger(mLastMerger, sortTrees, size, dest);
+        mLastMerger = merger;
 
         try {
             while (mMergerCount >= MERGE_THREAD_COUNT) {
                 wait();
             }
-            merger = new Merger(mLastMerger, sortTrees, size, dest);
-            mLastMerger = merger;
-            mMergerCount++;
         } catch (InterruptedException e) {
             throw new InterruptedIOException();
         }
 
+        mMergerCount++;
         mExecutor.execute(merger);
     }
 
