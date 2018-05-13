@@ -149,6 +149,15 @@ public class SorterTest {
             expected.put(key, value);
         }
 
+        /* FIXME
+java.lang.AssertionError: expected:<9974982> but was:<9974832>
+	at org.junit.Assert.fail(Assert.java:88)
+	at org.junit.Assert.failNotEquals(Assert.java:834)
+	at org.junit.Assert.assertEquals(Assert.java:645)
+	at org.junit.Assert.assertEquals(Assert.java:631)
+	at org.cojen.tupl.SorterTest.sortMany(SorterTest.java:152)
+	at org.cojen.tupl.SorterTest.sortManyMore(SorterTest.java:121)
+        */
         assertEquals(expected.size(), actualCount);
 
         Iterator<Map.Entry<byte[], byte[]>> it = expected.entrySet().iterator();
