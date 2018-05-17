@@ -168,6 +168,7 @@ abstract class TreeSeparator extends LongAdder {
     /**
      * @param lowKey inclusive lowest key in the random range; pass null for open range
      * @param highKey exclusive highest key in the random range; pass null for open range
+     * @return null if no key was found
      */
     private byte[] selectSplitKey(byte[] lowKey, byte[] highKey) throws IOException {
         // Select a random key from a random source.
