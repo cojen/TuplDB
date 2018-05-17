@@ -4279,7 +4279,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * Non-transactionally moves the first entry from the source into the tree, as the highest
+     * Non-transactionally moves the current entry from the source into the tree, as the highest
      * overall. No other cursors can be active in the target subtree, and no check is performed
      * to verify that the entry is the highest and unique. This source is positioned at the
      * next entry as a side effect, and nodes are deleted only when empty.
