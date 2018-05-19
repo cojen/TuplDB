@@ -1,6 +1,14 @@
 Changelog
 =========
 
+v1.4.3.1
+--------
+* Fix race conditions in the cursor iteration methods, next and previous. Sometimes entire
+  subtrees would get skipped over when another thread is making concurrent changes to the same
+  region of the tree. https://github.com/cojen/Tupl/issues/101
+* Sorter shouldn't split work with other threads which are currently being processed, since it
+  interferes with duplicate detection. https://github.com/cojen/Tupl/issues/101
+
 v1.4.3 (2018-04-14)
 ------
 * Added maxCheckpointThreads option, which can speed up checkpoints.
