@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.3.1
+v1.4.3.1 (2018-05-19)
 --------
 * Fix race conditions in the cursor iteration methods, next and previous. Sometimes entire
   subtrees would get skipped over when another thread is making concurrent changes to the same
