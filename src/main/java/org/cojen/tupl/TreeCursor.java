@@ -547,122 +547,125 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * if nothing left
      */
     private Node toNextAny(CursorFrame frame) throws IOException {
-        Node node = frame.mNode;
+        start: while (true) {
+            Node node = frame.mNode;
 
-        quick: {
-            int pos = frame.mNodePos;
-            if (pos < 0) {
-                pos = ~2 - pos; // eq: (~pos) - 2;
-                if (pos >= node.highestLeafPos()) {
-                    break quick;
-                }
-                frame.mNotFoundKey = null;
-            } else if (pos >= node.highestLeafPos()) {
-                break quick;
-            }
-            frame.mNodePos = pos + 2;
-            return node;
-        }
-
-        while (true) {
-            CursorFrame parentFrame = frame.mParentFrame;
-
-            if (parentFrame == null) {
-                node.releaseShared();
-                frame.popv();
-                mLeaf = null;
-                mKey = null;
-                mKeyHash = 0;
-                mValue = null;
-                unregister();
-                return null;
-            }
-
-            Node parentNode;
-
-            latchParent: while (true) {
-                splitCheck: {
-                    // Latch coupling up the tree usually works, so give it a try. If it works,
-                    // then there's no need to worry about a node merge.
-                    parentNode = parentFrame.tryAcquireShared();
-                    node.releaseShared();
-
-                    if (parentNode == null) {
-                        // Latch coupling failed, and so acquire parent latch
-                        // without holding child latch. The child might have
-                        // changed, and so it must be checked again.
-                        parentNode = parentFrame.acquireShared();
-                        if (parentNode.mSplit == null) {
-                            break splitCheck;
-                        }
-                    } else if (parentNode.mSplit == null) {
-                        frame.popv();
-                        break latchParent;
-                    }
-
-                    // When this point is reached, parent node must be split. Parent latch is
-                    // held, child latch is not held, but the frame is still valid.
-
-                    parentNode = finishSplitShared(parentFrame, parentNode);
-                }
-
-                // When this point is reached, child must be relatched. Parent
-                // latch is held, and the child frame is still valid.
-
-                node = frame.acquireShared();
-
-                if (node.mSplit != null) {
-                    // TODO: try parent upgrade first and avoid looping
-                    parentNode.releaseShared();
-                    node = finishSplitShared(frame, node);
-                    continue latchParent;
-                }
-
-                // Quick check again, in case node got bigger due to merging.  Unlike the
-                // earlier quick check, this one must handle internal nodes too.
-                quick: {
-                    int pos = frame.mNodePos;
-
-                    if (pos < 0) {
-                        pos = ~2 - pos; // eq: (~pos) - 2;
-                        if (pos >= node.highestLeafPos()) {
-                            break quick;
-                        }
-                        frame.mNotFoundKey = null;
-                    } else if (pos >= node.highestPos()) {
+            quick: {
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    pos = ~2 - pos; // eq: (~pos) - 2;
+                    if (pos >= node.highestLeafPos()) {
                         break quick;
                     }
+                    frame.mNotFoundKey = null;
+                } else if (pos >= node.highestLeafPos()) {
+                    break quick;
+                }
+                frame.mNodePos = pos + 2;
+                return node;
+            }
 
-                    parentNode.releaseShared();
-                    frame.mNodePos = (pos += 2);
+            while (true) {
+                CursorFrame parentFrame = frame.mParentFrame;
 
-                    if (frame != mLeaf) {
-                        return toFirstLeaf(new CursorFrame(frame),
-                                           mTree.mDatabase.latchToChild(node, pos));
-                    }
-
-                    return node;
+                if (parentFrame == null) {
+                    node.releaseShared();
+                    frame.popv();
+                    mLeaf = null;
+                    mKey = null;
+                    mKeyHash = 0;
+                    mValue = null;
+                    unregister();
+                    return null;
                 }
 
-                node.releaseShared();
-                frame.popv();
-                break latchParent;
+                Node parentNode;
+
+                latchParent: while (true) {
+                    splitCheck: {
+                        // Latch coupling up the tree usually works, so give it a try. If it
+                        // works, then there's no need to worry about a node merge.
+                        parentNode = parentFrame.tryAcquireShared();
+                        node.releaseShared();
+
+                        if (parentNode == null) {
+                            // Latch coupling failed, and so acquire the parent latch without
+                            // holding the child latch. The child might have changed, and so it
+                            // must be checked again.
+                            parentNode = parentFrame.acquireShared();
+                            if (parentNode.mSplit == null) {
+                                break splitCheck;
+                            }
+                        } else if (parentNode.mSplit == null) {
+                            break latchParent;
+                        }
+
+                        // When this point is reached, only the parent latch is held, and the
+                        // parent node must be split.
+
+                        parentNode = finishSplitShared(parentFrame, parentNode);
+                    }
+
+                    // When this point is reached, only the parent latch is held.
+
+                    // Quick check again, in case node got bigger due to merging. Quick check
+                    // doesn't work when the child node is internal, since too many structural
+                    // tree changes might have taken place as the latches were released.
+
+                    if (frame != mLeaf) {
+                        parentNode.releaseShared();
+                        frame = leafSharedNotSplit();
+                        continue start;
+                    }
+
+                    node = frame.acquireShared();
+
+                    if (node.mSplit != null) {
+                        // TODO: try parent upgrade first and avoid looping
+                        parentNode.releaseShared();
+                        node = finishSplitShared(frame, node);
+                        continue latchParent;
+                    }
+
+                    quick: {
+                        int pos = frame.mNodePos;
+                        if (pos < 0) {
+                            pos = ~2 - pos; // eq: (~pos) - 2;
+                            if (pos >= node.highestLeafPos()) {
+                                break quick;
+                            }
+                            frame.mNotFoundKey = null;
+                        } else if (pos >= node.highestLeafPos()) {
+                            break quick;
+                        }
+                        parentNode.releaseShared();
+                        frame.mNodePos = (pos += 2);
+                        return node;
+                    }
+
+                    node.releaseShared();
+                    break latchParent;
+                }
+
+                // When this point is reached, only the shared parent latch is held, and the
+                // child node has reached the edge. Advance the position of the parent node, or
+                // keeping going up the tree if the parent has reached the edge too.
+
+                int parentPos = parentFrame.mNodePos;
+
+                if (parentPos < parentNode.highestInternalPos()) {
+                    // Note: Frames are popped as late as possible, in order for cursor
+                    // bindings to be properly fixed as structural tree changes are made.
+                    parentFrame.popChilden(mLeaf);
+                    parentFrame.mNodePos = (parentPos += 2);
+                    // Always create a new cursor frame. See CursorFrame.unbind.
+                    frame = new CursorFrame(parentFrame);
+                    return toFirstLeaf(frame, mTree.mDatabase.latchToChild(parentNode, parentPos));
+                }
+
+                frame = parentFrame;
+                node = parentNode;
             }
-
-            // When this point is reached, only the shared parent latch is held. Child frame is
-            // no longer valid.
-
-            int parentPos = parentFrame.mNodePos;
-
-            if (parentPos < parentNode.highestInternalPos()) {
-                parentFrame.mNodePos = (parentPos += 2);
-                // Always create a new cursor frame. See CursorFrame.unbind.
-                frame = new CursorFrame(parentFrame);
-                return toFirstLeaf(frame, mTree.mDatabase.latchToChild(parentNode, parentPos));
-            }
-
-            frame = parentFrame;
-            node = parentNode;
         }
     }
 
@@ -674,6 +677,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private CursorFrame skipNextGap(CursorFrame frame, long amount, byte[] inLimit)
         throws IOException
     {
+        // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
+        // toNextAny, by keeping frames bound as late as possible and starting over when
+        // necessary. Note the aggressive popv calls.
+
         outer: while (true) {
             Node node = frame.mNode;
 
@@ -783,6 +790,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 amount -= avail;
                             }
                         }
+
+                        // FIXME: Node might be a leaf, so why is the code assuming that it's
+                        // internal?
 
                         if (inLimit != null) {
                             try {
@@ -915,6 +925,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * Called by Tree.count.
      */
     long count(byte[] lowKey, TreeCursor high) throws IOException {
+        // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
+        // toNextAny, by keeping frames bound as late as possible and starting over when
+        // necessary. Note the aggressive popv calls.
+
         mKeyOnly = true;
 
         if (lowKey == null) {
@@ -1232,122 +1246,125 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @return false if nothing left
      */
     private boolean toPrevious(CursorFrame frame) throws IOException {
-        Node node = frame.mNode;
+        start: while (true) {
+            Node node = frame.mNode;
 
-        quick: {
-            int pos = frame.mNodePos;
-            if (pos < 0) {
-                pos = ~pos;
-                if (pos == 0) {
-                    break quick;
-                }
-                frame.mNotFoundKey = null;
-            } else if (pos == 0) {
-                break quick;
-            }
-            frame.mNodePos = pos - 2;
-            return true;
-        }
-
-        while (true) {
-            CursorFrame parentFrame = frame.mParentFrame;
-
-            if (parentFrame == null) {
-                node.releaseShared();
-                frame.popv();
-                mLeaf = null;
-                mKey = null;
-                mKeyHash = 0;
-                mValue = null;
-                unregister();
-                return false;
-            }
-
-            Node parentNode;
-
-            latchParent: while (true) {
-                splitCheck: {
-                    // Latch coupling up the tree usually works, so give it a try. If it works,
-                    // then there's no need to worry about a node merge.
-                    parentNode = parentFrame.tryAcquireShared();
-                    node.releaseShared();
-
-                    if (parentNode == null) {
-                        // Latch coupling failed, and so acquire parent latch
-                        // without holding child latch. The child might have
-                        // changed, and so it must be checked again.
-                        parentNode = parentFrame.acquireShared();
-                        if (parentNode.mSplit == null) {
-                            break splitCheck;
-                        }
-                    } else if (parentNode.mSplit == null) {
-                        frame.popv();
-                        break latchParent;
-                    }
-
-                    // When this point is reached, parent node must be split. Parent latch is
-                    // held, child latch is not held, but the frame is still valid.
-
-                    parentNode = finishSplitShared(parentFrame, parentNode);
-                }
-
-                // When this point is reached, child must be relatched. Parent latch is held,
-                // and the child frame is still valid.
-
-                node = frame.acquireShared();
-
-                if (node.mSplit != null) {
-                    // TODO: try parent upgrade first and avoid looping
-                    parentNode.releaseShared();
-                    node = finishSplitShared(frame, node);
-                    continue latchParent;
-                }
-
-                // Quick check again, in case node got bigger due to merging.  Unlike the
-                // earlier quick check, this one must handle internal nodes too.
-                quick: {
-                    int pos = frame.mNodePos;
-
-                    if (pos < 0) {
-                        pos = ~pos;
-                        if (pos == 0) {
-                            break quick;
-                        }
-                        frame.mNotFoundKey = null;
-                    } else if (pos == 0) {
+            quick: {
+                int pos = frame.mNodePos;
+                if (pos < 0) {
+                    pos = ~pos;
+                    if (pos == 0) {
                         break quick;
                     }
+                    frame.mNotFoundKey = null;
+                } else if (pos == 0) {
+                    break quick;
+                }
+                frame.mNodePos = pos - 2;
+                return true;
+            }
 
-                    parentNode.releaseShared();
-                    frame.mNodePos = (pos -= 2);
+            while (true) {
+                CursorFrame parentFrame = frame.mParentFrame;
 
-                    if (frame != mLeaf) {
-                        return toLast(new CursorFrame(frame),
-                                      mTree.mDatabase.latchToChild(node, pos));
-                    }
-
-                    return true;
+                if (parentFrame == null) {
+                    node.releaseShared();
+                    frame.popv();
+                    mLeaf = null;
+                    mKey = null;
+                    mKeyHash = 0;
+                    mValue = null;
+                    unregister();
+                    return false;
                 }
 
-                node.releaseShared();
-                frame.popv();
-                break latchParent;
+                Node parentNode;
+
+                latchParent: while (true) {
+                    splitCheck: {
+                        // Latch coupling up the tree usually works, so give it a try. If it
+                        // works, then there's no need to worry about a node merge.
+                        parentNode = parentFrame.tryAcquireShared();
+                        node.releaseShared();
+
+                        if (parentNode == null) {
+                            // Latch coupling failed, and so acquire the parent latch without
+                            // holding the child latch. The child might have changed, and so it
+                            // must be checked again.
+                            parentNode = parentFrame.acquireShared();
+                            if (parentNode.mSplit == null) {
+                                break splitCheck;
+                            }
+                        } else if (parentNode.mSplit == null) {
+                            break latchParent;
+                        }
+
+                        // When this point is reached, only the parent latch is held, and the
+                        // parent node must be split.
+
+                        parentNode = finishSplitShared(parentFrame, parentNode);
+                    }
+
+                    // When this point is reached, only the parent latch is held.
+
+                    // Quick check again, in case node got bigger due to merging. Quick check
+                    // doesn't work when the child node is internal, since too many structural
+                    // tree changes might have taken place as the latches were released.
+
+                    if (frame != mLeaf) {
+                        parentNode.releaseShared();
+                        frame = leafSharedNotSplit();
+                        continue start;
+                    }
+
+                    node = frame.acquireShared();
+
+                    if (node.mSplit != null) {
+                        // TODO: try parent upgrade first and avoid looping
+                        parentNode.releaseShared();
+                        node = finishSplitShared(frame, node);
+                        continue latchParent;
+                    }
+
+                    quick: {
+                        int pos = frame.mNodePos;
+                        if (pos < 0) {
+                            pos = ~pos;
+                            if (pos == 0) {
+                                break quick;
+                            }
+                            frame.mNotFoundKey = null;
+                        } else if (pos == 0) {
+                            break quick;
+                        }
+                        parentNode.releaseShared();
+                        frame.mNodePos = (pos -= 2);
+                        return true;
+                    }
+
+                    node.releaseShared();
+                    break latchParent;
+                }
+
+                // When this point is reached, only the shared parent latch is held, and the
+                // child node has reached the edge. Advance the position of the parent node, or
+                // keeping going up the tree if the parent has reached the edge too.
+
+                int parentPos = parentFrame.mNodePos;
+
+                if (parentPos > 0) {
+                    // Note: Frames are popped as late as possible, in order for cursor
+                    // bindings to be properly fixed as structural tree changes are made.
+                    parentFrame.popChilden(mLeaf);
+                    parentFrame.mNodePos = (parentPos -= 2);
+                    // Always create a new cursor frame. See CursorFrame.unbind.
+                    frame = new CursorFrame(parentFrame);
+                    return toLast(frame, mTree.mDatabase.latchToChild(parentNode, parentPos));
+                }
+
+                frame = parentFrame;
+                node = parentNode;
             }
-
-            // When this point is reached, only the shared parent latch is held. Child frame is
-            // no longer valid.
-
-            int parentPos = parentFrame.mNodePos;
-
-            if (parentPos > 0) {
-                parentFrame.mNodePos = (parentPos -= 2);
-                // Always create a new cursor frame. See CursorFrame.unbind.
-                frame = new CursorFrame(parentFrame);
-                return toLast(frame, mTree.mDatabase.latchToChild(parentNode, parentPos));
-            }
-
-            frame = parentFrame;
-            node = parentNode;
         }
     }
 
@@ -1359,6 +1376,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private CursorFrame skipPreviousGap(CursorFrame frame, long amount, byte[] inLimit)
         throws IOException
     {
+        // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
+        // toPrevious, by keeping frames bound as late as possible and starting over when
+        // necessary. Note the aggressive popv calls.
+
         outer: while (true) {
             Node node = frame.mNode;
 
@@ -1466,6 +1487,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 amount -= avail;
                             }
                         }
+
+                        // FIXME: Node might be a leaf, so why is the code assuming that it's
+                        // internal?
 
                         // Decrement position of internal node.
                         frame.mNodePos = (pos -= 2);

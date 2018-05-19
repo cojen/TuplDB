@@ -404,6 +404,20 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
     }
 
     /**
+     * Starting from this parent frame, pop all child frames reaching up to it, keeping this
+     * parent frame. No latches are required. Unlike the popAll method, this variant assumes
+     * that all frames are properly bound, and that this parent frame will be reached as frames
+     * are popped.
+     *
+     * @param child must be a bound frame of this parent, and must not be the parent itself
+     */
+    final void popChilden(_CursorFrame child) {
+        do {
+            child = child.pop();
+        } while (child != this);
+    }
+
+    /**
      * Copy this frame and all parent frames.
      *
      * @param dest new frame instance to receive copy
