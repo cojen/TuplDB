@@ -4310,12 +4310,13 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      */
     final void appendTransfer(TreeCursor source) throws IOException {
         final CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
+        CursorFrame sleaf;
         try {
             final CursorFrame tleaf = mLeaf;
             Node tnode = tleaf.acquireExclusive();
             tnode = notSplitDirty(tleaf);
 
-            CursorFrame sleaf = source.mLeaf;
+            sleaf = source.mLeaf;
             Node snode = sleaf.acquireExclusive();
 
             try {
@@ -4358,13 +4359,13 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 source.mergeLeaf(sleaf, snode);
                 sleaf = source.leafSharedNotSplit();
             }
-
-            source.next(LocalTransaction.BOGUS, sleaf);
         } catch (Throwable e) {
             throw handleException(e, false);
         } finally {
             shared.release();
         }
+
+        source.next(LocalTransaction.BOGUS, sleaf);
     }
 
     /**

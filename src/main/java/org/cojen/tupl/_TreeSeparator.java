@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
+
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -357,7 +359,15 @@ abstract class _TreeSeparator extends LongAdder {
                     // _Split the work with another worker.
 
                     byte[] splitKey = selectSplitKey(queue[0].mSource.key(), highKey);
-                    if (splitKey != null) {
+                    trySplit: if (splitKey != null) {
+                        // Don't split on keys currently being processed, since it interferes
+                        // with duplicate detection.
+                        for (int i=0; i<queueSize; i++) {
+                            if (Arrays.equals(splitKey, queue[i].mSource.key())) {
+                                break trySplit;
+                            }
+                        }
+
                         startWorker(this, 0, splitKey, highKey);
                         mHighKey = highKey = splitKey;
                         cSpawnCountUpdater.decrementAndGet(this);
