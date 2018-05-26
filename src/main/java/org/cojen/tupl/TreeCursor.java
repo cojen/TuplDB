@@ -576,7 +576,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 Node parentNode;
 
-                latchParent: while (true) {
+                latchParent: {
                     splitCheck: {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
@@ -616,10 +616,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     node = frame.acquireShared();
 
                     if (node.mSplit != null) {
-                        // TODO: try parent upgrade first and avoid looping
                         parentNode.releaseShared();
-                        node = finishSplitShared(frame, node);
-                        continue latchParent;
+                        finishSplitShared(frame, node);
+                        continue start;
                     }
 
                     quick: {
@@ -639,7 +638,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
 
                     node.releaseShared();
-                    break latchParent;
                 }
 
                 // When this point is reached, only the shared parent latch is held, and the
@@ -1265,7 +1263,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 Node parentNode;
 
-                latchParent: while (true) {
+                latchParent: {
                     splitCheck: {
                         // Latch coupling up the tree usually works, so give it a try. If it
                         // works, then there's no need to worry about a node merge.
@@ -1305,10 +1303,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     node = frame.acquireShared();
 
                     if (node.mSplit != null) {
-                        // TODO: try parent upgrade first and avoid looping
                         parentNode.releaseShared();
-                        node = finishSplitShared(frame, node);
-                        continue latchParent;
+                        finishSplitShared(frame, node);
+                        continue start;
                     }
 
                     quick: {
@@ -1328,7 +1325,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
 
                     node.releaseShared();
-                    break latchParent;
                 }
 
                 // When this point is reached, only the shared parent latch is held, and the
