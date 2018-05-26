@@ -570,12 +570,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (parentFrame == null) {
                     node.releaseShared();
-                    frame.popv();
-                    mLeaf = null;
-                    mKey = null;
-                    mKeyHash = 0;
-                    mValue = null;
-                    unregister();
+                    reset();
                     return null;
                 }
 
@@ -639,7 +634,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             break quick;
                         }
                         parentNode.releaseShared();
-                        frame.mNodePos = (pos += 2);
+                        frame.mNodePos = pos + 2;
                         return node;
                     }
 
@@ -679,7 +674,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     {
         // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
         // toNextAny, by keeping frames bound as late as possible and starting over when
-        // necessary. Note the aggressive popv calls.
+        // necessary. Note the aggressive pop calls.
 
         outer: while (true) {
             Node node = frame.mNode;
@@ -713,12 +708,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (parentFrame == null) {
                     node.releaseShared();
-                    frame.popv();
-                    mLeaf = null;
-                    mKey = null;
-                    mKeyHash = 0;
-                    mValue = null;
-                    unregister();
+                    reset();
                     return null;
                 }
 
@@ -740,7 +730,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 break splitCheck;
                             }
                         } else if (parentNode.mSplit == null) {
-                            frame.popv();
+                            frame.pop();
                             break latchParent;
                         }
 
@@ -824,7 +814,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
 
                     node.releaseShared();
-                    frame.popv();
+                    frame.pop();
                     break latchParent;
                 }
 
@@ -927,7 +917,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     long count(byte[] lowKey, TreeCursor high) throws IOException {
         // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
         // toNextAny, by keeping frames bound as late as possible and starting over when
-        // necessary. Note the aggressive popv calls.
+        // necessary. Note the aggressive pop calls.
 
         mKeyOnly = true;
 
@@ -1029,7 +1019,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 }
                             }
                             node.releaseShared();
-                            frame.popv();
+                            frame.pop();
                             break latchParent;
                         } else {
                             node.releaseShared();
@@ -1069,7 +1059,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
 
                     node.releaseShared();
-                    frame.popv();
+                    frame.pop();
                     break latchParent;
                 }
 
@@ -1269,12 +1259,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (parentFrame == null) {
                     node.releaseShared();
-                    frame.popv();
-                    mLeaf = null;
-                    mKey = null;
-                    mKeyHash = 0;
-                    mValue = null;
-                    unregister();
+                    reset();
                     return false;
                 }
 
@@ -1338,7 +1323,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             break quick;
                         }
                         parentNode.releaseShared();
-                        frame.mNodePos = (pos -= 2);
+                        frame.mNodePos = pos - 2;
                         return true;
                     }
 
@@ -1378,7 +1363,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     {
         // FIXME: Might skip large ranges when nodes are merged. Must follow same logic as
         // toPrevious, by keeping frames bound as late as possible and starting over when
-        // necessary. Note the aggressive popv calls.
+        // necessary. Note the aggressive pop calls.
 
         outer: while (true) {
             Node node = frame.mNode;
@@ -1411,12 +1396,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (parentFrame == null) {
                     node.releaseShared();
-                    frame.popv();
-                    mLeaf = null;
-                    mKey = null;
-                    mKeyHash = 0;
-                    mValue = null;
-                    unregister();
+                    reset();
                     return null;
                 }
 
@@ -1438,7 +1418,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 break splitCheck;
                             }
                         } else if (parentNode.mSplit == null) {
-                            frame.popv();
+                            frame.pop();
                             break latchParent;
                         }
 
@@ -1521,7 +1501,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
 
                     node.releaseShared();
-                    frame.popv();
+                    frame.pop();
                     break latchParent;
                 }
 
