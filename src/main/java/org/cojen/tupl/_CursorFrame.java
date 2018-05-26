@@ -385,16 +385,6 @@ class _CursorFrame extends AtomicReference<_CursorFrame> {
     }
 
     /**
-     * Pop this frame, returning void. No latch is required.
-     */
-    final void popv() {
-        unbind(null);
-        mNode = null;
-        mParentFrame = null;
-        mNotFoundKey = null;
-    }
-
-    /**
      * Pop the given non-null frame and all parent frames. No latch is required.
      */
     static void popAll(_CursorFrame frame) {
