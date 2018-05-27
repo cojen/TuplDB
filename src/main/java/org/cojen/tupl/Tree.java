@@ -768,7 +768,7 @@ class Tree implements View, Index {
             // Find the first node instead of calling first() to ensure that cursor is
             // positioned. Otherwise, empty trees would be skipped even when the root node
             // needed to be moved out of the compaction zone.
-            cursor.firstAny();
+            cursor.firstLeaf();
 
             if (!cursor.compact(highestNodeId, observer)) {
                 return false;
