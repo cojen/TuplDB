@@ -1052,10 +1052,10 @@ class _Tree implements View, Index {
         byte[] midKey;
         _CursorFrame lowFrame, highFrame;
         {
-            lowFrame = lowCursor.leafExclusive();
+            lowFrame = lowCursor.frameExclusive();
             _Node lowNode = lowCursor.notSplitDirty(lowFrame);
             try {
-                highFrame = highCursor.leafExclusive();
+                highFrame = highCursor.frameExclusive();
                 _Node highNode = highCursor.notSplitDirty(highFrame);
                 try {
                     midKey = lowNode.midKey(lowNode.highestLeafPos(), highNode, 0);
@@ -1107,8 +1107,8 @@ class _Tree implements View, Index {
 
         try {
             // Clear the extremity bits, before any exception from finishSplit.
-            clearExtremityBits(lowCursor.mLeaf, survivorFrame, ~_Node.HIGH_EXTREMITY);
-            clearExtremityBits(highCursor.mLeaf, survivorFrame, ~_Node.LOW_EXTREMITY);
+            clearExtremityBits(lowCursor.mFrame, survivorFrame, ~_Node.HIGH_EXTREMITY);
+            clearExtremityBits(highCursor.mFrame, survivorFrame, ~_Node.LOW_EXTREMITY);
 
             survivor.finishSplit(survivorFrame, survivorNode).releaseExclusive();
         } catch (Throwable e) {

@@ -41,8 +41,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final Tree mTree;
     LocalTransaction mTxn;
 
-    // Top stack frame for cursor, always a leaf except during cleanup.
-    CursorFrame mLeaf;
+    // Top stack frame for cursor, usually a leaf except during cleanup.
+    CursorFrame mFrame;
 
     byte[] mKey;
     byte[] mValue;
@@ -108,7 +108,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             stats[1] = 0;
             return;
         }
-        CursorFrame frame = leafSharedNotSplit();
+        CursorFrame frame = frameSharedNotSplit();
         Node node = frame.mNode;
         try {
             int pos = frame.mNodePos;
@@ -253,7 +253,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @return false if nothing left
      */
     private boolean toFirst(CursorFrame frame, Node node) throws IOException {
-        return toFirstLeaf(frame, node).hasKeys() ? true : toNext(mLeaf);
+        return toFirstLeaf(frame, node).hasKeys() ? true : toNext(mFrame);
     }
 
     /**
@@ -263,7 +263,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final void firstLeaf() throws IOException {
         reset();
         toFirstLeaf(new CursorFrame(), latchRootNode());
-        mLeaf.mNode.releaseShared();
+        mFrame.mNode.releaseShared();
     }
 
     /**
@@ -272,7 +272,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      *
      * @param frame frame to bind node to
      * @param node latched node; can have no keys
-     * @return latched first node, possibly empty, bound by mLeaf frame
+     * @return latched first node, possibly empty, bound by mFrame
      */
     private Node toFirstLeaf(CursorFrame frame, Node node) throws IOException {
         try {
@@ -286,7 +286,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     }
                 }
                 if (node.isLeaf()) {
-                    mLeaf = frame;
+                    mFrame = frame;
                     return node;
                 }
                 node = mTree.mDatabase.latchToChild(node, 0);
@@ -332,7 +332,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @return false if nothing left
      */
     private boolean toLast(CursorFrame frame, Node node) throws IOException {
-        return toLastLeaf(frame, node).hasKeys() ? true : toPrevious(mLeaf);
+        return toLastLeaf(frame, node).hasKeys() ? true : toPrevious(mFrame);
     }
 
     /**
@@ -341,7 +341,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      *
      * @param frame frame to bind node to
      * @param node latched node; can have no keys
-     * @return latched last node, possibly empty, bound by mLeaf frame
+     * @return latched last node, possibly empty, bound by mFrame
      */
     private Node toLastLeaf(CursorFrame frame, Node node) throws IOException {
         try {
@@ -356,7 +356,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (node.isLeaf()) {
                     // Note: Highest pos is -2 if leaf node has no keys. Use 0 instead.
                     frame.bindOrReposition(node, Math.max(0, node.highestLeafPos()));
-                    mLeaf = frame;
+                    mFrame = frame;
                     return node;
                 }
 
@@ -388,7 +388,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
 
         try {
-            CursorFrame frame = leafSharedNotSplit();
+            CursorFrame frame = frameSharedNotSplit();
             if (amount > 0) {
                 if (amount > 1 && (frame = skipNextGap(frame, amount - 1, null)) == null) {
                     return LockResult.UNOWNED;
@@ -416,7 +416,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
 
         try {
-            CursorFrame frame = leafSharedNotSplit();
+            CursorFrame frame = frameSharedNotSplit();
             if (amount > 0) {
                 if (amount > 1 && (frame = skipNextGap(frame, amount - 1, limitKey)) == null) {
                     return LockResult.UNOWNED;
@@ -437,7 +437,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     @Override
     public final LockResult next() throws IOException {
-        return next(mTxn, leafSharedNotSplit());
+        return next(mTxn, frameSharedNotSplit());
     }
 
     @Override
@@ -452,7 +452,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     private LockResult nextCmp(byte[] limitKey, int limitMode) throws IOException {
         keyCheck(limitKey);
-        return nextCmp(limitKey, limitMode, leafSharedNotSplit());
+        return nextCmp(limitKey, limitMode, frameSharedNotSplit());
     }
 
     private LockResult nextCmp(byte[] limitKey, int limitMode, CursorFrame frame)
@@ -474,7 +474,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         }
     }
 
@@ -499,7 +499,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         }
     }
 
@@ -519,7 +519,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (node.hasKeys()) {
                 return true;
             }
-            frame = mLeaf;
+            frame = mFrame;
         }
     }
 
@@ -528,7 +528,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * which is empty or full of ghosts. Key and value are not loaded.
      */
     private void nextLeaf() throws IOException {
-        Node node = toNextLeaf(leafSharedNotSplit());
+        Node node = toNextLeaf(frameSharedNotSplit());
         if (node != null) {
             node.releaseShared();
         }
@@ -540,7 +540,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      */
     private void skipToNextLeaf() throws IOException {
         // Move to next node by first setting current node position higher than possible.
-        mLeaf.mNodePos = Integer.MAX_VALUE - 1;
+        mFrame.mNodePos = Integer.MAX_VALUE - 1;
         nextLeaf();
     }
 
@@ -549,7 +549,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * valid. Leaf frame remains latched when method returns a non-null node.
      *
      * @param frame leaf frame, not split, with shared latch
-     * @return latched node, never split, possibly empty, bound by mLeaf frame, or null
+     * @return latched node, never split, possibly empty, bound by mFrame, or null
      * if nothing left
      */
     private Node toNextLeaf(CursorFrame frame) throws IOException {
@@ -613,9 +613,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     // doesn't work when the child node is internal, since too many structural
                     // tree changes might have taken place as the latches were released.
 
-                    if (frame != mLeaf) {
+                    if (frame != mFrame) {
                         parentNode.releaseShared();
-                        frame = leafSharedNotSplit();
+                        frame = frameSharedNotSplit();
                         continue start;
                     }
 
@@ -655,7 +655,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (parentPos < parentNode.highestInternalPos()) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mLeaf);
+                    parentFrame.popChilden(mFrame);
                     parentFrame.mNodePos = (parentPos += 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -774,7 +774,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                         parentNode.releaseShared();
 
-                        if (frame == mLeaf) {
+                        if (frame == mFrame) {
                             int avail = (highest - pos) >> 1;
                             if (avail >= amount) {
                                 frame.mNodePos = pos + (((int) amount) << 1);
@@ -791,12 +791,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         if (inLimit != null) {
                             try {
                                 if (node.compareKey(pos, inLimit) > 0) {
-                                    mLeaf = frame;
+                                    mFrame = frame;
                                     resetLatched(node);
                                     return null;
                                 }
                             } catch (Throwable e) {
-                                mLeaf = frame;
+                                mFrame = frame;
                                 resetLatched(node);
                                 throw e;
                             }
@@ -810,7 +810,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         {
                             return null;
                         }
-                        frame = mLeaf;
+                        frame = mFrame;
                         if (--amount <= 0) {
                             return frame;
                         }
@@ -831,12 +831,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (inLimit != null) {
                         try {
                             if (parentNode.compareKey(parentPos, inLimit) > 0) {
-                                mLeaf = parentFrame;
+                                mFrame = parentFrame;
                                 resetLatched(parentNode);
                                 return null;
                             }
                         } catch (Throwable e) {
-                            mLeaf = parentFrame;
+                            mFrame = parentFrame;
                             resetLatched(parentNode);
                             throw e;
                         }
@@ -902,7 +902,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (!toFirst(frame, childNode)) {
                         return null;
                     }
-                    frame = mLeaf;
+                    frame = mFrame;
                     if (--amount <= 0) {
                         return frame;
                     }
@@ -937,7 +937,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         }
 
         long count = 0;
-        CursorFrame frame = leafSharedNotSplit();
+        CursorFrame frame = frameSharedNotSplit();
 
         if (lowKey != null) {
             // Directly count the entries in the lowest leaf.
@@ -950,7 +950,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 Node node = frame.mNode;
                 int lowPos = node.searchVecStart() + pos;
 
-                if (high != null && node == high.mLeaf.mNode) {
+                if (high != null && node == high.mFrame.mNode) {
                     count = countNonGhostKeys(node, lowPos, high);
                     node.releaseShared();
                     return count;
@@ -965,7 +965,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     // Nothing left.
                     return count;
                 } else {
-                    frame = mLeaf;
+                    frame = mFrame;
                 }
             }
         }
@@ -982,14 +982,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (parentFrame == null) {
                     if (node.isLeaf()) {
-                        if (high != null && node == high.mLeaf.mNode) {
+                        if (high != null && node == high.mFrame.mNode) {
                             count += countNonGhostKeys(node, node.searchVecStart(), high);
                         } else {
                             count += node.countNonGhostKeys();
                         }
                     }
                     node.releaseShared();
-                    mLeaf = frame;
+                    mFrame = frame;
                     return count;
                 }
 
@@ -1012,11 +1012,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             }
                         } else if (parentNode.mSplit == null) {
                             if (node.isLeaf()) {
-                                if (high != null && node == high.mLeaf.mNode) {
+                                if (high != null && node == high.mFrame.mNode) {
                                     count += countNonGhostKeys(node, node.searchVecStart(), high);
                                     node.releaseShared();
                                     parentNode.releaseShared();
-                                    mLeaf = frame;
+                                    mFrame = frame;
                                     return count;
                                 } else {
                                     count += node.countNonGhostKeys();
@@ -1051,11 +1051,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     // latching up. A node merge might otherwise throw the count off.
 
                     if (node.isLeaf()) {
-                        if (high != null && node == high.mLeaf.mNode) {
+                        if (high != null && node == high.mFrame.mNode) {
                             count += countNonGhostKeys(node, node.searchVecStart(), high);
                             node.releaseShared();
                             parentNode.releaseShared();
-                            mLeaf = frame;
+                            mFrame = frame;
                             return count;
                         } else {
                             count += node.countNonGhostKeys();
@@ -1082,7 +1082,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     loadChild: {
                         if (parentNode.isBottomInternal() &&
                             (high == null ||
-                             parentNode != (highFrame = high.mLeaf.mParentFrame).mNode ||
+                             parentNode != (highFrame = high.mFrame.mParentFrame).mNode ||
                              parentPos < highFrame.mNodePos))
                         {
                             int childCount = parentNode.retrieveChildEntryCount(parentPos);
@@ -1137,7 +1137,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (!toFirst(frame, childNode)) {
                         return count;
                     }
-                    frame = mLeaf;
+                    frame = mFrame;
                     continue outer;
                 }
 
@@ -1155,7 +1155,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param high not null and must be bound to the same node
      */
     private static long countNonGhostKeys(Node node, int lowPos, TreeCursor high) {
-        int highPos = high.mLeaf.mNodePos;
+        int highPos = high.mFrame.mNodePos;
         if (highPos < 0) {
             highPos = ~highPos;
         }
@@ -1164,7 +1164,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     @Override
     public final LockResult previous() throws IOException {
-        return previous(mTxn, leafSharedNotSplit());
+        return previous(mTxn, frameSharedNotSplit());
     }
 
     @Override
@@ -1179,7 +1179,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     private LockResult previousCmp(byte[] limitKey, int limitMode) throws IOException {
         keyCheck(limitKey);
-        return previousCmp(limitKey, limitMode, leafSharedNotSplit());
+        return previousCmp(limitKey, limitMode, frameSharedNotSplit());
     }
 
     private LockResult previousCmp(byte[] limitKey, int limitMode, CursorFrame frame)
@@ -1201,7 +1201,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         }
     }
 
@@ -1228,7 +1228,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else if ((result = lockAndCopyIfExists(txn)) != null) {
                 return result;
             }
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         }
     }
 
@@ -1248,7 +1248,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (node.hasKeys()) {
                 return true;
             }
-            frame = mLeaf;
+            frame = mFrame;
         }
     }
 
@@ -1257,7 +1257,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * valid. Leaf frame remains latched when method returns true.
      *
      * @param frame leaf frame, not split, with shared latch
-     * @return latched node, never split, possibly empty, bound by mLeaf frame, or null if
+     * @return latched node, never split, possibly empty, bound by mFrame, or null if
      * nothing left
      */
     private Node toPreviousLeaf(CursorFrame frame) throws IOException {
@@ -1321,9 +1321,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     // doesn't work when the child node is internal, since too many structural
                     // tree changes might have taken place as the latches were released.
 
-                    if (frame != mLeaf) {
+                    if (frame != mFrame) {
                         parentNode.releaseShared();
-                        frame = leafSharedNotSplit();
+                        frame = frameSharedNotSplit();
                         continue start;
                     }
 
@@ -1363,7 +1363,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (parentPos > 0) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mLeaf);
+                    parentFrame.popChilden(mFrame);
                     parentFrame.mNodePos = (parentPos -= 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -1480,7 +1480,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                         parentNode.releaseShared();
 
-                        if (frame == mLeaf) {
+                        if (frame == mFrame) {
                             int avail = pos >> 1;
                             if (avail >= amount) {
                                 frame.mNodePos = pos - (((int) amount) << 1);
@@ -1500,12 +1500,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         if (inLimit != null) {
                             try {
                                 if (node.compareKey(pos, inLimit) < 0) {
-                                    mLeaf = frame;
+                                    mFrame = frame;
                                     resetLatched(node);
                                     return null;
                                 }
                             } catch (Throwable e) {
-                                mLeaf = frame;
+                                mFrame = frame;
                                 resetLatched(node);
                                 throw e;
                             }
@@ -1516,7 +1516,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         {
                             return null;
                         }
-                        frame = mLeaf;
+                        frame = mFrame;
                         if (--amount <= 0) {
                             return frame;
                         }
@@ -1539,12 +1539,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (inLimit != null) {
                         try {
                             if (parentNode.compareKey(parentPos, inLimit) < 0) {
-                                mLeaf = parentFrame;
+                                mFrame = parentFrame;
                                 resetLatched(parentNode);
                                 return null;
                             }
                         } catch (Throwable e) {
-                            mLeaf = parentFrame;
+                            mFrame = parentFrame;
                             resetLatched(parentNode);
                             throw e;
                         }
@@ -1608,7 +1608,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (!toLast(frame, childNode)) {
                         return null;
                     }
-                    frame = mLeaf;
+                    frame = mFrame;
                     if (--amount <= 0) {
                         return frame;
                     }
@@ -1634,7 +1634,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         final Node node;
         final int pos;
         {
-            CursorFrame leaf = mLeaf;
+            CursorFrame leaf = mFrame;
             node = leaf.mNode;
             pos = leaf.mNodePos;
         }
@@ -1702,7 +1702,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         try {
             return doTryCopyCurrentCmp(txn, limitKey, limitMode);
         } catch (Throwable e) {
-            mLeaf.mNode.releaseShared();
+            mFrame.mNode.releaseShared();
             throw e;
         }
     }
@@ -1717,7 +1717,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         final Node node;
         final int pos;
         {
-            CursorFrame leaf = mLeaf;
+            CursorFrame leaf = mFrame;
             node = leaf.mNode;
             pos = leaf.mNodePos;
         }
@@ -1840,7 +1840,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private byte[] copyIfExists() throws IOException {
         byte[] value;
 
-        CursorFrame frame = leafSharedNotSplit();
+        CursorFrame frame = frameSharedNotSplit();
         Node node = frame.mNode;
         try {
             int pos = frame.mNodePos;
@@ -1903,13 +1903,13 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         LocalTransaction txn = prepareFind(key);
         LockResult result = find(txn, key, VARIANT_RETAIN, new CursorFrame(), latchRootNode());
         if (mValue != null) {
-            mLeaf.mNode.releaseShared();
+            mFrame.mNode.releaseShared();
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
                 txn.unlock();
             }
-            return next(txn, mLeaf);
+            return next(txn, mFrame);
         }
     }
 
@@ -1921,26 +1921,26 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         LocalTransaction txn = prepareFind(key);
         LockResult result = find(txn, key, VARIANT_RETAIN, new CursorFrame(), latchRootNode());
         if (mValue != null) {
-            mLeaf.mNode.releaseShared();
+            mFrame.mNode.releaseShared();
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
                 txn.unlock();
             }
-            return previous(txn, mLeaf);
+            return previous(txn, mFrame);
         }
     }
 
     @Override
     public final LockResult findGt(byte[] key) throws IOException {
         findNoLock(key);
-        return next(mTxn, mLeaf);
+        return next(mTxn, mFrame);
     }
 
     @Override
     public final LockResult findLt(byte[] key) throws IOException {
         findNoLock(key);
-        return previous(mTxn, mLeaf);
+        return previous(mTxn, mFrame);
     }
 
     private void findNoLock(byte[] key) throws IOException {
@@ -1956,7 +1956,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         LocalTransaction txn = prepareFind(key);
 
         Node node;
-        CursorFrame frame = mLeaf;
+        CursorFrame frame = mFrame;
         if (frame == null) {
             // Allocate new frame before latching root -- allocation can block.
             frame = new CursorFrame();
@@ -2015,7 +2015,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             // Cannot be certain if position is in leaf node, so pop up.
 
-            mLeaf = null;
+            mFrame = null;
 
             while (true) {
                 CursorFrame parent = frame.pop();
@@ -2107,7 +2107,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     pos = frame.mNodePos;
                 }
 
-                mLeaf = frame;
+                mFrame = frame;
 
                 if (variant == VARIANT_CHECK) {
                     if (pos < 0) {
@@ -2274,7 +2274,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     throw cleanup(e, frame);
                 }
                 if (pos < 0) {   // Node is empty or out of bounds, so start over.
-                    mLeaf = frame;
+                    mFrame = frame;
                     resetLatched(node);
                     // Before continuing, check if range has anything in it at all. This must
                     // be performed each time, to account for concurrent updates.
@@ -2288,7 +2288,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 frame.bindOrReposition(node, pos);
 
                 if (node.isLeaf()) {
-                    mLeaf = frame;
+                    mFrame = frame;
                     LocalTransaction txn;
                     try {
                         txn = prepareFind(node.retrieveKey(pos));
@@ -2324,7 +2324,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             txn.unlock();
                         }
 
-                        frame = leafSharedNotSplit();
+                        frame = frameSharedNotSplit();
 
                         if (rnd.nextBoolean()) {
                             result = highKey == null ? next(txn, frame)
@@ -2413,7 +2413,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 }
 
                 if (pos < 0) {   // Node is empty or out of bounds, so start over.
-                    mLeaf = frame;
+                    mFrame = frame;
                     resetLatched(node);
                     // Before continuing, check if range has anything in it at all. This must
                     // be performed each time, to account for concurrent updates.
@@ -2437,7 +2437,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                         endKey = highPos == pos ? startKey : node.retrieveKey(highPos);
                     }
 
-                    mLeaf = frame;
+                    mFrame = frame;
                     LocalTransaction txn;
                     try {
                         txn = prepareFind(startKey);
@@ -2625,7 +2625,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     Index.Stats analyze() throws IOException {
         double entryCount, keyBytes, valueBytes, freeBytes, totalBytes;
 
-        CursorFrame frame = leafSharedNotSplit();
+        CursorFrame frame = frameSharedNotSplit();
         Node node = frame.mNode;
         try {
             entryCount = node.numKeys();
@@ -2692,7 +2692,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         final byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
-        final CursorFrame leaf = leaf();
+        final CursorFrame leaf = frame();
         final LocalTransaction txn = mTxn;
 
         LockResult result;
@@ -2763,7 +2763,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         final byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
-        final CursorFrame leaf = leaf();
+        final CursorFrame leaf = frame();
         final LocalTransaction txn = mTxn;
 
         LockResult result;
@@ -3024,7 +3024,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         // Find with no lock because it has already been acquired. Leaf latch is retained too.
         find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
-        CursorFrame leaf = mLeaf;
+        CursorFrame leaf = mFrame;
         Node node = leaf.mNode;
 
         CommitLock.Shared shared;
@@ -3218,12 +3218,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         CursorFrame leaf;
 
         if (key == null) {
-            leaf = leafExclusive();
+            leaf = frameExclusive();
         } else {
             // Find with no lock because caller must already acquire exclusive lock.
             find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
-            leaf = mLeaf;
+            leaf = mFrame;
             Node node = leaf.mNode;
 
             if (!node.tryUpgrade()) {
@@ -3335,7 +3335,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
             try {
-                CursorFrame leaf = mLeaf;
+                CursorFrame leaf = mFrame;
                 Node node = leaf.mNode;
 
                 if (!node.tryUpgrade()) {
@@ -3378,7 +3378,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeNoRedo(LocalTransaction txn, byte[] value) throws IOException {
-        CursorFrame leaf = leafExclusive();
+        CursorFrame leaf = frameExclusive();
         CommitLock.Shared shared;
 
         if (value == null) {
@@ -3405,7 +3405,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeAndRedo(LocalTransaction txn, byte[] value) throws IOException {
-        CursorFrame leaf = leafExclusive();
+        CursorFrame leaf = frameExclusive();
         CommitLock.Shared shared;
 
         if (value == null) {
@@ -3719,7 +3719,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             throw new IllegalArgumentException("Value is null");
         }
 
-        final CursorFrame leaf = leafExclusive();
+        final CursorFrame leaf = frameExclusive();
         final CommitLock.Shared shared = prepareStore(leaf);
         Node node = leaf.mNode;
 
@@ -3813,10 +3813,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     return false;
                 }
 
-                mLeaf.acquireExclusive();
+                mFrame.acquireExclusive();
 
                 // Releases latch if an exception is thrown.
-                Node node = notSplitDirty(mLeaf);
+                Node node = notSplitDirty(mFrame);
 
                 if (node.hasKeys()) {
                     try {
@@ -3829,8 +3829,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 if (node.hasKeys()) {
                     node.releaseExclusive();
-                } else if (!deleteLowestNode(mLeaf, node)) {
-                    mLeaf = null;
+                } else if (!deleteLowestNode(mFrame, node)) {
+                    mFrame = null;
                     reset();
                     return true;
                 }
@@ -3979,7 +3979,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         // given exception is discarded and a new DatabaseException is thrown.
         mTree.mDatabase.checkClosed();
 
-        if (mLeaf == null && e instanceof IllegalStateException) {
+        if (mFrame == null && e instanceof IllegalStateException) {
             // Exception is caused by cursor state; store is safe.
             if (reset) {
                 reset();
@@ -4011,7 +4011,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     public final long valueLength() throws IOException {
         CursorFrame frame;
         try {
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         } catch (IllegalStateException e) {
             valueCheckOpen();
             throw e;
@@ -4040,7 +4040,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final int doValueRead(long pos, byte[] buf, int off, int len) throws IOException {
         CursorFrame frame;
         try {
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
         } catch (IllegalStateException e) {
             valueCheckOpen();
             throw e;
@@ -4126,7 +4126,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             undoTxn = txn;
         }
 
-        final CursorFrame leaf = leafExclusive();
+        final CursorFrame leaf = frameExclusive();
         final CommitLock.Shared shared = prepareStore(leaf);
 
         try {
@@ -4177,11 +4177,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     private TreeCursor copyNoValue() {
         TreeCursor copy = new TreeCursor(mTree, mTxn);
-        CursorFrame frame = mLeaf;
+        CursorFrame frame = mFrame;
         if (frame != null) {
             CursorFrame frameCopy = new CursorFrame();
             frame.copyInto(frameCopy);
-            copy.mLeaf = frameCopy;
+            copy.mFrame = frameCopy;
         }
         copy.mKey = mKey;
         copy.mKeyHash = mKeyHash;
@@ -4203,8 +4203,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         mKeyHash = 0;
         mValue = null;
 
-        CursorFrame frame = mLeaf;
-        mLeaf = null;
+        CursorFrame frame = mFrame;
+        mFrame = null;
 
         if (frame != null) {
             CursorFrame.popAll(frame);
@@ -4226,7 +4226,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * Given frame does not need to be bound, but it must not be latched.
      */
     private RuntimeException cleanup(Throwable e, CursorFrame frame) {
-        mLeaf = frame;
+        mFrame = frame;
         reset();
         return rethrow(e);
     }
@@ -4263,7 +4263,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      */
     final void appendTransfer(Node source) throws IOException {
         try {
-            final CursorFrame tleaf = mLeaf;
+            final CursorFrame tleaf = mFrame;
             Node tnode = tleaf.acquireExclusive();
             tnode = notSplitDirty(tleaf);
 
@@ -4315,11 +4315,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         final CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
         CursorFrame sleaf;
         try {
-            final CursorFrame tleaf = mLeaf;
+            final CursorFrame tleaf = mFrame;
             Node tnode = tleaf.acquireExclusive();
             tnode = notSplitDirty(tleaf);
 
-            sleaf = source.mLeaf;
+            sleaf = source.mFrame;
             Node snode = sleaf.acquireExclusive();
 
             try {
@@ -4360,7 +4360,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 snode.downgrade();
             } else {
                 source.mergeLeaf(sleaf, snode);
-                sleaf = source.leafSharedNotSplit();
+                sleaf = source.frameSharedNotSplit();
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -4405,7 +4405,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     final int height() {
         int height = 0;
-        CursorFrame frame = mLeaf;
+        CursorFrame frame = mFrame;
         while (frame != null) {
             height++;
             frame = frame.mParentFrame;
@@ -4432,7 +4432,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         // modifications to the tree, but this is not harmful.
         Node[] frameNodes = new Node[height];
 
-        CursorFrame frame = mLeaf;
+        CursorFrame frame = mFrame;
 
         outer: while (true) {
             for (int level = 0; level < height; level++) {
@@ -4462,7 +4462,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             // Search leaf for fragmented values.
 
-            frame = leafSharedNotSplit();
+            frame = frameSharedNotSplit();
             Node node = frame.mNode;
 
             // Quick check avoids excessive node re-latching.
@@ -4481,7 +4481,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 // No fragmented values found.
                 node.releaseShared();
                 skipToNextLeaf();
-                if ((frame = mLeaf) == null) {
+                if ((frame = mFrame) == null) {
                     // No more entries to examine.
                     return true;
                 }
@@ -4539,12 +4539,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
                 nextLeaf();
 
-                if (mLeaf == null) {
+                if (mFrame == null) {
                     // No more entries to examine.
                     return true;
                 }
 
-                frame = leafSharedNotSplit();
+                frame = frameSharedNotSplit();
                 Node next = frame.mNode;
 
                 if (next != node) {
@@ -4597,8 +4597,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             return true;
         }
 
-        CursorFrame thisFrame = mLeaf;
-        CursorFrame otherFrame = other.mLeaf;
+        CursorFrame thisFrame = mFrame;
+        CursorFrame otherFrame = other.mFrame;
         while (true) {
             if (thisFrame == null) {
                 return otherFrame == null;
@@ -4652,7 +4652,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (height > 0) {
             final Node[] stack = new Node[height];
             while (key() != null) {
-                if (!verifyFrames(height, stack, mLeaf, observer)) {
+                if (!verifyFrames(height, stack, mFrame, observer)) {
                     return false;
                 }
                 skipToNextLeaf();
@@ -4842,39 +4842,39 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * Checks that leaf is defined and returns it.
+     * Checks that mFrame is defined and returns it.
      *
      * @throws UnpositionedCursorException if unpositioned
      */
-    private CursorFrame leaf() {
-        CursorFrame leaf = mLeaf;
-        ViewUtils.positionCheck(leaf);
-        return leaf;
+    private CursorFrame frame() {
+        CursorFrame frame = mFrame;
+        ViewUtils.positionCheck(frame);
+        return frame;
     }
 
     /**
-     * Latches and returns leaf frame, which might be split.
+     * Latches and returns mFrame, which might be split.
      *
      * @throws UnpositionedCursorException if unpositioned
      */
-    protected final CursorFrame leafExclusive() {
-        CursorFrame leaf = leaf();
-        leaf.acquireExclusive();
-        return leaf;
+    protected final CursorFrame frameExclusive() {
+        CursorFrame frame = frame();
+        frame.acquireExclusive();
+        return frame;
     }
 
     /**
-     * Latches and returns the leaf frame, not split.
+     * Latches and returns mFrame, not split.
      *
      * @throws UnpositionedCursorException if unpositioned
      */
-    final CursorFrame leafSharedNotSplit() throws IOException {
-        CursorFrame leaf = leaf();
-        Node node = leaf.acquireShared();
+    final CursorFrame frameSharedNotSplit() throws IOException {
+        CursorFrame frame = frame();
+        Node node = frame.acquireShared();
         if (node.mSplit != null) {
-            finishSplitShared(leaf, node);
+            finishSplitShared(frame, node);
         }
-        return leaf;
+        return frame;
     }
 
     /**
