@@ -508,7 +508,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
         final TreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
-            appender.firstAny();
+            appender.firstLeaf();
 
             final CommitLock commitLock = mDatabase.commitLock();
             CommitLock.Shared shared = commitLock.acquireShared();

@@ -320,7 +320,7 @@ abstract class _TreeSeparator extends LongAdder {
                                 mTarget = mDatabase.newTemporaryIndex();
                                 tcursor = mTarget.newCursor(Transaction.BOGUS);
                                 tcursor.mKeyOnly = true;
-                                tcursor.firstAny();
+                                tcursor.firstLeaf();
                             }
                             tcursor.appendTransfer(scursor);
                             if (++count == 0) {
