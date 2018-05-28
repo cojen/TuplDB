@@ -782,6 +782,10 @@ public class CursorTest {
         mDb.checkpoint();
 
         c.last();
+        c.skip(-99);
+        fastAssertArrayEquals(key(999_900), c.key());
+
+        c.last();
         c.skip(-9_999);
         fastAssertArrayEquals(key(990_000), c.key());
 
