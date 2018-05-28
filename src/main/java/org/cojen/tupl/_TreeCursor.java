@@ -1129,17 +1129,29 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             }
 
             frame = mFrame;
-            _CursorFrame highFrame;
 
-            if (high != null &&
-                node == (highFrame = high.mFrame.mParentFrame).mNode &&
-                frame.mNodePos >= highFrame.mNodePos)
-            {
-                // Must load child for partial count.
-                _Node child = mTree.mDatabase.latchToChild(node, frame.mNodePos);
-                count += countNonGhostKeys(child, child.searchVecStart(), high);
-                child.releaseShared();
-                return count;
+            if (high != null) {
+                _CursorFrame highFrame;
+
+                while (node == (highFrame = high.mFrame.mParentFrame).mNode &&
+                       frame.mNodePos >= highFrame.mNodePos)
+                {
+                    // Access the child for obtaining a partial count.
+                    _Node child = high.mFrame.acquireShared();
+                    node.releaseShared();
+
+                    if (child.mSplit != null) {
+                        // Finishing the split causes all latches to be released, so loop back
+                        // and check again afterwards.
+                        high.finishSplitShared(high.mFrame, child).releaseShared();
+                        node = frame.acquireShared();
+                        continue;
+                    }
+
+                    count += countNonGhostKeys(child, child.searchVecStart(), high);
+                    child.releaseShared();
+                    return count;
+                }
             }
 
             int childCount = node.retrieveChildEntryCount(frame.mNodePos);
@@ -1177,6 +1189,13 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             }
 
             count += child.countNonGhostKeys();
+
+            if (child.mSplit != null) {
+                _Node sibling = child.mSplit.latchSibling();
+                count += sibling.countNonGhostKeys();
+                sibling.releaseShared();
+            }
+
             child.releaseShared();
         }
     }
@@ -1184,7 +1203,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     /**
      * Count from a low position to a high position in the same node.
      *
-     * @param node must be a leaf
+     * @param node must be a leaf, not split
      * @param lowPos absolute position in search vector
      * @param high not null and must be bound to the same node
      */

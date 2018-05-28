@@ -1188,14 +1188,14 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
-     * Applicable only to leaf nodes. Caller must hold any latch.
+     * Applicable only to leaf nodes, not split. Caller must hold any latch.
      */
     int countNonGhostKeys() {
         return countNonGhostKeys(searchVecStart(), searchVecEnd());
     }
 
     /**
-     * Applicable only to leaf nodes. Caller must hold any latch.
+     * Applicable only to leaf nodes, not split. Caller must hold any latch.
      *
      * @param lowPos 2-based search vector position (inclusive)
      * @param highPos 2-based search vector position (inclusive)
