@@ -820,6 +820,13 @@ public class CursorTest {
         c.skip(100_000, key(99_999), false);
         assertNull(c.key());
 
+        // Force counts to be persisted.
+        mDb.checkpoint();
+
+        c.first();
+        c.skip(100_000, key(99_999), false);
+        assertNull(c.key());
+
         c.first();
         c.skip(100_000, key(99_999), true);
         assertNull(c.key());
