@@ -1130,55 +1130,50 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             frame = mFrame;
             CursorFrame highFrame;
-            Node child;
 
             if (high != null &&
                 node == (highFrame = high.mFrame.mParentFrame).mNode &&
                 frame.mNodePos >= highFrame.mNodePos)
             {
                 // Must load child for partial count.
-                child = mTree.mDatabase.latchChildRetainParent(node, frame.mNodePos);
-            } else {
-                int childCount = node.retrieveChildEntryCount(frame.mNodePos);
-
-                if (childCount >= 0) {
-                    count += childCount;
-                    continue;
-                }
-
-                child = mTree.mDatabase.latchChildRetainParent(node, frame.mNodePos);
-
-                if (mTree.allowStoredCounts() &&
-                    // Note: If child node is clean, it's also not split.
-                    child.mCachedState == Node.CACHED_CLEAN && node.tryUpgrade())
-                {
-                    CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
-                    if (shared == null) {
-                        node.downgrade();
-                    } else try {
-                        try {
-                            node = notSplitDirty(frame);
-                        } catch (Throwable e) {
-                            child.releaseShared();
-                            throw e;
-                        }
-                        childCount = child.countNonGhostKeys();
-                        node.storeChildEntryCount(frame.mNodePos, childCount);
-                        count += childCount;
-                        child.releaseShared();
-                        node.downgrade();
-                        continue;
-                    } finally {
-                        shared.release();
-                    }
-                }
-            }
-
-            if (high != null && child == high.mFrame.mNode) {
+                Node child = mTree.mDatabase.latchToChild(node, frame.mNodePos);
                 count += countNonGhostKeys(child, child.searchVecStart(), high);
                 child.releaseShared();
-                node.releaseShared();
                 return count;
+            }
+
+            int childCount = node.retrieveChildEntryCount(frame.mNodePos);
+
+            if (childCount >= 0) {
+                count += childCount;
+                continue;
+            }
+
+            Node child = mTree.mDatabase.latchChildRetainParent(node, frame.mNodePos);
+
+            if (mTree.allowStoredCounts() &&
+                // Note: If child node is clean, it's also not split.
+                child.mCachedState == Node.CACHED_CLEAN && node.tryUpgrade())
+            {
+                CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
+                if (shared == null) {
+                    node.downgrade();
+                } else try {
+                    try {
+                        node = notSplitDirty(frame);
+                    } catch (Throwable e) {
+                        child.releaseShared();
+                        throw e;
+                    }
+                    childCount = child.countNonGhostKeys();
+                    node.storeChildEntryCount(frame.mNodePos, childCount);
+                    count += childCount;
+                    child.releaseShared();
+                    node.downgrade();
+                    continue;
+                } finally {
+                    shared.release();
+                }
             }
 
             count += child.countNonGhostKeys();
