@@ -1143,7 +1143,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     if (child.mSplit != null) {
                         // Finishing the split causes all latches to be released, so loop back
                         // and check again afterwards.
-                        high.finishSplitShared(high.mFrame, child).releaseShared();
+                        finishSplitShared(high.mFrame, child).releaseShared();
                         node = frame.acquireShared();
                         continue;
                     }
@@ -1162,33 +1162,29 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             }
 
             Node child = mTree.mDatabase.latchChildRetainParent(node, frame.mNodePos);
+            childCount = child.countNonGhostKeys();
+            count += childCount;
 
             if (mTree.allowStoredCounts() &&
                 // Note: If child node is clean, it's also not split.
                 child.mCachedState == Node.CACHED_CLEAN && node.tryUpgrade())
             {
-                CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
-                if (shared == null) {
-                    node.downgrade();
-                } else try {
-                    try {
-                        node = notSplitDirty(frame);
-                    } catch (Throwable e) {
-                        child.releaseShared();
-                        throw e;
+                try {
+                    CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
+                    if (shared != null) {
+                        try {
+                            node = notSplitDirty(frame);
+                            node.storeChildEntryCount(frame.mNodePos, childCount);
+                            continue;
+                        } finally {
+                            shared.release();
+                            child.releaseShared();
+                        }
                     }
-                    childCount = child.countNonGhostKeys();
-                    node.storeChildEntryCount(frame.mNodePos, childCount);
-                    count += childCount;
-                    child.releaseShared();
-                    node.downgrade();
-                    continue;
                 } finally {
-                    shared.release();
+                    node.downgrade();
                 }
             }
-
-            count += child.countNonGhostKeys();
 
             if (child.mSplit != null) {
                 Node sibling = child.mSplit.latchSibling();
