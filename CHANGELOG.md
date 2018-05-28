@@ -1,6 +1,16 @@
 Changelog
 =========
 
+v1.4.3.2
+--------
+* Fix race conditions when skipping and counting tree entries as concurrent modifications are
+  made. Subtrees might get skipped. https://github.com/cojen/Tupl/issues/102
+* Fix potential memory leak when calling next and previous, introduced by the last fix. Cursors
+  must be fully reset when reaching the end, now that frames are popped as late as possible.
+* Fix potential stack overflow when iterating in reverse direction (previous) over a tree which
+  is full of empty nodes. In practice this shouldn't haven happened anyhow, since node merging
+  is typically aggressive.
+
 v1.4.3.1 (2018-05-19)
 --------
 * Fix race conditions in the cursor iteration methods, next and previous. Sometimes entire
