@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.3.2
+v1.4.3.2 (2018-05-28)
 --------
 * Fix race conditions when skipping and counting tree entries as concurrent modifications are
   made. Subtrees might get skipped. https://github.com/cojen/Tupl/issues/102
