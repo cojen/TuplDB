@@ -43,6 +43,9 @@ abstract class TreeSeparator extends LongAdder {
     private final int mWorkerCount;
     private final Worker[] mWorkerHashtable;
 
+    // Linked list of workers, ordered by the range of keys they act upon.
+    private Worker mFirstWorker;
+
     private volatile Throwable mException;
 
     static final AtomicReferenceFieldUpdater<TreeSeparator, Throwable> cExceptionUpdater =
@@ -115,21 +118,13 @@ abstract class TreeSeparator extends LongAdder {
     }
 
     /**
-     * Called by multiple threads as target trees are finished.
-     *
-     * @param target temporary tree with separated results
-     * @param lowKey inclusive lowest key in the separated range; is null for open range
-     * @param highKey exclusive highest key in the separated range; is null for open range
-     */
-    protected abstract void separated(Tree target, byte[] lowKey, byte[] highKey);
-
-    /**
      * Called when separation has finished. When finished normally (not stopped), then all
      * source trees are empty, but not deleted.
      *
+     * @param firstRange first separated range
      * @param exception non-null if stopped due to an exception
      */
-    protected abstract void finished(Throwable exception);
+    protected abstract void finished(Range firstRange, Throwable exception);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -144,6 +139,18 @@ abstract class TreeSeparator extends LongAdder {
             }
             worker.mHashtableNext = hashtable[slot];
             hashtable[slot] = worker;
+
+            if (from == null) {
+                mFirstWorker = worker;
+            } else {
+                worker.mPrev = from;
+                Worker next = from.mNext;
+                from.mNext = worker;
+                if (next != null) {
+                    worker.mNext = next;
+                    next.mPrev = worker;
+                }
+            }
         }
 
         if (mExecutor == null) {
@@ -187,14 +194,8 @@ abstract class TreeSeparator extends LongAdder {
         }
     }
 
-    /**
-     * @param target null if nothing was separated
-     */
-    private void finished(Worker worker, Tree target) {
-        if (target != null) {
-            separated(target, worker.mLowKey, worker.mHighKey);
-        }
-
+    private void finished(Worker worker) {
+        Worker first;
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);
 
@@ -236,12 +237,27 @@ abstract class TreeSeparator extends LongAdder {
                     }
                 }
             }
+
+            first = mFirstWorker;
+            mFirstWorker = null;
         }
  
-        finished(mException);
+        finished(first, mException);
     }
 
-    private final class Worker implements Runnable {
+    interface Range {
+        /**
+         * Returns the tree containing all the entries in this range, or null if empty.
+         */
+        Tree tree();
+
+        /**
+         * Returns the next range, strictly higher, or null if this is the last range.
+         */
+        Range next();
+    }
+
+    private final class Worker implements Runnable, Range {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
@@ -249,6 +265,10 @@ abstract class TreeSeparator extends LongAdder {
         volatile int mSpawnCount;
         Worker mHashtableNext;
         private Tree mTarget;
+
+        // Linked list of workers, ordered by the range of keys they act upon.
+        Worker mNext;
+        Worker mPrev;
 
         /**
          * @param lowKey inclusive lowest key in the worker range; pass null for open range
@@ -276,7 +296,17 @@ abstract class TreeSeparator extends LongAdder {
                 failed(e);
             }
 
-            finished(this, mTarget);
+            finished(this);
+        }
+
+        @Override
+        public Tree tree() {
+            return mTarget;
+        }
+
+        @Override
+        public Range next() {
+            return mNext;
         }
 
         private void doRun() throws Exception {
