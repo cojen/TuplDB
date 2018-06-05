@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.4.4
+------
+* More efficient loads for union, intersection, and difference views, when using the built-in
+  combiners.
+
 v1.4.3.2 (2018-05-28)
 --------
 * Fix race conditions when skipping and counting tree entries as concurrent modifications are
