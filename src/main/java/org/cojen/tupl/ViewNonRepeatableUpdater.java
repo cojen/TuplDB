@@ -30,8 +30,8 @@ class ViewNonRepeatableUpdater extends ViewScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewNonRepeatableUpdater(View view, Cursor cursor) throws IOException {
-        super(cursor, view);
+    ViewNonRepeatableUpdater(Cursor cursor) throws IOException {
+        super(cursor);
         mLockResult = cursor.first();
         cursor.register();
     }
