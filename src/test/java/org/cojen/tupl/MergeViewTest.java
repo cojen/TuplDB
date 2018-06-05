@@ -91,6 +91,16 @@ public class MergeViewTest {
     }
 
     @Test
+    public void unionSelectSecondBasics() throws Exception {
+        basics(this::buildUnionSelectSecond);
+    }
+
+    @Test
+    public void unionCustomSelectSecondBasics() throws Exception {
+        basics(this::buildUnionCustomSelectSecond);
+    }
+
+    @Test
     public void intersectionBasics() throws Exception {
         basics(this::buildIntersection);
     }
@@ -101,6 +111,11 @@ public class MergeViewTest {
     }
 
     @Test
+    public void differenceSelectFirstBasics() throws Exception {
+        basics(this::buildDifferenceSelectFirst);
+    }
+
+    @Test
     public void symmetricDifferenceBasics() throws Exception {
         basics(this::buildSymmetricDifference);
     }
@@ -108,6 +123,21 @@ public class MergeViewTest {
     @Test
     public void intersectionBasicsAlt1() throws Exception {
         basics(this::buildIntersectionAlt1);
+    }
+
+    @Test
+    public void intersectionSelectSecondBasics() throws Exception {
+        basics(this::buildIntersectionSelectSecond);
+    }
+
+    @Test
+    public void intersectionCustomSelectSecondBasics() throws Exception {
+        basics(this::buildIntersectionCustomSelectSecond);
+    }
+
+    @Test
+    public void intersectionDiscard() throws Exception {
+        basics(this::buildIntersectionDiscard);
     }
 
     @Test
@@ -183,6 +213,18 @@ public class MergeViewTest {
         mMergeMap.putAll(mFirstMap);
     }
 
+    private void buildUnionSelectSecond() throws Exception {
+        mMergeView = mFirstView.viewUnion(Combiner.second(), mSecondView);
+        mMergeMap = new TreeMap<>(mFirstMap);
+        mMergeMap.putAll(mSecondMap);
+    }
+
+    private void buildUnionCustomSelectSecond() throws Exception {
+        mMergeView = mFirstView.viewUnion((key, first, second) -> second, mSecondView);
+        mMergeMap = new TreeMap<>(mFirstMap);
+        mMergeMap.putAll(mSecondMap);
+    }
+
     private void buildIntersection() throws Exception {
         buildIntersection(0);
     }
@@ -206,10 +248,32 @@ public class MergeViewTest {
         mMergeMap.keySet().retainAll(mSecondMap.keySet());
     }
 
+    private void buildIntersectionSelectSecond() throws Exception {
+        mMergeView = mFirstView.viewIntersection(Combiner.second(), mSecondView);
+        mMergeMap = new TreeMap<>(mSecondMap);
+        mMergeMap.keySet().retainAll(mFirstMap.keySet());
+    }
+
+    private void buildIntersectionCustomSelectSecond() throws Exception {
+        mMergeView = mFirstView.viewIntersection((key, first, second) -> second, mSecondView);
+        mMergeMap = new TreeMap<>(mSecondMap);
+        mMergeMap.keySet().retainAll(mFirstMap.keySet());
+    }
+
+    private void buildIntersectionDiscard() throws Exception {
+        mMergeView = mFirstView.viewIntersection(Combiner.discard(), mSecondView);
+        mMergeMap = new TreeMap<>();
+    }
+
     private void buildDifference() throws Exception {
         mMergeView = mFirstView.viewDifference(null, mSecondView);
         mMergeMap = new TreeMap<>(mFirstMap);
         mMergeMap.keySet().removeAll(mSecondMap.keySet());
+    }
+
+    private void buildDifferenceSelectFirst() throws Exception {
+        mMergeView = mFirstView.viewDifference(Combiner.first(), mSecondView);
+        mMergeMap = new TreeMap<>(mFirstMap);
     }
 
     private void buildSymmetricDifference() throws Exception {

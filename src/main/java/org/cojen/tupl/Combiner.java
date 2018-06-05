@@ -83,9 +83,57 @@ public interface Combiner {
     }
 
     /**
+     * If {@link #requireValues requireValues} always returns false, consider overriding this
+     * method and implement a more efficient load for two views in a union.
+     */
+    public default byte[] loadUnion(Transaction txn, byte[] key, View first, View second)
+        throws IOException
+    {
+        byte[] v1 = first.load(txn, key);
+        byte[] v2 = second.load(txn, key);
+        return v1 == null ? v2 : (v2 == null ? v1 : combine(key, v1, v2));
+    }
+
+    /**
+     * If {@link #requireValues requireValues} always returns false, consider overriding this
+     * method and implement a more efficient load for two views in an intersection.
+     */
+    public default byte[] loadIntersection(Transaction txn, byte[] key, View first, View second)
+        throws IOException
+    {
+        byte[] v1 = first.load(txn, key);
+        if (v1 == null) {
+            // Always need to lock the second entry too, for consistency and to avoid any odd
+            // deadlocks if the store method is called.
+            second.touch(txn, key);
+            return null;
+        }
+        byte[] v2 = second.load(txn, key);
+        return v2 == null ? null : combine(key, v1, v2);
+    }
+
+    /**
+     * If {@link #requireValues requireValues} always returns false, consider overriding this
+     * method and implement a more efficient load for two views in a difference.
+     */
+    public default byte[] loadDifference(Transaction txn, byte[] key, View first, View second)
+        throws IOException
+    {
+        byte[] v1 = first.load(txn, key);
+        if (v1 == null) {
+            // Always need to lock the second entry too, for consistency and to avoid any odd
+            // deadlocks if the store method is called.
+            second.touch(txn, key);
+            return null;
+        }
+        byte[] v2 = second.load(txn, key);
+        return v2 == null ? v1 : combine(key, v1, v2);
+    }
+
+    /**
      * Separates a combined result, for use when storing a value into a view which uses this
-     * combiner. Returns null by default, which then causes a ViewConstraintException to be
-     * thrown.
+     * combiner. Returns null by default, which then causes a {@link ViewConstraintException}
+     * to be thrown.
      *
      * @param key non-null associated key
      * @param value non-null combined value

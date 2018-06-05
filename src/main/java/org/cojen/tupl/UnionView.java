@@ -31,9 +31,7 @@ final class UnionView extends MergeView {
 
     @Override
     protected byte[] doLoad(Transaction txn, byte[] key) throws IOException {
-        byte[] v1 = mFirst.load(txn, key);
-        byte[] v2 = mSecond.load(txn, key);
-        return v1 == null ? v2 : (v2 == null ? v1 : mCombiner.combine(key, v1, v2));
+        return mCombiner.loadUnion(txn, key, mFirst, mSecond);
     }
 
     @Override
