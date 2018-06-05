@@ -70,7 +70,7 @@ public interface Scanner extends AutoCloseable {
     default boolean step(long amount) throws IOException {
         if (amount > 0) while (true) {
             boolean result = step();
-            if (--amount <= 0) {
+            if (!result || --amount <= 0) {
                 return result;
             }
         }
