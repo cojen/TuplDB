@@ -28,8 +28,9 @@ class ViewSimpleUpdater extends ViewScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewSimpleUpdater(View view, Cursor cursor) throws IOException {
-        super(view, cursor);
+    ViewSimpleUpdater(Cursor cursor) throws IOException {
+        super(cursor);
+        cursor.first();
         cursor.register();
     }
 

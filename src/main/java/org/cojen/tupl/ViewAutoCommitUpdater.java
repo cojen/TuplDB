@@ -29,8 +29,8 @@ class ViewAutoCommitUpdater extends ViewNonRepeatableUpdater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewAutoCommitUpdater(View view, Cursor cursor) throws IOException {
-        super(view, cursor);
+    ViewAutoCommitUpdater(Cursor cursor) throws IOException {
+        super(cursor);
     }
 
     @Override
