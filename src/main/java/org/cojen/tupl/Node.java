@@ -2911,8 +2911,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
     /**
      * Insert into an internal node following a child node split. This parent
-     * node and child node must have an exclusive latch held. Child latch is
-     * released, unless an exception is thrown.
+     * node and child node must have an exclusive latch held.
      *
      * @param frame optional frame which is bound to this node; only used for rebalancing
      * @param result return result stored here; if node was split, key and entry loc is -1 if
