@@ -36,7 +36,7 @@ abstract class _TreeMerger extends _TreeSeparator {
     }
 
     @Override
-    protected void finished(Range firstRange, Throwable exception) {
+    protected void finished(Range firstRange) {
         _Tree merged = firstRange.tree();
 
         if (merged != null) merge: {
