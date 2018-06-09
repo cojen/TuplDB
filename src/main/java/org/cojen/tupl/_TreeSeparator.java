@@ -121,9 +121,9 @@ abstract class _TreeSeparator extends LongAdder {
      * Called when separation has finished. When finished normally (not stopped), then all
      * source trees are empty, but not deleted.
      *
-     * @param firstRange first separated range
+     * @param firstRange first separated range; the ranges are ordered lowest to highest.
      */
-    protected abstract void finished(Range firstRange);
+    protected abstract void finished(Chain<_Tree> firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -244,19 +244,7 @@ abstract class _TreeSeparator extends LongAdder {
         finished(first);
     }
 
-    interface Range {
-        /**
-         * Returns the tree containing all the entries in this range, or null if empty.
-         */
-        _Tree tree();
-
-        /**
-         * Returns the next range, strictly higher, or null if this is the last range.
-         */
-        Range next();
-    }
-
-    private final class Worker implements Runnable, Range {
+    private final class Worker implements Runnable, Chain<_Tree> {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
@@ -299,12 +287,12 @@ abstract class _TreeSeparator extends LongAdder {
         }
 
         @Override
-        public _Tree tree() {
+        public _Tree element() {
             return mTarget;
         }
 
         @Override
-        public Range next() {
+        public Worker next() {
             return mNext;
         }
 
