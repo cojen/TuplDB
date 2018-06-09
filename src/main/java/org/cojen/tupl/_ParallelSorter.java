@@ -759,6 +759,10 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 if (tree != null) {
                     addToLevel(nextLevel, L1_MAX_SIZE, tree);
                 } else {
+                    Throwable ex = exceptionCheck();
+                    if (ex != null) {
+                        exception(ex);
+                    }
                     level.finished(this);
                 }
             }

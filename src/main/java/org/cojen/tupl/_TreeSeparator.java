@@ -122,9 +122,8 @@ abstract class _TreeSeparator extends LongAdder {
      * source trees are empty, but not deleted.
      *
      * @param firstRange first separated range
-     * @param exception non-null if stopped due to an exception
      */
-    protected abstract void finished(Range firstRange, Throwable exception);
+    protected abstract void finished(Range firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -194,7 +193,7 @@ abstract class _TreeSeparator extends LongAdder {
         }
     }
 
-    private void finished(Worker worker) {
+    private void workerFinished(Worker worker) {
         Worker first;
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);
@@ -242,7 +241,7 @@ abstract class _TreeSeparator extends LongAdder {
             mFirstWorker = null;
         }
  
-        finished(first, mException);
+        finished(first);
     }
 
     interface Range {
@@ -296,7 +295,7 @@ abstract class _TreeSeparator extends LongAdder {
                 failed(e);
             }
 
-            finished(this);
+            workerFinished(this);
         }
 
         @Override
