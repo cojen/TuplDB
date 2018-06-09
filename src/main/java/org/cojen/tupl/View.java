@@ -60,7 +60,7 @@ public interface View {
     public default Scanner newScanner(Transaction txn) throws IOException {
         Cursor c = newCursor(txn);
         c.first();
-        return new ViewScanner(c);
+        return new CursorScanner(c);
     }
 
     /**
@@ -80,7 +80,7 @@ public interface View {
             txn = newTransaction(null);
             Cursor c = newCursor(txn);
             try {
-                return new ViewAutoCommitUpdater(c);
+                return new CursorAutoCommitUpdater(c);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -93,14 +93,14 @@ public interface View {
             Cursor c = newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                return new ViewSimpleUpdater(c);
+                return new CursorSimpleUpdater(c);
             case REPEATABLE_READ:
-                return new ViewUpgradableUpdater(c);
+                return new CursorUpgradableUpdater(c);
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                return new ViewNonRepeatableUpdater(c);
+                return new CursorNonRepeatableUpdater(c);
             }
         }
     }

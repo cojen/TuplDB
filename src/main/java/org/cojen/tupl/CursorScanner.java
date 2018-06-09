@@ -26,13 +26,13 @@ import java.util.Comparator;
  *
  * @author Brian S O'Neill
  */
-class ViewScanner implements Scanner {
+class CursorScanner implements Scanner {
     protected final Cursor mCursor;
 
     /**
      * @param cursor positioned at the first entry
      */
-    ViewScanner(Cursor cursor) throws IOException {
+    CursorScanner(Cursor cursor) throws IOException {
         mCursor = cursor;
     }
 
