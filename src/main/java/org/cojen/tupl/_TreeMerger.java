@@ -36,14 +36,14 @@ abstract class _TreeMerger extends _TreeSeparator {
     }
 
     @Override
-    protected void finished(Range firstRange) {
-        _Tree merged = firstRange.tree();
+    protected void finished(Chain<_Tree> firstRange) {
+        _Tree merged = firstRange.element();
 
         if (merged != null) merge: {
-            Range range = firstRange.next();
+            Chain<_Tree> range = firstRange.next();
 
             while (range != null) {
-                _Tree tree = range.tree();
+                _Tree tree = range.element();
 
                 if (tree != null) {
                     try {
@@ -61,7 +61,7 @@ abstract class _TreeMerger extends _TreeSeparator {
                                 if (range == null) {
                                     break merge;
                                 }
-                                tree = range.tree();
+                                tree = range.element();
                             } while (tree == null);
                         }
                     }
