@@ -26,6 +26,8 @@ import java.util.List;
 
 import java.util.concurrent.Executor;
 
+import java.util.concurrent.atomic.LongAdder;
+
 import static org.cojen.tupl.PageOps.*;
 
 /**
@@ -67,7 +69,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     // The trees in these levels are expected to contain more than one node.
     private volatile List<Level> mSortTreeLevels;
 
-    private TreeMerger mFinishMerger;
+    private LongAdder mFinishCounter;
     private long mFinishCount;
 
     private int mState;
@@ -253,7 +255,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             finishLevel.mMerger = merger;
             merger.start();
 
-            mFinishMerger = merger;
+            mFinishCounter = merger;
         }
 
         synchronized (finishLevel) {
@@ -300,9 +302,9 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     private synchronized void finishComplete() throws IOException {
-        if (mFinishMerger != null) {
-            mFinishCount = mFinishMerger.sum();
-            mFinishMerger = null;
+        if (mFinishCounter != null) {
+            mFinishCount = mFinishCounter.sum();
+            mFinishCounter = null;
         }
 
         // Drain the pool.
@@ -324,7 +326,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
     @Override
     public synchronized long progress() {
-        return mFinishMerger != null ? mFinishMerger.sum() : mFinishCount;
+        return mFinishCounter != null ? mFinishCounter.sum() : mFinishCount;
     }
 
     @Override
@@ -333,7 +335,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
         synchronized (this) {
             mState = S_RESET;
-            mFinishMerger = null;
+            mFinishCounter = null;
             mFinishCount = 0;
 
             try {
