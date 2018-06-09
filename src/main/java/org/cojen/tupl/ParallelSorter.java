@@ -195,7 +195,6 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                         numLevelTrees += level.mSize;
                     }
                 }
-                mSortTreeLevels = null;
             }
 
             final Tree[] sortTrees = mSortTrees;
@@ -248,6 +247,13 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             }
 
             // Merge the remaining trees and store into an existing level object.
+
+            // Remove all the unused levels, freeing up memory. Keep level 0, in order to
+            // permit the reset method to stop the merge, unblocking threads.
+            for (int i = mSortTreeLevels.size(); --i >= 1; ) {
+                mSortTreeLevels.remove(i);
+            }
+
             finishLevel = levels[0];
             levels = null;
             finishLevel.mSize = 0;
@@ -302,6 +308,8 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     private synchronized void finishComplete() throws IOException {
+        mSortTreeLevels = null;
+
         if (mFinishCounter != null) {
             mFinishCount = mFinishCounter.sum();
             mFinishCounter = null;
