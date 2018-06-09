@@ -2626,7 +2626,8 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ // ]
     }
 
-    boolean isClosed() {
+    @Override
+    public boolean isClosed() {
         return mClosed != 0;
     }
 
