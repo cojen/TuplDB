@@ -3816,11 +3816,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                         node.releaseExclusive();
                         throw e;
                     }
+
+                    if (node.hasKeys()) {
+                        node.releaseExclusive();
+                        continue;
+                    }
                 }
 
-                if (node.hasKeys()) {
-                    node.releaseExclusive();
-                } else if (!deleteLowestNode(mFrame, node)) {
+                if (!deleteLowestNode(mFrame, node)) {
                     mFrame = null;
                     reset();
                     return true;
