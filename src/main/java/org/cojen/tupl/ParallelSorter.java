@@ -110,6 +110,11 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             }
         }
 
+        synchronized Tree waitForFirstTree() throws InterruptedIOException {
+            waitUntilFinished();
+            return mTrees[0];
+        }
+
         synchronized void finished(TreeMerger merger) {
             if (merger == mMerger) {
                 mMerger = null;
@@ -151,9 +156,9 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public Index finish() throws IOException {
+    public Tree finish() throws IOException {
         try {
-            Tree tree = doFinish();
+            Tree tree = doFinish(null);
             finishComplete();
             return tree;
         } catch (Throwable e) {
@@ -166,7 +171,31 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private Tree doFinish() throws IOException {
+    @Override
+    public Scanner finishScan() throws IOException {
+        SortScanner scanner = new SortScanner(mDatabase);
+
+        try {
+            Tree tree = doFinish(scanner);
+            if (tree != null) {
+                finishComplete();
+                scanner.ready(tree);
+            }
+            return scanner;
+        } catch (Throwable e) {
+            try {
+                reset();
+            } catch (Exception e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * @param scanner pass null to always wait to finish
+     */
+    private Tree doFinish(SortScanner scanner) throws IOException {
         Level finishLevel;
 
         synchronized (this) {
@@ -264,10 +293,34 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             mFinishCounter = merger;
         }
 
-        synchronized (finishLevel) {
-            finishLevel.waitUntilFinished();
-            return finishLevel.mTrees[0];
+        if (scanner == null) {
+            return finishLevel.waitForFirstTree();
         }
+
+        scanner.notReady(new SortScanner.Supplier() {
+            @Override
+            public Tree get() throws IOException {
+                try {
+                    Tree tree = finishLevel.waitForFirstTree();
+                    finishComplete();
+                    return tree;
+                } catch (Throwable e) {
+                    try {
+                        reset();
+                    } catch (Exception e2) {
+                        e.addSuppressed(e2);
+                    }
+                    throw e;
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+                reset();
+            }
+        });
+
+        return null;
     }
 
     /**

@@ -45,8 +45,19 @@ public interface Sorter {
     public Index finish() throws IOException;
 
     /**
-     * Returns an approximate count of entries which have finished, which is only updated when
-     * the finish method is running.
+     * Returns a single-use Scanner over the sorted results, which deletes temporary resources
+     * as it goes. Invoking this method causes the sort to be asynchronously finished, and the
+     * Scanner might block waiting for entries to become available. Closing the Scanner before
+     * the sort is finished interrupts it.
+     *
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public Scanner finishScan() throws IOException;
+
+    /**
+     * Returns an approximate count of entries which have finished, which is only updated while
+     * sort results are being finished.
      */
     public long progress();
 
