@@ -173,8 +173,15 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
     @Override
     public Scanner finishScan() throws IOException {
-        _SortScanner scanner = new _SortScanner(mDatabase);
+        return finishScan(new _SortScanner(mDatabase));
+    }
 
+    @Override
+    public Scanner finishScanReverse() throws IOException {
+        return finishScan(new _SortReverseScanner(mDatabase));
+    }
+
+    private Scanner finishScan(_SortScanner scanner) throws IOException {
         try {
             _Tree tree = doFinish(scanner);
             if (tree != null) {

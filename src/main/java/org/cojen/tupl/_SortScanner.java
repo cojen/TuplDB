@@ -34,6 +34,9 @@ class _SortScanner implements Scanner {
     private _TreeCursor mCursor;
     private Supplier mSupplier;
 
+    /**
+     * Must call ready or notReady to complete initialization.
+     */
     _SortScanner(_LocalDatabase db) {
         mDatabase = db;
     }
@@ -57,7 +60,7 @@ class _SortScanner implements Scanner {
     public boolean step() throws IOException {
         _TreeCursor c = cursor();
         try {
-            c.deleteNext();
+            doStep(c);
             if (c.key() != null) {
                 return true;
             }
@@ -68,6 +71,10 @@ class _SortScanner implements Scanner {
         } catch (Throwable e) {
             throw ViewUtils.fail(this, e);
         }
+    }
+
+    protected void doStep(_TreeCursor c) throws IOException {
+        c.deleteNext();
     }
 
     @Override
@@ -92,8 +99,12 @@ class _SortScanner implements Scanner {
 
     void ready(_Tree tree) throws IOException {
         _TreeCursor c = new _TreeCursor(tree, Transaction.BOGUS);
-        c.first();
+        initPosition(c);
         mCursor = c;
+    }
+
+    protected void initPosition(_TreeCursor c) throws IOException {
+        c.first();
     }
 
     static interface Supplier {

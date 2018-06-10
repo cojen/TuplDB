@@ -56,6 +56,14 @@ public interface Sorter {
     public Scanner finishScan() throws IOException;
 
     /**
+     * Same as {@link #finishScan finishScan}, but in reverse order.
+     *
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public Scanner finishScanReverse() throws IOException;
+
+    /**
      * Returns an approximate count of entries which have finished, which is only updated while
      * sort results are being finished.
      */
