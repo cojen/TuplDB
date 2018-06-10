@@ -193,25 +193,29 @@ public class SorterTest {
 
     @Test
     public void scanFew() throws Exception {
-        scan(10, false);
+        scan(10, false, false);
+        scan(10, true, false); // reverse
     }
 
     @Test
     public void scanFewCloseEarly() throws Exception {
-        scan(10, true);
+        scan(10, false, true);
+        scan(10, true, true); // reverse
     }
 
     @Test
     public void scanMany() throws Exception {
-        scan(1_000_000, false);
+        scan(1_000_000, false, false);
+        scan(1_000_000, true, false); // reverse
     }
 
     @Test
     public void scanManyCloseEarly() throws Exception {
-        scan(1_000_000, true);
+        scan(1_000_000, false, true);
+        scan(1_000_000, true, true); // reverse
     }
 
-    private void scan(int count, boolean close) throws Exception {
+    private void scan(int count, boolean reverse, boolean close) throws Exception {
         final long seed = 123 + count;
         Random rnd = new Random(seed);
 
@@ -226,15 +230,27 @@ public class SorterTest {
             expected.put(key, value);
         }
 
-        Scanner scanner = s.finishScan();
+        Scanner scanner = reverse ? s.finishScanReverse() : s.finishScan();
 
         if (close) {
             scanner.close();
         }
 
+        byte[][] prevRef = new byte[1][];
+
         scanner.scanAll((k, v) -> {
             fastAssertArrayEquals(v, expected.get(k));
             expected.remove(k);
+
+            byte[] prev = prevRef[0];
+            if (prev != null) {
+                assertTrue(scanner.getComparator().compare(prev, k) < 0);
+
+                int cmp = KeyComparator.THE.compare(prev, k);
+                assertTrue(reverse ? cmp > 0 : cmp < 0);
+            }
+
+            prevRef[0] = k;
         });
 
         if (!close) {

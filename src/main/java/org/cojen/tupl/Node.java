@@ -5913,11 +5913,20 @@ final class Node extends Clutch implements DatabaseAccess {
             break;
         }
 
+        char[] extremity = {'_', '_'};
+
+        if ((type() & LOW_EXTREMITY) != 0) {
+            extremity[0] = 'L';
+        }
+        if ((type() & HIGH_EXTREMITY) != 0) {
+            extremity[1] = 'H';
+        }
+
         return prefix + "Node: {id=" + mId +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
-            ", extremity=0b" + Integer.toString((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)), 2) +
+            ", extremity=" + new String(extremity) +
             ", latchState=" + super.toString() +
             '}';
     }

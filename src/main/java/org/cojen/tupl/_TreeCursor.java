@@ -3957,6 +3957,130 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
  
     /**
+     * Non-transactionally deletes the current entry, and then moves to the previous one. No
+     * other cursors or threads can be active in the tree.
+     */
+    final void deletePrevious() throws IOException {
+        final _LocalDatabase db = mTree.mDatabase;
+        final CommitLock commitLock = db.commitLock();
+
+        _Node node;
+
+        while (true) {
+            CommitLock.Shared shared = commitLock.acquireShared();
+            try {
+                if (db.isClosed()) {
+                    throw new ClosedIndexException();
+                }
+
+                mFrame.acquireExclusive();
+
+                // Releases latch if an exception is thrown.
+                node = notSplitDirty(mFrame);
+
+                if (node.hasKeys()) {
+                    try {
+                        node.deleteLeafEntry(node.highestLeafPos());
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw e;
+                    }
+
+                    if (node.hasKeys()) {
+                        break;
+                    }
+                }
+
+                if (!deleteHighestNode(mFrame, node)) {
+                    mFrame = null;
+                    reset();
+                    return;
+                }
+
+                mFrame.acquireExclusive();
+
+                // Releases latch if an exception is thrown.
+                node = notSplitDirty(mFrame);
+
+                if (node.hasKeys()) {
+                    break;
+                }
+            } finally {
+                shared.release();
+            }
+        }
+
+        try {
+            int pos = node.highestLeafPos();
+            mKey = node.retrieveKey(pos);
+            if (!mKeyOnly) {
+                mValue = node.retrieveLeafValue(pos);
+            }
+        } finally {
+            node.releaseExclusive();
+        }
+    }
+
+    /**
+     * Deletes the highest latched node and assigns the previous node to the frame. All latches
+     * are released by this method. No other cursors or threads can be active in the tree.
+     *
+     * @param frame node frame
+     * @param node latched node, with no keys, and dirty
+     * @return false if tree is empty
+     */
+    private boolean deleteHighestNode(final _CursorFrame frame, final _Node node) throws IOException {
+        node.mLastCursorFrame = null;
+
+        _LocalDatabase db = mTree.mDatabase;
+
+        if (node == mTree.mRoot) {
+            try {
+                node.asTrimmedRoot();
+            } finally {
+                node.releaseExclusive();
+            }
+            return false;
+        }
+
+        db.prepareToDelete(node);
+
+        _CursorFrame parentFrame = frame.mParentFrame;
+        _Node parentNode = parentFrame.acquireExclusive();
+
+        if (parentNode.hasKeys()) {
+            parentNode.deleteRightChildRef(parentNode.highestInternalPos());
+        } else {
+            if (!deleteHighestNode(parentFrame, parentNode)) {
+                db.finishDeleteNode(node);
+                return false;
+            }
+            parentNode = parentFrame.acquireExclusive();
+        }
+
+        int pos = parentNode.highestInternalPos();
+        _Node previous = mTree.mDatabase.latchChildRetainParentEx(parentNode, pos, true);
+
+        try {
+            if (db.markDirty(mTree, previous)) {
+                parentNode.updateChildRefId(pos, previous.mId);
+            }
+        } finally {
+            parentNode.releaseExclusive();
+        }
+
+        frame.mNode = previous;
+        frame.mNodePos = previous.highestPos();
+        previous.mLastCursorFrame = frame;
+        previous.type((byte) (previous.type() | _Node.HIGH_EXTREMITY));
+        previous.releaseExclusive();
+
+        db.finishDeleteNode(node);
+
+        return true;
+    }
+
+    /**
      * Find and return a random position in the node. The node should be latched.
      * @param rnd random number generator
      * @param node non-null latched node
