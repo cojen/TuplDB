@@ -5,6 +5,9 @@ v1.4.4
 ------
 * More efficient loads for union, intersection, and difference views, when using the built-in
   combiners.
+* Allow the Sorter.reset method to stop the sort when in the finishing step.
+* Add sort methods which produce results directly into single-use scanners.
+* Add a public Database.isClosed method.
 
 v1.4.3.2 (2018-05-28)
 --------
