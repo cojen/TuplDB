@@ -3835,6 +3835,70 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     /**
+     * Non-transactionally deletes the current entry, and then moves to the next one. No other
+     * cursors or threads can be active in the tree.
+     */
+    final void deleteNext() throws IOException {
+        final _LocalDatabase db = mTree.mDatabase;
+        final CommitLock commitLock = db.commitLock();
+
+        _Node node;
+
+        while (true) {
+            CommitLock.Shared shared = commitLock.acquireShared();
+            try {
+                if (db.isClosed()) {
+                    throw new ClosedIndexException();
+                }
+
+                mFrame.acquireExclusive();
+
+                // Releases latch if an exception is thrown.
+                node = notSplitDirty(mFrame);
+
+                if (node.hasKeys()) {
+                    try {
+                        node.deleteLeafEntry(0);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw e;
+                    }
+
+                    if (node.hasKeys()) {
+                        break;
+                    }
+                }
+
+                if (!deleteLowestNode(mFrame, node)) {
+                    mFrame = null;
+                    reset();
+                    return;
+                }
+
+                mFrame.acquireExclusive();
+
+                // Releases latch if an exception is thrown.
+                node = notSplitDirty(mFrame);
+
+                if (node.hasKeys()) {
+                    break;
+                }
+            } finally {
+                shared.release();
+            }
+        }
+
+        try {
+            mKey = node.retrieveKey(0);
+            if (!mKeyOnly) {
+                mValue = node.retrieveLeafValue(0);
+            }
+        } finally {
+            node.releaseExclusive();
+        }
+    }
+
+    /**
      * Deletes the lowest latched node and assigns the next node to the frame. All latches are
      * released by this method. No other cursors or threads can be active in the tree.
      *

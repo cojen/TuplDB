@@ -190,4 +190,55 @@ public class SorterTest {
             fastAssertArrayEquals(value, ix.load(null, key));
         }
     }
+
+    @Test
+    public void scanFew() throws Exception {
+        scan(10, false);
+    }
+
+    @Test
+    public void scanFewCloseEarly() throws Exception {
+        scan(10, true);
+    }
+
+    @Test
+    public void scanMany() throws Exception {
+        scan(1_000_000, false);
+    }
+
+    @Test
+    public void scanManyCloseEarly() throws Exception {
+        scan(1_000_000, true);
+    }
+
+    private void scan(int count, boolean close) throws Exception {
+        final long seed = 123 + count;
+        Random rnd = new Random(seed);
+
+        Sorter s = mDatabase.newSorter(null);
+
+        TreeMap<byte[], byte[]> expected = new TreeMap<>(KeyComparator.THE);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = String.valueOf(rnd.nextLong()).getBytes();
+            byte[] value = ("value-" + i).getBytes();
+            s.add(key, value);
+            expected.put(key, value);
+        }
+
+        Scanner scanner = s.finishScan();
+
+        if (close) {
+            scanner.close();
+        }
+
+        scanner.scanAll((k, v) -> {
+            fastAssertArrayEquals(v, expected.get(k));
+            expected.remove(k);
+        });
+
+        if (!close) {
+            assertTrue(expected.isEmpty());
+        }
+    }
 }
