@@ -221,7 +221,8 @@ public interface StreamReplicator extends DirectReplicator {
      */
     public static interface Writer extends DirectReplicator.Writer {
         /**
-         * Write complete messages to the log.
+         * Write complete messages to the log. Equivalent to: {@code write(messages, 0,
+         * messages.length, }{@link #index index() + }{@code messages.length)}
          *
          * @return amount of bytes written, which is less than the message length only if the
          * writer is deactivated
@@ -231,7 +232,8 @@ public interface StreamReplicator extends DirectReplicator {
         }
 
         /**
-         * Write complete messages to the log.
+         * Write complete messages to the log. Equivalent to: {@code write(messages, offset,
+         * length, }{@link #index index() + }{@code length)}
          *
          * @return amount of bytes written, which is less than the given length only if the
          * writer is deactivated
@@ -241,7 +243,14 @@ public interface StreamReplicator extends DirectReplicator {
         }
 
         /**
-         * Write complete or partial messages to the log.
+         * Write complete or partial messages to the log. The {@code highestIndex} parameter
+         * defines the new absolute log index which can become the commit index. The provided
+         * highest index is permitted to exceed the current log size, in anticpation of future
+         * writes which will fill in the gap. Until the gap is filled in, the highest index
+         * won't be applied. In addition, the highest index can only ever advance. Passing in a
+         * smaller value for the highest index won't actually change it. If all of the provided
+         * messages are partial, simply pass zero as the highest index. To update the highest
+         * index without actually writing anything, pass a length of zero.
          *
          * @param highestIndex highest index (exclusive) which can become the commit index
          * @return amount of bytes written, which is less than the given length only if the
