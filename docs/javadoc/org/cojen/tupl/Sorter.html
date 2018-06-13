@@ -188,7 +188,8 @@ var activeTableTab = "activeTableTab";
          byte[]&nbsp;value)
   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
 <div class="block">Add an entry into the sorter. If multiple entries are added with matching keys, only the
- last one added is kept.</div>
+ last one added is kept. After a sorter is fully finished or reset, no entries exist in
+ the sorter, and new entries can be added for another sort.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang">IllegalStateException</a></code> - if sort is finishing in another thread</dd>

@@ -112,20 +112,35 @@ public class SorterTest {
     @Test
     public void sortMany() throws Exception {
         // count = 1_000_000, range = 2_000_000
-        sortMany(1_000_000, 2_000_000);
+        sortMany(1_000_000, 2_000_000, null);
     }
 
     @Test
     public void sortManyMore() throws Exception {
         // count = 10_000_000, range = 2_000_000_000 (fewer duplicates)
-        sortMany(10_000_000, 2_000_000_000);
+        sortMany(10_000_000, 2_000_000_000, null);
     }
 
-    private void sortMany(int count, int range) throws Exception {
+    @Test
+    public void sortRecycle() throws Exception {
+        // count = 2000, range = 10_000
+        Sorter s = sortMany(2_000, 10_000, null);
+        // count = 10_000, range = 100_000
+        s = sortMany(10_000, 100_000, s);
+        // count = 1_000_000, range = 2_000_000
+        sortMany(1_000_000, 2_000_000, s);
+    }
+
+    /**
+     * @param s non-null to use recycled instance
+     */
+    private Sorter sortMany(int count, int range, Sorter s) throws Exception {
         final long seed = 123 + count + range;
         Random rnd = new Random(seed);
 
-        Sorter s = mDatabase.newSorter(null);
+        if (s == null) {
+            s = mDatabase.newSorter(null);
+        }
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextInt(range)).getBytes();
@@ -162,6 +177,8 @@ public class SorterTest {
             }
             assertNull(c.key());
         }
+
+        return s;
     }
 
     @Test

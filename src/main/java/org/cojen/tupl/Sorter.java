@@ -29,7 +29,8 @@ import java.io.IOException;
 public interface Sorter {
     /**
      * Add an entry into the sorter. If multiple entries are added with matching keys, only the
-     * last one added is kept.
+     * last one added is kept. After a sorter is fully finished or reset, no entries exist in
+     * the sorter, and new entries can be added for another sort.
      *
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
