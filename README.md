@@ -5,7 +5,7 @@ The Unnamed Persistence Library
 
 Tupl is a high-performance, concurrent, transactional, scalable, low-level embedded database. Features include record-level locking, upgradable locks, deadlock detection, cursors, hot backups, striped files, encryption, pluggable replication, nested transaction scopes, and direct lock control.
 
-* [Javadocs](http://tupl.cojen.org/javadoc/org/cojen/tupl/package-summary.html)
+* [Javadocs](https://tupl.cojen.org/javadoc/org/cojen/tupl/package-summary.html)
 * [FAQ](https://github.com/cojen/Tupl/wiki/FAQ)
 * [Replication](https://github.com/cojen/Tupl/wiki/Replication)
 
@@ -24,7 +24,7 @@ To depend on Tupl, use the following POM snippet:
 </dependency>
 ```
 
-The main entry point is the [Database](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
+The main entry point is the [Database](https://tupl.cojen.org/javadoc/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
 
 ```java
 DatabaseConfig config = new DatabaseConfig().maxCacheSize(100_000_000);
@@ -44,7 +44,7 @@ Database db = Database.open(config);
 ```
 
 Notice that a minimum cache size is set, and also notice the durability mode. A weak
-[durability mode](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/DurabilityMode.html) improves
+[durability mode](https://tupl.cojen.org/javadoc/org/cojen/tupl/DurabilityMode.html) improves
 the performance of transactional changes, by not immediately flushing those
 changes to the underlying files.
 
@@ -57,7 +57,7 @@ pages, and the default page size is 4096 bytes.
 Basic operations
 ----------------
 
-A Tupl database manages a collection of [indexes](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
+A Tupl database manages a collection of [indexes](https://tupl.cojen.org/javadoc/org/cojen/tupl/Index.html), which are ordered mappings of `byte[]` keys to `byte[]` values.
 
 ```java
 Database db = ...
@@ -77,7 +77,7 @@ byte[] userValue = encodeUserValue(user);
 userIx.store(null, userKey, userValue);
 ```
 
-To bundle multiple operations together, specify an explicit [transaction](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Transaction.html):
+To bundle multiple operations together, specify an explicit [transaction](https://tupl.cojen.org/javadoc/org/cojen/tupl/Transaction.html):
 
 ```java
 Index userByNameIx = ...
@@ -94,7 +94,7 @@ try {
 }
 ```
 
-Entries can retrieved by [loading](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-) them directly, or via a [cursor](https://cojen.github.io/Tupl/javadoc/org/cojen/tupl/Cursor.html):
+Entries can retrieved by [loading](https://tupl.cojen.org/javadoc/org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-) them directly, or via a [cursor](https://tupl.cojen.org/javadoc/org/cojen/tupl/Cursor.html):
 
 ```java
 // Find all users whose last name starts with 'J'.

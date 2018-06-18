@@ -176,7 +176,17 @@ final class LockManager {
      *
      * @param frame must be bound to the ghost position
      */
-    final void ghosted(long indexId, byte[] key, int hash, CursorFrame.Ghost frame) {
+    final void ghosted(long indexId, byte[] key, GhostFrame frame) {
+        ghosted(indexId, key, hash(indexId, key), frame);
+    }
+
+   /**
+     * Mark a lock as referencing a ghosted entry. Caller must ensure that lock
+     * is already exclusively held.
+     *
+     * @param frame must be bound to the ghost position
+     */
+    final void ghosted(long indexId, byte[] key, int hash, GhostFrame frame) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();
         try {

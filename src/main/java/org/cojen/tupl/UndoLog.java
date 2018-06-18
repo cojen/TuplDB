@@ -1508,7 +1508,7 @@ final class UndoLog implements DatabaseAccess {
                         // Indicate that a ghost must be deleted when the transaction is
                         // committed. When the frame is uninitialized, the Node.deleteGhost
                         // method uses the slow path and searches for the entry.
-                        .setGhostFrame(new CursorFrame.Ghost());
+                        .setGhostFrame(new GhostFrame());
                 }
                 break;
 
@@ -1523,7 +1523,7 @@ final class UndoLog implements DatabaseAccess {
                         // Indicate that a ghost must be deleted when the transaction is
                         // committed. When the frame is uninitialized, the Node.deleteGhost
                         // method uses the slow path and searches for the entry.
-                        .setGhostFrame(new CursorFrame.Ghost());
+                        .setGhostFrame(new GhostFrame());
                 }
                 break;
 

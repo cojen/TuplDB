@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 
 import java.io.IOException;
 
+import java.util.Arrays;
+
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -41,6 +43,9 @@ abstract class _TreeSeparator extends LongAdder {
 
     private final int mWorkerCount;
     private final Worker[] mWorkerHashtable;
+
+    // Linked list of workers, ordered by the range of keys they act upon.
+    private Worker mFirstWorker;
 
     private volatile Throwable mException;
 
@@ -124,21 +129,12 @@ abstract class _TreeSeparator extends LongAdder {
     }
 
     /**
-     * Called by multiple threads as target trees are finished.
-     *
-     * @param target temporary tree with separated results
-     * @param lowKey inclusive lowest key in the separated range; is null for open range
-     * @param highKey exclusive highest key in the separated range; is null for open range
-     */
-    protected abstract void separated(_Tree target, byte[] lowKey, byte[] highKey);
-
-    /**
      * Called when separation has finished. When finished normally (not stopped), then all
      * source trees are empty, but not deleted.
      *
-     * @param exception non-null if stopped due to an exception
+     * @param firstRange first separated range; the ranges are ordered lowest to highest.
      */
-    protected abstract void finished(Throwable exception);
+    protected abstract void finished(Chain<_Tree> firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -153,6 +149,18 @@ abstract class _TreeSeparator extends LongAdder {
             }
             worker.mHashtableNext = hashtable[slot];
             hashtable[slot] = worker;
+
+            if (from == null) {
+                mFirstWorker = worker;
+            } else {
+                worker.mPrev = from;
+                Worker next = from.mNext;
+                from.mNext = worker;
+                if (next != null) {
+                    worker.mNext = next;
+                    next.mPrev = worker;
+                }
+            }
         }
 
         if (mExecutor == null) {
@@ -179,6 +187,7 @@ abstract class _TreeSeparator extends LongAdder {
     /**
      * @param lowKey inclusive lowest key in the random range; pass null for open range
      * @param highKey exclusive highest key in the random range; pass null for open range
+     * @return null if no key was found
      */
     private byte[] selectSplitKey(byte[] lowKey, byte[] highKey) throws IOException {
         // Select a random key from a random source.
@@ -195,14 +204,8 @@ abstract class _TreeSeparator extends LongAdder {
         }
     }
 
-    /**
-     * @param target null if nothing was separated
-     */
-    private void finished(Worker worker, _Tree target) {
-        if (target != null) {
-            separated(target, worker.mLowKey, worker.mHighKey);
-        }
-
+    private void workerFinished(Worker worker) {
+        Worker first;
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);
 
@@ -244,12 +247,15 @@ abstract class _TreeSeparator extends LongAdder {
                     }
                 }
             }
+
+            first = mFirstWorker;
+            mFirstWorker = null;
         }
  
-        finished(mException);
+        finished(first);
     }
 
-    private final class Worker implements Runnable {
+    private final class Worker implements Runnable, Chain<_Tree> {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
@@ -257,6 +263,10 @@ abstract class _TreeSeparator extends LongAdder {
         volatile int mSpawnCount;
         Worker mHashtableNext;
         private _Tree mTarget;
+
+        // Linked list of workers, ordered by the range of keys they act upon.
+        Worker mNext;
+        Worker mPrev;
 
         /**
          * @param lowKey inclusive lowest key in the worker range; pass null for open range
@@ -284,7 +294,17 @@ abstract class _TreeSeparator extends LongAdder {
                 failed(e);
             }
 
-            finished(this, mTarget);
+            workerFinished(this);
+        }
+
+        @Override
+        public _Tree element() {
+            return mTarget;
+        }
+
+        @Override
+        public Worker next() {
+            return mNext;
         }
 
         private void doRun() throws Exception {
@@ -328,7 +348,7 @@ abstract class _TreeSeparator extends LongAdder {
                                 mTarget = mDatabase.newTemporaryIndex();
                                 tcursor = mTarget.newCursor(Transaction.BOGUS);
                                 tcursor.mKeyOnly = true;
-                                tcursor.firstAny();
+                                tcursor.firstLeaf();
                             }
                             tcursor.appendTransfer(scursor);
                             if (++count == 0) {
@@ -367,7 +387,15 @@ abstract class _TreeSeparator extends LongAdder {
                     // _Split the work with another worker.
 
                     byte[] splitKey = selectSplitKey(queue[0].mSource.key(), highKey);
-                    if (splitKey != null) {
+                    trySplit: if (splitKey != null) {
+                        // Don't split on keys currently being processed, since it interferes
+                        // with duplicate detection.
+                        for (int i=0; i<queueSize; i++) {
+                            if (Arrays.equals(splitKey, queue[i].mSource.key())) {
+                                break trySplit;
+                            }
+                        }
+
                         startWorker(this, 0, splitKey, highKey);
                         mHighKey = highKey = splitKey;
                         cSpawnCountHandle.getAndAdd(this, -1);

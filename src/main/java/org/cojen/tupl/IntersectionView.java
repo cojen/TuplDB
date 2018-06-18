@@ -31,15 +31,7 @@ final class IntersectionView extends MergeView {
 
     @Override
     protected byte[] doLoad(Transaction txn, byte[] key) throws IOException {
-        byte[] v1 = mFirst.load(txn, key);
-        if (v1 == null) {
-            // Always need to lock the second entry too, for consistency and to avoid any odd
-            // deadlocks if the store method is called.
-            mSecond.touch(txn, key);
-            return null;
-        }
-        byte[] v2 = mSecond.load(txn, key);
-        return v2 == null ? null : mCombiner.combine(key, v1, v2);
+        return mCombiner.loadIntersection(txn, key, mFirst, mSecond);
     }
 
     @Override

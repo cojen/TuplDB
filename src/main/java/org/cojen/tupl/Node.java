@@ -813,7 +813,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             CursorFrame frame = last;
             do {
-                if (!(frame instanceof CursorFrame.Ghost)) {
+                if (!(frame instanceof GhostFrame)) {
                     releaseExclusive();
                     return false;
                 }
@@ -1188,14 +1188,14 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
-     * Applicable only to leaf nodes. Caller must hold any latch.
+     * Applicable only to leaf nodes, not split. Caller must hold any latch.
      */
     int countNonGhostKeys() {
         return countNonGhostKeys(searchVecStart(), searchVecEnd());
     }
 
     /**
-     * Applicable only to leaf nodes. Caller must hold any latch.
+     * Applicable only to leaf nodes, not split. Caller must hold any latch.
      *
      * @param lowPos 2-based search vector position (inclusive)
      * @param highPos 2-based search vector position (inclusive)
@@ -1944,7 +1944,7 @@ final class Node extends Clutch implements DatabaseAccess {
         throws IOException
     {
         // Allocate early, in case out of memory.
-        CursorFrame.Ghost frame = new CursorFrame.Ghost();
+        GhostFrame frame = new GhostFrame();
 
         final /*P*/ byte[] page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
@@ -2911,8 +2911,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
     /**
      * Insert into an internal node following a child node split. This parent
-     * node and child node must have an exclusive latch held. Child latch is
-     * released, unless an exception is thrown.
+     * node and child node must have an exclusive latch held.
      *
      * @param frame optional frame which is bound to this node; only used for rebalancing
      * @param result return result stored here; if node was split, key and entry loc is -1 if
@@ -5809,7 +5808,7 @@ final class Node extends Clutch implements DatabaseAccess {
             try {
                 CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    if (!(frame instanceof CursorFrame.Ghost)) {
+                    if (!(frame instanceof GhostFrame)) {
                         count++;
                     }
                     frame = frame.mPrevCousin;
@@ -5849,7 +5848,7 @@ final class Node extends Clutch implements DatabaseAccess {
             long count = 0;
 
             while (true) {
-                if (!(frame instanceof CursorFrame.Ghost)) {
+                if (!(frame instanceof GhostFrame)) {
                     count++;
                 }
                 CursorFrame prev = frame.tryLockPrevious(lock);
@@ -5914,11 +5913,20 @@ final class Node extends Clutch implements DatabaseAccess {
             break;
         }
 
+        char[] extremity = {'_', '_'};
+
+        if ((type() & LOW_EXTREMITY) != 0) {
+            extremity[0] = 'L';
+        }
+        if ((type() & HIGH_EXTREMITY) != 0) {
+            extremity[1] = 'H';
+        }
+
         return prefix + "Node: {id=" + mId +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
-            ", extremity=0b" + Integer.toString((type() & (LOW_EXTREMITY | HIGH_EXTREMITY)), 2) +
+            ", extremity=" + new String(extremity) +
             ", latchState=" + super.toString() +
             '}';
     }
@@ -5928,9 +5936,22 @@ final class Node extends Clutch implements DatabaseAccess {
      * released unless an exception is thrown. If an exception is thrown by the
      * observer, the latch would have already been released.
      *
+     * @param level passed to observer, if provided
+     * @param observer pass null to never release any latch, and to throw a
+     * CorruptDatabaseException if the node is invalid
      * @return false if should stop
      */
     boolean verifyTreeNode(int level, VerificationObserver observer) throws IOException {
+        return verifyTreeNode(level, observer, false);
+    }
+
+    /**
+     * @param fix true to ignore the current the garbage and tail segment fields and replace
+     * them with the correct values instead
+     */
+    private boolean verifyTreeNode(int level, VerificationObserver observer, boolean fix)
+        throws IOException
+    {
         int type = type() & ~(LOW_EXTREMITY | HIGH_EXTREMITY);
         if (type != TYPE_TN_IN && type != TYPE_TN_BIN && !isLeaf()) {
             return verifyFailed(level, observer, "Not a tree node: " + type);
@@ -5938,20 +5959,22 @@ final class Node extends Clutch implements DatabaseAccess {
 
         final /*P*/ byte[] page = mPage;
 
-        if (leftSegTail() < TN_HEADER_SIZE) {
-            return verifyFailed(level, observer, "Left segment tail: " + leftSegTail());
-        }
+        if (!fix) {
+            if (leftSegTail() < TN_HEADER_SIZE) {
+                return verifyFailed(level, observer, "Left segment tail: " + leftSegTail());
+            }
 
-        if (searchVecStart() < leftSegTail()) {
-            return verifyFailed(level, observer, "Search vector start: " + searchVecStart());
-        }
+            if (searchVecStart() < leftSegTail()) {
+                return verifyFailed(level, observer, "Search vector start: " + searchVecStart());
+            }
 
-        if (searchVecEnd() < (searchVecStart() - 2)) {
-            return verifyFailed(level, observer, "Search vector end: " + searchVecEnd());
-        }
+            if (searchVecEnd() < (searchVecStart() - 2)) {
+                return verifyFailed(level, observer, "Search vector end: " + searchVecEnd());
+            }
 
-        if (rightSegTail() < searchVecEnd() || rightSegTail() > (pageSize(page) - 1)) {
-            return verifyFailed(level, observer, "Right segment tail: " + rightSegTail());
+            if (rightSegTail() < searchVecEnd() || rightSegTail() > (pageSize(page) - 1)) {
+                return verifyFailed(level, observer, "Right segment tail: " + rightSegTail());
+            }
         }
 
         if (!isLeaf()) {
@@ -5976,10 +5999,10 @@ final class Node extends Clutch implements DatabaseAccess {
             }
         }
 
-        int used = TN_HEADER_SIZE + rightSegTail() + 1 - leftSegTail();
-
+        int used = TN_HEADER_SIZE;
+        int leftTail = TN_HEADER_SIZE;
+        int rightTail = pageSize(page); // compute as inclusive
         int largeValueCount = 0;
-
         int lastKeyLoc = 0;
 
         for (int i = searchVecStart(); i <= searchVecEnd(); i += 2) {
@@ -5987,7 +6010,7 @@ final class Node extends Clutch implements DatabaseAccess {
             int loc = keyLoc;
 
             if (loc < TN_HEADER_SIZE || loc >= pageSize(page) ||
-                (loc >= leftSegTail() && loc <= rightSegTail()))
+                (!fix && loc >= leftSegTail() && loc <= rightSegTail()))
             {
                 return verifyFailed(level, observer, "Entry location: " + loc);
             }
@@ -5996,6 +6019,10 @@ final class Node extends Clutch implements DatabaseAccess {
                 used += leafEntryLengthAtLoc(page, loc);
             } else {
                 used += keyLengthAtLoc(page, loc);
+            }
+
+            if (loc > searchVecEnd()) {
+                rightTail = Math.min(loc, rightTail);
             }
 
             int keyLen;
@@ -6007,8 +6034,10 @@ final class Node extends Clutch implements DatabaseAccess {
                 return verifyFailed(level, observer, "Key location out of bounds");
             }
 
-            if (loc + keyLen > pageSize(page)) {
-                return verifyFailed(level, observer, "Key end location: " + (loc + keyLen));
+            loc += keyLen;
+
+            if (loc > pageSize(page)) {
+                return verifyFailed(level, observer, "Key end location: " + loc);
             }
 
             if (lastKeyLoc != 0) {
@@ -6023,7 +6052,6 @@ final class Node extends Clutch implements DatabaseAccess {
             if (isLeaf()) value: {
                 int len;
                 try {
-                    loc += keyLen;
                     int header = p_byteGet(page, loc++);
                     if (header >= 0) {
                         len = header;
@@ -6044,16 +6072,32 @@ final class Node extends Clutch implements DatabaseAccess {
                 } catch (IndexOutOfBoundsException e) {
                     return verifyFailed(level, observer, "Value location out of bounds");
                 }
-                if (loc + len > pageSize(page)) {
-                    return verifyFailed(level, observer, "Value end location: " + (loc + len));
+                loc += len;
+                if (loc > pageSize(page)) {
+                    return verifyFailed(level, observer, "Value end location: " + loc);
                 }
+            }
+
+            if (loc <= searchVecStart()) {
+                leftTail = Math.max(leftTail, loc);
             }
         }
 
-        int garbage = pageSize(page) - used;
+        if (fix) {
+            int garbage = pageSize(page) - (used + rightTail - leftTail);
+            garbage(garbage);
+            leftSegTail(leftTail);
+            rightSegTail(rightTail - 1); // subtract one to be exclusive
+        } else {
+            used += rightSegTail() + 1 - leftSegTail();
+            int garbage = pageSize(page) - used;
+            if (garbage() != garbage && mId > 1) { // exclude stubs
+                return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);
+            }
+        }
 
-        if (garbage() != garbage && mId > 1) { // exclude stubs
-            return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);
+        if (observer == null) {
+            return true;
         }
 
         int entryCount = numKeys();
@@ -6061,10 +6105,19 @@ final class Node extends Clutch implements DatabaseAccess {
 
         long id = mId;
         releaseShared();
+
         return observer.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
     }
 
-    private boolean verifyFailed(int level, VerificationObserver observer, String message) {
+    /**
+     * @throws CorruptDatabaseException if observer is null
+     */
+    private boolean verifyFailed(int level, VerificationObserver observer, String message)
+        throws CorruptDatabaseException
+    {
+        if (observer == null) {
+            throw new CorruptDatabaseException(message);
+        }
         long id = mId;
         releaseShared();
         observer.failed = true;

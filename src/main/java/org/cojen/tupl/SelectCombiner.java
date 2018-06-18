@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 /**
  * 
  *
@@ -30,6 +32,49 @@ abstract class SelectCombiner implements Combiner {
         public byte[] combine(byte[] key, byte[] first, byte[] second) {
             return first;
         }
+
+        @Override
+        public byte[] loadUnion(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            byte[] v1 = first.load(txn, key);
+            if (v1 == null) {
+                return second.load(txn, key);
+            } else {
+                // Always need to lock the second entry too, for consistency and to avoid any
+                // odd deadlocks if the store method is called.
+                second.touch(txn, key);
+                return v1;
+            }
+        }
+
+        @Override
+        public byte[] loadIntersection(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            byte[] v1 = first.load(txn, key);
+            if (v1 == null) {
+                // Always need to lock the second entry too, for consistency and to avoid any odd
+                // deadlocks if the store method is called.
+                second.touch(txn, key);
+                return null;
+            }
+            return second.exists(txn, key) ? v1 : null;
+        }
+
+        @Override
+        public byte[] loadDifference(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            byte[] v1 = first.load(txn, key);
+            if (v1 == null) {
+                // Always need to lock the second entry too, for consistency and to avoid any odd
+                // deadlocks if the store method is called.
+                second.touch(txn, key);
+                return null;
+            }
+            return v1;
+        }
     };
 
     static final class Second extends SelectCombiner {
@@ -39,6 +84,26 @@ abstract class SelectCombiner implements Combiner {
         public byte[] combine(byte[] key, byte[] first, byte[] second) {
             return second;
         }
+
+        @Override
+        public byte[] loadUnion(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            // Lock the first, for consistency.
+            first.touch(txn, key);
+            byte[] v2 = second.load(txn, key);
+            return v2 == null ? first.load(txn, key) : v2;
+        }
+
+        @Override
+        public byte[] loadIntersection(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            // Lock the first, for consistency.
+            first.touch(txn, key);
+            byte[] v2 = second.load(txn, key);
+            return v2 == null ? null : first.exists(txn, key) ? v2 : null;
+        }
     };
 
     static final class Discard extends SelectCombiner {
@@ -47,6 +112,42 @@ abstract class SelectCombiner implements Combiner {
         @Override
         public byte[] combine(byte[] key, byte[] first, byte[] second) {
             return null;
+        }
+
+        @Override
+        public byte[] loadUnion(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            byte[] v1 = first.load(txn, key);
+            if (v1 == null) {
+                return second.load(txn, key);
+            } else {
+                return second.exists(txn, key) ? null : v1;
+            }
+        }
+
+        @Override
+        public byte[] loadIntersection(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            // Must always lock the keys.
+            first.touch(txn, key);
+            second.touch(txn, key);
+            return null;
+        }
+
+        @Override
+        public byte[] loadDifference(Transaction txn, byte[] key, View first, View second)
+            throws IOException
+        {
+            byte[] v1 = first.load(txn, key);
+            if (v1 == null) {
+                // Always need to lock the second entry too, for consistency and to avoid any odd
+                // deadlocks if the store method is called.
+                second.touch(txn, key);
+                return null;
+            }
+            return second.exists(txn, key) ? null : v1;
         }
     };
 

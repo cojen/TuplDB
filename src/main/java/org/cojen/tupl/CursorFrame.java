@@ -408,22 +408,26 @@ class CursorFrame {
     }
 
     /**
-     * Pop this frame, returning void. No latch is required.
-     */
-    final void popv() {
-        unbind(null);
-        mNode = null;
-        mParentFrame = null;
-        mNotFoundKey = null;
-    }
-
-    /**
      * Pop the given non-null frame and all parent frames. No latch is required.
      */
     static void popAll(CursorFrame frame) {
         do {
             frame = frame.mNode == null ? frame.mParentFrame : frame.pop();
         } while (frame != null);
+    }
+
+    /**
+     * Starting from this parent frame, pop all child frames reaching up to it, keeping this
+     * parent frame. No latches are required. Unlike the popAll method, this variant assumes
+     * that all frames are properly bound, and that this parent frame will be reached as frames
+     * are popped.
+     *
+     * @param child must be a bound frame of this parent, and must not be the parent itself
+     */
+    final void popChilden(CursorFrame child) {
+        do {
+            child = child.pop();
+        } while (child != this);
     }
 
     /**
@@ -472,12 +476,5 @@ class CursorFrame {
     @Override
     public final String toString() {
         return Utils.toMiniString(this);
-    }
-
-    /**
-     * Special frame type for tracking ghosted entries within leaf nodes. Unlike regular
-     * frames, ghost frames don't prevent the bound node from being evicted.
-     */
-    final static class Ghost extends CursorFrame {
     }
 }

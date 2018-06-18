@@ -1,6 +1,36 @@
 Changelog
 =========
 
+v1.4.4
+------
+* More efficient loads for union, intersection, and difference views, when using the built-in
+  combiners.
+* Allow the Sorter.reset method to stop the sort when in the finishing step.
+* Add sort methods which produce results directly into single-use scanners.
+* Add a public Database.isClosed method.
+
+v1.4.3.2 (2018-05-28)
+--------
+* Fix race conditions when skipping and counting tree entries as concurrent modifications are
+  made. Subtrees might get skipped. https://github.com/cojen/Tupl/issues/102
+* Fix potential memory leak when calling next and previous, introduced by the last fix. Cursors
+  must be fully reset when reaching the end, now that frames are popped as late as possible.
+* Fix potential stack overflow when iterating in reverse direction (previous) over a tree which
+  is full of empty nodes. In practice this shouldn't have happened anyhow, since node merging
+  is typically aggressive.
+
+v1.4.3.1 (2018-05-19)
+--------
+* Fix race conditions in the cursor iteration methods, next and previous. Sometimes entire
+  subtrees would get skipped over when another thread is making concurrent changes to the same
+  region of the tree. https://github.com/cojen/Tupl/issues/101
+* Sorter shouldn't split work with other threads which are currently being processed, since it
+  interferes with duplicate detection. https://github.com/cojen/Tupl/issues/101
+
+v1.4.3 (2018-04-14)
+------
+* Added maxCheckpointThreads option, which can speed up checkpoints.
+
 v1.4.2 (2018-03-11)
 ------
 * Fix temporary stall when calling the sorter progress method. The finish method didn't stop

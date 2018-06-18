@@ -17,9 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.util.ArrayList;
-import java.util.Collections;
-
 import java.util.concurrent.Executor;
 
 /**
@@ -30,65 +27,63 @@ import java.util.concurrent.Executor;
  */
 /*P*/
 abstract class TreeMerger extends TreeSeparator {
-    private final ArrayList<Target> mTargets;
-
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */
     TreeMerger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
         super(db, sources, executor, workerCount);
-        mTargets = new ArrayList<>();
     }
 
     @Override
-    protected void separated(Tree tree, byte[] lowKey, byte[] highKey) {
-        Target target = new Target(tree, lowKey);
-        synchronized (mTargets) {
-            mTargets.add(target);
-        }
-    }
+    protected void finished(Chain<Tree> firstRange) {
+        Tree merged = firstRange.element();
 
-    @Override
-    protected void finished(Throwable exception) {
-        final ArrayList<Target> targets = mTargets;
+        if (merged != null) merge: {
+            Chain<Tree> range = firstRange.next();
 
-        synchronized (targets) {
-            if (!targets.isEmpty()) {
-                Collections.sort(targets);
+            while (range != null) {
+                Tree tree = range.element();
 
-                Tree merged = targets.get(0).mTree;
+                if (tree != null) {
+                    try {
+                        merged = Tree.graftTempTree(merged, tree);
+                    } catch (Throwable e) {
+                        failed(e);
 
-                int i = 1;
-                final int size = targets.size();
-                try {
-                    for (; i<size; i++) {
-                        merged = Tree.graftTempTree(merged, targets.get(i).mTree);
+                        merged(merged);
+
+                        // Pass along ranges that didn't get merged.
+                        while (true) {
+                            remainder(tree);
+                            do {
+                                range = range.next();
+                                if (range == null) {
+                                    break merge;
+                                }
+                                tree = range.element();
+                            } while (tree == null);
+                        }
                     }
+                }
+
+                range = range.next();
+            }
+
+            merged(merged);
+        }
+
+        for (Tree source : mSources) {
+            if (isEmpty(source)) {
+                try {
+                    mDatabase.quickDeleteTemporaryTree(source);
+                    continue;
                 } catch (Throwable e) {
                     failed(e);
                 }
-
-                merged(merged);
-
-                // Pass along targets that didn't get merged.
-                for (; i<size; i++) {
-                    remainder(targets.get(i).mTree);
-                }
             }
 
-            for (Tree source : mSources) {
-                if (isEmpty(source)) {
-                    try {
-                        mDatabase.quickDeleteTemporaryTree(source);
-                        continue;
-                    } catch (Throwable e) {
-                        failed(e);
-                    }
-                }
-
-                remainder(source);
-            }
+            remainder(source);
         }
 
         remainder(null);
@@ -125,29 +120,5 @@ abstract class TreeMerger extends TreeSeparator {
         }
 
         return empty;
-    }
-
-    private static class Target implements Comparable<Target> {
-        final Tree mTree;
-        final byte[] mLowKey;
-
-        Target(Tree tree, byte[] lowKey) {
-            mTree = tree;
-            mLowKey = lowKey;
-        }
-
-        @Override
-        public int compareTo(Target other) {
-            byte[] key1 = mLowKey;
-            byte[] key2 = other.mLowKey;
-
-            if (key1 == null) {
-                return key2 == null ? 0 : -1;
-            } else if (key2 == null) {
-                return 1;
-            }
-
-            return Utils.compareUnsigned(key1, key2);
-        }
     }
 }

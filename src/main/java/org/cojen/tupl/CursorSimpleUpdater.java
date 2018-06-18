@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 Cojen.org
+ *  Copyright (C) 2011-2017 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -20,26 +20,29 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Commits every transactional update, and exits the scope when closed. For any entry stepped
- * over, acquired locks are released.
+ * Simple updater which doesn't do anything special with the cursor's transaction.
  *
  * @author Brian S O'Neill
  */
-class ViewAutoCommitUpdater extends ViewNonRepeatableUpdater {
+class CursorSimpleUpdater extends CursorScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */
-    ViewAutoCommitUpdater(View view, Cursor cursor) throws IOException {
-        super(view, cursor);
+    CursorSimpleUpdater(Cursor cursor) throws IOException {
+        super(cursor);
+        cursor.first();
+        cursor.register();
     }
 
     @Override
-    protected void postUpdate() throws IOException {
-        mCursor.link().commit();
-    }
-
-    @Override
-    protected void finished() throws IOException {
-        mCursor.link().exit();
+    public boolean update(byte[] value) throws IOException {
+        try {
+            mCursor.store(value);
+        } catch (UnpositionedCursorException e) {
+            return false;
+        } catch (Throwable e) {
+            throw ViewUtils.fail(this, e);
+        }
+        return step();
     }
 }

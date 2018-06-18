@@ -24,14 +24,14 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class ViewNonRepeatableUpdater extends ViewScanner implements Updater {
+class CursorNonRepeatableUpdater extends CursorScanner implements Updater {
     private LockResult mLockResult;
 
     /**
      * @param cursor unpositioned cursor
      */
-    ViewNonRepeatableUpdater(View view, Cursor cursor) throws IOException {
-        super(cursor, view);
+    CursorNonRepeatableUpdater(Cursor cursor) throws IOException {
+        super(cursor);
         mLockResult = cursor.first();
         cursor.register();
     }

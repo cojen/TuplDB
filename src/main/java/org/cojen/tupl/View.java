@@ -58,7 +58,9 @@ public interface View {
      * @throws IllegalArgumentException if transaction belongs to another database instance
      */
     public default Scanner newScanner(Transaction txn) throws IOException {
-        return new ViewScanner(this, newCursor(txn));
+        Cursor c = newCursor(txn);
+        c.first();
+        return new CursorScanner(c);
     }
 
     /**
@@ -78,7 +80,7 @@ public interface View {
             txn = newTransaction(null);
             Cursor c = newCursor(txn);
             try {
-                return new ViewAutoCommitUpdater(this, c);
+                return new CursorAutoCommitUpdater(c);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -91,14 +93,14 @@ public interface View {
             Cursor c = newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                return new ViewSimpleUpdater(this, c);
+                return new CursorSimpleUpdater(c);
             case REPEATABLE_READ:
-                return new ViewUpgradableUpdater(this, c);
+                return new CursorUpgradableUpdater(c);
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                return new ViewNonRepeatableUpdater(this, c);
+                return new CursorNonRepeatableUpdater(c);
             }
         }
     }

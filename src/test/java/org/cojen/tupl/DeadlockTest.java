@@ -25,6 +25,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import static org.cojen.tupl.TestUtils.sleep;
+import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
 
 /**
  * 
@@ -59,23 +60,15 @@ public class DeadlockTest {
         locker.lockShared(1, keys[0], timeout);
 
         // Victim thread.
-        mTasks.add(new Task() {
+        Task victim = new Task() {
+                @Override
                 void doRun() throws Throwable {
                     Locker locker = new Locker(mManager);
                     try {
                         // Lock k2 has does not participate in deadlock.
                         locker.lockExclusive(1, keys[2], timeout / 2);
-                        sleep(1000);
                         try {
                             locker.lockExclusive(1, keys[0], timeout / 2);
-                            /* FIXME
-[ERROR] test_1(org.cojen.tupl.DeadlockTest)  Time elapsed: 1.424 s  <<< FAILURE!
-java.lang.AssertionError
-        at org.junit.Assert.fail(Assert.java:86)
-        at org.junit.Assert.fail(Assert.java:95)
-        at org.cojen.tupl.DeadlockTest$1.doRun(DeadlockTest.java:71)
-        at org.cojen.tupl.DeadlockTest$Task.run(DeadlockTest.java:462)
-        */
                             fail();
                         } catch (DeadlockException e) {
                             // Deadlock observed, but this thread didn't create it.
@@ -85,16 +78,16 @@ java.lang.AssertionError
                         locker.scopeUnlockAll();
                     }
                 }
-            });
+            };
 
         // Culprit thread.
-        mTasks.add(new Task() {
+        Task culprit = new Task() {
+                @Override
                 void doRun() throws Throwable {
                     Locker locker = new Locker(mManager);
                     try {
                         // Lock k1 and then k0, which is the opposite order of main thread.
                         locker.lockShared(1, keys[1], timeout);
-                        sleep(500);
                         try {
                             locker.lockExclusive(1, keys[0], timeout);
                             fail();
@@ -106,11 +99,10 @@ java.lang.AssertionError
                         locker.scopeUnlockAll();
                     }
                 }
-            });
+            };
 
-        startTasks();
-
-        sleep(250);
+        startAndWaitUntilBlocked(culprit);
+        startAndWaitUntilBlocked(victim);
 
         // Lock k1, creating a deadlock. Timeout is longer, and so deadlock
         // will not be detected here.
@@ -120,7 +112,8 @@ java.lang.AssertionError
             locker.scopeUnlockAll();
         }
 
-        joinTasks();
+        victim.join();
+        culprit.join();
     }
 
     @Test

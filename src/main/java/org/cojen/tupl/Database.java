@@ -590,6 +590,11 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void close(Throwable cause) throws IOException;
 
     /**
+     * Returns true if database was explicitly closed, or if it was closed due to a panic.
+     */
+    public abstract boolean isClosed();
+
+    /**
      * Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
      * issued first, and so a quick recovery is performed when the database is re-opened. As a
      * side effect of shutting down, all extraneous files are deleted.

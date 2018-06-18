@@ -112,20 +112,35 @@ public class SorterTest {
     @Test
     public void sortMany() throws Exception {
         // count = 1_000_000, range = 2_000_000
-        sortMany(1_000_000, 2_000_000);
+        sortMany(1_000_000, 2_000_000, null);
     }
 
     @Test
     public void sortManyMore() throws Exception {
         // count = 10_000_000, range = 2_000_000_000 (fewer duplicates)
-        sortMany(10_000_000, 2_000_000_000);
+        sortMany(10_000_000, 2_000_000_000, null);
     }
 
-    private void sortMany(int count, int range) throws Exception {
+    @Test
+    public void sortRecycle() throws Exception {
+        // count = 2000, range = 10_000
+        Sorter s = sortMany(2_000, 10_000, null);
+        // count = 10_000, range = 100_000
+        s = sortMany(10_000, 100_000, s);
+        // count = 1_000_000, range = 2_000_000
+        sortMany(1_000_000, 2_000_000, s);
+    }
+
+    /**
+     * @param s non-null to use recycled instance
+     */
+    private Sorter sortMany(int count, int range, Sorter s) throws Exception {
         final long seed = 123 + count + range;
         Random rnd = new Random(seed);
 
-        Sorter s = mDatabase.newSorter(null);
+        if (s == null) {
+            s = mDatabase.newSorter(null);
+        }
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextInt(range)).getBytes();
@@ -162,6 +177,8 @@ public class SorterTest {
             }
             assertNull(c.key());
         }
+
+        return s;
     }
 
     @Test
@@ -188,6 +205,73 @@ public class SorterTest {
             byte[] key = randomStr(rnd, 100, 8000);
             byte[] value = randomStr(rnd, 100, 100_000);
             fastAssertArrayEquals(value, ix.load(null, key));
+        }
+    }
+
+    @Test
+    public void scanFew() throws Exception {
+        scan(10, false, false);
+        scan(10, true, false); // reverse
+    }
+
+    @Test
+    public void scanFewCloseEarly() throws Exception {
+        scan(10, false, true);
+        scan(10, true, true); // reverse
+    }
+
+    @Test
+    public void scanMany() throws Exception {
+        scan(1_000_000, false, false);
+        scan(1_000_000, true, false); // reverse
+    }
+
+    @Test
+    public void scanManyCloseEarly() throws Exception {
+        scan(1_000_000, false, true);
+        scan(1_000_000, true, true); // reverse
+    }
+
+    private void scan(int count, boolean reverse, boolean close) throws Exception {
+        final long seed = 123 + count;
+        Random rnd = new Random(seed);
+
+        Sorter s = mDatabase.newSorter(null);
+
+        TreeMap<byte[], byte[]> expected = new TreeMap<>(KeyComparator.THE);
+
+        for (int i=0; i<count; i++) {
+            byte[] key = String.valueOf(rnd.nextLong()).getBytes();
+            byte[] value = ("value-" + i).getBytes();
+            s.add(key, value);
+            expected.put(key, value);
+        }
+
+        Scanner scanner = reverse ? s.finishScanReverse() : s.finishScan();
+
+        if (close) {
+            scanner.close();
+        }
+
+        byte[][] prevRef = new byte[1][];
+
+        scanner.scanAll((k, v) -> {
+            fastAssertArrayEquals(v, expected.get(k));
+            expected.remove(k);
+
+            byte[] prev = prevRef[0];
+            if (prev != null) {
+                assertTrue(scanner.getComparator().compare(prev, k) < 0);
+
+                int cmp = KeyComparator.THE.compare(prev, k);
+                assertTrue(reverse ? cmp > 0 : cmp < 0);
+            }
+
+            prevRef[0] = k;
+        });
+
+        if (!close) {
+            assertTrue(expected.isEmpty());
         }
     }
 }

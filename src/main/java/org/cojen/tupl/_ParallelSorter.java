@@ -20,13 +20,13 @@ package org.cojen.tupl;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.lang.ref.WeakReference;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import java.util.concurrent.Executor;
+
+import java.util.concurrent.atomic.LongAdder;
 
 import static org.cojen.tupl.DirectPageOps.*;
 
@@ -69,7 +69,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     // The trees in these levels are expected to contain more than one node.
     private volatile List<Level> mSortTreeLevels;
 
-    private _TreeMerger mFinishMerger;
+    private LongAdder mFinishCounter;
     private long mFinishCount;
 
     private int mState;
@@ -108,6 +108,11 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             } catch (InterruptedException e) {
                 throw new InterruptedIOException();
             }
+        }
+
+        synchronized _Tree waitForFirstTree() throws InterruptedIOException {
+            waitUntilFinished();
+            return mTrees[0];
         }
 
         synchronized void finished(_TreeMerger merger) {
@@ -151,9 +156,9 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     }
 
     @Override
-    public Index finish() throws IOException {
+    public _Tree finish() throws IOException {
         try {
-            _Tree tree = doFinish();
+            _Tree tree = doFinish(null);
             finishComplete();
             return tree;
         } catch (Throwable e) {
@@ -166,7 +171,38 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         }
     }
 
-    private _Tree doFinish() throws IOException {
+    @Override
+    public Scanner finishScan() throws IOException {
+        return finishScan(new _SortScanner(mDatabase));
+    }
+
+    @Override
+    public Scanner finishScanReverse() throws IOException {
+        return finishScan(new _SortReverseScanner(mDatabase));
+    }
+
+    private Scanner finishScan(_SortScanner scanner) throws IOException {
+        try {
+            _Tree tree = doFinish(scanner);
+            if (tree != null) {
+                finishComplete();
+                scanner.ready(tree);
+            }
+            return scanner;
+        } catch (Throwable e) {
+            try {
+                reset();
+            } catch (Exception e2) {
+                e.addSuppressed(e2);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * @param scanner pass null to always wait to finish
+     */
+    private _Tree doFinish(_SortScanner scanner) throws IOException {
         Level finishLevel;
 
         synchronized (this) {
@@ -195,7 +231,6 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                         numLevelTrees += level.mSize;
                     }
                 }
-                mSortTreeLevels = null;
             }
 
             final _Tree[] sortTrees = mSortTrees;
@@ -248,6 +283,13 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             }
 
             // Merge the remaining trees and store into an existing level object.
+
+            // Remove all the unused levels, freeing up memory. Keep level 0, in order to
+            // permit the reset method to stop the merge, unblocking threads.
+            for (int i = mSortTreeLevels.size(); --i >= 1; ) {
+                mSortTreeLevels.remove(i);
+            }
+
             finishLevel = levels[0];
             levels = null;
             finishLevel.mSize = 0;
@@ -255,19 +297,43 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             finishLevel.mMerger = merger;
             merger.start();
 
-            mFinishMerger = merger;
+            mFinishCounter = merger;
         }
 
-        synchronized (finishLevel) {
-            finishLevel.waitUntilFinished();
-            return finishLevel.mTrees[0];
+        if (scanner == null) {
+            return finishLevel.waitForFirstTree();
         }
+
+        scanner.notReady(new _SortScanner.Supplier() {
+            @Override
+            public _Tree get() throws IOException {
+                try {
+                    _Tree tree = finishLevel.waitForFirstTree();
+                    finishComplete();
+                    return tree;
+                } catch (Throwable e) {
+                    try {
+                        reset();
+                    } catch (Exception e2) {
+                        e.addSuppressed(e2);
+                    }
+                    throw e;
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+                reset();
+            }
+        });
+
+        return null;
     }
 
     /**
      * Caller must be synchronized.
      *
-     * @return null of no levels exist
+     * @return null if no levels exist
      */
     private Level[] stopTreeMergers() throws InterruptedIOException {
         List<Level> list = mSortTreeLevels;
@@ -302,9 +368,11 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     }
 
     private synchronized void finishComplete() throws IOException {
-        if (mFinishMerger != null) {
-            mFinishCount = mFinishMerger.sum();
-            mFinishMerger = null;
+        mSortTreeLevels = null;
+
+        if (mFinishCounter != null) {
+            mFinishCount = mFinishCounter.sum();
+            mFinishCounter = null;
         }
 
         // Drain the pool.
@@ -326,7 +394,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
     @Override
     public synchronized long progress() {
-        return mFinishMerger != null ? mFinishMerger.sum() : mFinishCount;
+        return mFinishCounter != null ? mFinishCounter.sum() : mFinishCount;
     }
 
     @Override
@@ -335,7 +403,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
         synchronized (this) {
             mState = S_RESET;
-            mFinishMerger = null;
+            mFinishCounter = null;
             mFinishCount = 0;
 
             try {
@@ -455,36 +523,36 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             mSortTreeLevels = new ArrayList<>();
         }
 
-        Merger merger;
+        Merger merger = new Merger(mLastMerger, sortTrees, size, dest);
+        mLastMerger = merger;
 
         try {
             while (mMergerCount >= MERGE_THREAD_COUNT) {
                 wait();
             }
-            merger = new Merger(mLastMerger, sortTrees, size, dest);
-            mLastMerger = merger;
-            mMergerCount++;
         } catch (InterruptedException e) {
             throw new InterruptedIOException();
         }
 
+        mMergerCount++;
         mExecutor.execute(merger);
     }
 
     /**
-     * Merger of sort trees, which only consist of a single node. Weak reference is to the
-     * peviously added worker.
+     * Merger of sort trees, which only consist of a single node.
      */
-    private final class Merger extends WeakReference<Merger> implements Runnable {
+    private final class Merger implements Runnable {
         private _Tree[] mSortTrees;
         private int mSize;
         private _Tree mDest;
+
+        Merger mPrev;
 
         // Is set when more trees must be added when merge is done.
         Merger mNext;
 
         Merger(Merger prev, _Tree[] sortTrees, int size, _Tree dest) {
-            super(prev);
+            mPrev = prev;
             mSortTrees = sortTrees;
             mSize = size;
             mDest = dest;
@@ -510,7 +578,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
         final _TreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
-            appender.firstAny();
+            appender.firstLeaf();
 
             final CommitLock commitLock = mDatabase.commitLock();
             CommitLock.Shared shared = commitLock.acquireShared();
@@ -605,7 +673,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 merger.mSortTrees = null;
                 merger.mSize = 0;
 
-                Merger prev = merger.get();
+                Merger prev = merger.mPrev;
                 if (prev != null && prev.mDest != null) {
                     // Cannot add destination tree out of order. Leave the merge count alone
                     // for now, preventing unbounded growth of the merger stack.
@@ -616,6 +684,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 while (true) {
                     addToLevel(selectLevel(0), L0_MAX_SIZE, merger.mDest);
                     merger.mDest = null;
+                    merger.mPrev = null;
                     mMergerCount--;
 
                     Merger next = merger.mNext;
@@ -760,6 +829,10 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 if (tree != null) {
                     addToLevel(nextLevel, L1_MAX_SIZE, tree);
                 } else {
+                    Throwable ex = exceptionCheck();
+                    if (ex != null) {
+                        exception(ex);
+                    }
                     level.finished(this);
                 }
             }

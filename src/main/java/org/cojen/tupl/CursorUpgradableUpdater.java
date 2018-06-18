@@ -24,18 +24,19 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-class ViewUpgradableUpdater extends ViewScanner implements Updater {
+class CursorUpgradableUpdater extends CursorScanner implements Updater {
     private LockMode mOriginalMode;
 
     /**
      * @param cursor unpositioned cursor; must be linked to a non-null transaction
      */
-    ViewUpgradableUpdater(View view, Cursor cursor) throws IOException {
-        super(view, cursor);
-        cursor.register();
+    CursorUpgradableUpdater(Cursor cursor) throws IOException {
+        super(cursor);
         Transaction txn = cursor.link();
         mOriginalMode = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
+        cursor.first();
+        cursor.register();
     }
 
     @Override

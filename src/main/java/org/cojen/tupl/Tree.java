@@ -769,7 +769,7 @@ class Tree implements View, Index {
             // Find the first node instead of calling first() to ensure that cursor is
             // positioned. Otherwise, empty trees would be skipped even when the root node
             // needed to be moved out of the compaction zone.
-            cursor.firstAny();
+            cursor.firstLeaf();
 
             if (!cursor.compact(highestNodeId, observer)) {
                 return false;
@@ -1053,10 +1053,10 @@ class Tree implements View, Index {
         byte[] midKey;
         CursorFrame lowFrame, highFrame;
         {
-            lowFrame = lowCursor.leafExclusive();
+            lowFrame = lowCursor.frameExclusive();
             Node lowNode = lowCursor.notSplitDirty(lowFrame);
             try {
-                highFrame = highCursor.leafExclusive();
+                highFrame = highCursor.frameExclusive();
                 Node highNode = highCursor.notSplitDirty(highFrame);
                 try {
                     midKey = lowNode.midKey(lowNode.highestLeafPos(), highNode, 0);
@@ -1108,8 +1108,8 @@ class Tree implements View, Index {
 
         try {
             // Clear the extremity bits, before any exception from finishSplit.
-            clearExtremityBits(lowCursor.mLeaf, survivorFrame, ~Node.HIGH_EXTREMITY);
-            clearExtremityBits(highCursor.mLeaf, survivorFrame, ~Node.LOW_EXTREMITY);
+            clearExtremityBits(lowCursor.mFrame, survivorFrame, ~Node.HIGH_EXTREMITY);
+            clearExtremityBits(highCursor.mFrame, survivorFrame, ~Node.LOW_EXTREMITY);
 
             survivor.finishSplit(survivorFrame, survivorNode).releaseExclusive();
         } catch (Throwable e) {
