@@ -454,11 +454,4 @@ class CursorFrame extends AtomicReference<CursorFrame> {
     public final String toString() {
         return Utils.toMiniString(this);
     }
-
-    /**
-     * Special frame type for tracking ghosted entries within leaf nodes. Unlike regular
-     * frames, ghost frames don't prevent the bound node from being evicted.
-     */
-    final static class Ghost extends CursorFrame {
-    }
 }
