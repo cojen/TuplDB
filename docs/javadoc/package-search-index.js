@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.cojen.tupl"},{"l":"org.cojen.tupl.ext"},{"l":"org.cojen.tupl.io"},{"l":"org.cojen.tupl.repl"},{"l":"org.cojen.tupl.tools"},{"l":"org.cojen.tupl.util"}]
