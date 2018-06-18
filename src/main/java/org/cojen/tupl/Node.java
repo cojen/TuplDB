@@ -813,7 +813,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             CursorFrame frame = last;
             do {
-                if (!(frame instanceof CursorFrame.Ghost)) {
+                if (!(frame instanceof GhostFrame)) {
                     releaseExclusive();
                     return false;
                 }
@@ -1944,7 +1944,7 @@ final class Node extends Clutch implements DatabaseAccess {
         throws IOException
     {
         // Allocate early, in case out of memory.
-        CursorFrame.Ghost frame = new CursorFrame.Ghost();
+        GhostFrame frame = new GhostFrame();
 
         final /*P*/ byte[] page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
@@ -5808,7 +5808,7 @@ final class Node extends Clutch implements DatabaseAccess {
             try {
                 CursorFrame frame = mLastCursorFrame;
                 while (frame != null) {
-                    if (!(frame instanceof CursorFrame.Ghost)) {
+                    if (!(frame instanceof GhostFrame)) {
                         count++;
                     }
                     frame = frame.mPrevCousin;
@@ -5848,7 +5848,7 @@ final class Node extends Clutch implements DatabaseAccess {
             long count = 0;
 
             while (true) {
-                if (!(frame instanceof CursorFrame.Ghost)) {
+                if (!(frame instanceof GhostFrame)) {
                     count++;
                 }
                 CursorFrame prev = frame.tryLockPrevious(lock);
