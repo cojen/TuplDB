@@ -961,8 +961,18 @@ public class RecoverTest {
             // Expected.
         }
 
-        // checkpoint with a live open transaction
-        Transaction txn = db.newTransaction(DurabilityMode.NO_REDO);
+        // Checkpoint with a live open transaction.
+        Transaction txn;
+        while (true) {
+            txn = db.newTransaction(DurabilityMode.NO_REDO);
+            if (txn.getId() == 0) {
+                // Verified that transaction isn't replicated.
+                break;
+            }
+            // Wait for background thread which is switching to replica mode to finish. See the
+            // ReplRedoController.switchToReplica method.
+            sleep(1);
+        }
         ix.store(txn, "key1".getBytes(), "val1".getBytes());
         db.checkpoint();
         db.close();
@@ -973,11 +983,12 @@ public class RecoverTest {
         Database db2 = Database.open(config.replicate(replMan));
 
         // assert no lingering locks exist on the key after recovery
+
         Index ix2 = db2.findIndex("test");
         assertTrue(ix2 != null);
+
         Transaction txn2 = db2.newTransaction();
-        // Wait up to ten seconds for replication to catch up.
-        assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 10_000_000_000L).isHeld());
+        assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
 
         db2.close();
     }
