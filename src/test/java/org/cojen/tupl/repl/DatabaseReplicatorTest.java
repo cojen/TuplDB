@@ -20,6 +20,7 @@ package org.cojen.tupl.repl;
 import java.io.File;
 import java.io.IOException;
 
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 
 import java.util.Arrays;
@@ -75,6 +76,7 @@ public class DatabaseReplicatorTest {
         TestUtils.deleteTempFiles(getClass());
     }
 
+    private ServerSocket[] mSockets;
     private File[] mReplBaseFiles;
     private int[] mReplPorts;
     private ReplicatorConfig[] mReplConfigs;
@@ -100,10 +102,10 @@ public class DatabaseReplicatorTest {
             throw new IllegalArgumentException();
         }
 
-        ServerSocket[] sockets = new ServerSocket[members];
+        mSockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
-            sockets[i] = new ServerSocket(0);
+            mSockets[i] = new ServerSocket(0);
         }
 
         mReplBaseFiles = new File[members];
@@ -115,15 +117,15 @@ public class DatabaseReplicatorTest {
 
         for (int i=0; i<members; i++) {
             mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
-            mReplPorts[i] = sockets[i].getLocalPort();
+            mReplPorts[i] = mSockets[i].getLocalPort();
 
             mReplConfigs[i] = new ReplicatorConfig()
                 .groupToken(1)
-                .localSocket(sockets[i])
+                .localSocket(mSockets[i])
                 .baseFile(mReplBaseFiles[i]);
 
             if (i > 0) {
-                mReplConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
+                mReplConfigs[i].addSeed(mSockets[0].getLocalSocketAddress());
                 mReplConfigs[i].localRole(replicaRole);
             }
 
@@ -348,5 +350,46 @@ public class DatabaseReplicatorTest {
                 Thread.sleep(100);
             }
         }
+    }
+
+    @Test
+    public void largeWrite() throws Exception {
+        Database[] dbs = startGroup(1);
+        Database db = dbs[0];
+        Index ix = db.openIndex("test");
+
+        byte[] value = new byte[100_000];
+        Arrays.fill(value, 0, value.length, (byte) 0x7f); // illegal redo op
+
+        byte[] key = "hello".getBytes();
+
+        Transaction txn = db.newTransaction();
+        Cursor c = ix.newCursor(txn);
+        c.find(key);
+        // This used to hang due to a bug. The commit index was too high, and so it wouldn't be
+        // confirmed.
+        c.commit(value);
+
+        db.checkpoint();
+
+        // Close and reopen.
+
+        db.close();
+
+        // Replace closed socket.
+        int port = mSockets[0].getLocalPort();
+        ServerSocket ss = new ServerSocket();
+        ss.setReuseAddress(true);
+        ss.bind(new InetSocketAddress(port));
+
+        mReplConfigs[0].localSocket(ss);
+        mReplicators[0] = DatabaseReplicator.open(mReplConfigs[0]);
+        mDbConfigs[0].replicate(mReplicators[0]);
+        db = Database.open(mDbConfigs[0]);
+
+        ix = db.openIndex("test");
+        TestUtils.fastAssertArrayEquals(value, ix.load(null, key));
+
+        db.close();
     }
 }
