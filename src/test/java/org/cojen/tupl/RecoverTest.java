@@ -972,13 +972,12 @@ public class RecoverTest {
         replMan.asReplica();
         Database db2 = Database.open(config.replicate(replMan));
 
-        // FIXME: must wait till caught up
-
         // assert no lingering locks exist on the key after recovery
         Index ix2 = db2.findIndex("test");
         assertTrue(ix2 != null);
         Transaction txn2 = db2.newTransaction();
-        assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
+        // Wait up to ten seconds for replication to catch up.
+        assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 10_000_000_000L).isHeld());
 
         db2.close();
     }
