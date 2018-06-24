@@ -32,6 +32,7 @@ final class ReplRedoController extends ReplRedoWriter {
     final ReplicationManager mManager;
 
     private volatile ReplRedoWriter mTxnRedoWriter;
+    private volatile boolean mSwitchingToReplica;
 
     // These fields capture the state of the last written commit at the start of a checkpoint.
     private ReplRedoWriter mCheckpointRedoWriter;
@@ -69,7 +70,7 @@ final class ReplRedoController extends ReplRedoWriter {
         try {
             ReplicationManager.Writer writer = mTxnRedoWriter.mReplWriter;
             long pos = writer == null ? mEngine.decodePosition() : writer.position();
-            return (pos - (mCheckpointPos & ~(1L << 63))) >= sizeThreshold;
+            return (pos - checkpointPosition()) >= sizeThreshold;
         } finally {
             releaseShared();
         }
@@ -110,7 +111,7 @@ final class ReplRedoController extends ReplRedoWriter {
 
     @Override
     long checkpointPosition() {
-        return mCheckpointPos;
+        return mCheckpointPos & ~(1L << 63);
     }
 
     @Override
@@ -274,16 +275,15 @@ final class ReplRedoController extends ReplRedoWriter {
     private void doSwitchToReplica(ReplicationManager.Writer expect) {
         ReplRedoWriter redo;
 
-        ReplRedoController.this.acquireExclusive();
+        acquireExclusive();
         try {
             redo = shouldSwitchToReplica(expect);
             if (redo == null) {
                 return;
             }
-            // Use this instance for replica mode.
-            mTxnRedoWriter = this;
+            mSwitchingToReplica = true;
         } finally {
-            ReplRedoController.this.releaseExclusive();
+            releaseExclusive();
         }
 
         long pos;
@@ -300,12 +300,24 @@ final class ReplRedoController extends ReplRedoWriter {
         // Start receiving if not, but does nothing if already receiving. A reset op is
         // expected, and so the initial transaction id can be zero.
         mEngine.startReceiving(pos, 0);
+
+        // Use this instance for replica mode. Can only be assigned after engine is at the
+        // correct position.
+        acquireExclusive();
+        mTxnRedoWriter = this;
+        mSwitchingToReplica = false;
+        releaseExclusive();
     }
 
     /**
      * @return null if shouldn't switch; mTxnRedoWriter otherwise
      */
     private ReplRedoWriter shouldSwitchToReplica(ReplicationManager.Writer expect) {
+        if (mSwitchingToReplica) {
+            // Another thread is doing it.
+            return null;
+        }
+
         if (mEngine.mDatabase.isClosed()) {
             // Don't bother switching modes, since it won't work properly anyhow.
             return null;
