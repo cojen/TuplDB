@@ -890,9 +890,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
             while (true) {
                 if (!node.isBottomInternal()) {
-                    DatabaseException ex = new CorruptDatabaseException(node.toString());
-                    node.releaseShared();
-                    throw ex;
+                    if (node.mPage == p_closedTreePage()) {
+                        return null;
+                    }
+                    try {
+                        throw new CorruptDatabaseException(node.toString());
+                    } finally {
+                        node.releaseShared();
+                    }
                 }
 
                 if (inLimit != null && frame.mNodePos <= node.highestKeyPos()) {
@@ -1044,9 +1049,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
         while (true) {
             if (!node.isBottomInternal()) {
-                DatabaseException ex = new CorruptDatabaseException(node.toString());
-                node.releaseShared();
-                throw ex;
+                try {
+                    if (node.mPage == p_closedTreePage()) {
+                        return count;
+                    }
+                    throw new CorruptDatabaseException(node.toString());
+                } finally {
+                    node.releaseShared();
+                }
             }
 
             node = toNextInternal(frame);
@@ -1511,9 +1521,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
             while (true) {
                 if (!node.isBottomInternal()) {
-                    DatabaseException ex = new CorruptDatabaseException(node.toString());
-                    node.releaseShared();
-                    throw ex;
+                    try {
+                        if (node.mPage == p_closedTreePage()) {
+                            return null;
+                        }
+                        throw new CorruptDatabaseException(node.toString());
+                    } finally {
+                        node.releaseShared();
+                    }
                 }
 
                 if (inLimit != null && frame.mNodePos > 0) {
