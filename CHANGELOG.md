@@ -3,6 +3,10 @@ Changelog
 
 v1.4.4
 ------
+
+* Replication fixes: Cannot fully switch to replica mode until a valid decode position has been
+  established, and fix calculation of commit position when replicating large updates. In both
+  cases, an invalid log position could be used for recovery.
 * More efficient loads for union, intersection, and difference views, when using the built-in
   combiners.
 * Allow the Sorter.reset method to stop the sort when in the finishing step.
