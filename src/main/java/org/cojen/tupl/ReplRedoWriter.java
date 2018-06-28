@@ -281,6 +281,15 @@ class ReplRedoWriter extends RedoWriter {
                 throw nowUnmodifiable();
             }
 
+            if (commitLen > 0) {
+                // Store the last commit info early, before the position is adjusted when
+                // looping over large messages. There's no harm in doing this early, even if an
+                // exception is thrown due to replica mode switchover. The commit position must
+                // always be confirmed later.
+                mLastCommitPos = mWritePos + commitLen;
+                mLastCommitTxnId = mLastTxnId;
+            }
+
             while (true) {
                 if (mBufferHead == mBufferTail) {
                     mProducer = Thread.currentThread();
@@ -339,15 +348,7 @@ class ReplRedoWriter extends RedoWriter {
                         throw e;
                     }
 
-                    long pos = mWritePos;
-
-                    if (commitLen > 0) {
-                        mLastCommitPos = pos + commitLen;
-                        mLastCommitTxnId = mLastTxnId;
-                    }
-
-                    pos += length;
-                    mWritePos = pos;
+                    mWritePos += length;
 
                     if ((mBufferTail += length) >= buffer.length) {
                         mBufferTail = 0;
@@ -361,7 +362,8 @@ class ReplRedoWriter extends RedoWriter {
                         mConsumerParked = false;
                         LockSupport.unpark(mConsumer);
                     }
-                    return pos;
+
+                    return mWritePos;
                 }
 
                 try {
