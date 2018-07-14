@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.4
+v1.4.4 (2018-06-30)
 ------
 
 * Replication fixes: Cannot fully switch to replica mode until a valid decode position has been
