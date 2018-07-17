@@ -61,7 +61,7 @@ final class FileStateLog extends Latch implements StateLog {
       File naming:
 
       <base>.md                                 (metadata file)
-      <base>[.<prevTerm>].<term>.<start index>  (log files)
+      <base>.<term>.<start index>[.<prevTerm>]  (log files)
 
       Metadata file stores little-endian fields at offset 0 and 4096, alternating.
 
