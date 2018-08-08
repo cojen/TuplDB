@@ -68,9 +68,9 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -124,16 +124,15 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code>, <code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Implementing Classes:</dt>
 <dd><code><a href="../../../org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></code></dd>
 </dl>
 <hr>
-<br>
 <pre>public interface <span class="typeNameLabel">Cursor</span>
-extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
+extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Maintains a logical position in a <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>View</code></a>. Cursor instances can only be
  safely used by one thread at a time, and they must be <a href="../../../org/cojen/tupl/Cursor.html#reset--"><code>reset</code></a>
  when no longer needed. Instances can be exchanged by threads, as long as a
@@ -198,7 +197,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#autoload--">autoload</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#autoload--">autoload</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current autoload mode.</div>
 </td>
@@ -212,7 +211,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#close--">close</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#close--">close</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
 </td>
@@ -242,7 +241,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#copy--">copy</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#copy--">copy</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a new independent Cursor, positioned where this one is, and
  linked to the same transaction.</div>
@@ -329,28 +328,28 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i17" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#first--">first</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#first--">first</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </td>
 </tr>
 <tr id="i18" class="altColor">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/9/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getComparator--">getComparator</a></span>&#8203;()</code></th>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/10/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getComparator--">getComparator</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </td>
 </tr>
 <tr id="i19" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getOrdering--">getOrdering</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#getOrdering--">getOrdering</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the key ordering for this cursor.</div>
 </td>
 </tr>
 <tr id="i20" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#key--">key</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#key--">key</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned.</div>
@@ -358,14 +357,14 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i21" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#last--">last</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#last--">last</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the last available entry.</div>
 </td>
 </tr>
 <tr id="i22" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#link--">link</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#link--">link</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </td>
@@ -379,21 +378,21 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i24" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#load--">load</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#load--">load</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
 </td>
 </tr>
 <tr id="i25" class="rowColor">
 <td class="colFirst"><code>default <a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#lock--">lock</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#lock--">lock</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Locks the current entry, as if by calling load.</div>
 </td>
 </tr>
 <tr id="i26" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#next--">next</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#next--">next</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the next available entry.</div>
 </td>
@@ -416,7 +415,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i29" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#previous--">previous</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#previous--">previous</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the previous available entry.</div>
 </td>
@@ -448,7 +447,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i33" class="rowColor">
 <td class="colFirst"><code>default boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#register--">register</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#register--">register</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to register this cursor for direct redo operations, which can improve
  replication performance when modifying a range of values.</div>
@@ -456,7 +455,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i34" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#reset--">reset</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#reset--">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </td>
@@ -488,14 +487,14 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 </tr>
 <tr id="i38" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#unregister--">unregister</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#unregister--">unregister</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </td>
 </tr>
 <tr id="i39" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#value--">value</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Cursor.html#value--">value</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>NOT_LOADED</code></a>.</div>
 </td>
@@ -546,7 +545,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>getOrdering</h4>
-<pre><a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a>&nbsp;getOrdering&#8203;()</pre>
+<pre><a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl">Ordering</a>&nbsp;getOrdering()</pre>
 <div class="block">Returns the key ordering for this cursor.</div>
 </li>
 </ul>
@@ -556,7 +555,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>getComparator</h4>
-<pre>default&nbsp;<a href="https://docs.oracle.com/javase/9/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator&#8203;()</pre>
+<pre>default&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;&nbsp;getComparator()</pre>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </li>
 </ul>
@@ -576,7 +575,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>prior linked transaction</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if transaction belongs to another database instance</dd>
 </dl>
 </li>
 </ul>
@@ -586,7 +585,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>link</h4>
-<pre><a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;link&#8203;()</pre>
+<pre><a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;link()</pre>
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </li>
 </ul>
@@ -596,7 +595,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>key</h4>
-<pre>byte[]&nbsp;key&#8203;()</pre>
+<pre>byte[]&nbsp;key()</pre>
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned. Array contents must not be modified.</div>
 </li>
@@ -607,7 +606,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>value</h4>
-<pre>byte[]&nbsp;value&#8203;()</pre>
+<pre>byte[]&nbsp;value()</pre>
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../../../org/cojen/tupl/Cursor.html#NOT_LOADED"><code>NOT_LOADED</code></a>. Array contents can be safely modified. Altering the value via the <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><code>ValueAccessor</code></a> methods doesn't affect the object returned by this method.</div>
 </li>
 </ul>
@@ -636,7 +635,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>autoload</h4>
-<pre>boolean&nbsp;autoload&#8203;()</pre>
+<pre>boolean&nbsp;autoload()</pre>
 <div class="block">Returns the current autoload mode.</div>
 </li>
 </ul>
@@ -655,7 +654,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd>a negative integer, zero, or a positive integer as current key
  is less than, equal to, or greater than the rkey.</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if current key or rkey is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if current key or rkey is null</dd>
 </dl>
 </li>
 </ul>
@@ -678,7 +677,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd>a negative integer, zero, or a positive integer as current key
  is less than, equal to, or greater than the rkey.</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if current key or rkey is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if current key or rkey is null</dd>
 </dl>
 </li>
 </ul>
@@ -688,8 +687,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>register</h4>
-<pre>default&nbsp;boolean&nbsp;register&#8203;()
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;boolean&nbsp;register()
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Attempt to register this cursor for direct redo operations, which can improve
  replication performance when modifying a range of values. Without registration, replicas
  must perform a full find operation for each modification made in the range.
@@ -701,7 +700,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
  generally indicates that registering the cursor might be beneficial.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -711,7 +710,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>unregister</h4>
-<pre>default&nbsp;void&nbsp;unregister&#8203;()</pre>
+<pre>default&nbsp;void&nbsp;unregister()</pre>
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
@@ -725,15 +724,15 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>first</h4>
-<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;first&#8203;()
-          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;first()
+          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the first available entry. Cursor key and value
  are set to null if no entries exist, and position will be undefined.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -743,15 +742,15 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>last</h4>
-<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;last&#8203;()
-         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;last()
+         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the last available entry. Cursor key and value
  are set to null if no entries exist, and position will be undefined.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -762,7 +761,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>skip</h4>
 <pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;skip&#8203;(long&nbsp;amount)
-         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor by a relative amount of entries. Pass a positive amount
  to skip forward, and pass a negative amount to skip backwards. If less
  than the given amount of entries are available, the Cursor is reset.
@@ -777,7 +776,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -790,7 +789,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;skip&#8203;(long&nbsp;amount,
                         byte[]&nbsp;limitKey,
                         boolean&nbsp;inclusive)
-                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor by a relative amount of entries, stopping sooner if the limit key is
  reached. Pass a positive amount to skip forward, and pass a negative amount to skip
  backwards. If the limit key is reached, or if less than the given amount of entries are
@@ -809,7 +808,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -819,8 +818,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>next</h4>
-<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;next&#8203;()
-         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;next()
+         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the next available entry. Cursor key and value
  are set to null if no next entry exists, and position will be undefined.</div>
 <dl>
@@ -828,7 +827,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -839,7 +838,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>nextLe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;nextLe&#8203;(byte[]&nbsp;limitKey)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  or equal to the given limit key. Cursor key and value are set to null if
  no applicable entry exists, and position will be undefined.</div>
@@ -847,9 +846,9 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if limit key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if limit key is null</dd>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -860,7 +859,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>nextLt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;nextLt&#8203;(byte[]&nbsp;limitKey)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  the given limit key. Cursor key and value are set to null if no
  applicable entry exists, and position will be undefined.</div>
@@ -868,9 +867,9 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if limit key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if limit key is null</dd>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -880,8 +879,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>previous</h4>
-<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;previous&#8203;()
-             throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;previous()
+             throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the previous available entry. Cursor key and
  value are set to null if no previous entry exists, and position will be
  undefined.</div>
@@ -890,7 +889,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -901,7 +900,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>previousGe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;previousGe&#8203;(byte[]&nbsp;limitKey)
-                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than or equal to the given limit key. Cursor key and value are
  set to null if no applicable entry exists, and position will be
@@ -910,9 +909,9 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if limit key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if limit key is null</dd>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -923,7 +922,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>previousGt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;previousGt&#8203;(byte[]&nbsp;limitKey)
-                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than the given limit key. Cursor key and value are set to null
  if no applicable entry exists, and position will be undefined.</div>
@@ -931,9 +930,9 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if limit key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if limit key is null</dd>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -944,7 +943,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>find</h4>
 <pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;find&#8203;(byte[]&nbsp;key)
-         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the given key.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
@@ -953,8 +952,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -965,7 +964,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findGe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGe&#8203;(byte[]&nbsp;key)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the first available entry greater than or equal
  to the given key.
 
@@ -975,8 +974,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -987,7 +986,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findGt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGt&#8203;(byte[]&nbsp;key)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the first available entry greater than the
  given key.
 
@@ -997,8 +996,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1009,7 +1008,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findLe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLe&#8203;(byte[]&nbsp;key)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the first available entry less than or equal to
  the given key.
 
@@ -1019,8 +1018,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1031,7 +1030,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findLt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLt&#8203;(byte[]&nbsp;key)
-                   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the first available entry less than the given
  key.
 
@@ -1041,8 +1040,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1053,7 +1052,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findNearby</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearby&#8203;(byte[]&nbsp;key)
-                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Optimized version of the regular find method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
@@ -1064,8 +1063,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1076,7 +1075,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findNearbyGe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGe&#8203;(byte[]&nbsp;key)
-                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Optimized version of the regular findGe method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
@@ -1087,8 +1086,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1099,7 +1098,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findNearbyGt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGt&#8203;(byte[]&nbsp;key)
-                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Optimized version of the regular findGt method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
@@ -1110,8 +1109,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1122,7 +1121,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findNearbyLe</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLe&#8203;(byte[]&nbsp;key)
-                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Optimized version of the regular findLe method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
@@ -1133,8 +1132,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1145,7 +1144,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>findNearbyLt</h4>
 <pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLt&#8203;(byte[]&nbsp;key)
-                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
  the given key is in close proximity to the current one. Even if not in close proximity,
  the find outcome is identical, although it may perform more slowly.
@@ -1156,8 +1155,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1169,7 +1168,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <h4>random</h4>
 <pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
                   byte[]&nbsp;highKey)
-           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from
  a uniform distribution. Cursor key and value are set to null if no
  entries exist, and position will be undefined.</div>
@@ -1180,7 +1179,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1190,8 +1189,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>lock</h4>
-<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;lock&#8203;()
-                 throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre>default&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;lock()
+                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Locks the current entry, as if by calling load. Locking is performed automatically
  within transactions, and so invocation of this method is necessary only when manually
  tweaking the lock mode. If a lock was acquired (even if not retained), the cursor value
@@ -1204,7 +1203,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1214,8 +1213,8 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>load</h4>
-<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;load&#8203;()
-         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;load()
+         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Loads or reloads the value at the cursor's current position. Cursor value is set to null
  if entry no longer exists, but the position remains unmodified.</div>
 <dl>
@@ -1223,7 +1222,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dd><a href="../../../org/cojen/tupl/LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="../../../org/cojen/tupl/LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="../../../org/cojen/tupl/LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1234,7 +1233,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>store</h4>
 <pre>void&nbsp;store&#8203;(byte[]&nbsp;value)
-    throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Stores a value into the current entry, leaving the position
  unchanged. An entry may be inserted, updated or deleted by this
  method. A null value deletes the entry. Unless an exception is thrown,
@@ -1246,7 +1245,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if value is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1257,7 +1256,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <li class="blockList">
 <h4>commit</h4>
 <pre>default&nbsp;void&nbsp;commit&#8203;(byte[]&nbsp;value)
-             throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+             throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Combined store and commit to the linked transaction. Although similar to storing and
  committing explicitly, additional optimizations can be applied. In particular, no undo
  log entry is required when committing the outermost transaction scope. This is the same
@@ -1268,7 +1267,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl">UnpositionedCursorException</a></code> - if position is undefined at invocation time</dd>
 <dd><code><a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if value is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -1278,7 +1277,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>copy</h4>
-<pre><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;copy&#8203;()</pre>
+<pre><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;copy()</pre>
 <div class="block">Returns a new independent Cursor, positioned where this one is, and
  linked to the same transaction. The original and copied Cursor can be
  acted upon without affecting each other's state.</div>
@@ -1290,7 +1289,7 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockList">
 <li class="blockList">
 <h4>reset</h4>
-<pre>void&nbsp;reset&#8203;()</pre>
+<pre>void&nbsp;reset()</pre>
 <div class="block">Resets the Cursor and moves it to an undefined position. The key and value references
  are set to null.</div>
 </li>
@@ -1301,14 +1300,14 @@ extends <a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in
 <ul class="blockListLast">
 <li class="blockList">
 <h4>close</h4>
-<pre>void&nbsp;close&#8203;()</pre>
+<pre>void&nbsp;close()</pre>
 <div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position. The
  Cursor is re-opened automatically if positioned again.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="../../../org/cojen/tupl/ValueAccessor.html#close--">close</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a></code></dd>
 </dl>

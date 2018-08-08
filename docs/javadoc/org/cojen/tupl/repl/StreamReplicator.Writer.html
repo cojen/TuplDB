@@ -68,9 +68,9 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -124,14 +124,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></code></dd>
 </dl>
 <dl>
 <dt>Enclosing interface:</dt>
 <dd><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dd>
 </dl>
 <hr>
-<br>
 <pre>public static interface <span class="typeNameLabel">StreamReplicator.Writer</span>
 extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></pre>
 <div class="block">Interface called by the group leader for proposing messages. When consensus has been
@@ -221,7 +220,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <li class="blockList">
 <h4>write</h4>
 <pre>default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages)
-           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, 0,
  messages.length, </code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--"><code>index() + </code></a><code>messages.length)</code></div>
 <dl>
@@ -229,7 +228,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <dd>amount of bytes written, which is less than the message length only if the
  writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -242,7 +241,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <pre>default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages,
                   int&nbsp;offset,
                   int&nbsp;length)
-           throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, offset,
  length, </code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--"><code>index() + </code></a><code>length)</code></div>
 <dl>
@@ -250,7 +249,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <dd>amount of bytes written, which is less than the given length only if the
  writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -264,7 +263,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
           int&nbsp;offset,
           int&nbsp;length,
           long&nbsp;highestIndex)
-   throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete or partial messages to the log. The <code>highestIndex</code> parameter
  defines the new absolute log index which can become the commit index. The provided
  highest index is permitted to exceed the current log size, in anticpation of future
@@ -280,7 +279,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html" t
 <dd>amount of bytes written, which is less than the given length only if the
  writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

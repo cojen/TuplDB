@@ -97,10 +97,9 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>2.9.1</version>
           <configuration>
-            <javadocVersion>1.9</javadocVersion>
             <detectJavaApiLink>true</detectJavaApiLink>
             <links>
-              <link>https://docs.oracle.com/javase/9/docs/api</link>
+              <link>https://docs.oracle.com/javase/10/docs/api</link>
             </links>
             <author>false</author>
             <nodeprecatedlist>true</nodeprecatedlist>
@@ -219,10 +218,9 @@
               </execution>
             </executions>
             <configuration>
-              <javadocVersion>1.9</javadocVersion>
               <detectJavaApiLink>true</detectJavaApiLink>
               <links>
-                <link>https://docs.oracle.com/javase/9/docs/api</link>
+                <link>https://docs.oracle.com/javase/10/docs/api</link>
               </links>
               <author>false</author>
               <nodeprecatedlist>true</nodeprecatedlist>

@@ -68,9 +68,9 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -124,7 +124,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -135,7 +135,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dd>
 </dl>
 <hr>
-<br>
 <pre>public static interface <span class="typeNameLabel">DirectReplicator.Writer</span>
 extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></pre>
 <div class="block">Direct interface for writing to a replicator, for a given term.</div>
@@ -160,7 +159,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#commitIndex--">commitIndex</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#commitIndex--">commitIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current term commit index, which might be lower than the start index.</div>
 </td>
@@ -168,14 +167,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit</a></span>&#8203;(long&nbsp;index,
-          <a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code></th>
+          <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit index reaches the requested index.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
 </td>
@@ -223,7 +222,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <ul class="blockList">
 <li class="blockList">
 <h4>commitIndex</h4>
-<pre>long&nbsp;commitIndex&#8203;()</pre>
+<pre>long&nbsp;commitIndex()</pre>
 <div class="block">Returns the current term commit index, which might be lower than the start index.</div>
 </li>
 </ul>
@@ -235,7 +234,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <h4>waitForCommit</h4>
 <pre>long&nbsp;waitForCommit&#8203;(long&nbsp;index,
                    long&nbsp;nanosTimeout)
-            throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></pre>
+            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></pre>
 <div class="block">Blocks until the commit index reaches the given index.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -244,7 +243,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <dd>current commit index, or -1 if deactivated before the index could be
  reached, or -2 if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -255,7 +254,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <li class="blockList">
 <h4>waitForEndCommit</h4>
 <pre>default&nbsp;long&nbsp;waitForEndCommit&#8203;(long&nbsp;nanosTimeout)
-                       throws <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></pre>
+                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></pre>
 <div class="block">Blocks until the commit index reaches the end of the term.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -264,7 +263,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <dd>current commit index, or -1 if closed before the index could be
  reached, or -2 if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io">InterruptedIOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -275,7 +274,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <li class="blockList">
 <h4>uponCommit</h4>
 <pre>void&nbsp;uponCommit&#8203;(long&nbsp;index,
-                <a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</pre>
+                <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</pre>
 <div class="block">Invokes the given task when the commit index reaches the requested index. The
  current commit index is passed to the task, or -1 if the term ended before the index
  could be reached. If the task can be run when this method is called, then the
@@ -288,7 +287,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <ul class="blockListLast">
 <li class="blockList">
 <h4>uponEndCommit</h4>
-<pre>default&nbsp;void&nbsp;uponEndCommit&#8203;(<a href="https://docs.oracle.com/javase/9/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function">LongConsumer</a>&nbsp;task)</pre>
+<pre>default&nbsp;void&nbsp;uponEndCommit&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</pre>
 <div class="block">Invokes the given task when the commit index reaches the end of the term. The
  current commit index is passed to the task, or -1 if if closed. If the task can be
  run when this method is called, then the current thread invokes it immediately.</div>

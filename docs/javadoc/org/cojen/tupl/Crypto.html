@@ -68,9 +68,9 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -127,7 +127,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code><a href="../../../org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></code></dd>
 </dl>
 <hr>
-<br>
 <pre>public interface <span class="typeNameLabel">Crypto</span></pre>
 <div class="block">Support for encrypting an entire database.</div>
 <dl>
@@ -250,17 +249,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </td>
 </tr>
 <tr id="i8" class="altColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#newDecryptingStream-long-java.io.InputStream-">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
-                   <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)</code></th>
+                   <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an InputStream for supporting decryption.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#newEncryptingStream-long-java.io.OutputStream-">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
-                   <a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)</code></th>
+                   <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </td>
@@ -290,7 +289,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;pageSize,
                          byte[]&nbsp;page,
                          int&nbsp;pageOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
@@ -299,7 +298,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>page</code> - initially the original unencrypted page; replaced with encrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -315,7 +314,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                  int&nbsp;srcOffset,
                  byte[]&nbsp;dst,
                  int&nbsp;dstOffset)
-          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
@@ -326,7 +325,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>dst</code> - destination for encrypted page</dd>
 <dd><code>dstOffset</code> - offset into encrypted page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -340,7 +339,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;pageSize,
                          long&nbsp;pagePtr,
                          int&nbsp;pageOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
@@ -349,7 +348,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>pagePtr</code> - initially the original unencrypted page; replaced with encrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -365,7 +364,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;srcOffset,
                          long&nbsp;dstPtr,
                          int&nbsp;dstOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
@@ -376,7 +375,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>dstPtr</code> - destination for encrypted page</dd>
 <dd><code>dstOffset</code> - offset into encrypted page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -390,7 +389,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;pageSize,
                          byte[]&nbsp;page,
                          int&nbsp;pageOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
@@ -399,7 +398,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>page</code> - initially the encrypted page; replaced with decrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -415,7 +414,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                  int&nbsp;srcOffset,
                  byte[]&nbsp;dst,
                  int&nbsp;dstOffset)
-          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
@@ -426,7 +425,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>dst</code> - destination for decrypted page</dd>
 <dd><code>dstOffset</code> - offset into decrypted page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -440,7 +439,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;pageSize,
                          long&nbsp;pagePtr,
                          int&nbsp;pageOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
@@ -449,7 +448,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>pagePtr</code> - initially the encrypted page; replaced with decrypted page</dd>
 <dd><code>pageOffset</code> - offset into page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -465,7 +464,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
                          int&nbsp;srcOffset,
                          long&nbsp;dstPtr,
                          int&nbsp;dstOffset)
-                  throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
@@ -476,7 +475,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><code>dstPtr</code> - destination for decrypted page</dd>
 <dd><code>dstOffset</code> - offset into decrypted page</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -486,10 +485,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <h4>newEncryptingStream</h4>
-<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
-                                 <a href="https://docs.oracle.com/javase/9/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io">OutputStream</a>&nbsp;out)
-                          throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a>,
-                                 <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
+                                 <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)
+                          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
+                                 <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Called to wrap an OutputStream for supporting encryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
@@ -499,8 +498,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>stream which encrypts all data</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
@@ -510,10 +509,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockListLast">
 <li class="blockList">
 <h4>newDecryptingStream</h4>
-<pre><a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
-                                <a href="https://docs.oracle.com/javase/9/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io">InputStream</a>&nbsp;in)
-                         throws <a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a>,
-                                <a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></pre>
+<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
+                                <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)
+                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
+                                <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Called to wrap an InputStream for supporting decryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
@@ -523,8 +522,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>stream which decrypts all data</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>

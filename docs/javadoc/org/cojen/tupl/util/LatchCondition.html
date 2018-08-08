@@ -68,9 +68,9 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -120,7 +120,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </div>
 <div class="contentContainer">
 <ul class="inheritance">
-<li><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">java.lang.Object</a></li>
+<li><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a></li>
 <li>
 <ul class="inheritance">
 <li>org.cojen.tupl.util.LatchCondition</li>
@@ -131,9 +131,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <hr>
-<br>
 <pre>public class <span class="typeNameLabel">LatchCondition</span>
-extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></pre>
+extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
 <div class="block">Manages a queue of waiting threads, associated with a <a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><code>Latch</code></a> instance. Unlike the
  built-in Java Condition class, spurious wakeup does not occur when waiting.</div>
 </li>
@@ -155,7 +154,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#LatchCondition--">LatchCondition</a></span>&#8203;()</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#LatchCondition--">LatchCondition</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
@@ -202,7 +201,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#await-org.cojen.tupl.util.Latch-long-java.util.concurrent.TimeUnit-">await</a></span>&#8203;(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
      long&nbsp;timeout,
-     <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</code></th>
+     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
 <div class="block">Blocks the current thread until a signal is received.</div>
 </td>
@@ -218,42 +217,42 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#clear--">clear</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#clear--">clear</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Clears out all waiting threads and interrupts them.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#isEmpty--">isEmpty</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#isEmpty--">isEmpty</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true if no waiters are enqueued.</div>
 </td>
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signal--">signal</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signal--">signal</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Signals the first waiter, of any type.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalAll--">signalAll</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalAll--">signalAll</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Signals all waiters, of any type.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNext--">signalNext</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNext--">signalNext</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Signals the first waiter, of any type.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNextShared--">signalNextShared</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalNextShared--">signalNextShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </td>
@@ -268,7 +267,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 </tr>
 <tr id="i12" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalShared--">signalShared</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/LatchCondition.html#signalShared--">signalShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </td>
@@ -286,8 +285,8 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang">clone</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang">equals</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang">finalize</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang">getClass</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang">hashCode</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang">notify</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang">notifyAll</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang">toString</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang">wait</a>, <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang">wait</a></code></li>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
 </ul>
 </li>
 </ul>
@@ -309,7 +308,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockListLast">
 <li class="blockList">
 <h4>LatchCondition</h4>
-<pre>public&nbsp;LatchCondition&#8203;()</pre>
+<pre>public&nbsp;LatchCondition()</pre>
 </li>
 </ul>
 </li>
@@ -326,7 +325,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>isEmpty</h4>
-<pre>public final&nbsp;boolean&nbsp;isEmpty&#8203;()</pre>
+<pre>public final&nbsp;boolean&nbsp;isEmpty()</pre>
 <div class="block">Returns true if no waiters are enqueued. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -355,7 +354,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <h4>await</h4>
 <pre>public final&nbsp;int&nbsp;await&#8203;(<a href="../../../../org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
                        long&nbsp;timeout,
-                       <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent">TimeUnit</a>&nbsp;unit)</pre>
+                       <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</pre>
 <div class="block">Blocks the current thread until a signal is received. Exclusive latch must be acquired
  by the caller, which is released and then re-acquired by this method.</div>
 <dl>
@@ -439,7 +438,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>signal</h4>
-<pre>public final&nbsp;void&nbsp;signal&#8203;()</pre>
+<pre>public final&nbsp;void&nbsp;signal()</pre>
 <div class="block">Signals the first waiter, of any type. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -464,7 +463,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>signalNext</h4>
-<pre>public final&nbsp;boolean&nbsp;signalNext&#8203;()</pre>
+<pre>public final&nbsp;boolean&nbsp;signalNext()</pre>
 <div class="block">Signals the first waiter, of any type. Caller must hold shared or exclusive latch.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -478,7 +477,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>signalAll</h4>
-<pre>public final&nbsp;void&nbsp;signalAll&#8203;()</pre>
+<pre>public final&nbsp;void&nbsp;signalAll()</pre>
 <div class="block">Signals all waiters, of any type. Caller must hold shared or exclusive latch.</div>
 </li>
 </ul>
@@ -488,7 +487,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>signalShared</h4>
-<pre>public final&nbsp;void&nbsp;signalShared&#8203;()</pre>
+<pre>public final&nbsp;void&nbsp;signalShared()</pre>
 <div class="block">Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
  exclusive latch.</div>
 </li>
@@ -514,7 +513,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockList">
 <li class="blockList">
 <h4>signalNextShared</h4>
-<pre>public final&nbsp;boolean&nbsp;signalNextShared&#8203;()</pre>
+<pre>public final&nbsp;boolean&nbsp;signalNextShared()</pre>
 <div class="block">Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
  exclusive latch.</div>
 <dl>
@@ -529,7 +528,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/lang/Object.html
 <ul class="blockListLast">
 <li class="blockList">
 <h4>clear</h4>
-<pre>public final&nbsp;void&nbsp;clear&#8203;()</pre>
+<pre>public final&nbsp;void&nbsp;clear()</pre>
 <div class="block">Clears out all waiting threads and interrupts them. Caller must hold exclusive latch.</div>
 </li>
 </ul>

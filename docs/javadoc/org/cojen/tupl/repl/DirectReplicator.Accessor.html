@@ -68,9 +68,9 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
-<li><span>SEARCH:&nbsp;</span>
-<input type="text" id="search" value=" " disabled="disabled">
-<input type="reset" id="reset" value=" " disabled="disabled">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
 </li>
 </ul>
 <div>
@@ -124,7 +124,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -135,9 +135,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dd>
 </dl>
 <hr>
-<br>
 <pre>public static interface <span class="typeNameLabel">DirectReplicator.Accessor</span>
-extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></pre>
+extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Direct interface for accessing replication data, for a given term.</div>
 </li>
 </ul>
@@ -160,33 +159,33 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the next log index which will be accessed.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed term being accessed.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></span>&#8203;()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the index at the start of the term.</div>
 </td>
@@ -212,7 +211,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>term</h4>
-<pre>long&nbsp;term&#8203;()</pre>
+<pre>long&nbsp;term()</pre>
 <div class="block">Returns the fixed term being accessed.</div>
 </li>
 </ul>
@@ -222,7 +221,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>termStartIndex</h4>
-<pre>long&nbsp;termStartIndex&#8203;()</pre>
+<pre>long&nbsp;termStartIndex()</pre>
 <div class="block">Returns the index at the start of the term.</div>
 </li>
 </ul>
@@ -232,7 +231,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>termEndIndex</h4>
-<pre>long&nbsp;termEndIndex&#8203;()</pre>
+<pre>long&nbsp;termEndIndex()</pre>
 <div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
  index is always permitted to retreat, but never lower than the commit index.</div>
 </li>
@@ -243,7 +242,7 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>index</h4>
-<pre>long&nbsp;index&#8203;()</pre>
+<pre>long&nbsp;index()</pre>
 <div class="block">Returns the next log index which will be accessed.</div>
 </li>
 </ul>
@@ -253,12 +252,12 @@ extends <a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.htm
 <ul class="blockListLast">
 <li class="blockList">
 <h4>close</h4>
-<pre>void&nbsp;close&#8203;()</pre>
+<pre>void&nbsp;close()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/9/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 </li>
 </ul>
