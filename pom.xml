@@ -111,21 +111,6 @@
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-site-plugin</artifactId>
-        <version>3.3</version>
-        <configuration>
-          <reportPlugins>
-            <plugin>
-              <groupId>org.codehaus.mojo</groupId>
-              <artifactId>findbugs-maven-plugin</artifactId>
-              <version>3.0.4</version>
-            </plugin>
-          </reportPlugins>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.22.0</version>
         <configuration>
@@ -135,100 +120,10 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
+          <argLine>-XX:+UseParallelGC -Xmx10g</argLine>
         </configuration>
       </plugin>
 
     </plugins>
   </build>
-
-  <profiles>
-
-    <!-- This profile SHOULD be activated when making release -->
-    <profile>
-      <id>release</id>
-
-      <build>
-        <plugins>
-          <!-- Staging plugin - http://central.sonatype.org/pages/apache-maven.html -->
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.7</version>
-            <extensions>true</extensions>
-            <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>true</autoReleaseAfterClose>
-            </configuration>
-          </plugin>
-
-          <!-- Release plugin -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-release-plugin</artifactId>
-            <version>2.5.3</version>
-            <configuration>
-              <autoVersionSubmodules>true</autoVersionSubmodules>
-              <useReleaseProfile>false</useReleaseProfile>
-              <releaseProfiles>release</releaseProfiles>
-              <goals>deploy</goals>
-            </configuration>
-          </plugin>
-
-          <!-- Encryption plugin for deploying release artifacts -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.5</version>
-            <executions>
-              <execution>
-                <id>sign-artifacts</id>
-                <phase>verify</phase>
-                <goals>
-                  <goal>sign</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-
-          <!-- Generate sources and javadoc -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.2.1</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>2.9.1</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <detectJavaApiLink>true</detectJavaApiLink>
-              <links>
-                <link>https://docs.oracle.com/javase/10/docs/api</link>
-              </links>
-              <author>false</author>
-              <nodeprecatedlist>true</nodeprecatedlist>
-              <notimestamp>true</notimestamp>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>
