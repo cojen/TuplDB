@@ -92,7 +92,7 @@ public class CountTest {
     @Before
     public void setup() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
-            .minCacheSize(100_000_000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .directPageAccess(false);
 

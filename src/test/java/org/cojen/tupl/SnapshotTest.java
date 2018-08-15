@@ -172,7 +172,7 @@ public class SnapshotTest {
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(base)
-            .minCacheSize(100000000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .maxCheckpointThreads(extraThreads);
 
@@ -248,7 +248,7 @@ public class SnapshotTest {
         DatabaseConfig restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(snapshotBase)
-            .minCacheSize(100000000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(restoredConfig);
@@ -279,7 +279,7 @@ public class SnapshotTest {
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(base)
-            .minCacheSize(100_000_000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(config);
@@ -332,7 +332,7 @@ public class SnapshotTest {
         DatabaseConfig restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(restoredBase)
-            .minCacheSize(100_000_000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(restoredConfig);

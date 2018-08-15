@@ -33,6 +33,6 @@ public class LargeValueDirectMappedTest extends LargeValueTest {
     @Override
     public void createTempDb() throws Exception {
         mDb = TestUtils.newTempDatabase
-            (getClass(), 200_000_000L, TestUtils.OpenMode.DIRECT_MAPPED);
+            (getClass(), 100_000_000L, TestUtils.OpenMode.DIRECT_MAPPED);
     }
 }

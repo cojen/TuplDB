@@ -120,7 +120,6 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
-          <argLine>-XX:+UseParallelGC -Xmx10g</argLine>
         </configuration>
       </plugin>
 

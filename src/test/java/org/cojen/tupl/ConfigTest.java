@@ -71,7 +71,13 @@ public class ConfigTest {
         config.minCacheSize(1000);
         config.maxCacheSize(-1);
         Database.open(config);
+    }
 
+    @Test
+    @Ignore("Too disruptive when running concurrently with other tests. " +
+            "Causes all sorts of GC pauses and OOM failures in other tests.")
+    public void outOfMemory() throws Exception {
+        DatabaseConfig config = new DatabaseConfig();
         try {
             config.minCacheSize(Long.MAX_VALUE);
             Database.open(config);

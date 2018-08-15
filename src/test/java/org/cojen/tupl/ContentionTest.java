@@ -51,7 +51,7 @@ public class ContentionTest {
     }
 
     private void contention(int insertCount, int threadCount) throws Throwable {
-        Database db = Database.open(decorate(new DatabaseConfig().minCacheSize(100_000_000)));
+        Database db = Database.open(decorate(new DatabaseConfig().maxCacheSize(20_000_000)));
         Index ix = db.openIndex("test");
 
         class Runner extends Thread {

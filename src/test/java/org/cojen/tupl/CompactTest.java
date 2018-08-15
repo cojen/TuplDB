@@ -137,7 +137,7 @@ public class CompactTest {
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
                                        .pageSize(512)
-                                       .minCacheSize(10000000)
+                                       .minCacheSize(10_000_000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
         final Index ix = openTestIndex();
@@ -367,7 +367,7 @@ public class CompactTest {
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
                                        .pageSize(512)
-                                       .minCacheSize(100000000)
+                                       .minCacheSize(10_000_000).maxCacheSize(100_000_000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
         class Compactor extends Thread {
@@ -521,7 +521,7 @@ public class CompactTest {
 
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
-                                       .minCacheSize(1000000)
+                                       .minCacheSize(1_000_000)
                                        .checkpointRate(-1, null)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
         

@@ -53,7 +53,7 @@ public class ReplicationTest {
         mLeaderHandler = new Handler();
 
         DatabaseConfig config = new DatabaseConfig()
-            .minCacheSize(100_000_000)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customTransactionHandler(mLeaderHandler)
             .replicate(mLeaderMan);
