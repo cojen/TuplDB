@@ -1471,25 +1471,30 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         _Node root = tree.mRoot;
+        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
 
-        prepare: {
-            CommitLock.Shared shared = mCommitLock.acquireShared();
-            try {
-                root.acquireExclusive();
-                if (!root.hasKeys()) {
-                    prepareToDelete(root);
-                    root.releaseExclusive();
-                    break prepare;
-                }
-                root.releaseExclusive();
-            } finally {
-                shared.release();
+        CommitLock.Shared shared = mCommitLock.acquireShared();
+        try {
+            root.acquireExclusive();
+
+            if (!root.hasKeys() && root.mPage != p_closedTreePage()) {
+                // Delete and remove from trash.
+                prepareToDelete(root);
+                deleteNode(root);
+                mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
+                mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
+                return;
             }
 
-            // _Tree isn't truly empty -- it might be composed of many empty leaf nodes.
-            tree.deleteAll();
+            root.releaseExclusive();
+        } catch (Throwable e) {
+            throw closeOnFailure(this, e);
+        } finally {
+            shared.release();
         }
 
+        // _Tree isn't truly empty -- it might be composed of many empty leaf nodes.
+        tree.deleteAll();
         removeFromTrash(tree, root);
     }
 
