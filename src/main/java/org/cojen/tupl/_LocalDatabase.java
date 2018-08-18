@@ -1687,6 +1687,7 @@ final class _LocalDatabase extends AbstractDatabase {
         if (preallocate) {
             rootId = mPageDb.allocPage();
             rootIdBytes = new byte[8];
+            encodeLongLE(rootIdBytes, 0, rootId);
         } else {
             rootId = 0;
             rootIdBytes = EMPTY_BYTES;
