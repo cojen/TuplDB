@@ -1,6 +1,13 @@
 Changelog
 =========
 
+v1.4.5
+------
+
+* Depends on Java 9, replacing "unsafe" usage with VarHandles.
+* Fix page leak when deleting temporary trees which were created by the Sorter.
+* Reduce memory requirements when running test suite.
+
 v1.4.4 (2018-06-30)
 ------
 
