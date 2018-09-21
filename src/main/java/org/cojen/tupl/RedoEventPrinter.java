@@ -249,6 +249,10 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String keyStr(byte[] key) {
+        if (key == null) {
+            return "null";
+        }
+
         char[] chars = new String(key, StandardCharsets.UTF_8).toCharArray();
 
         for (int i=0; i<chars.length; i++) {
