@@ -32,6 +32,20 @@ public class DeadlockException extends LockTimeoutException {
     private final boolean mGuilty;
     private final DeadlockSet mSet;
 
+    /**
+     * @param nanosTimeout negative is interpreted as infinite wait
+     */
+    public DeadlockException(long nanosTimeout) {
+        this(nanosTimeout, null, false, null);
+    }
+
+    /**
+     * @param nanosTimeout negative is interpreted as infinite wait
+     */
+    public DeadlockException(long nanosTimeout, Object attachment, boolean guilty) {
+        this(nanosTimeout, attachment, guilty, null);
+    }
+
     DeadlockException(long nanosTimeout, Object attachment, boolean guilty, DeadlockSet set) {
         super(nanosTimeout, attachment);
         mGuilty = guilty;
@@ -74,7 +88,7 @@ public class DeadlockException extends LockTimeoutException {
             b.append("might be innocent");
         }
         b.append('.');
-        if (full) {
+        if (full && mSet != null && mSet.size() != 0) {
             b.append(" Deadlock set: ");
             mSet.appendMembers(b);
         }
