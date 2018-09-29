@@ -256,7 +256,7 @@ final class Checkpointer implements Runnable {
     }
 
     /**
-     * Expected to only be implemented by the NodeContext class.
+     * Expected to only be implemented by the NodeGroup class.
      */
     static interface DirtySet {
         /**

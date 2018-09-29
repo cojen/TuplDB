@@ -70,7 +70,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public int allocMode() {
-        return NodeContext.MODE_NO_EVICT;
+        return NodeGroup.MODE_NO_EVICT;
     }
 
     @Override

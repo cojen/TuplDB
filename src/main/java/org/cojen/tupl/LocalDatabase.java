@@ -156,7 +156,7 @@ final class LocalDatabase extends AbstractDatabase {
     private final PagePool mSparePagePool;
 
     private final Object mArena;
-    private final NodeContext[] mNodeContexts;
+    private final NodeGroup[] mNodeGroups;
 
     private final CommitLock mCommitLock;
 
@@ -533,16 +533,16 @@ final class LocalDatabase extends AbstractDatabase {
 
             mCommitLock = mPageDb.commitLock();
 
-            // Pre-allocate nodes. They are automatically added to the node context usage
-            // lists, and so nothing special needs to be done to allow them to get used. Since
-            // the initial state is clean, evicting these nodes does nothing.
+            // Pre-allocate nodes. They are automatically added to the node group usage lists,
+            // and so nothing special needs to be done to allow them to get used. Since the
+            // initial state is clean, evicting these nodes does nothing.
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CACHE_INIT_BEGIN,
                                       "Initializing %1$d cached nodes", minCache);
             }
 
-            NodeContext[] contexts;
+            NodeGroup[] groups;
             try {
                 // Try to allocate the minimum cache size into an arena, which has lower memory
                 // overhead, is page aligned, and takes less time to zero-fill.
@@ -582,7 +582,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                 int rem = maxCache % stripes;
 
-                contexts = new NodeContext[stripes];
+                groups = new NodeGroup[stripes];
 
                 for (int i=0; i<stripes; i++) {
                     int size = stripeSize;
@@ -590,22 +590,22 @@ final class LocalDatabase extends AbstractDatabase {
                         size++;
                         rem--;
                     }
-                    contexts[i] = new NodeContext(this, usedRate, size);
+                    groups[i] = new NodeGroup(this, usedRate, size);
                 }
 
                 stripeSize = minCache / stripes;
                 rem = minCache % stripes;
 
-                for (NodeContext context : contexts) {
+                for (NodeGroup group : groups) {
                     int size = stripeSize;
                     if (rem > 0) {
                         size++;
                         rem--;
                     }
-                    context.initialize(mArena, size);
+                    group.initialize(mArena, size);
                 }
             } catch (OutOfMemoryError e) {
-                contexts = null;
+                groups = null;
                 OutOfMemoryError oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
@@ -613,7 +613,7 @@ final class LocalDatabase extends AbstractDatabase {
                 throw oom;
             }
 
-            mNodeContexts = contexts;
+            mNodeGroups = groups;
 
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
@@ -726,12 +726,12 @@ final class LocalDatabase extends AbstractDatabase {
                 mCheckpointer = null;
             } else if (openMode == OPEN_TEMP) {
                 mRedoWriter = null;
-                mCheckpointer = new Checkpointer(this, config, mNodeContexts.length);
+                mCheckpointer = new Checkpointer(this, config, mNodeGroups.length);
             } else {
                 if (debugListener != null) {
                     mCheckpointer = null;
                 } else {
-                    mCheckpointer = new Checkpointer(this, config, mNodeContexts.length);
+                    mCheckpointer = new Checkpointer(this, config, mNodeGroups.length);
                 }
 
                 // Perform recovery by examining redo and undo logs.
@@ -1734,7 +1734,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             Node root;
             if (rootId != 0) {
-                root = allocLatchedNode(rootId, NodeContext.MODE_UNEVICTABLE);
+                root = allocLatchedNode(rootId, NodeGroup.MODE_UNEVICTABLE);
                 root.mId = rootId;
                 try {
                     // Note: Same as redirty method, except mPage is assigned when fully mapped.
@@ -1744,7 +1744,7 @@ final class LocalDatabase extends AbstractDatabase {
                     /*P*/ //     root.mPage = mPageDb.dirtyPage(rootId);
                     /*P*/ // }
                     /*P*/ // ]
-                    root.mContext.addDirty(root, mCommitState);
+                    root.mGroup.addDirty(root, mCommitState);
                 } catch (Throwable e) {
                     root.releaseExclusive();
                     throw e;
@@ -2148,9 +2148,9 @@ final class LocalDatabase extends AbstractDatabase {
             shared.release();
         }
 
-        for (NodeContext context : mNodeContexts) {
-            stats.cachedPages += context.nodeCount();
-            stats.dirtyPages += context.dirtyCount();
+        for (NodeGroup group : mNodeGroups) {
+            stats.cachedPages += group.nodeCount();
+            stats.dirtyPages += group.dirtyCount();
         }
 
         if (stats.dirtyPages > stats.totalPages) {
@@ -2582,10 +2582,10 @@ final class LocalDatabase extends AbstractDatabase {
                     mSorterExecutor = null;
                 }
 
-                if (mNodeContexts != null) {
-                    for (NodeContext context : mNodeContexts) {
-                        if (context != null) {
-                            context.delete();
+                if (mNodeGroups != null) {
+                    for (NodeGroup group : mNodeGroups) {
+                        if (group != null) {
+                            group.delete();
                         }
                     }
                 }
@@ -2857,7 +2857,7 @@ final class LocalDatabase extends AbstractDatabase {
     private Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
         if (rootId == 0) {
             // Pass tree identifier to spread allocations around.
-            Node rootNode = allocLatchedNode(treeId, NodeContext.MODE_UNEVICTABLE);
+            Node rootNode = allocLatchedNode(treeId, NodeGroup.MODE_UNEVICTABLE);
 
             try {
                 /*P*/ // [
@@ -2888,7 +2888,7 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            rootNode = allocLatchedNode(rootId, NodeContext.MODE_UNEVICTABLE);
+            rootNode = allocLatchedNode(rootId, NodeGroup.MODE_UNEVICTABLE);
 
             try {
                 try {
@@ -3955,14 +3955,14 @@ final class LocalDatabase extends AbstractDatabase {
     Node allocLatchedNode(long anyNodeId, int mode) throws IOException {
         mode |= mPageDb.allocMode();
 
-        NodeContext[] contexts = mNodeContexts;
-        int listIx = ((int) anyNodeId) & (contexts.length - 1);
+        NodeGroup[] groups = mNodeGroups;
+        int listIx = ((int) anyNodeId) & (groups.length - 1);
         IOException fail = null;
 
         for (int trial = 1; trial <= 3; trial++) {
-            for (int i=0; i<contexts.length; i++) {
+            for (int i=0; i<groups.length; i++) {
                 try {
-                    Node node = contexts[listIx].tryAllocLatchedNode(trial, mode);
+                    Node node = groups[listIx].tryAllocLatchedNode(trial, mode);
                     if (node != null) {
                         return node;
                     }
@@ -3972,7 +3972,7 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                 }
                 if (--listIx < 0) {
-                    listIx = contexts.length - 1;
+                    listIx = groups.length - 1;
                 }
             }
 
@@ -4019,7 +4019,7 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ // }
         /*P*/ // ]
 
-        node.mContext.addDirty(node, mCommitState);
+        node.mGroup.addDirty(node, mCommitState);
         return node;
     }
 
@@ -4238,16 +4238,16 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ // ]
 
         node.mId = newId;
-        node.mContext.addDirty(node, mCommitState);
+        node.mGroup.addDirty(node, mCommitState);
     }
 
     /**
      * Remove the old node from the dirty list and swap in the new node. Caller must hold
      * commit lock and latched the old node. The cached state of the nodes is not altered.
-     * Both nodes must belong to the same context.
+     * Both nodes must belong to the same group.
      */
     void swapIfDirty(Node oldNode, Node newNode) {
-        oldNode.mContext.swapIfDirty(oldNode, newNode);
+        oldNode.mGroup.swapIfDirty(oldNode, newNode);
     }
 
     /**
@@ -4260,7 +4260,7 @@ final class LocalDatabase extends AbstractDatabase {
         /*P*/ //     mPageDb.dirtyPage(node.mId);
         /*P*/ // }
         /*P*/ // ]
-        node.mContext.addDirty(node, mCommitState);
+        node.mGroup.addDirty(node, mCommitState);
     }
 
     /**
@@ -5000,7 +5000,7 @@ final class LocalDatabase extends AbstractDatabase {
     private Node removeInode(long nodeId) throws IOException {
         Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
-            node = allocLatchedNode(nodeId, NodeContext.MODE_UNEVICTABLE);
+            node = allocLatchedNode(nodeId, NodeGroup.MODE_UNEVICTABLE);
             /*P*/ // [
             node.type(TYPE_FRAGMENT);
             /*P*/ // ]
@@ -5412,7 +5412,7 @@ final class LocalDatabase extends AbstractDatabase {
         }
 
         try {
-            mCheckpointer.flushDirty(mNodeContexts, stateToFlush);
+            mCheckpointer.flushDirty(mNodeGroups, stateToFlush);
 
             if (mRedoWriter != null) {
                 mRedoWriter.checkpointFlushed();

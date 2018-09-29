@@ -45,12 +45,12 @@ abstract class PageDb implements CauseCloseable {
     public abstract boolean isDirectIO();
 
     /**
-     * @return 0 or NodeContext.MODE_NO_EVICT
+     * @return 0 or NodeGroup.MODE_NO_EVICT
      */
     public abstract int allocMode();
 
     /**
-     * @param mode NodeContext.MODE_UNEVICTABLE | MODE_NO_EVICT
+     * @param mode NodeGroup.MODE_UNEVICTABLE | MODE_NO_EVICT
      * @return node with id assigned
      */
     public abstract Node allocLatchedNode(LocalDatabase db, int mode) throws IOException;

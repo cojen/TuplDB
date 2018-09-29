@@ -79,14 +79,14 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     static final int ENTRY_FRAGMENTED = 0x40;
 
-    // Context this node belongs to, for tracking dirty nodes and most recently used nodes.
-    final _NodeContext mContext;
+    // Group this node belongs to, for tracking dirty nodes and most recently used nodes.
+    final _NodeGroup mGroup;
 
-    // Links within usage list, guarded by _NodeContext.
+    // Links within usage list, guarded by _NodeGroup.
     _Node mMoreUsed; // points to more recently used node
     _Node mLessUsed; // points to less recently used node
 
-    // Links within dirty list, guarded by _NodeContext.
+    // Links within dirty list, guarded by _NodeGroup.
     _Node mNextDirty;
     _Node mPrevDirty;
 
@@ -272,16 +272,16 @@ final class _Node extends Clutch implements _DatabaseAccess {
     // Set by a partially completed split.
     transient _Split mSplit;
 
-    _Node(_NodeContext context, long page) {
-        mContext = context;
+    _Node(_NodeGroup group, long page) {
+        mGroup = group;
         mPage = page;
     }
 
     // Construct a stub node, latched exclusively.
-    _Node(_NodeContext context) {
+    _Node(_NodeGroup group) {
         super(EXCLUSIVE);
 
-        mContext = context;
+        mGroup = group;
         mPage = p_stubTreePage();
 
         // Special stub id. Page 0 and 1 are never used by nodes, and negative indicates that
@@ -303,7 +303,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     // Construct a "lock" object for use when loading a node. See loadChild method.
     private _Node(long id) {
         super(EXCLUSIVE);
-        mContext = null;
+        mGroup = null;
         mId = id;
     }
 
@@ -340,12 +340,12 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     @Override
     protected Clutch.Pack getPack() {
-        return mContext;
+        return mGroup;
     }
 
     @Override
     public _LocalDatabase getDatabase() {
-        return mContext.mDatabase;
+        return mGroup.mDatabase;
     }
 
     void asEmptyRoot() {
@@ -394,7 +394,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     _Node cloneNode() {
-        _Node newNode = new _Node(mContext, mPage);
+        _Node newNode = new _Node(mGroup, mPage);
         newNode.mId = mId;
         newNode.mCachedState = mCachedState;
         /*P*/ // [
@@ -424,7 +424,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * by this method, even if an exception is thrown.
      */
     void used(ThreadLocalRandom rnd) {
-        mContext.used(this, rnd);
+        mGroup.used(this, rnd);
     }
 
     /**
@@ -433,7 +433,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * by this method.
      */
     void unused() {
-        mContext.unused(this);
+        mGroup.unused(this);
     }
 
     /**
@@ -441,7 +441,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * most recently used.
      */
     void makeEvictable() {
-        mContext.makeEvictable(this);
+        mGroup.makeEvictable(this);
     }
 
     /**
@@ -449,14 +449,14 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * used.
      */
     void makeEvictableNow() {
-        mContext.makeEvictableNow(this);
+        mGroup.makeEvictableNow(this);
     }
 
     /**
      * Allow a _Node which was allocated as evictable to be unevictable.
      */
     void makeUnevictable() {
-        mContext.makeUnevictable(this);
+        mGroup.makeUnevictable(this);
     }
 
     /**
@@ -608,7 +608,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         // Create a child node and copy this root node state into it. Then update this
         // root node to point to new and split child nodes. New root is always an internal node.
 
-        _LocalDatabase db = mContext.mDatabase;
+        _LocalDatabase db = mGroup.mDatabase;
         _Node child = db.allocDirtyNode();
         db.nodeMapPut(child);
 
@@ -890,7 +890,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             return;
         }
 
-        _LocalDatabase db = mContext.mDatabase;
+        _LocalDatabase db = mGroup.mDatabase;
 
         closed = null;
 
@@ -924,7 +924,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         /*P*/ // [
         // return page.length;
         /*P*/ // |
-        return mContext.pageSize();
+        return mGroup.pageSize();
         /*P*/ // ]
     }
 
@@ -4524,7 +4524,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new ClosedIndexException();
         }
 
-        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
         long newPage = newNode.mPage;
@@ -4594,7 +4594,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new ClosedIndexException();
         }
 
-        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+        _Node newNode = tree.mDatabase.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
         long newPage = newNode.mPage;
@@ -5075,14 +5075,14 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         _Node newNode;
         try {
-            newNode = db.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+            newNode = db.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
         } catch (DatabaseFullException e) {
             // Internal node splits are critical. If a child node reference cannot be inserted,
             // then it would be orphaned. Try allocating again without any capacity limit, or
             // else the caller must panic the database.
             db.capacityLimitOverride(-1);
             try {
-                newNode = db.allocDirtyNode(_NodeContext.MODE_UNEVICTABLE);
+                newNode = db.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
             } finally {
                 db.capacityLimitOverride(0);
             }
