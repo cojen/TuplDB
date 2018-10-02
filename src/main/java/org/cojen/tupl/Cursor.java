@@ -334,8 +334,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     public LockResult find(byte[] key) throws IOException;
 
     /**
-     * Moves the Cursor to find the first available entry greater than or equal
-     * to the given key.
+     * Moves the Cursor to find the closest available entry greater than or equal to the given
+     * key. Logically equivalent to {@link java.util.NavigableMap#ceilingEntry(K)
+     * NavigableMap.ceilingEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -358,8 +359,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Moves the Cursor to find the first available entry greater than the
-     * given key.
+     * Moves the Cursor to find the closest available entry greater than the given key.
+     * Logically equivalent to {@link java.util.NavigableMap#higherEntry(K)
+     * NavigableMap.higherEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -376,8 +378,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Moves the Cursor to find the first available entry less than or equal to
-     * the given key.
+     * Moves the Cursor to find the closest available entry less than or equal to the given
+     * key. Logically equivalent to {@link java.util.NavigableMap#floorEntry(K)
+     * NavigableMap.floorEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -400,8 +403,8 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Moves the Cursor to find the first available entry less than the given
-     * key.
+     * Moves the Cursor to find the closest available entry less than the given key. Logically
+     * equivalent to {@link java.util.NavigableMap#lowerEntry(K) NavigableMap.lowerEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -418,9 +421,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Optimized version of the regular find method, which can perform fewer search steps if
-     * the given key is in close proximity to the current one. Even if not in close proximity,
-     * the find outcome is identical, although it may perform more slowly.
+     * Optimized version of the regular {@link #find find} method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one. Even if not in
+     * close proximity, the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -436,9 +439,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Optimized version of the regular findGe method, which can perform fewer search steps if
-     * the given key is in close proximity to the current one. Even if not in close proximity,
-     * the find outcome is identical, although it may perform more slowly.
+     * Optimized version of the regular {@link #findGe findGe} method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one. Even if not in
+     * close proximity, the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -461,9 +464,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Optimized version of the regular findGt method, which can perform fewer search steps if
-     * the given key is in close proximity to the current one. Even if not in close proximity,
-     * the find outcome is identical, although it may perform more slowly.
+     * Optimized version of the regular {@link #findGt findGt} method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one. Even if not in
+     * close proximity, the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -480,9 +483,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Optimized version of the regular findLe method, which can perform fewer search steps if
-     * the given key is in close proximity to the current one. Even if not in close proximity,
-     * the find outcome is identical, although it may perform more slowly.
+     * Optimized version of the regular {@link #findLe findLe} method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one. Even if not in
+     * close proximity, the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
@@ -505,9 +508,9 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Optimized version of the regular findLt method, which can perform fewer search steps if
-     * the given key is in close proximity to the current one. Even if not in close proximity,
-     * the find outcome is identical, although it may perform more slowly.
+     * Optimized version of the regular {@link #findLt findLt} method, which can perform fewer
+     * search steps if the given key is in close proximity to the current one. Even if not in
+     * close proximity, the find outcome is identical, although it may perform more slowly.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.

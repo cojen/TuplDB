@@ -264,72 +264,70 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findGe-byte:A-">findGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Moves the Cursor to find the first available entry greater than or equal
- to the given key.</div>
+<div class="block">Moves the Cursor to find the closest available entry greater than or equal to the given
+ key.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findGt-byte:A-">findGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Moves the Cursor to find the first available entry greater than the
- given key.</div>
+<div class="block">Moves the Cursor to find the closest available entry greater than the given key.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findLe-byte:A-">findLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Moves the Cursor to find the first available entry less than or equal to
- the given key.</div>
+<div class="block">Moves the Cursor to find the closest available entry less than or equal to the given
+ key.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findLt-byte:A-">findLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Moves the Cursor to find the first available entry less than the given
- key.</div>
+<div class="block">Moves the Cursor to find the closest available entry less than the given key.</div>
 </td>
 </tr>
 <tr id="i11" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findNearby-byte:A-">findNearby</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Optimized version of the regular find method, which can perform fewer search steps if
- the given key is in close proximity to the current one.</div>
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#find-byte:A-"><code>find</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
 <tr id="i12" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findNearbyGe-byte:A-">findNearbyGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Optimized version of the regular findGe method, which can perform fewer search steps if
- the given key is in close proximity to the current one.</div>
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findGe-byte:A-"><code>findGe</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
 <tr id="i13" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findNearbyGt-byte:A-">findNearbyGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Optimized version of the regular findGt method, which can perform fewer search steps if
- the given key is in close proximity to the current one.</div>
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findGt-byte:A-"><code>findGt</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
 <tr id="i14" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findNearbyLe-byte:A-">findNearbyLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Optimized version of the regular findLe method, which can perform fewer search steps if
- the given key is in close proximity to the current one.</div>
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findLe-byte:A-"><code>findLe</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
 <tr id="i15" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/WrappedCursor.html#findNearbyLt-byte:A-">findNearbyLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
- the given key is in close proximity to the current one.</div>
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findLt-byte:A-"><code>findLt</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
 <tr id="i16" class="altColor">
@@ -1322,8 +1320,8 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findGe</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGe&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the first available entry greater than or equal
- to the given key.
+<div class="block">Moves the Cursor to find the closest available entry greater than or equal to the given
+ key. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#ceilingEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.ceilingEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1345,8 +1343,8 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findGt</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGt&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the first available entry greater than the
- given key.
+<div class="block">Moves the Cursor to find the closest available entry greater than the given key.
+ Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#higherEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.higherEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1368,8 +1366,8 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findLe</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLe&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the first available entry less than or equal to
- the given key.
+<div class="block">Moves the Cursor to find the closest available entry less than or equal to the given
+ key. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#floorEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.floorEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1391,8 +1389,8 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findLt</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLt&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the first available entry less than the given
- key.
+<div class="block">Moves the Cursor to find the closest available entry less than the given key. Logically
+ equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#lowerEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.lowerEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1414,9 +1412,9 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findNearby</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearby&#8203;(byte[]&nbsp;key)
                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Optimized version of the regular find method, which can perform fewer search steps if
- the given key is in close proximity to the current one. Even if not in close proximity,
- the find outcome is identical, although it may perform more slowly.
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#find-byte:A-"><code>find</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one. Even if not in
+ close proximity, the find outcome is identical, although it may perform more slowly.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1438,9 +1436,9 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findNearbyGe</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGe&#8203;(byte[]&nbsp;key)
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Optimized version of the regular findGe method, which can perform fewer search steps if
- the given key is in close proximity to the current one. Even if not in close proximity,
- the find outcome is identical, although it may perform more slowly.
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findGe-byte:A-"><code>findGe</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one. Even if not in
+ close proximity, the find outcome is identical, although it may perform more slowly.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1462,9 +1460,9 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findNearbyGt</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyGt&#8203;(byte[]&nbsp;key)
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Optimized version of the regular findGt method, which can perform fewer search steps if
- the given key is in close proximity to the current one. Even if not in close proximity,
- the find outcome is identical, although it may perform more slowly.
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findGt-byte:A-"><code>findGt</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one. Even if not in
+ close proximity, the find outcome is identical, although it may perform more slowly.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1486,9 +1484,9 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findNearbyLe</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLe&#8203;(byte[]&nbsp;key)
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Optimized version of the regular findLe method, which can perform fewer search steps if
- the given key is in close proximity to the current one. Even if not in close proximity,
- the find outcome is identical, although it may perform more slowly.
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findLe-byte:A-"><code>findLe</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one. Even if not in
+ close proximity, the find outcome is identical, although it may perform more slowly.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1510,9 +1508,9 @@ implements <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org
 <h4>findNearbyLt</h4>
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findNearbyLt&#8203;(byte[]&nbsp;key)
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Optimized version of the regular findLt method, which can perform fewer search steps if
- the given key is in close proximity to the current one. Even if not in close proximity,
- the find outcome is identical, although it may perform more slowly.
+<div class="block">Optimized version of the regular <a href="../../../org/cojen/tupl/Cursor.html#findLt-byte:A-"><code>findLt</code></a> method, which can perform fewer
+ search steps if the given key is in close proximity to the current one. Even if not in
+ close proximity, the find outcome is identical, although it may perform more slowly.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
