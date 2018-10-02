@@ -29,6 +29,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.concurrent.atomic.LongAdder;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * Parallel tree separating utility. All entries from the source trees are separated into new
  * target trees, with no overlapping key ranges.
@@ -336,7 +338,7 @@ abstract class _TreeSeparator extends LongAdder {
                 _TreeCursor scursor = selector.mSource;
 
                 transfer: {
-                    if (highKey != null && Utils.compareUnsigned(scursor.key(), highKey) >= 0) {
+                    if (highKey != null && compareUnsigned(scursor.key(), highKey) >= 0) {
                         scursor.reset();
                     } else {
                         if (selector.mSkip) {
@@ -423,7 +425,7 @@ abstract class _TreeSeparator extends LongAdder {
         }
 
         int compareTo(Selector other) {
-            int compare = Utils.compareUnsigned(this.mSource.key(), other.mSource.key());
+            int compare = compareUnsigned(this.mSource.key(), other.mSource.key());
 
             if (compare == 0) {
                 // Favor the later source when duplicates are found.

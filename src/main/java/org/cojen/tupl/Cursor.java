@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * Maintains a logical position in a {@link View}. Cursor instances can only be
  * safely used by one thread at a time, and they must be {@link #reset reset}
@@ -119,7 +121,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      */
     public default int compareKeyTo(byte[] rkey) {
         byte[] lkey = key();
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareUnsigned(lkey, rkey);
     }
 
     /**
@@ -134,7 +136,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      */
     public default int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = key();
-        return Utils.compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, offset + length);
     }
 
     /**

@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
 /**
@@ -32,6 +33,6 @@ final class KeyComparator implements Comparator<byte[]> {
 
     @Override
     public int compare(byte[] a, byte[] b) {
-        return Utils.compareUnsigned(a, 0, a.length, b, 0, b.length);
+        return Arrays.compareUnsigned(a, b);
     }
 }

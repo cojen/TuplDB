@@ -31,6 +31,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * B-tree implementation.
  *
@@ -684,7 +686,7 @@ class Tree implements View, Index {
             }
             
             if (lowKey != null) { 
-                if (Utils.compareUnsigned(lowKey, endKey) > 0) {
+                if (compareUnsigned(lowKey, endKey) > 0) {
                     // lowKey is past the end key.  Move on.
                     return length;
                 }
@@ -697,7 +699,7 @@ class Tree implements View, Index {
                 }
             }
             
-            if (highKey != null && Utils.compareUnsigned(highKey, endKey) <= 0) {
+            if (highKey != null && compareUnsigned(highKey, endKey) <= 0) {
                 endKey = highKey; 
             }
             

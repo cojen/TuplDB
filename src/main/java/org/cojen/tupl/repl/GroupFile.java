@@ -39,6 +39,7 @@ import java.net.UnknownHostException;
 
 import java.security.SecureRandom;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableSet;
@@ -580,7 +581,7 @@ final class GroupFile extends Latch {
         Map<byte[], Object> consumers = mProposeConsumers;
         try {
             if (consumers == null) {
-                consumers = new ConcurrentSkipListMap<>(Utils::compareUnsigned);
+                consumers = new ConcurrentSkipListMap<>(Arrays::compareUnsigned);
                 mProposeConsumers = consumers;
             }
         } finally {

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Arrays;
+
 /**
  * Short-lived object for capturing the state of a partially completed node split.
  *
@@ -83,7 +85,7 @@ final class _Split {
      * equal, >0 if greater.}
      */
     final int compare(byte[] key) {
-        return Utils.compareUnsigned(key, 0, key.length, mFullKey, 0, mFullKey.length);
+        return Arrays.compareUnsigned(key, mFullKey);
     }
 
     /**

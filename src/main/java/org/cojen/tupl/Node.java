@@ -26,8 +26,9 @@ import org.cojen.tupl.util.Clutch;
 import static org.cojen.tupl.PageOps.*;
 
 import static org.cojen.tupl.Utils.EMPTY_BYTES;
-import static org.cojen.tupl.Utils.compareUnsigned;
 import static org.cojen.tupl.Utils.rethrow;
+
+import static java.util.Arrays.compareUnsigned;
 
 /**
  * Node within a B-tree, undo log, or a large value fragment.
@@ -1442,7 +1443,7 @@ final class Node extends Clutch implements DatabaseAccess {
             if ((header & ENTRY_FRAGMENTED) != 0) {
                 // Note: An optimized version wouldn't need to copy the whole key.
                 byte[] leftKey = getDatabase().reconstructKey(page, loc, keyLen);
-                return compareUnsigned(leftKey, 0, leftKey.length, rightKey, 0, rightKey.length);
+                return compareUnsigned(leftKey, rightKey);
             }
         }
         return p_compareKeysPageToArray(page, loc, keyLen, rightKey, 0, rightKey.length);
@@ -1491,8 +1492,7 @@ final class Node extends Clutch implements DatabaseAccess {
                         // Note: An optimized version wouldn't need to copy the whole key.
                         byte[] rightKey = right.getDatabase()
                             .reconstructKey(rightPage, rightLoc, rightLen);
-                        return compareUnsigned(leftKey, 0, leftKey.length,
-                                               rightKey, 0, rightKey.length);
+                        return compareUnsigned(leftKey, rightKey);
                     }
                 }
 

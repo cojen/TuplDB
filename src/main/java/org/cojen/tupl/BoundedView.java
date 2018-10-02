@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import static org.cojen.tupl.Utils.*;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * 
  *
@@ -169,7 +171,7 @@ final class BoundedView extends SubView {
      * @return {@literal <0 if less than start, 0 if equal (in range), >0 if higher (in range)}
      */
     int startRangeCompare(byte[] start, byte[] key) {
-        int result = compareUnsigned(key, 0, key.length, start, 0, start.length);
+        int result = compareUnsigned(key, start);
         return result != 0 ? result : (mMode & START_EXCLUSIVE);
     }
 
@@ -188,7 +190,7 @@ final class BoundedView extends SubView {
      * @return {@literal <0 if less than end (in range), 0 if equal (in range), >0 if higher}
      */
     int endRangeCompare(byte[] end, byte[] key) {
-        int result = compareUnsigned(key, 0, key.length, end, 0, end.length);
+        int result = compareUnsigned(key, end);
         return result != 0 ? result : (mMode & END_EXCLUSIVE);
     }
 

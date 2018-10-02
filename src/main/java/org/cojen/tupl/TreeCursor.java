@@ -28,6 +28,8 @@ import org.cojen.tupl.io.CauseCloseable;
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * Internal cursor implementation, which can be used by one thread at a time.
  *
@@ -136,13 +138,13 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     public final int compareKeyTo(byte[] rkey) {
         byte[] lkey = mKey;
-        return compareUnsigned(lkey, 0, lkey.length, rkey, 0, rkey.length);
+        return compareUnsigned(lkey, rkey);
     }
 
     @Override
     public final int compareKeyTo(byte[] rkey, int offset, int length) {
         byte[] lkey = mKey;
-        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, length);
+        return compareUnsigned(lkey, 0, lkey.length, rkey, offset, offset + length);
     }
 
     @Override
@@ -4160,7 +4162,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             } else {
                 findGe(lowKey);
             }
-            if (mKey == null || (highKey != null && Utils.compareUnsigned(mKey, highKey) >= 0)) {
+            if (mKey == null || (highKey != null && compareUnsigned(mKey, highKey) >= 0)) {
                 return true;
             }
             return false;

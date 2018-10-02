@@ -25,6 +25,8 @@ import java.util.zip.CRC32;
 
 import static org.cojen.tupl.Utils.*;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * Low-level methods for operating against a database page.
  *
@@ -324,13 +326,13 @@ final class PageOps {
     static int p_compareKeysPageToArray(/*P*/ byte[] apage, int aoff, int alen,
                                         byte[] b, int boff, int blen)
     {
-        return compareUnsigned(apage, aoff, alen, b, boff, blen);
+        return compareUnsigned(apage, aoff, aoff + alen, b, boff, boff + blen);
     }
 
     static int p_compareKeysPageToPage(/*P*/ byte[] apage, int aoff, int alen,
                                        /*P*/ byte[] bpage, int boff, int blen)
     {
-        return compareUnsigned(apage, aoff, alen, bpage, boff, blen);
+        return compareUnsigned(apage, aoff, aoff + alen, bpage, boff, boff + blen);
     }
 
     static byte[] p_midKeyLowPage(/*P*/ byte[] lowPage, int lowOff, int lowLen,

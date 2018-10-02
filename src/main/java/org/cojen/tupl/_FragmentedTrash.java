@@ -24,6 +24,8 @@ import static java.lang.System.arraycopy;
 import static org.cojen.tupl.DirectPageOps.*;
 import static org.cojen.tupl.Utils.*;
 
+import static java.util.Arrays.compareUnsigned;
+
 /**
  * Persisted collection of fragmented values which should be deleted. Trash is
  * emptied after transactions commit and during recovery.

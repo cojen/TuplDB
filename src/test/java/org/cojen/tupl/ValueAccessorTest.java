@@ -202,7 +202,7 @@ public class ValueAccessorTest {
                     int amt = accessor.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
-                    int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
+                    int cmp = Arrays.compareUnsigned(value, start, start + amt, buf, 1, 1 + amt);
                     assertEquals(0, cmp);
                 }
             }
@@ -243,7 +243,7 @@ public class ValueAccessorTest {
                     int amt = accessor.valueRead(start, buf, 1, end - start);
                     int expected = Math.min(end - start, length - start);
                     assertEquals(expected, amt);
-                    int cmp = Utils.compareUnsigned(value, start, amt, buf, 1, amt);
+                    int cmp = Arrays.compareUnsigned(value, start, start + amt, buf, 1, 1 + amt);
                     assertEquals(0, cmp);
                 }
             }

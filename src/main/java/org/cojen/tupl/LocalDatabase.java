@@ -1330,7 +1330,7 @@ final class LocalDatabase extends AbstractDatabase {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // Lock in a consistent order, avoiding deadlocks.
-                if (compareUnsigned(oldNameKey, newNameKey) <= 0) {
+                    if (Arrays.compareUnsigned(oldNameKey, newNameKey) <= 0) {
                     txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
                     txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
                 } else {
