@@ -142,6 +142,7 @@ final class BasicPageCache extends Latch implements PageCache {
                         // Found it.
                         mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
                         copier.copyToBB(mData, mPageSize);
+                        mData.position(0);
 
                         if (ptr != mMostRecentPtr) {
                             // Move to most recent.
@@ -210,6 +211,7 @@ final class BasicPageCache extends Latch implements PageCache {
             // Copy page into the data buffer.
             mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
             copier.copyToBB(mData, mPageSize);
+            mData.position(0);
 
             // Add new entry into the hashtable.
             nodes.put(ptr + CHAIN_NEXT_PTR_FIELD, hashTable[index]);
@@ -258,8 +260,9 @@ final class BasicPageCache extends Latch implements PageCache {
                     final int chainNextPtr = nodes.get(ptr + CHAIN_NEXT_PTR_FIELD);
                     if (getPageId(nodes, ptr) == pageId) {
                         // Found it.
-                        mData.position(((ptr / NODE_SIZE_IN_INTS) * mPageSize) + start);
-                        copier.copyFromBB(mData, mPageSize);
+                        ByteBuffer data = mData.slice();
+                        data.position(((ptr / NODE_SIZE_IN_INTS) * mPageSize) + start);
+                        copier.copyFromBB(data, mPageSize);
                         return true;
                     }
                     if (chainNextPtr < 0) {
@@ -314,6 +317,7 @@ final class BasicPageCache extends Latch implements PageCache {
                             // Copy data buffer into the page.
                             mData.position((ptr / NODE_SIZE_IN_INTS) * mPageSize);
                             copier.copyFromBB(mData, mPageSize);
+                            mData.position(0);
                         }
 
                         if (ptr != mLeastRecentPtr) {
