@@ -109,6 +109,12 @@ public class Latch {
         return mLatchState == 0 && cStateHandle.compareAndSet(this, 0, EXCLUSIVE);
     }
 
+    private void doAcquireExclusiveSpin() {
+        while (!doTryAcquireExclusive()) {
+            Thread.onSpinWait();
+        }
+    }
+
     /**
      * Attempt to acquire the exclusive latch, aborting if interrupted.
      *
@@ -134,7 +140,7 @@ public class Latch {
             // Possibly an OutOfMemoryError.
             if (nanosTimeout < 0) {
                 // Caller isn't expecting an exception, so spin.
-                while (!doTryAcquireExclusive());
+                doAcquireExclusiveSpin();
                 return true;
             }
             return false;
@@ -160,7 +166,7 @@ public class Latch {
             acquire(new WaitNode());
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-            while (!doTryAcquireExclusive());
+            doAcquireExclusiveSpin();
         }
     }
 
@@ -332,6 +338,12 @@ public class Latch {
         return state >= 0 && cStateHandle.compareAndSet(this, state, state + 1);
     }
 
+    private void doAcquireSharedSpin() {
+        while (!doTryAcquireShared()) {
+            Thread.onSpinWait();
+        }
+    }
+
     /**
      * Attempt to acquire a shared latch, aborting if interrupted.
      *
@@ -366,7 +378,7 @@ public class Latch {
             // Possibly an OutOfMemoryError.
             if (nanosTimeout < 0) {
                 // Caller isn't expecting an exception, so spin.
-                while (!doTryAcquireShared());
+                doAcquireSharedSpin();
                 return true;
             }
             return false;
@@ -413,7 +425,7 @@ public class Latch {
             acquire(new Shared());
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-            while (!doTryAcquireShared());
+            doAcquireSharedSpin();
         }
 
         return true;
@@ -442,7 +454,7 @@ public class Latch {
             // Possibly an OutOfMemoryError.
             if (nanosTimeout < 0) {
                 // Caller isn't expecting an exception, so spin.
-                while (!doTryAcquireShared());
+                doAcquireSharedSpin();
                 return 1;
             }
             return 0;
@@ -460,7 +472,7 @@ public class Latch {
                 acquire(new Shared());
             } catch (Throwable e) {
                 // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
-                while (!doTryAcquireShared());
+                doAcquireSharedSpin();
             }
         }
     }
@@ -748,6 +760,8 @@ public class Latch {
         if (trials >= SPIN_LIMIT) {
             Thread.yield();
             trials = 0;
+        } else {
+            Thread.onSpinWait();
         }
         return trials;
     }
@@ -784,6 +798,7 @@ public class Latch {
                         return 1;
                     }
                     if (!acquired) {
+                        Thread.onSpinWait();
                         continue;
                     }
                     // Acquired, so no need to reference the waiter anymore.

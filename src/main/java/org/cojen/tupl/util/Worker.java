@@ -189,6 +189,7 @@ public class Worker {
                 if (tryEnqueue(task)) {
                     return;
                 }
+                Thread.onSpinWait();
             }
             Thread.yield();
             if (tryEnqueue(task)) {
@@ -215,6 +216,7 @@ public class Worker {
                 if (mSize <= 0) {
                     break;
                 }
+                Thread.onSpinWait();
             }
             Thread.yield();
             if (mSize <= 0) {
@@ -295,6 +297,8 @@ public class Worker {
                 if (mThreadState == THREAD_BLOCKED) {
                     mThreadState = THREAD_RUNNING;
                     LockSupport.unpark(mWaiter);
+                } else {
+                    Thread.onSpinWait();
                 }
             }
 

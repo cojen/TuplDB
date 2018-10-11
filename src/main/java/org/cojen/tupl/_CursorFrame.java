@@ -232,6 +232,8 @@ class _CursorFrame {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
                 trials = SPIN_LIMIT << 1;
+            } else {
+                Thread.onSpinWait();
             }
         }
     }
@@ -323,6 +325,8 @@ class _CursorFrame {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
                 trials = SPIN_LIMIT << 1;
+            } else {
+                Thread.onSpinWait();
             }
         }
     }
@@ -367,6 +371,8 @@ class _CursorFrame {
                 // Spinning too much due to high contention. Back off a tad.
                 Thread.yield();
                 trials = SPIN_LIMIT << 1;
+            } else {
+                Thread.onSpinWait();
             }
         }
     }
