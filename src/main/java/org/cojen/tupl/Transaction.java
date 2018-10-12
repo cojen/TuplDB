@@ -526,4 +526,13 @@ public interface Transaction extends Flushable {
     default Object attachment() {
         return null;
     }
+
+    /**
+     * Manually flush all buffered changes made by this transaction to the shared redo
+     * log. Flushing is performed automatically when the buffer fills up, or when the
+     * transaction is committed. Flushing can be used in conjunction with replication, to
+     * ensure that locks and changes are visible to replicas before the transaction commits.
+     */
+    @Override
+    void flush() throws IOException;
 }
