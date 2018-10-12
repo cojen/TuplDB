@@ -3456,14 +3456,11 @@ final class _LocalDatabase extends AbstractDatabase {
 
         final _Node[] table = mNodeMapTable;
         _Node node = table[hash & (table.length - 1)];
-        if (node != null) {
-            // Limit scan of collision chain in case a temporary infinite loop is observed.
-            int limit = 100;
-            do {
-                if (node.mId == nodeId) {
-                    return node;
-                }
-            } while ((node = node.mNodeMapNext) != null && --limit != 0);
+        while (node != null) {
+            if (node.mId == nodeId) {
+                return node;
+            }
+            node = node.mNodeMapNext;
         }
 
         // Again with shared partition latch held.
