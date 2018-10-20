@@ -197,7 +197,10 @@ public class Worker {
             }
             mWaiter = Thread.currentThread();
             if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
-                LockSupport.park(this);
+                // Loop in case of spurious unpark.
+                do {
+                    LockSupport.park(this);
+                } while (mThreadState == THREAD_BLOCKED);
             }
             mWaiter = null;
         }
@@ -224,7 +227,10 @@ public class Worker {
             }
             mWaiter = Thread.currentThread();
             if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
-                LockSupport.park(this);
+                // Loop in case of spurious unpark.
+                do {
+                    LockSupport.park(this);
+                } while (mThreadState == THREAD_BLOCKED);
             }
             mWaiter = null;
         }
