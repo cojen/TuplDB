@@ -209,13 +209,19 @@ final class _LockManager {
     final _Locker lockExclusiveLocal(long indexId, byte[] key, int hash)
         throws LockFailureException
     {
+        return lockExclusiveLocal(indexId, key, hash, mDefaultTimeoutNanos);
+    }
+
+    final _Locker lockExclusiveLocal(long indexId, byte[] key, int hash, long timeoutNanos)
+        throws LockFailureException
+    {
         _Locker locker = localLocker();
         LockResult result = getLockHT(hash)
-            .tryLock(TYPE_EXCLUSIVE, locker, indexId, key, hash, mDefaultTimeoutNanos);
+            .tryLock(TYPE_EXCLUSIVE, locker, indexId, key, hash, timeoutNanos);
         if (result.isHeld()) {
             return locker;
         }
-        throw locker.failed(TYPE_EXCLUSIVE, result, mDefaultTimeoutNanos);
+        throw locker.failed(TYPE_EXCLUSIVE, result, timeoutNanos);
     }
 
     final _Locker localLocker() {

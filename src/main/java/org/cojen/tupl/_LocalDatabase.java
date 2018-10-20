@@ -1207,8 +1207,9 @@ final class _LocalDatabase extends AbstractDatabase {
                 // Lookup name with exclusive lock, to prevent races with concurrent index
                 // creation. If a replicated operation which requires the newly created index
                 // merely acquired a shared lock, then it might not find the index at all.
-                _Locker locker = mRegistryKeyMap.lockExclusiveLocal
-                    (idKey, _LockManager.hash(mRegistryKeyMap.getId(), idKey));
+                long regId = mRegistryKeyMap.getId();
+                _Locker locker = mLockManager.lockExclusiveLocal
+                    (regId, idKey, _LockManager.hash(regId, idKey), -1); // infinite timeout
                 try {
                     name = mRegistryKeyMap.load(Transaction.BOGUS, idKey);
                 } finally {
