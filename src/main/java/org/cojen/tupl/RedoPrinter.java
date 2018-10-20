@@ -249,6 +249,9 @@ class RedoPrinter implements RedoVisitor {
     }
 
     private static String toHex(byte[] bytes) {
+        if (bytes == null) {
+            return "null";
+        }
         return toHex(bytes, 0, bytes.length);
     }
 
