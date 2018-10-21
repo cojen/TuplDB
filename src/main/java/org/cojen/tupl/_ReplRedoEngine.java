@@ -45,8 +45,8 @@ import static org.cojen.tupl.Utils.*;
 class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private static final int MAX_QUEUE_SIZE = 100;
     private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;
-    private static final long INFINITE_TIMEOUT = -1L;
-    private static final String ATTACHMENT = "replication";
+    static final long INFINITE_TIMEOUT = -1L;
+    static final String ATTACHMENT = "replication";
 
     // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
     // to unsigned 11400714819323198485.
@@ -73,7 +73,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private ReplRedoDecoder mDecoder;
 
     /**
-     * @param manager already started
+     * @param manager already started; if null, assume subclass is the manager
      * @param txns recovered transactions; can be null; cleared as a side-effect
      */
     _ReplRedoEngine(ReplicationManager manager, int maxThreads,
@@ -81,6 +81,11 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                    LHashTable.Obj<_TreeCursor> cursors)
         throws IOException
     {
+        if (manager == null) {
+            // Assume subclass is the manager.
+            manager = (ReplicationManager) this;
+        }
+
         if (maxThreads <= 0) {
             int procCount = Runtime.getRuntime().availableProcessors();
             maxThreads = maxThreads == 0 ? procCount : (-maxThreads * procCount);
@@ -178,14 +183,15 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        doReset();
+        doReset(false);
         return true;
     }
 
     /**
+     * @param interrupt pass true to cause worker threads to exit when done
      * @return remaining 2PC transactions, or null if none
      */
-    private LHashTable.Obj<_LocalTransaction> doReset() throws IOException {
+    protected LHashTable.Obj<_LocalTransaction> doReset(boolean interrupt) throws IOException {
         // Reset and discard all non-2PC transactions.
 
         final LHashTable.Obj<_LocalTransaction> remaining;
@@ -213,7 +219,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
-            mWorkerGroup.join(false);
+            mWorkerGroup.join(interrupt);
         }
 
         synchronized (mCursors) {
@@ -236,6 +242,10 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         });
 
         return remaining;
+    }
+
+    protected int remainingTransactions() {
+        return mTransactions.size();
     }
 
     @Override
@@ -274,15 +284,20 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
         // Must acquire the lock before task is enqueued.
-        _Locker locker = new _Locker(mDatabase.mLockManager);
-        locker.attach(ATTACHMENT);
+
+        _Locker locker = new _Locker(mDatabase.mLockManager) {
+            // Superclass doesn't support attachments by default.
+            @Override
+            public Object attachment() {
+                return _ReplRedoEngine.this.attachment();
+            }
+        };
+
         locker.tryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
         runTaskAnywhere(new Worker.Task() {
             public void run() throws IOException {
                 try {
-                    Index ix = getIndex(indexId);
-
                     // Full exclusive lock is required.
                     locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
@@ -351,6 +366,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 synchronized (mIndexes) {
                     mIndexes.remove(indexId);
                 }
+
+                mDatabase.redoMoveToTrash(txn, indexId);
 
                 try {
                     txn.commit();
@@ -1114,11 +1131,18 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
-    private _LocalTransaction newTransaction(long txnId) {
+    protected _LocalTransaction newTransaction(long txnId) {
         _LocalTransaction txn = new _LocalTransaction
             (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
         txn.attach(ATTACHMENT);
         return txn;
+    }
+
+    /**
+     * @return the attachment for non-transaction _Locker instances
+     */
+    protected Object attachment() {
+        return ATTACHMENT;
     }
 
     /**
@@ -1283,7 +1307,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
 
             // Rollback any lingering non-2PC transactions.
-            remaining = doReset();
+            remaining = doReset(false);
         } catch (Throwable e) {
             fail(e);
             return;

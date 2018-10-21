@@ -7,7 +7,8 @@ v1.4.5
 * Depends on Java 9, replacing "unsafe" usage with VarHandles.
 * Fix race condition when copying pages from the secondary cache.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
-* Reduce memory requirements when running test suite.
+* Speed up redo log recovery by using multiple threads.
+* Reduce memory requirements when running the test suite.
 
 v1.4.4 (2018-06-30)
 ------

@@ -404,6 +404,9 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * If replication is enabled, specify the maximum number of threads to process incoming
      * changes. Default is the number of available processors. If a negative number is
      * provided, the actual number applied is {@code (-num * availableProcessors)}.
+     *
+     * <p>If replication isn't enabled, this option controls the number of threads used to
+     * recover transactions from the redo log.
      */
     public DatabaseConfig maxReplicaThreads(int num) {
         mMaxReplicaThreads = num;

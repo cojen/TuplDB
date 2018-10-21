@@ -836,7 +836,10 @@ final class LocalDatabase extends AbstractDatabase {
                             RedoLog.deleteOldFile(config.mBaseFile, logId - i);
                         }
 
-                        RedoLogApplier applier = new RedoLogApplier(this, txns, cursors);
+                        boolean doCheckpoint = txns.size() != 0;
+
+                        RedoLogApplier applier = new RedoLogApplier
+                            (config.mMaxReplicaThreads, this, txns, cursors);
                         RedoLog replayLog = new RedoLog(config, logId, redoPos);
 
                         // As a side-effect, log id is set one higher than last file scanned.
@@ -844,41 +847,21 @@ final class LocalDatabase extends AbstractDatabase {
                             (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
                              "Applying redo log: %1$d");
 
-                        boolean doCheckpoint = !redoFiles.isEmpty();
+                        doCheckpoint |= !redoFiles.isEmpty();
+
+                        // Finish recovery and collect remaining 2PC transactions.
+                        txns = applier.finish();
+
+                        // Check if any exceptions were caught by recovery worker threads.
+                        checkClosedCause();
+
+                        if (shouldInvokeRecoveryHandler(txns)) {
+                            // Invoke the handler later, when database is fully opened.
+                            mRecoveredTransactions = txns;
+                        }
 
                         // Avoid re-using transaction ids used by recovery.
-                        redoTxnId = applier.mHighestTxnId;
-                        if (redoTxnId != 0) {
-                            // Subtract for modulo comparison.
-                            if (txnId == 0 || (redoTxnId - txnId) > 0) {
-                                txnId = redoTxnId;
-                            }
-                        }
-
-                        if (txns.size() > 0) {
-                            // Rollback or truncate all remaining transactions. They were never
-                            // explicitly rolled back, or they were committed but not cleaned up.
-
-                            if (mEventListener != null) {
-                                mEventListener.notify
-                                    (EventType.RECOVERY_PROCESS_REMAINING,
-                                     "Processing remaining transactions");
-                            }
-
-                            txns.traverse(entry -> {
-                                return entry.value.recoveryCleanup(true);
-                            });
-
-                            if (shouldInvokeRecoveryHandler(txns)) {
-                                // Invoke the handler later, when database is fully opened.
-                                mRecoveredTransactions = txns;
-                            }
-
-                            doCheckpoint = true;
-                        }
-
-                        // Reset any lingering registered cursors.
-                        applier.resetCursors();
+                        txnId = applier.highestTxnId(txnId);
 
                         // New redo logs begin with identifiers one higher than last scanned.
                         mRedoWriter = new RedoLog(config, replayLog, mTxnContexts[0]);
@@ -2649,6 +2632,9 @@ final class LocalDatabase extends AbstractDatabase {
         return mClosed != 0;
     }
 
+    /**
+     * If any closed cause exception, wraps it as a DatabaseException and throws it.
+     */
     void checkClosed() throws DatabaseException {
         if (isClosed()) {
             String message = "Closed";
@@ -2657,6 +2643,22 @@ final class LocalDatabase extends AbstractDatabase {
                 message += "; " + rootCause(cause);
             }
             throw new DatabaseException(message, cause);
+        }
+    }
+
+    /**
+     * Tries to directly throw the closed cause exception, wrapping it if necessary.
+     */
+    void checkClosedCause() throws IOException {
+        Throwable cause = mClosedCause;
+        if (cause != null) {
+            try {
+                throw cause;
+            } catch (IOException | RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable e) {
+                throw new DatabaseException(cause);
+            }
         }
     }
 
@@ -2684,31 +2686,13 @@ final class LocalDatabase extends AbstractDatabase {
      * @return false if already in the trash
      */
     private boolean moveToTrash(long treeId, byte[] treeIdBytes) throws IOException {
-        final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
-        final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
-
-        final LocalTransaction txn = newAlwaysRedoTransaction();
+        final LocalTransaction txn = newNoRedoTransaction();
 
         try {
             txn.lockTimeout(-1, null);
 
-            if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
-                // Already in the trash.
+            if (!doMoveToTrash(txn, treeId, treeIdBytes)) {
                 return false;
-            }
-
-            byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
-
-            if (treeName == null) {
-                // A trash entry with just a zero indicates that the name is null.
-                mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
-            } else {
-                byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
-                mRegistryKeyMap.remove(txn, nameKey, treeIdBytes);
-                // Tag the trash entry to indicate that name is non-null. Note that nameKey
-                // instance is modified directly.
-                nameKey[0] = 1;
-                mRegistryKeyMap.store(txn, trashIdKey, nameKey);
             }
 
             if (txn.mRedo != null) {
@@ -2745,6 +2729,48 @@ final class LocalDatabase extends AbstractDatabase {
             txn.reset();
         }
 
+        return true;
+    }
+
+    /**
+     * @param txn must not redo
+     */
+    void redoMoveToTrash(LocalTransaction txn, long treeId) throws IOException {
+        byte[] treeIdBytes = new byte[8];
+        encodeLongBE(treeIdBytes, 0, treeId);
+        doMoveToTrash(txn, treeId, treeIdBytes);
+    }
+
+    /**
+     * @param txn must not redo
+     * @return false if already in the trash
+     */
+    private boolean doMoveToTrash(LocalTransaction txn, long treeId, byte[] treeIdBytes)
+        throws IOException
+    {
+        final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
+
+        if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
+            // Already in the trash.
+            return false;
+        }
+
+        final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+
+        byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
+
+        if (treeName == null) {
+            // A trash entry with just a zero indicates that the name is null.
+            mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
+        } else {
+            byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
+            mRegistryKeyMap.remove(txn, nameKey, treeIdBytes);
+            // Tag the trash entry to indicate that name is non-null. Note that nameKey
+            // instance is modified directly.
+            nameKey[0] = 1;
+            mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+        }
+        
         return true;
     }
 

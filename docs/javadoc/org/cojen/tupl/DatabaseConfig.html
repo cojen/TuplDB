@@ -787,7 +787,10 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;maxReplicaThreads&#8203;(int&nbsp;num)</pre>
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes. Default is the number of available processors. If a negative number is
- provided, the actual number applied is <code>(-num * availableProcessors)</code>.</div>
+ provided, the actual number applied is <code>(-num * availableProcessors)</code>.
+
+ <p>If replication isn't enabled, this option controls the number of threads used to
+ recover transactions from the redo log.</div>
 </li>
 </ul>
 <a name="recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-">
