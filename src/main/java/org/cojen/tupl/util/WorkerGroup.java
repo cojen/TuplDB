@@ -27,6 +27,18 @@ import java.util.concurrent.TimeUnit;
  * enqueuing tasks, and so the caller must provide its own mutual exclusion to protect against
  * concurrent enqueues.
  *
+ * <p>Although this class behaves somewhat like a general purpose thread pool, the actual
+ * behavior is different. When adding tasks into a thread pool, any thread can be selected for
+ * running the task. A {@code WorkerGroup} is best used for managing collections of tasks which
+ * must run on the same thread, and in a specific order. When using a general purpose thread
+ * pool, these tasks would need to synchronize with each other, leading to contention.
+ *
+ * <p>When using a {@code WorkerGroup}, the first task in the collection should be enqueued as
+ * normal, but all of the remaining tasks should be enqueued directly into the selected worker.
+ * This ensures that one thread will run the tasks, and in the correct order. Worker threads
+ * are shared among many task collections, and execution is interleaved. Care must be taken to
+ * avoid creating stalled tasks, since this can stall the execution of unrelated tasks.
+ *
  * @author Brian S O'Neill
  */
 public abstract class WorkerGroup {
@@ -54,6 +66,10 @@ public abstract class WorkerGroup {
         }
 
         return new Many(workerCount, maxSize, keepAliveTime, unit, threadFactory);
+    }
+
+    // Package-private constructor.
+    WorkerGroup() {
     }
 
     /**

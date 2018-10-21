@@ -93,13 +93,13 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
-<li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
+<li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
 <ul class="subNavList">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
-<li><a href="#constructor.detail">Constr</a>&nbsp;|&nbsp;</li>
+<li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
@@ -135,32 +135,25 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
 <div class="block">A group of <a href="../../../../org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><code>workers</code></a> for running tasks. This class isn't thread safe for
  enqueuing tasks, and so the caller must provide its own mutual exclusion to protect against
- concurrent enqueues.</div>
+ concurrent enqueues.
+
+ <p>Although this class behaves somewhat like a general purpose thread pool, the actual
+ behavior is different. When adding tasks into a thread pool, any thread can be selected for
+ running the task. A <code>WorkerGroup</code> is best used for managing collections of tasks which
+ must run on the same thread, and in a specific order. When using a general purpose thread
+ pool, these tasks would need to synchronize with each other, leading to contention.
+
+ <p>When using a <code>WorkerGroup</code>, the first task in the collection should be enqueued as
+ normal, but all of the remaining tasks should be enqueued directly into the selected worker.
+ This ensures that one thread will run the tasks, and in the correct order. Worker threads
+ are shared among many task collections, and execution is interleaved. Care must be taken to
+ avoid creating stalled tasks, since this can stall the execution of unrelated tasks.</div>
 </li>
 </ul>
 </div>
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
-<!-- ======== CONSTRUCTOR SUMMARY ======== -->
-<ul class="blockList">
-<li class="blockList"><a name="constructor.summary">
-<!--   -->
-</a>
-<h3>Constructor Summary</h3>
-<table class="memberSummary" summary="Constructor Summary table, listing constructors, and an explanation">
-<caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
-<tr>
-<th class="colFirst" scope="col">Constructor</th>
-<th class="colLast" scope="col">Description</th>
-</tr>
-<tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/WorkerGroup.html#WorkerGroup--">WorkerGroup</a></span>()</code></th>
-<td class="colLast">&nbsp;</td>
-</tr>
-</table>
-</li>
-</ul>
 <!-- ========== METHOD SUMMARY =========== -->
 <ul class="blockList">
 <li class="blockList"><a name="method.summary">
@@ -220,23 +213,6 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <div class="details">
 <ul class="blockList">
 <li class="blockList">
-<!-- ========= CONSTRUCTOR DETAIL ======== -->
-<ul class="blockList">
-<li class="blockList"><a name="constructor.detail">
-<!--   -->
-</a>
-<h3>Constructor Detail</h3>
-<a name="WorkerGroup--">
-<!--   -->
-</a>
-<ul class="blockListLast">
-<li class="blockList">
-<h4>WorkerGroup</h4>
-<pre>public&nbsp;WorkerGroup()</pre>
-</li>
-</ul>
-</li>
-</ul>
 <!-- ============ METHOD DETAIL ========== -->
 <ul class="blockList">
 <li class="blockList"><a name="method.detail">
@@ -366,13 +342,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
-<li><a href="#constructor.summary">Constr</a>&nbsp;|&nbsp;</li>
+<li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
 <ul class="subNavList">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
-<li><a href="#constructor.detail">Constr</a>&nbsp;|&nbsp;</li>
+<li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
