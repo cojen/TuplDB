@@ -26,7 +26,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10};
+var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -327,13 +327,6 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 <tr id="i19" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#indexOpenListener-java.util.function.BiConsumer-">indexOpenListener</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>,<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&gt;&nbsp;listener)</code></th>
-<td class="colLast">
-<div class="block">Set a listener which is called when named indexes are opened.</div>
-</td>
-</tr>
-<tr id="i20" class="altColor">
-<td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#lockTimeout-long-java.util.concurrent.TimeUnit-">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
            <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
@@ -341,7 +334,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
  overridden.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#lockUpgradeRule-org.cojen.tupl.LockUpgradeRule-">lockUpgradeRule</a></span>&#8203;(<a href="../../../org/cojen/tupl/LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></th>
 <td class="colLast">
@@ -349,28 +342,28 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
  overridden.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#mapDataFiles-boolean-">mapDataFiles</a></span>&#8203;(boolean&nbsp;mapped)</code></th>
 <td class="colLast">
 <div class="block">Enable memory mapping of the data files.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#maxCacheSize-long-">maxCacheSize</a></span>&#8203;(long&nbsp;maxBytes)</code></th>
 <td class="colLast">
 <div class="block">Set the maximum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#maxCheckpointThreads-int-">maxCheckpointThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="colLast">
 <div class="block">Specify the maximum number of threads for performing checkpointing, to speed it up.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#maxReplicaThreads-int-">maxReplicaThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="colLast">
@@ -378,21 +371,21 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
  changes.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#minCacheSize-long-">minCacheSize</a></span>&#8203;(long&nbsp;minBytes)</code></th>
 <td class="colLast">
 <div class="block">Set the minimum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#pageSize-int-">pageSize</a></span>&#8203;(int&nbsp;size)</code></th>
 <td class="colLast">
 <div class="block">Set the page size, which is 4096 bytes by default.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i27" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#recoveryHandler-org.cojen.tupl.ext.RecoveryHandler-">recoveryHandler</a></span>&#8203;(<a href="../../../org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a>&nbsp;handler)</code></th>
 <td class="colLast">
@@ -400,28 +393,28 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
  were <a href="../../../org/cojen/tupl/Transaction.html#prepare--"><code>prepared</code></a> for two-phase commit.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.ext.ReplicationManager-">replicate</a></span>&#8203;(<a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>&nbsp;manager)</code></th>
 <td class="colLast">
 <div class="block">Enable replication with an explicit <a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#replicate-org.cojen.tupl.repl.ReplicatorConfig-">replicate</a></span>&#8203;(<a href="../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="colLast">
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#secondaryCacheSize-long-">secondaryCacheSize</a></span>&#8203;(long&nbsp;size)</code></th>
 <td class="colLast">
 <div class="block">Set the size of the secondary off-heap cache, which is empty by default.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/DatabaseConfig.html#syncWrites-boolean-">syncWrites</a></span>&#8203;(boolean&nbsp;fileSync)</code></th>
 <td class="colLast">
@@ -711,17 +704,6 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;eventListener&#8203;(<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</pre>
 <div class="block">Set a listener which receives notifications of actions being performed by the
  database. Listener implementation must be thread-safe.</div>
-</li>
-</ul>
-<a name="indexOpenListener-java.util.function.BiConsumer-">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>indexOpenListener</h4>
-<pre>public&nbsp;<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;indexOpenListener&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>,<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a>&gt;&nbsp;listener)</pre>
-<div class="block">Set a listener which is called when named indexes are opened. Listener implementation
- must be thread-safe.</div>
 </li>
 </ul>
 <a name="syncWrites-boolean-">

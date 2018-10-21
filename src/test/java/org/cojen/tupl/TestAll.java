@@ -51,7 +51,6 @@ public class TestAll {
             CursorDefaultTest.class,
             CursorDisjointUnionTest.class,
             CountTest.class,
-            DatabaseTest.class,
             LargeKeyTest.class,
             LargeKeyDirectTest.class,
             LargeValueTest.class,

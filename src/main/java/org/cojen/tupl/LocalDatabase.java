@@ -59,8 +59,6 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import java.util.function.BiConsumer;
-
 import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
@@ -201,7 +199,6 @@ final class LocalDatabase extends AbstractDatabase {
     private final Map<byte[], TreeRef> mOpenTrees;
     private final LHashTable.Obj<TreeRef> mOpenTreesById;
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
-    private final BiConsumer<Database, Index> mIndexOpenListener;
 
     // Map of all loaded nodes.
     private final Node[] mNodeMapTable;
@@ -316,7 +313,6 @@ final class LocalDatabase extends AbstractDatabase {
      */
     private LocalDatabase(DatabaseConfig config, int openMode) throws IOException {
         config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
-        mIndexOpenListener = config.mIndexOpenListener;
 
         mCustomTxnHandler = config.mTxnHandler;
         mRecoveryHandler = config.mRecoveryHandler;
@@ -3178,10 +3174,6 @@ final class LocalDatabase extends AbstractDatabase {
             tree = newTreeInstance(treeId, treeIdBytes, name, root);
 
             try {
-                if (mIndexOpenListener != null) {
-                    mIndexOpenListener.accept(this, tree);
-                }
-
                 TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
