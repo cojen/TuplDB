@@ -205,21 +205,33 @@ class CursorFrame {
 
                   (T1 == thread 1 and T2 == thread 2)
 
-                  1. T1 observes last frame A.
-                  2.                                    T2 observes last frame A.
-                  3.                                    T2 appends B to the end. (CAS)
-                  4.                                    T2 sets the last frame to B.
-                  5.                                    T2 unbinds B as the last frame.
-                  6. T1 appends C to the end. (CAS)
-                  7. T1 sets the last frame to C.
-                  8.                                    T2 sets the last frame to A!
+                  1. T1 calls bind.
+                  2. T1 observes last frame A.
+                  3.                                    T2 calls bind.
+                  4.                                    T2 observes last frame A.
+                  5.                                    T2 appends B to the end. (CAS)
+                  6.                                    T2 sets the last frame to B.
+                  7.                                    T2 calls unbind.
+                  8.                                    T2 observes previous frame A.
+                  9.                                    T2 unbinds B as the last frame.
+                  10. T1 appends C to the end. (CAS)
+                  11. T1 sets the last frame to C.
+                  12.                                   T2 sets the last frame to A!
 
-                  Step 8 should ideally occur before step 6, but it absolutely must be
-                  performed before step 7. Step 8 could be performed with a CAS, simply giving
-                  up if the CAS fails. CAS is expensive, but volatile reads are cheap. Note
-                  that after the last frame reference has been confirmed to be correct, there's
-                  no chance that it can change again. Another thread cannot sneak in because
-                  step 6 atomically claims the new last frame within the list.
+                  Step 12 should ideally occur before step 10, but it absolutely must be
+                  performed before step 11. Step 12 could be performed with a CAS, simply
+                  giving up if the CAS fails. CAS is expensive, but volatile reads are cheap.
+
+                  This loop stalls T1 before step 11 can proceeed. The T1 CAS already succeeded
+                  because step 9 completed, having undone the actions of step 5. The next
+                  cousin matched A again, allowing the CAS to succeed. However, the unbind has
+                  one more step, to set the last frame. By spinning, the effects of step 6 are
+                  observed. The last frame was assumed to be A, but now it's B. The spin
+                  continues until the effects of step 12 are observed.
+
+                  Note that after the last frame reference has been confirmed to be correct,
+                  there's no chance that it can change again. Another thread cannot sneak in
+                  because step 10 atomically claims the new last frame within the list.
 
                 */
                 while (node.mLastCursorFrame != last);
