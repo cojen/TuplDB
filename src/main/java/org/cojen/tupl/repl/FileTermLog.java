@@ -312,9 +312,7 @@ final class FileTermLog extends Latch implements TermLog {
         mSyncLatch = new Latch();
         mDirtyLatch = new Latch();
 
-        // TODO: alloc on demand; null out when finished and empty
         mNonContigWriters = new PriorityQueue<>();
-        // TODO: alloc on demand; null out when finished and empty
         mCommitTasks = new PriorityQueue<>();
     }
 
@@ -984,7 +982,8 @@ final class FileTermLog extends Latch implements TermLog {
             highestIndex = endIndex;
         }
 
-        writer.mWriterIndex = currentIndex;
+        // Ensure that other threads can read the index safely.
+        cWriterIndexHandle.setOpaque(writer, currentIndex);
 
         if (currentIndex > writer.mWriterStartIndex) {
             writer.mWriterPrevTerm = mLogTerm;
@@ -1187,6 +1186,18 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
+    static final VarHandle cWriterIndexHandle;
+
+    static {
+        try {
+            cWriterIndexHandle =
+                MethodHandles.lookup().findVarHandle
+                (SegmentWriter.class, "mWriterIndex", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     final class SegmentWriter extends LogWriter
         implements LKey<SegmentWriter>, LCache.Entry<SegmentWriter>
     {
@@ -1229,7 +1240,8 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public long index() {
-            return mWriterIndex;
+            // Opaque access prevents word tearing, and it ensures visible progress.
+            return (long) cWriterIndexHandle.getOpaque(this);
         }
 
         @Override
@@ -1350,9 +1362,21 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
+    static final VarHandle cReaderIndexHandle;
+
+    static {
+        try {
+            cReaderIndexHandle =
+                MethodHandles.lookup().findVarHandle
+                (SegmentReader.class, "mReaderIndex", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     final class SegmentReader implements LogReader, LCache.Entry<SegmentReader> {
         private long mReaderPrevTerm;
-        private long mReaderIndex;
+        long mReaderIndex;
         private long mReaderCommitIndex;
         private long mReaderContigIndex;
         Segment mReaderSegment;
@@ -1365,7 +1389,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         SegmentReader(long prevTerm, long index) {
             mReaderPrevTerm = prevTerm;
-            mReaderIndex = index;
+            cReaderIndexHandle.setOpaque(this, index);
         }
 
         @Override
@@ -1390,7 +1414,8 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public long index() {
-            return mReaderIndex;
+            // Opaque access prevents word tearing, and it ensures visible progress.
+            return (long) cReaderIndexHandle.getOpaque(this);
         }
 
         @Override
@@ -1494,7 +1519,9 @@ final class FileTermLog extends Latch implements TermLog {
                 amt = segment.read(index, buf, offset, length);
             }
 
-            mReaderIndex = index + amt;
+            // Ensure that other threads can read the index safely.
+            cReaderIndexHandle.setOpaque(this, index + amt);
+
             return amt;
         }
 
