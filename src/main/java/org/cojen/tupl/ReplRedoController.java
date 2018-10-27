@@ -56,7 +56,15 @@ final class ReplRedoController extends ReplRedoWriter {
 
     public void ready(long initialTxnId, ReplicationManager.Accessor accessor) throws IOException {
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
+
+        // Calling the ready method permits the ReplicationManager to wait until replication
+        // has "caught up", based one its own definition of "caught up".
         mManager.ready(accessor);
+
+        // We're not truly caught up until all outstanding redo operations have been applied.
+        // Suspend and resume does the trick.
+        mEngine.suspend();
+        mEngine.resume();
     }
 
     @Override
