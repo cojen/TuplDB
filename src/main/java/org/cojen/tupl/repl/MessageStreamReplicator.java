@@ -278,6 +278,11 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public long commitIndex() {
+            return mSource.commitIndex();
+        }
+
+        @Override
         public void close() {
             mSource.close();
         }

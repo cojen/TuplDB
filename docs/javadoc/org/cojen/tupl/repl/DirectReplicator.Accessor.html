@@ -26,7 +26,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6};
+var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -164,26 +164,33 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#commitIndex--">commitIndex</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+</td>
+</tr>
+<tr id="i2" class="altColor">
+<td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the next log index which will be accessed.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed term being accessed.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i4" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></span>()</code></th>
 <td class="colLast">
@@ -244,6 +251,16 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <h4>index</h4>
 <pre>long&nbsp;index()</pre>
 <div class="block">Returns the next log index which will be accessed.</div>
+</li>
+</ul>
+<a name="commitIndex--">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>commitIndex</h4>
+<pre>long&nbsp;commitIndex()</pre>
+<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
 </li>
 </ul>
 <a name="close--">

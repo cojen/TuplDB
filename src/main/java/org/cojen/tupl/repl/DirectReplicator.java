@@ -164,6 +164,11 @@ public interface DirectReplicator extends Replicator {
          */
         long index();
 
+        /**
+         * Returns the current term commit index, which might be lower than the start index.
+         */
+        long commitIndex();
+
         @Override
         void close();
     }
@@ -179,11 +184,6 @@ public interface DirectReplicator extends Replicator {
      * Direct interface for writing to a replicator, for a given term.
      */
     public static interface Writer extends Accessor {
-        /**
-         * Returns the current term commit index, which might be lower than the start index.
-         */
-        long commitIndex();
-
         /**
          * Blocks until the commit index reaches the given index.
          *

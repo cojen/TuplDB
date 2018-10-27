@@ -1419,6 +1419,11 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
+        public long commitIndex() {
+            return FileTermLog.this.appliableCommitIndex();
+        }
+
+        @Override
         public int read(byte[] buf, int offset, int length) throws IOException {
             long index = mReaderIndex;
             long commitIndex = mReaderCommitIndex;

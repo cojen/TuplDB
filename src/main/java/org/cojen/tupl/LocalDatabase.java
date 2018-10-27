@@ -945,11 +945,23 @@ final class LocalDatabase extends AbstractDatabase {
             mRecoveryHandler.init(this);
         }
 
-        boolean initialCheckpoint = false;
+        mCheckpointer.start(false);
 
-        if (mRedoWriter instanceof ReplRedoController) {
+        LHashTable.Obj<LocalTransaction> txns = mRecoveredTransactions;
+
+        if (!(mRedoWriter instanceof ReplRedoController)) {
+            if (txns != null) {
+                new Thread(() -> invokeRecoveryHandler(txns, mRedoWriter)).start();
+                mRecoveredTransactions = null;
+            }
+        } else {
             // Start replication and recovery.
             ReplRedoController controller = (ReplRedoController) mRedoWriter;
+            assert txns == null;
+
+            if (mEventListener != null) {
+                mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
+            }
 
             try {
                 controller.ready(config.mReplInitialTxnId, new ReplicationManager.Accessor() {
@@ -977,17 +989,6 @@ final class LocalDatabase extends AbstractDatabase {
             }
 
             recoveryComplete(config.mReplRecoveryStartNanos);
-            initialCheckpoint = true;
-        }
-
-        mCheckpointer.start(initialCheckpoint);
-
-        LHashTable.Obj<LocalTransaction> txns = mRecoveredTransactions;
-        if (txns != null) {
-            new Thread(() -> {
-                invokeRecoveryHandler(txns, mRedoWriter);
-            }).start();
-            mRecoveredTransactions = null;
         }
     }
 

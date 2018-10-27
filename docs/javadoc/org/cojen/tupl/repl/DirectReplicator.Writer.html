@@ -26,7 +26,7 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":18,"i3":6,"i4":18};
+var methods = {"i0":6,"i1":18,"i2":6,"i3":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -158,13 +158,6 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#commitIndex--">commitIndex</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
-</td>
-</tr>
-<tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit-long-java.util.function.LongConsumer-">uponCommit</a></span>&#8203;(long&nbsp;index,
           <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
@@ -172,14 +165,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <div class="block">Invokes the given task when the commit index reaches the requested index.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i1" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit-java.util.function.LongConsumer-">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForCommit-long-long-">waitForCommit</a></span>&#8203;(long&nbsp;index,
              long&nbsp;nanosTimeout)</code></th>
@@ -187,7 +180,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <div class="block">Blocks until the commit index reaches the given index.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr id="i3" class="rowColor">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForEndCommit-long-">waitForEndCommit</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
@@ -200,7 +193,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <!--   -->
 </a>
 <h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></h3>
-<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></code></li>
+<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#commitIndex--">commitIndex</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></code></li>
 </ul>
 </li>
 </ul>
@@ -216,16 +209,6 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html"
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="commitIndex--">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>commitIndex</h4>
-<pre>long&nbsp;commitIndex()</pre>
-<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
-</li>
-</ul>
 <a name="waitForCommit-long-long-">
 <!--   -->
 </a>

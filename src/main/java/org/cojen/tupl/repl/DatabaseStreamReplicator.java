@@ -57,7 +57,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     private final StreamReplicator mRepl;
 
-    private StreamReplicator.Reader mStreamReader;
+    private volatile StreamReplicator.Reader mStreamReader;
     private DbWriter mDbWriter;
 
     DatabaseStreamReplicator(StreamReplicator repl) {
@@ -254,7 +254,45 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         // Update the local member role.
         mRepl.start();
 
-        // TODO: Wait until caught up?
+        // Wait until caught up.
+        catchup();
+    }
+
+    /**
+     * Wait until local member becomes the leader or until the current term has reached a
+     * known commit index.
+     */
+    private void catchup() {
+        StreamReplicator.Reader reader = mStreamReader;
+
+        // If reader is null, then local member is the leader and has implicitly caught up.
+        while (reader != null) {
+            long commitIndex = reader.commitIndex();
+            long delayMillis = 1;
+
+            while (true) {
+                // Check if the term changed.
+                StreamReplicator.Reader currentReader = mStreamReader;
+                if (currentReader != reader) {
+                    reader = currentReader;
+                    break;
+                }
+
+                if (reader.index() >= commitIndex) {
+                    return;
+                }
+
+                // Delay and double each time, up to 100 millis. Crude, but it means that no
+                // special checks and notification logic needs to be added to the reader.
+                try {
+                    Thread.sleep(delayMillis);
+                } catch (InterruptedException e) {
+                    return;
+                }
+
+                delayMillis = Math.min(delayMillis << 1, 100);
+            }
+        }
     }
 
     private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
