@@ -243,7 +243,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </td>
 </tr>
 <tr id="i7" class="rowColor">
-<td class="colFirst"><code>default void</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/ReplicationManager.html#ready-org.cojen.tupl.ext.ReplicationManager.Accessor-">ready</a></span>&#8203;(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)</code></th>
 <td class="colLast">
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
@@ -382,15 +382,18 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <ul class="blockList">
 <li class="blockList">
 <h4>ready</h4>
-<pre>default&nbsp;void&nbsp;ready&#8203;(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)
-            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre>default&nbsp;boolean&nbsp;ready&#8203;(<a href="../../../../org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)
+               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Called after replication threads have started, providing an opportunity to wait until
  replication has sufficiently "caught up". The thread which is opening the database
  invokes this method, and so it blocks until recovery completes. Default implementation
- does nothing.</div>
+ does nothing and returns false.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>accessor</code> - provides access to the database</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>true if local member is expected to become the leader (implies that a thread
+ calling read has or will have -1 returned to it)</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>

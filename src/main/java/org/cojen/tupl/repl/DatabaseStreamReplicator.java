@@ -228,7 +228,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
-    public void ready(ReplicationManager.Accessor accessor) throws IOException {
+    public boolean ready(ReplicationManager.Accessor accessor) throws IOException {
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {
             try {
@@ -255,18 +255,24 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         mRepl.start();
 
         // Wait until caught up.
-        catchup();
+        return catchup();
     }
 
     /**
      * Wait until local member becomes the leader or until the current term has reached a
      * known commit index.
+     *
+     * @return true if switched to leader
      */
-    private void catchup() {
+    private boolean catchup() {
         StreamReplicator.Reader reader = mStreamReader;
 
-        // If reader is null, then local member is the leader and has implicitly caught up.
-        while (reader != null) {
+        while (true) {
+            // If reader is null, then local member is the leader and has implicitly caught up.
+            if (reader == null) {
+                return true;
+            }
+
             long commitIndex = reader.commitIndex();
             long delayMillis = 1;
 
@@ -279,7 +285,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 }
 
                 if (reader.index() >= commitIndex) {
-                    return;
+                    return false;
                 }
 
                 // Delay and double each time, up to 100 millis. Crude, but it means that no
@@ -287,7 +293,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 try {
                     Thread.sleep(delayMillis);
                 } catch (InterruptedException e) {
-                    return;
+                    return false;
                 }
 
                 delayMillis = Math.min(delayMillis << 1, 100);

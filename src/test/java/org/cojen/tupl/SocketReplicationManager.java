@@ -88,8 +88,9 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public void ready(Accessor accessor) throws IOException {
+    public boolean ready(Accessor accessor) throws IOException {
         mAccessor = accessor;
+        return mReader == null;
     }
 
     @Override

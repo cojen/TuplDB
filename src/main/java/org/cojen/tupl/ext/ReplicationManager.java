@@ -78,11 +78,15 @@ public interface ReplicationManager extends Closeable {
      * Called after replication threads have started, providing an opportunity to wait until
      * replication has sufficiently "caught up". The thread which is opening the database
      * invokes this method, and so it blocks until recovery completes. Default implementation
-     * does nothing.
+     * does nothing and returns false.
      *
      * @param accessor provides access to the database
+     * @return true if local member is expected to become the leader (implies that a thread
+     * calling read has or will have -1 returned to it)
      */
-    default void ready(Accessor accessor) throws IOException {}
+    default boolean ready(Accessor accessor) throws IOException {
+        return false;
+    }
 
     static interface Accessor extends EventListener {
         /**

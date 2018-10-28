@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import org.cojen.tupl.ext.ReplicationManager;
 
+import org.cojen.tupl.util.LatchCondition;
+
 /**
  * Controller is used for checkpoints and as a non-functional writer when in replica mode.
  *
@@ -30,6 +32,9 @@ import org.cojen.tupl.ext.ReplicationManager;
 /*P*/
 final class _ReplRedoController extends _ReplRedoWriter {
     final ReplicationManager mManager;
+
+    // Only used during startup.
+    private LatchCondition mLeaderNotifyCondition;
 
     private volatile _ReplRedoWriter mTxnRedoWriter;
     private volatile boolean mSwitchingToReplica;
@@ -55,16 +60,35 @@ final class _ReplRedoController extends _ReplRedoWriter {
     }
 
     public void ready(long initialTxnId, ReplicationManager.Accessor accessor) throws IOException {
+        acquireExclusive();
+        try {
+            mLeaderNotifyCondition = new LatchCondition();
+        } finally {
+            releaseExclusive();
+        }
+
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
 
         // Calling the ready method permits the ReplicationManager to wait until replication
         // has "caught up", based one its own definition of "caught up".
-        mManager.ready(accessor);
+        boolean isLeader = mManager.ready(accessor);
 
         // We're not truly caught up until all outstanding redo operations have been applied.
         // Suspend and resume does the trick.
         mEngine.suspend();
         mEngine.resume();
+
+        // Wait for leaderNotify method to be called. The local member might be the leader now,
+        // or the new leadership might have been immediately revoked. Either case is detected.
+        acquireExclusive();
+        try {
+            if (isLeader && mLeaderNotifyCondition != null) {
+                mLeaderNotifyCondition.await(this);
+            }
+        } finally {
+            mLeaderNotifyCondition = null;
+            releaseExclusive();
+        }
     }
 
     @Override
@@ -217,6 +241,11 @@ final class _ReplRedoController extends _ReplRedoWriter {
     _ReplRedoWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
         acquireExclusive();
         try {
+            if (mLeaderNotifyCondition != null) {
+                mLeaderNotifyCondition.signalAll();
+                mLeaderNotifyCondition = null;
+            }
+
             if (mTxnRedoWriter.mReplWriter != null) {
                 // Must be in replica mode.
                 return null;
