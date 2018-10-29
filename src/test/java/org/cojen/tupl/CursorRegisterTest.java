@@ -17,9 +17,12 @@
 
 package org.cojen.tupl;
 
+import java.io.OutputStream;
+
 import java.net.ServerSocket;
 
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 
 import org.cojen.tupl.repl.ReplicatorConfig;
@@ -153,6 +156,52 @@ public class CursorRegisterTest {
             for (Map.Entry<String, String> e : map.entrySet()) {
                 assertEquals(e.getValue(), new String(ix.load(null, e.getKey().getBytes())));
             }
+        }
+    }
+
+    @Test
+    public void valueAccessor() throws Exception {
+        // Verify that cursor key is registered, to recover cursors which write to a stream.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .checkpointRate(-1, null)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        Database db = newTempDatabase(getClass(), config);
+        Index ix = db.openIndex("test");
+
+        final long seed = 937854;
+        Random rnd = new Random(seed);
+
+        Cursor c = ix.newCursor(null);
+        final byte[] key = "hello".getBytes();
+        c.find(key);
+
+        OutputStream out = c.newValueOutputStream(0);
+
+        for (int i=0; i<100_000; i++) {
+            out.write((byte) rnd.nextInt());
+        }
+
+        db.checkpoint();
+        
+        for (int i=0; i<100_000; i++) {
+            out.write((byte) rnd.nextInt());
+        }
+
+        out.flush();
+
+        db = reopenTempDatabase(getClass(), db, config);
+
+        ix = db.openIndex("test");
+
+        byte[] value = ix.load(null, key);
+        assertEquals(200_000, value.length);
+
+        rnd = new Random(seed);
+        for (int i=0; i<value.length; i++) {
+            assertEquals(value[i], (byte) rnd.nextInt());
         }
     }
 

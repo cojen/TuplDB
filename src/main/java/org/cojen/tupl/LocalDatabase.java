@@ -761,13 +761,26 @@ final class LocalDatabase extends AbstractDatabase {
                     Cursor c = cursorRegistry.newCursor(Transaction.BOGUS);
                     for (c.first(); c.key() != null; c.next()) {
                         long cursorId = decodeLongBE(c.key(), 0);
-                        long indexId = decodeLongBE(c.value(), 0);
+                        byte[] regValue = c.value();
+                        long indexId = decodeLongBE(regValue, 0);
                         Tree tree = (Tree) anyIndexById(indexId);
-                        TreeCursor cursor = new TreeCursor(tree);
+
+                        TreeCursor cursor = new TreeCursor(tree, Transaction.BOGUS);
                         cursor.mKeyOnly = true;
+
+                        if (regValue.length >= 9) {
+                            // Cursor key was registered too.
+                            byte[] key = new byte[regValue.length - 9];
+                            System.arraycopy(regValue, 9, key, 0, key.length);
+                            cursor.find(key);
+                        }
+
+                        // Assign after any find operation, because it will reset the cursor id.
                         cursor.mCursorId = cursorId;
+
                         cursors.insert(cursorId).value = cursor;
                     }
+
                     cursorRegistry.forceClose();
                 }
 
@@ -2851,7 +2864,15 @@ final class LocalDatabase extends AbstractDatabase {
         try {
             byte[] cursorIdBytes = new byte[8];
             encodeLongBE(cursorIdBytes, 0, cursor.mCursorId);
-            cursorRegistry.store(Transaction.BOGUS, cursorIdBytes, cursor.mTree.mIdBytes);
+            byte[] regValue = cursor.mTree.mIdBytes;
+            byte[] key = cursor.key();
+            if (key != null) {
+                byte[] newReg = new byte[regValue.length + 1 + key.length];
+                System.arraycopy(regValue, 0, newReg, 0, regValue.length);
+                System.arraycopy(key, 0, newReg, regValue.length + 1, key.length);
+                regValue = newReg;
+            }
+            cursorRegistry.store(Transaction.BOGUS, cursorIdBytes, regValue);
         } catch (Throwable e) {
             try {
                 cursor.unregister();

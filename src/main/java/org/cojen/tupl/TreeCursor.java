@@ -184,15 +184,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     return false;
                 }
 
-                LocalDatabase db = mTree.mDatabase;
-                Tree cursorRegistry = db.openCursorRegistry();
-
-                CommitLock.Shared shared = db.commitLock().acquireShared();
+                CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
                 try {
-                    if (!txn.tryRedoCursorRegister(this)) {
-                        return false;
-                    }
-                    db.registerCursor(cursorRegistry, this);
+                    return txn.tryRedoCursorRegister(this);
                 } catch (UnmodifiableReplicaException e) {
                     return false;
                 } finally {

@@ -141,7 +141,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
             cursors.traverse(ce -> {
                 long scrambledCursorId = mix(ce.key);
-                cursorTable.insert(scrambledCursorId).mCursor = ce.value;
+                cursorTable.insert(scrambledCursorId).recovered(ce.value);
                 // Delete entry.
                 return true;
             });
@@ -1391,6 +1391,13 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         TreeCursor mCursor;
         Worker mWorker;
         byte[] mKey;
+
+        void recovered(TreeCursor c) {
+            mCursor = c;
+            mKey = c.key();
+            // Clear this to prevent attepting to write a redo when cursor is reset.
+            c.mCursorId = 0;
+        }
     }
 
     static final class CursorTable extends LHashTable<CursorEntry> {

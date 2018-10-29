@@ -1071,7 +1071,9 @@ final class LocalTransaction extends Locker implements Transaction {
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
+        Tree cursorRegistry = mDatabase.openCursorRegistry();
         cursor.mCursorId = cursorId;
+        mDatabase.registerCursor(cursorRegistry, cursor);
         return cursorId;
     }
 
