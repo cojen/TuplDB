@@ -26,8 +26,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.EnumSet;
 
+import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.RWLock;
 
 import static org.cojen.tupl.io.Utils.rethrow;
 
@@ -70,7 +70,7 @@ abstract class AbstractFileIO extends FileIO {
 
     private final boolean mReadOnly;
     private final Latch mRemapLatch;
-    protected final RWLock mAccessLock;
+    protected final Clutch mAccessLock;
     private final Latch mSyncLatch;
     private Mapping[] mMappings;
     private int mLastMappingSize;
@@ -81,7 +81,7 @@ abstract class AbstractFileIO extends FileIO {
     AbstractFileIO(EnumSet<OpenOption> options) {
         mReadOnly = options.contains(OpenOption.READ_ONLY);
         mRemapLatch = new Latch();
-        mAccessLock = new RWLock();
+        mAccessLock = Clutch.make();
         mSyncLatch = new Latch();
     }
 

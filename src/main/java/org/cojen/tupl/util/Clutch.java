@@ -60,6 +60,24 @@ public abstract class Clutch extends Latch {
     // Is >=0 when in contended mode.
     private volatile int mContendedSlot = -1;
 
+    /**
+     * Return a new Clutch instance, which might share a pack with other instances returned
+     * from this method.
+     */
+    public static Clutch make() {
+        return new Impl(Impl.sharedPack());
+    }
+
+    /**
+     * Return a new Clutch instance, which might share a pack with other instances returned
+     * from this method.
+     *
+     * @param initialState UNLATCHED, EXCLUSIVE, or SHARED
+     */
+    public static Clutch make(int initialState) {
+        return new Impl(Impl.sharedPack(), initialState);
+    }
+
     public Clutch() {
     }
 
@@ -395,7 +413,7 @@ public abstract class Clutch extends Latch {
      * Sharable object for supporting contended clutches. Memory overhead (in bytes) is
      * proportional to {@code (number of slots) * (number of cores)}. The number of slots
      * should be at least 16, to minimize cache line contention. As a convenience, this class
-     * also extends the Latch class, but the latching features are not used here.
+     * also extends the Latch class, but the latching features aren't used here.
      */
     public static class Pack extends Latch {
         private static final VarHandle cObjectArrayHandle, cIntArrayHandle;
@@ -611,6 +629,39 @@ public abstract class Clutch extends Latch {
                 sum += (int) cIntArrayHandle.getVolatile(counters, slot);
             }
             return sum == 0;
+        }
+    }
+
+    private static class Impl extends Clutch {
+        private static final int PACK_LIMIT = 16;
+        private static Pack cSharedPack;
+        private static int cShareCount;
+
+        static synchronized Pack sharedPack() {
+            Pack pack = cSharedPack;
+            if (pack == null || cShareCount >= PACK_LIMIT) {
+                cSharedPack = pack = new Pack(PACK_LIMIT);
+                cShareCount = 1;
+            } else {
+                cShareCount++;
+            }
+            return pack;
+        }
+
+        private final Pack mPack;
+
+        private Impl(Pack pack) {
+            mPack = pack;
+        }
+
+        private Impl(Pack pack, int initialState) {
+            super(initialState);
+            mPack = pack;
+        }
+
+        @Override
+        protected Pack getPack() {
+            return mPack;
         }
     }
 }
