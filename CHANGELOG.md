@@ -8,6 +8,8 @@ v1.4.5
 * Fix race condition when copying pages from the secondary cache.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
 * Fix data loss when replicating values using the ValueAccessor API.
+* Wait for replication recovery when starting up, and wait for the local member to become the
+  leader if it's the only group member which can become the leader.
 * Speed up redo log recovery by using multiple threads.
 * Reduce memory requirements when running the test suite.
 
