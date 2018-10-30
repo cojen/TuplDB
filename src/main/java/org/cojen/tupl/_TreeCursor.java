@@ -2967,6 +2967,8 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
      * Atomic find and store operation. Cursor must be in a reset state when this method is
      * called, and the caller must reset the cursor afterwards.
      *
+     * <p>If mKeyOnly is true (autoload is off), the returned original value is always null.
+     *
      * @param key must not be null
      */
     final byte[] findAndStore(byte[] key, byte[] value) throws IOException {
@@ -3020,6 +3022,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         }
     }
 
+    /**
+     * If mKeyOnly is true (autoload is off), the returned original value is always null.
+     */
     private byte[] doFindAndStore(_LocalTransaction txn, byte[] key, byte[] value)
         throws IOException
     {
@@ -3034,7 +3039,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
         if (!node.tryUpgrade()) {
             node.releaseShared();
-            leaf.acquireExclusive();
+            node = leaf.acquireExclusive();
         }
 
         if (value == null) {
@@ -3045,30 +3050,29 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 return null;
             }
 
-            int pos = leaf.mNodePos;
-            node = leaf.mNode;
+            originalValue = null;
 
-            try {
-                originalValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                shared.release();
-                throw e;
+            if (!mKeyOnly) {
+                int pos = leaf.mNodePos;
+                try {
+                    originalValue = node.retrieveLeafValue(pos);
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    shared.release();
+                    throw e;
+                }
             }
 
             deleteNoRedo(txn, leaf, shared);
         } else {
             shared = prepareStore(leaf);
 
+            originalValue = null;
             int pos = leaf.mNodePos;
 
-            if (pos < 0) {
-                originalValue = null;
-            } else {
-                node = leaf.mNode;
+            if (pos >= 0 && !mKeyOnly) {
                 try {
-                    originalValue = mKeyOnly ? node.hasLeafValue(pos)
-                        : node.retrieveLeafValue(pos);
+                    originalValue = node.retrieveLeafValue(pos);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     shared.release();
@@ -3218,19 +3222,21 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         throws IOException
     {
         _CursorFrame leaf;
+        _Node node;
 
         if (key == null) {
             leaf = frameExclusive();
+            node = leaf.mNode;
         } else {
             // Find with no lock because caller must already acquire exclusive lock.
             find(null, key, VARIANT_CHECK, new _CursorFrame(), latchRootNode());
 
             leaf = mFrame;
-            _Node node = leaf.mNode;
+            node = leaf.mNode;
 
             if (!node.tryUpgrade()) {
                 node.releaseShared();
-                leaf.acquireExclusive();
+                node = leaf.acquireExclusive();
             }
         }
 
@@ -3245,7 +3251,6 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             shared = prepareStore(leaf);
         }
 
-        _Node node = leaf.mNode;
         int pos = leaf.mNodePos;
 
         byte[] originalValue;
