@@ -273,8 +273,7 @@ public class EnduranceTest {
 
             // Write some more data while evicting.
             Future<?> writeJob = ForkJoinPool.commonPool().submit(writeSome);
-            /* FIXME
-[ERROR] writeAndEvict(org.cojen.tupl.EnduranceDirectTest)  Time elapsed: 68.951 s  <<< ERROR!
+            /* FIXME writeAndEvict(org.cojen.tupl.EnduranceDirectTest)  Time elapsed: 68.951 s  <<< ERROR!
 org.cojen.tupl.LockTimeoutException: Waited 1 second
         at org.cojen.tupl._Locker.failed(_Locker.java:494)
         at org.cojen.tupl._LockManager.lockSharedLocal(_LockManager.java:196)

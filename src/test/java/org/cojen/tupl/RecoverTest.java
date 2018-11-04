@@ -344,8 +344,7 @@ public class RecoverTest {
     @Test
     public void largeUndoExit() throws Exception {
         for (int chkpnt = 0; chkpnt <= 4; chkpnt++) {
-            /* FIXME
-               largeUndoExit(org.cojen.tupl.RecoverTest)  Time elapsed: 2.916 s  <<< FAILURE!
+            /* FIXME largeUndoExit(org.cojen.tupl.RecoverTest)  Time elapsed: 2.916 s  <<< FAILURE!
                java.lang.AssertionError: expected:<0> but was:<1>
                at org.junit.Assert.fail(Assert.java:88)
                at org.junit.Assert.failNotEquals(Assert.java:743)

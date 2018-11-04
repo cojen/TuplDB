@@ -703,8 +703,7 @@ public class LockTest {
         assertEquals(INTERRUPTED, locker2.tryLockUpgradable(0, k1, nanosTimeout));
         assertFalse(Thread.interrupted());
         selfInterrupt(1000);
-        /* FIXME
-[ERROR] interruptsTimedWait(org.cojen.tupl.LockTest)  Time elapsed: 17.142 s  <<< FAILURE!
+        /* FIXME interruptsTimedWait(org.cojen.tupl.LockTest)  Time elapsed: 17.142 s  <<< FAILURE!
 java.lang.AssertionError: expected:<INTERRUPTED> but was:<TIMED_OUT_LOCK>
     at org.junit.Assert.fail(Assert.java:88)
     at org.junit.Assert.failNotEquals(Assert.java:743)
