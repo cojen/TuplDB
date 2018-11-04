@@ -79,10 +79,10 @@ public class LockTest {
 
     public static void selfInterrupt(final long delayMillis) {
         final Thread thread = Thread.currentThread();
-        new Thread(() -> {
+        startAndWaitUntilBlocked(new Thread(() -> {
             LockTest.sleep(delayMillis);
             thread.interrupt();
-        }).start();
+        }));
     }
 
     private LockManager mManager;
@@ -703,15 +703,6 @@ public class LockTest {
         assertEquals(INTERRUPTED, locker2.tryLockUpgradable(0, k1, nanosTimeout));
         assertFalse(Thread.interrupted());
         selfInterrupt(1000);
-        /* FIXME interruptsTimedWait(org.cojen.tupl.LockTest)  Time elapsed: 17.142 s  <<< FAILURE!
-java.lang.AssertionError: expected:<INTERRUPTED> but was:<TIMED_OUT_LOCK>
-    at org.junit.Assert.fail(Assert.java:88)
-    at org.junit.Assert.failNotEquals(Assert.java:743)
-    at org.junit.Assert.assertEquals(Assert.java:118)
-    at org.junit.Assert.assertEquals(Assert.java:144)
-    at org.cojen.tupl.LockTest.interrupts(LockTest.java:706)
-    at org.cojen.tupl.LockTest.interruptsTimedWait(LockTest.java:665)
-    */
         assertEquals(INTERRUPTED, locker2.tryLockExclusive(0, k1, nanosTimeout));
         assertFalse(Thread.interrupted());
 
