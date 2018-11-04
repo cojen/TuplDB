@@ -488,22 +488,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;message)</code></th>
 <td class="colLast">
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
+<div class="block">Called to apply an idempotent redo operation.</div>
 </td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;message,
     long&nbsp;indexId,
     byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
+<div class="block">Called to apply an idempotent redo operation which locked an index key.</div>
 </td>
 </tr>
 </tbody>

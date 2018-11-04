@@ -153,7 +153,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#init(org.cojen.tupl.Database)">init</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
 <td class="colLast">
-<div class="block">Called once when the database is opened, before the recover method is ever called.</div>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
@@ -188,7 +188,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <h4>init</h4>
 <pre class="methodSignature">void&nbsp;init&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Called once when the database is opened, before the recover method is ever called.</div>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>

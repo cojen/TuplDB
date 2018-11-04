@@ -159,12 +159,16 @@ public class CustomLogTest {
         List<byte[]> mUndoMessages = new ArrayList<>();
 
         @Override
-        public void redo(Database db, Transaction txn, byte[] message) throws IOException {
+        public void init(Database db) {
+        }
+
+        @Override
+        public void redo(Transaction txn, byte[] message) throws IOException {
             mRedoMessages.add(message);
         }
 
         @Override
-        public void redo(Database db, Transaction txn, byte[] message, long indexId, byte[] key)
+        public void redo(Transaction txn, byte[] message, long indexId, byte[] key)
             throws IOException
         {
             mRedoMessages.add(message);
@@ -173,21 +177,8 @@ public class CustomLogTest {
         }
 
         @Override
-        public void undo(Database db, byte[] message) throws IOException {
+        public void undo(byte[] message) throws IOException {
             mUndoMessages.add(message);
-        }
-
-        @Override
-        public void setCheckpointLock(Database db, Lock lock) {
-        }
-
-        @Override
-        public Object checkpointStart(Database db) throws IOException {
-            return null;
-        }
-
-        @Override
-        public void checkpointFinish(Database db, Object obj) throws IOException {
         }
     }
 }

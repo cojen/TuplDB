@@ -388,10 +388,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Indicates that all data prior to the given log position has been durably
  checkpointed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish(org.cojen.tupl.Database,java.lang.Object)">checkpointFinish(Database, Object)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
-<dd>
-<div class="block">Wait for a concurrent checkpoint to finish.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate(long, TimeUnit)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the rate at which <a href="org/cojen/tupl/Database.html#checkpoint()"><code>checkpoints</code></a> are
@@ -400,10 +396,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DatabaseConfig.html#checkpointSizeThreshold(long)">checkpointSizeThreshold(long)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the minimum redo log size required for an automatic <a href="org/cojen/tupl/Database.html#checkpoint()"><code>checkpoint</code></a> to actually be performed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#checkpointStart(org.cojen.tupl.Database)">checkpointStart(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
-<dd>
-<div class="block">Called to durably write all changes.</div>
 </dd>
 <dt><a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl"><span class="typeNameLink">CipherCrypto</span></a> - Class in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -1681,7 +1673,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/RecoveryHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
 <dd>
-<div class="block">Called once when the database is opened, before the recover method is ever called.</div>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dd>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/CipherCrypto.html#initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey)">initCipher(Cipher, int, SecretKey)</a></span> - Method in class org.cojen.tupl.<a href="org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
@@ -2830,13 +2826,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Handler for recovered transactions which were prepared, but aren't finished yet.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D)">redo(Database, Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
+<div class="block">Called to apply an idempotent redo operation.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo(Database, Transaction, byte[], long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo(Transaction, byte[], long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
+<div class="block">Called to apply an idempotent redo operation which locked an index key.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/DirectAccess.html#ref(long,int)">ref(long, int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>
@@ -3075,11 +3071,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Separates a combined result, for use when storing a value into a view which uses this
  combiner.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#setCheckpointLock(org.cojen.tupl.Database,java.util.concurrent.locks.Lock)">setCheckpointLock(Database, Lock)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
-<dd>
-<div class="block">Called once when the database is opened, providing a shared lock which is later acquired
- exclusively by checkpoints.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#setLength(long)">setLength(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
@@ -3523,9 +3514,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Rule which always attempts an upgrade, potentially causing a <a href="org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl"><code>deadlock</code></a> if multiple transactions are making the same attempt.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#undo(org.cojen.tupl.Database,byte%5B%5D)">undo(Database, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/TransactionHandler.html#undo(byte%5B%5D)">undo(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
 <dd>
-<div class="block">Non-transactionally apply an idempotent undo operation.</div>
+<div class="block">Called to apply an idempotent undo operation.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#UNLATCHED">UNLATCHED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>

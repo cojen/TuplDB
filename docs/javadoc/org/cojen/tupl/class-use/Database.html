@@ -194,62 +194,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tbody>
 <tr class="altColor">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#checkpointFinish(org.cojen.tupl.Database,java.lang.Object)">checkpointFinish</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
-<td class="colLast">
-<div class="block">Wait for a concurrent checkpoint to finish.</div>
-</td>
-</tr>
-<tr class="rowColor">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#checkpointStart(org.cojen.tupl.Database)">checkpointStart</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
-<td class="colLast">
-<div class="block">Called to durably write all changes.</div>
-</td>
-</tr>
-<tr class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">RecoveryHandler.</span><code><span class="memberNameLink"><a href="../ext/RecoveryHandler.html#init(org.cojen.tupl.Database)">init</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
 <td class="colLast">
-<div class="block">Called once when the database is opened, before the recover method is ever called.</div>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
-    byte[]&nbsp;message)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#init(org.cojen.tupl.Database)">init</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
 <td class="colLast">
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
-</td>
-</tr>
-<tr class="altColor">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
-    byte[]&nbsp;message,
-    long&nbsp;indexId,
-    byte[]&nbsp;key)</code></th>
-<td class="colLast">
-<div class="block">Non-transactionally apply an idempotent redo operation.</div>
-</td>
-</tr>
-<tr class="rowColor">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#setCheckpointLock(org.cojen.tupl.Database,java.util.concurrent.locks.Lock)">setCheckpointLock</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-                 <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks" class="externalLink">Lock</a>&nbsp;lock)</code></th>
-<td class="colLast">
-<div class="block">Called once when the database is opened, providing a shared lock which is later acquired
- exclusively by checkpoints.</div>
-</td>
-</tr>
-<tr class="altColor">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">TransactionHandler.</span><code><span class="memberNameLink"><a href="../ext/TransactionHandler.html#undo(org.cojen.tupl.Database,byte%5B%5D)">undo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    byte[]&nbsp;message)</code></th>
-<td class="colLast">
-<div class="block">Non-transactionally apply an idempotent undo operation.</div>
+<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </td>
 </tr>
 </tbody>

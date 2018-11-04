@@ -785,11 +785,20 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
 
                 if (mCustomTxnHandler != null) {
-                    // Although handler shouldn't access the database yet, be safe and call
+                    // Although the handler shouldn't access the database yet, be safe and call
                     // this method at the point that the database is mostly functional. All
                     // other custom methods will be called soon as well.
-                    mCustomTxnHandler.setCheckpointLock(this, mCommitLock);
+                    mCustomTxnHandler.init(this);
                 }
+
+                if (mRecoveryHandler != null && mRecoveryHandler != mCustomTxnHandler) {
+                    mRecoveryHandler.init(this);
+                }
+
+                // Ensure that the handler has a safe reference to the Database instance.  Due
+                // to the way recovery dispatches to worker threads, the fence isn't strictly
+                // necessary, but be safe.
+                VarHandle.fullFence();
 
                 ReplicationManager rm = config.mReplManager;
                 if (rm != null) {
@@ -952,10 +961,6 @@ final class _LocalDatabase extends AbstractDatabase {
                 (new Deletion(trashed, true, mEventListener), "IndexDeletion");
             deletion.setDaemon(true);
             deletion.start();
-        }
-
-        if (mRecoveryHandler != null) {
-            mRecoveryHandler.init(this);
         }
 
         mCheckpointer.start(false);
@@ -5415,11 +5420,6 @@ final class _LocalDatabase extends AbstractDatabase {
      * held. Both are released by this method.
      */
     private void flush(final boolean resume, final long header) throws IOException {
-        Object custom = mCustomTxnHandler;
-        if (custom != null) {
-            custom = mCustomTxnHandler.checkpointStart(this);
-        }
-
         int stateToFlush = mCommitState;
 
         if (resume) {
@@ -5454,10 +5454,6 @@ final class _LocalDatabase extends AbstractDatabase {
 
             if (mRedoWriter != null) {
                 mRedoWriter.checkpointFlushed();
-            }
-
-            if (mCustomTxnHandler != null) {
-                mCustomTxnHandler.checkpointFinish(this, custom);
             }
         } finally {
             mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;

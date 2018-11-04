@@ -31,7 +31,7 @@ import org.cojen.tupl.Transaction;
  */
 public interface RecoveryHandler {
     /**
-     * Called once when the database is opened, before the recover method is ever called.
+     * Called once when the database is opened, immediately before recovery is performed.
      */
     void init(Database db) throws IOException;
 

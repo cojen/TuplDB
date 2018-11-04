@@ -12,6 +12,8 @@ v1.4.5
   leader if it's the only group member which can become the leader.
 * Speed up redo log recovery by using multiple threads.
 * Reduce memory requirements when running the test suite.
+* Simplify TransactionHandler interface, and unify it to some extent with RecoveryHandler.
+* Update dependencies to support Java 11.
 
 v1.4.4 (2018-06-30)
 ------

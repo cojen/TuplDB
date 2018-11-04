@@ -726,19 +726,23 @@ org.cojen.tupl.LockTimeoutException: Waited 1 second
         volatile byte[] mKey;
 
         @Override
-        public void redo(Database db, Transaction txn, byte[] message) {
+        public void init(Database db) {
+        }
+
+        @Override
+        public void redo(Transaction txn, byte[] message) {
             mMessage = message;
         }
 
         @Override
-        public void redo(Database db, Transaction txn, byte[] message, long indexId, byte[] key) {
+        public void redo(Transaction txn, byte[] message, long indexId, byte[] key) {
             mMessage = message;
             mIndexId = indexId;
             mKey = key;
         }
 
         @Override
-        public void undo(Database db, byte[] message) {
+        public void undo(byte[] message) {
         }
     }
 }

@@ -1040,12 +1040,11 @@ final class _UndoLog implements _DatabaseAccess {
             break;
 
         case OP_CUSTOM:
-            _LocalDatabase db = mDatabase;
-            TransactionHandler handler = db.mCustomTxnHandler;
+            TransactionHandler handler = mDatabase.mCustomTxnHandler;
             if (handler == null) {
                 throw new DatabaseException("Custom transaction handler is not installed");
             }
-            handler.undo(db, entry);
+            handler.undo(entry);
             break;
 
         case OP_ACTIVE_KEY:

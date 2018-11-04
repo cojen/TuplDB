@@ -999,7 +999,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
-                handler.redo(mDatabase, txn, message);
+                handler.redo(txn, message);
             }
         });
 
@@ -1025,7 +1025,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
                 txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
 
-                handler.redo(mDatabase, txn, message, indexId, key);
+                handler.redo(txn, message, indexId, key);
             }
         });
 
