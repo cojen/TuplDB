@@ -98,6 +98,7 @@
             <notimestamp>true</notimestamp>
             <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
             <destDir>javadoc</destDir>
+            <additionalJOption>--no-module-directories</additionalJOption>
           </configuration>
       </plugin>
 
