@@ -226,6 +226,7 @@ public class EnduranceTest {
         DatabaseConfig config = new DatabaseConfig()
             .checkpointRate(-1, null)
             .directPageAccess(false)
+            .lockTimeout(5, TimeUnit.SECONDS)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
         decorate(config);
@@ -273,17 +274,7 @@ public class EnduranceTest {
 
             // Write some more data while evicting.
             Future<?> writeJob = ForkJoinPool.commonPool().submit(writeSome);
-            /* FIXME writeAndEvict(org.cojen.tupl.EnduranceDirectTest)  Time elapsed: 68.951 s  <<< ERROR!
-org.cojen.tupl.LockTimeoutException: Waited 1 second
-        at org.cojen.tupl._Locker.failed(_Locker.java:494)
-        at org.cojen.tupl._LockManager.lockSharedLocal(_LockManager.java:196)
-        at org.cojen.tupl._Tree.lockSharedLocal(_Tree.java:1277)
-        at org.cojen.tupl._TreeCursor.doLoad(_TreeCursor.java:2451)
-        at org.cojen.tupl._TreeCursor.randomNode(_TreeCursor.java:2332)
-        at org.cojen.tupl._Tree.evict(_Tree.java:649)
-        at org.cojen.tupl.EnduranceTest.lambda$writeAndEvict$3(EnduranceTest.java:257)
-        at org.cojen.tupl.EnduranceTest.writeAndEvict(EnduranceTest.java:276)
-        */
+
             evictSome.call();
 
             try {
