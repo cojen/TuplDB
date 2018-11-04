@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":18,"i5":6};
+var data = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":18,"i5":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/TransactionHandler.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li>Next&nbsp;Class</li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/ext/TransactionHandler.html" target="_top">Frames</a></li>
-<li><a href="TransactionHandler.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../../org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.ext</a></div>
 <h2 title="Interface TransactionHandler" class="title">Interface TransactionHandler</h2>
 </div>
 <div class="contentContainer">
@@ -128,7 +128,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  transactions, and redo operations are applied by recovery and replication.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/DatabaseConfig.html#customTransactionHandler-org.cojen.tupl.ext.TransactionHandler-"><code>DatabaseConfig.customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)</code></a></dd>
+<dd><a href="../DatabaseConfig.html#customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)"><code>DatabaseConfig.customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -137,12 +137,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -151,7 +152,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish-org.cojen.tupl.Database-java.lang.Object-">checkpointFinish</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointFinish(org.cojen.tupl.Database,java.lang.Object)">checkpointFinish</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
                 <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
 <td class="colLast">
 <div class="block">Wait for a concurrent checkpoint to finish.</div>
@@ -159,15 +160,15 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-">checkpointStart</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointStart(org.cojen.tupl.Database)">checkpointStart</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)</code></th>
 <td class="colLast">
 <div class="block">Called to durably write all changes.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">redo</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;message)</code></th>
 <td class="colLast">
 <div class="block">Non-transactionally apply an idempotent redo operation.</div>
@@ -175,8 +176,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-long-byte:A-">redo</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-    <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+    <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;message,
     long&nbsp;indexId,
     byte[]&nbsp;key)</code></th>
@@ -186,7 +187,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#setCheckpointLock-org.cojen.tupl.Database-java.util.concurrent.locks.Lock-">setCheckpointLock</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#setCheckpointLock(org.cojen.tupl.Database,java.util.concurrent.locks.Lock)">setCheckpointLock</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
                  <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks" class="externalLink">Lock</a>&nbsp;lock)</code></th>
 <td class="colLast">
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
@@ -195,7 +196,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#undo-org.cojen.tupl.Database-byte:A-">undo</a></span>&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#undo(org.cojen.tupl.Database,byte%5B%5D)">undo</a></span>&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
     byte[]&nbsp;message)</code></th>
 <td class="colLast">
 <div class="block">Non-transactionally apply an idempotent undo operation.</div>
@@ -204,6 +205,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </table>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -211,39 +213,40 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-">
+<a id="redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>redo</h4>
-<pre>void&nbsp;redo&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-          <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<pre class="methodSignature">void&nbsp;redo&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+          <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
           byte[]&nbsp;message)
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Non-transactionally apply an idempotent redo operation.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txn</code> - transaction the operation applies to; can be modified</dd>
-<dd><code>message</code> - message originally provided to <a href="../../../../org/cojen/tupl/Transaction.html#customRedo-byte:A-long-byte:A-"><code>Transaction.customRedo(byte[], long, byte[])</code></a></dd>
+<dd><code>message</code> - message originally provided to <a href="../Transaction.html#customRedo(byte%5B%5D,long,byte%5B%5D)"><code>Transaction.customRedo(byte[], long, byte[])</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="redo-org.cojen.tupl.Database-org.cojen.tupl.Transaction-byte:A-long-byte:A-">
+<a id="redo(org.cojen.tupl.Database,org.cojen.tupl.Transaction,byte[],long,byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>redo</h4>
-<pre>void&nbsp;redo&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
-          <a href="../../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<pre class="methodSignature">void&nbsp;redo&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+          <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
           byte[]&nbsp;message,
           long&nbsp;indexId,
           byte[]&nbsp;key)
@@ -253,7 +256,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txn</code> - transaction the operation applies to; can be modified</dd>
-<dd><code>message</code> - message originally provided to <a href="../../../../org/cojen/tupl/Transaction.html#customRedo-byte:A-long-byte:A-"><code>Transaction.customRedo(byte[], long, byte[])</code></a></dd>
+<dd><code>message</code> - message originally provided to <a href="../Transaction.html#customRedo(byte%5B%5D,long,byte%5B%5D)"><code>Transaction.customRedo(byte[], long, byte[])</code></a></dd>
 <dd><code>indexId</code> - non-zero index for lock acquisition</dd>
 <dd><code>key</code> - non-null key which has been locked exclusively</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -261,46 +264,46 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="undo-org.cojen.tupl.Database-byte:A-">
+<a id="undo(org.cojen.tupl.Database,byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>undo</h4>
-<pre>void&nbsp;undo&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<pre class="methodSignature">void&nbsp;undo&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
           byte[]&nbsp;message)
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Non-transactionally apply an idempotent undo operation.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>message</code> - message originally provided to <a href="../../../../org/cojen/tupl/Transaction.html#customUndo-byte:A-"><code>Transaction.customUndo(byte[])</code></a></dd>
+<dd><code>message</code> - message originally provided to <a href="../Transaction.html#customUndo(byte%5B%5D)"><code>Transaction.customUndo(byte[])</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="setCheckpointLock-org.cojen.tupl.Database-java.util.concurrent.locks.Lock-">
+<a id="setCheckpointLock(org.cojen.tupl.Database,java.util.concurrent.locks.Lock)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>setCheckpointLock</h4>
-<pre>default&nbsp;void&nbsp;setCheckpointLock&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<pre class="methodSignature">default&nbsp;void&nbsp;setCheckpointLock&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
                                <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks" class="externalLink">Lock</a>&nbsp;lock)</pre>
 <div class="block">Called once when the database is opened, providing a shared lock which is later acquired
  exclusively by checkpoints. Implementation is permitted (but not required) to use this
- lock for suspending transactional changes when <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-"><code>checkpointStart</code></a>
+ lock for suspending transactional changes when <a href="#checkpointStart(org.cojen.tupl.Database)"><code>checkpointStart</code></a>
  is called. Simply hold the lock when making transactional changes, and then no additional
  locking is required when <code>checkpointStart</code> is called.</div>
 </li>
 </ul>
-<a name="checkpointStart-org.cojen.tupl.Database-">
+<a id="checkpointStart(org.cojen.tupl.Database)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>checkpointStart</h4>
-<pre>default&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;checkpointStart&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)
+<pre class="methodSignature">default&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;checkpointStart&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db)
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Called to durably write all changes. Implementation must suspend all transactional
  changes (although transactions can be left open), and then initiate a concurrent
@@ -310,25 +313,25 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  up. Undo operations are applied only for transactions which did not commit.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>optional object to be passed to <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointFinish-org.cojen.tupl.Database-java.lang.Object-"><code>checkpointFinish</code></a></dd>
+<dd>optional object to be passed to <a href="#checkpointFinish(org.cojen.tupl.Database,java.lang.Object)"><code>checkpointFinish</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="checkpointFinish-org.cojen.tupl.Database-java.lang.Object-">
+<a id="checkpointFinish(org.cojen.tupl.Database,java.lang.Object)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>checkpointFinish</h4>
-<pre>default&nbsp;void&nbsp;checkpointFinish&#8203;(<a href="../../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
+<pre class="methodSignature">default&nbsp;void&nbsp;checkpointFinish&#8203;(<a href="../Database.html" title="interface in org.cojen.tupl">Database</a>&nbsp;db,
                               <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)
                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Wait for a concurrent checkpoint to finish.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>obj</code> - optional object passed from <a href="../../../../org/cojen/tupl/ext/TransactionHandler.html#checkpointStart-org.cojen.tupl.Database-"><code>checkpointStart</code></a></dd>
+<dd><code>obj</code> - optional object passed from <a href="#checkpointStart(org.cojen.tupl.Database)"><code>checkpointStart</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -336,21 +339,25 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/TransactionHandler.html">Use</a></li>
@@ -360,16 +367,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li>Next&nbsp;Class</li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/ext/TransactionHandler.html" target="_top">Frames</a></li>
-<li><a href="TransactionHandler.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -401,10 +400,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

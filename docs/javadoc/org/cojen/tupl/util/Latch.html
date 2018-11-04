@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Latch.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/util/Latch.html" target="_top">Frames</a></li>
-<li><a href="Latch.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../../org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.util</a></div>
 <h2 title="Class Latch" class="title">Class Latch</h2>
 </div>
 <div class="contentContainer">
@@ -132,7 +132,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>Direct Known Subclasses:</dt>
-<dd><code><a href="../../../../org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></code>, <code><a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></code></dd>
+<dd><code><a href="Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></code>, <code><a href="Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></code></dd>
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">Latch</span>
@@ -143,7 +143,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
  typically unfair, waiting threads aren't starved indefinitely.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a></dd>
+<dd><a href="LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -152,12 +152,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <ul class="blockList">
 <li class="blockList">
 <!-- =========== FIELD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="field.summary">
+<li class="blockList"><a id="field.summary">
 <!--   -->
 </a>
 <h3>Field Summary</h3>
-<table class="memberSummary" summary="Field Summary table, listing fields, and an explanation">
+<table class="memberSummary">
 <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -166,52 +167,56 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#EXCLUSIVE">EXCLUSIVE</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#EXCLUSIVE">EXCLUSIVE</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>static int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#SHARED">SHARED</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#SHARED">SHARED</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#UNLATCHED">UNLATCHED</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#UNLATCHED">UNLATCHED</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.summary">
+<li class="blockList"><a id="constructor.summary">
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary" summary="Constructor Summary table, listing constructors, and an explanation">
+<table class="memberSummary">
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#Latch--">Latch</a></span>()</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">Latch</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#Latch-int-">Latch</a></span>&#8203;(int&nbsp;initialState)</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(int)">Latch</a></span>&#8203;(int&nbsp;initialState)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -220,136 +225,137 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireExclusive--">acquireExclusive</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireExclusive()">acquireExclusive</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireExclusiveInterruptibly--">acquireExclusiveInterruptibly</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireExclusiveInterruptibly()">acquireExclusiveInterruptibly</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireShared--">acquireShared</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireShared()">acquireShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireSharedInterruptibly--">acquireSharedInterruptibly</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedInterruptibly()">acquireSharedInterruptibly</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireSharedUncontended--">acquireSharedUncontended</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedUncontended()">acquireSharedUncontended</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
 </td>
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#acquireSharedUncontendedNanos-long-">acquireSharedUncontendedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedUncontendedNanos(long)">acquireSharedUncontendedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#downgrade--">downgrade</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#downgrade()">downgrade</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Downgrade the held exclusive latch into a shared latch.</div>
 </td>
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#hasQueuedThreads--">hasQueuedThreads</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#hasQueuedThreads()">hasQueuedThreads</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#release-boolean-">release</a></span>&#8203;(boolean&nbsp;exclusive)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#release(boolean)">release</a></span>&#8203;(boolean&nbsp;exclusive)</code></th>
 <td class="colLast">
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseEither--">releaseEither</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#releaseEither()">releaseEither</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Releases an exclusive or shared latch.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseExclusive--">releaseExclusive</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#releaseExclusive()">releaseExclusive</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Release the held exclusive latch.</div>
 </td>
 </tr>
 <tr id="i11" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#releaseShared--">releaseShared</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#releaseShared()">releaseShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Release a held shared latch.</div>
 </td>
 </tr>
 <tr id="i12" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#toString--">toString</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i13" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireExclusive--">tryAcquireExclusive</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireExclusive()">tryAcquireExclusive</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
 <tr id="i14" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireExclusiveNanos-long-">tryAcquireExclusiveNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireExclusiveNanos(long)">tryAcquireExclusiveNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
 <tr id="i15" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireShared--">tryAcquireShared</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireShared()">tryAcquireShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
 <tr id="i16" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryAcquireSharedNanos-long-">tryAcquireSharedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireSharedNanos(long)">tryAcquireSharedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 </td>
 </tr>
 <tr id="i17" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/util/Latch.html#tryUpgrade--">tryUpgrade</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryUpgrade()">tryUpgrade</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch.</div>
 </td>
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
+<li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -357,12 +363,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ FIELD DETAIL =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="field.detail">
+<li class="blockList"><a id="field.detail">
 <!--   -->
 </a>
 <h3>Field Detail</h3>
-<a name="UNLATCHED">
+<a id="UNLATCHED">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -375,7 +382,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="EXCLUSIVE">
+<a id="EXCLUSIVE">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -388,7 +395,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="SHARED">
+<a id="SHARED">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -403,13 +410,15 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </ul>
 </li>
 </ul>
+</section>
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.detail">
+<li class="blockList"><a id="constructor.detail">
 <!--   -->
 </a>
 <h3>Constructor Detail</h3>
-<a name="Latch--">
+<a id="&lt;init&gt;()">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -418,7 +427,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <pre>public&nbsp;Latch()</pre>
 </li>
 </ul>
-<a name="Latch-int-">
+<a id="&lt;init&gt;(int)">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -433,29 +442,31 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </ul>
 </li>
 </ul>
+</section>
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="tryAcquireExclusive--">
+<a id="tryAcquireExclusive()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>tryAcquireExclusive</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireExclusive()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;tryAcquireExclusive()</pre>
 <div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
-<a name="tryAcquireExclusiveNanos-long-">
+<a id="tryAcquireExclusiveNanos(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>tryAcquireExclusiveNanos</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireExclusiveNanos&#8203;(long&nbsp;nanosTimeout)
+<pre class="methodSignature">public&nbsp;boolean&nbsp;tryAcquireExclusiveNanos&#8203;(long&nbsp;nanosTimeout)
                                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></pre>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
@@ -466,23 +477,23 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="acquireExclusive--">
+<a id="acquireExclusive()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireExclusive</h4>
-<pre>public&nbsp;void&nbsp;acquireExclusive()</pre>
+<pre class="methodSignature">public&nbsp;void&nbsp;acquireExclusive()</pre>
 <div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
-<a name="acquireExclusiveInterruptibly--">
+<a id="acquireExclusiveInterruptibly()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireExclusiveInterruptibly</h4>
-<pre>public&nbsp;void&nbsp;acquireExclusiveInterruptibly()
+<pre class="methodSignature">public&nbsp;void&nbsp;acquireExclusiveInterruptibly()
                                    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></pre>
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
@@ -491,34 +502,34 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="downgrade--">
+<a id="downgrade()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>downgrade</h4>
-<pre>public final&nbsp;void&nbsp;downgrade()</pre>
+<pre class="methodSignature">public final&nbsp;void&nbsp;downgrade()</pre>
 <div class="block">Downgrade the held exclusive latch into a shared latch. Caller must later call
  releaseShared instead of releaseExclusive.</div>
 </li>
 </ul>
-<a name="releaseExclusive--">
+<a id="releaseExclusive()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>releaseExclusive</h4>
-<pre>public final&nbsp;void&nbsp;releaseExclusive()</pre>
+<pre class="methodSignature">public final&nbsp;void&nbsp;releaseExclusive()</pre>
 <div class="block">Release the held exclusive latch.</div>
 </li>
 </ul>
-<a name="release-boolean-">
+<a id="release(boolean)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>release</h4>
-<pre>public final&nbsp;void&nbsp;release&#8203;(boolean&nbsp;exclusive)</pre>
+<pre class="methodSignature">public final&nbsp;void&nbsp;release&#8203;(boolean&nbsp;exclusive)</pre>
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -526,33 +537,33 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="releaseEither--">
+<a id="releaseEither()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>releaseEither</h4>
-<pre>public final&nbsp;void&nbsp;releaseEither()</pre>
+<pre class="methodSignature">public final&nbsp;void&nbsp;releaseEither()</pre>
 <div class="block">Releases an exclusive or shared latch.</div>
 </li>
 </ul>
-<a name="tryAcquireShared--">
+<a id="tryAcquireShared()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>tryAcquireShared</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireShared()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;tryAcquireShared()</pre>
 <div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
-<a name="tryAcquireSharedNanos-long-">
+<a id="tryAcquireSharedNanos(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>tryAcquireSharedNanos</h4>
-<pre>public&nbsp;boolean&nbsp;tryAcquireSharedNanos&#8203;(long&nbsp;nanosTimeout)
+<pre class="methodSignature">public&nbsp;boolean&nbsp;tryAcquireSharedNanos&#8203;(long&nbsp;nanosTimeout)
                               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></pre>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 <dl>
@@ -563,13 +574,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="acquireSharedUncontended--">
+<a id="acquireSharedUncontended()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireSharedUncontended</h4>
-<pre>public&nbsp;boolean&nbsp;acquireSharedUncontended()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;acquireSharedUncontended()</pre>
 <div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -577,13 +588,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="acquireSharedUncontendedNanos-long-">
+<a id="acquireSharedUncontendedNanos(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireSharedUncontendedNanos</h4>
-<pre>public&nbsp;int&nbsp;acquireSharedUncontendedNanos&#8203;(long&nbsp;nanosTimeout)
+<pre class="methodSignature">public&nbsp;int&nbsp;acquireSharedUncontendedNanos&#8203;(long&nbsp;nanosTimeout)
                                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></pre>
 <div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
 <dl>
@@ -597,23 +608,23 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="acquireShared--">
+<a id="acquireShared()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireShared</h4>
-<pre>public&nbsp;void&nbsp;acquireShared()</pre>
+<pre class="methodSignature">public&nbsp;void&nbsp;acquireShared()</pre>
 <div class="block">Acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </li>
 </ul>
-<a name="acquireSharedInterruptibly--">
+<a id="acquireSharedInterruptibly()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>acquireSharedInterruptibly</h4>
-<pre>public&nbsp;void&nbsp;acquireSharedInterruptibly()
+<pre class="methodSignature">public&nbsp;void&nbsp;acquireSharedInterruptibly()
                                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></pre>
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 <dl>
@@ -622,67 +633,71 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a name="tryUpgrade--">
+<a id="tryUpgrade()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>tryUpgrade</h4>
-<pre>public&nbsp;boolean&nbsp;tryUpgrade()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;tryUpgrade()</pre>
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch. Upgrade fails if shared
  latch is held by more than one thread. If successful, caller must later call
  releaseExclusive instead of releaseShared.</div>
 </li>
 </ul>
-<a name="releaseShared--">
+<a id="releaseShared()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>releaseShared</h4>
-<pre>public&nbsp;void&nbsp;releaseShared()</pre>
+<pre class="methodSignature">public&nbsp;void&nbsp;releaseShared()</pre>
 <div class="block">Release a held shared latch.</div>
 </li>
 </ul>
-<a name="hasQueuedThreads--">
+<a id="hasQueuedThreads()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>hasQueuedThreads</h4>
-<pre>public final&nbsp;boolean&nbsp;hasQueuedThreads()</pre>
+<pre class="methodSignature">public final&nbsp;boolean&nbsp;hasQueuedThreads()</pre>
 </li>
 </ul>
-<a name="toString--">
+<a id="toString()">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>toString</h4>
-<pre>public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString()</pre>
+<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Latch.html">Use</a></li>
@@ -692,16 +707,8 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/util/Clutch.Pack.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/util/Latch.html" target="_top">Frames</a></li>
-<li><a href="Latch.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -733,10 +740,12 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

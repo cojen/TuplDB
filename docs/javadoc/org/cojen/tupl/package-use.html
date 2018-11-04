@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,21 +27,25 @@
     catch(err) {
     }
 //-->
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li>Class</li>
 <li class="navBarCell1Rev">Use</li>
@@ -50,16 +55,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li>Prev</li>
-<li>Next</li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/package-use.html" target="_top">Frames</a></li>
-<li><a href="package-use.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -82,7 +79,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -92,14 +89,17 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
+<main role="main">
 <div class="header">
 <h1 title="Uses of Package org.cojen.tupl" class="title">Uses of Package<br>org.cojen.tupl</h1>
 </div>
 <div class="contentContainer">
 <ul class="blockList">
 <li class="blockList">
-<table class="useSummary" summary="Use table, listing packages, and an explanation">
-<caption><span>Packages that use <a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></span><span class="tabEnd">&nbsp;</span></caption>
+<table class="useSummary">
+<caption><span>Packages that use <a href="package-summary.html">org.cojen.tupl</a></span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Package</th>
 <th class="colLast" scope="col">Description</th>
@@ -108,7 +108,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="altColor">
 <th class="colFirst" scope="row"><a href="#org.cojen.tupl">org.cojen.tupl</a></th>
 <td class="colLast">
-<div class="block">See <a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
+<div class="block">See <a href="Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -124,254 +124,254 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tbody>
 </table>
 </li>
-<li class="blockList"><a name="org.cojen.tupl">
+<li class="blockList"><a id="org.cojen.tupl">
 <!--   -->
 </a>
-<table class="useSummary" summary="Use table, listing classes, and an explanation">
-<caption><span>Classes in <a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a> used by <a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></span><span class="tabEnd">&nbsp;</span></caption>
+<table class="useSummary">
+<caption><span>Classes in <a href="package-summary.html">org.cojen.tupl</a> used by <a href="package-summary.html">org.cojen.tupl</a></span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Class</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tbody>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Combiner.html#org.cojen.tupl">Combiner</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Combiner.html#org.cojen.tupl">Combiner</a></th>
 <td class="colLast">
 <div class="block">Represents an operation which combines two values that map to the same key.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/CompactionObserver.html#org.cojen.tupl">CompactionObserver</a></th>
+<th class="colFirst" scope="row"><a href="class-use/CompactionObserver.html#org.cojen.tupl">CompactionObserver</a></th>
 <td class="colLast">
 <div class="block">Index compaction observer.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/ConfirmationFailureException.html#org.cojen.tupl">ConfirmationFailureException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/ConfirmationFailureException.html#org.cojen.tupl">ConfirmationFailureException</a></th>
 <td class="colLast">
-<div class="block">Thrown by <a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication cannot be confirmed.</div>
+<div class="block">Thrown by <a href="ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication cannot be confirmed.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/CorruptDatabaseException.html#org.cojen.tupl">CorruptDatabaseException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/CorruptDatabaseException.html#org.cojen.tupl">CorruptDatabaseException</a></th>
 <td class="colLast">
-<div class="block">Thrown when the internal structure of the <a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>database</code></a> is
+<div class="block">Thrown when the internal structure of the <a href="Database.html" title="interface in org.cojen.tupl"><code>database</code></a> is
  corrupt.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Crypto.html#org.cojen.tupl">Crypto</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Crypto.html#org.cojen.tupl">Crypto</a></th>
 <td class="colLast">
 <div class="block">Support for encrypting an entire database.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Cursor.html#org.cojen.tupl">Cursor</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Cursor.html#org.cojen.tupl">Cursor</a></th>
 <td class="colLast">
-<div class="block">Maintains a logical position in a <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>View</code></a>.</div>
+<div class="block">Maintains a logical position in a <a href="View.html" title="interface in org.cojen.tupl"><code>View</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Database.html#org.cojen.tupl">Database</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Database.html#org.cojen.tupl">Database</a></th>
 <td class="colLast">
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Database.Stats.html#org.cojen.tupl">Database.Stats</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Database.Stats.html#org.cojen.tupl">Database.Stats</a></th>
 <td class="colLast">
-<div class="block">Collection of database <a href="../../../org/cojen/tupl/Database.html#stats--"><code>statistics</code></a>.</div>
+<div class="block">Collection of database <a href="Database.html#stats()"><code>statistics</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DatabaseConfig.html#org.cojen.tupl">DatabaseConfig</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DatabaseConfig.html#org.cojen.tupl">DatabaseConfig</a></th>
 <td class="colLast">
-<div class="block">Configuration options used when <a href="../../../org/cojen/tupl/Database.html#open-org.cojen.tupl.DatabaseConfig-"><code>opening</code></a> a database.</div>
+<div class="block">Configuration options used when <a href="Database.html#open(org.cojen.tupl.DatabaseConfig)"><code>opening</code></a> a database.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DatabaseException.html#org.cojen.tupl">DatabaseException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DatabaseException.html#org.cojen.tupl">DatabaseException</a></th>
 <td class="colLast">
-<div class="block">Exception thrown which indicates a <a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>database</code></a> problem not due
+<div class="block">Exception thrown which indicates a <a href="Database.html" title="interface in org.cojen.tupl"><code>database</code></a> problem not due
  to general I/O problems.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DatabaseFullException.html#org.cojen.tupl">DatabaseFullException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DatabaseFullException.html#org.cojen.tupl">DatabaseFullException</a></th>
 <td class="colLast">
 <div class="block">Thrown when database is full and no more data can be stored into it.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DeadlockException.html#org.cojen.tupl">DeadlockException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DeadlockException.html#org.cojen.tupl">DeadlockException</a></th>
 <td class="colLast">
-<div class="block">Thrown when a lock request by a <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> timed out
+<div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> timed out
  due to a deadlock.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DeadlockSet.html#org.cojen.tupl">DeadlockSet</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DeadlockSet.html#org.cojen.tupl">DeadlockSet</a></th>
 <td class="colLast">
 <div class="block">Set of lock requests which were in a deadlock.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/DurabilityMode.html#org.cojen.tupl">DurabilityMode</a></th>
+<th class="colFirst" scope="row"><a href="class-use/DurabilityMode.html#org.cojen.tupl">DurabilityMode</a></th>
 <td class="colLast">
-<div class="block">Various <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> durability modes, which control the durability
+<div class="block">Various <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> durability modes, which control the durability
  strength of committed transactions.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EntryConsumer.html#org.cojen.tupl">EntryConsumer</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EntryConsumer.html#org.cojen.tupl">EntryConsumer</a></th>
 <td class="colLast">
 <div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiConsumer</code></a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EntryFunction.html#org.cojen.tupl">EntryFunction</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EntryFunction.html#org.cojen.tupl">EntryFunction</a></th>
 <td class="colLast">
 <div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiFunction</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EventListener.html#org.cojen.tupl">EventListener</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EventListener.html#org.cojen.tupl">EventListener</a></th>
 <td class="colLast">
 <div class="block">Listener which receives notifications of actions being performed by the
  database.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EventType.html#org.cojen.tupl">EventType</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EventType.html#org.cojen.tupl">EventType</a></th>
 <td class="colLast">
-<div class="block">Defines the various types of events that an <a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a> can receive.</div>
+<div class="block">Defines the various types of events that an <a href="EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a> can receive.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EventType.Category.html#org.cojen.tupl">EventType.Category</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EventType.Category.html#org.cojen.tupl">EventType.Category</a></th>
 <td class="colLast">
 <div class="block">Event type category.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Filter.html#org.cojen.tupl">Filter</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Filter.html#org.cojen.tupl">Filter</a></th>
 <td class="colLast">
 <div class="block">View transformer which filters out entries which don't belong.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Index.html#org.cojen.tupl">Index</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Index.html#org.cojen.tupl">Index</a></th>
 <td class="colLast">
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Index.Stats.html#org.cojen.tupl">Index.Stats</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Index.Stats.html#org.cojen.tupl">Index.Stats</a></th>
 <td class="colLast">
-<div class="block">Collection of stats from the <a href="../../../org/cojen/tupl/Index.html#analyze-byte:A-byte:A-"><code>analyze</code></a> method.</div>
+<div class="block">Collection of stats from the <a href="Index.html#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/LockFailureException.html#org.cojen.tupl">LockFailureException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/LockFailureException.html#org.cojen.tupl">LockFailureException</a></th>
 <td class="colLast">
-<div class="block">Thrown when a lock request by a <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> failed.</div>
+<div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> failed.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/LockMode.html#org.cojen.tupl">LockMode</a></th>
+<th class="colFirst" scope="row"><a href="class-use/LockMode.html#org.cojen.tupl">LockMode</a></th>
 <td class="colLast">
-<div class="block">Various lock modes for use within <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><code>transactions</code></a>.</div>
+<div class="block">Various lock modes for use within <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transactions</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/LockResult.html#org.cojen.tupl">LockResult</a></th>
+<th class="colFirst" scope="row"><a href="class-use/LockResult.html#org.cojen.tupl">LockResult</a></th>
 <td class="colLast">
 <div class="block">Result code returned by transactional operations which acquire locks.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/LockTimeoutException.html#org.cojen.tupl">LockTimeoutException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/LockTimeoutException.html#org.cojen.tupl">LockTimeoutException</a></th>
 <td class="colLast">
-<div class="block">Thrown when a lock request by a <a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> timed out.</div>
+<div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> timed out.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/LockUpgradeRule.html#org.cojen.tupl">LockUpgradeRule</a></th>
+<th class="colFirst" scope="row"><a href="class-use/LockUpgradeRule.html#org.cojen.tupl">LockUpgradeRule</a></th>
 <td class="colLast">
-<div class="block">Defines transaction lock upgrade behavior when using the <a href="../../../org/cojen/tupl/LockMode.html#REPEATABLE_READ"><code>REPEATABLE_READ</code></a> lock mode.</div>
+<div class="block">Defines transaction lock upgrade behavior when using the <a href="LockMode.html#REPEATABLE_READ"><code>REPEATABLE_READ</code></a> lock mode.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Ordering.html#org.cojen.tupl">Ordering</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Ordering.html#org.cojen.tupl">Ordering</a></th>
 <td class="colLast">
-<div class="block">Describes entry ordering in <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>views</code></a> and <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursors</code></a>.</div>
+<div class="block">Describes entry ordering in <a href="View.html" title="interface in org.cojen.tupl"><code>views</code></a> and <a href="Cursor.html" title="interface in org.cojen.tupl"><code>cursors</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Scanner.html#org.cojen.tupl">Scanner</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Scanner.html#org.cojen.tupl">Scanner</a></th>
 <td class="colLast">
 <div class="block">Scans through all entries in a view and passes them to a consumer.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Snapshot.html#org.cojen.tupl">Snapshot</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Snapshot.html#org.cojen.tupl">Snapshot</a></th>
 <td class="colLast">
 <div class="block">Control object used to capture a database snapshot.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Sorter.html#org.cojen.tupl">Sorter</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Sorter.html#org.cojen.tupl">Sorter</a></th>
 <td class="colLast">
 <div class="block">Utility for sorting and filling up new indexes.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Transaction.html#org.cojen.tupl">Transaction</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Transaction.html#org.cojen.tupl">Transaction</a></th>
 <td class="colLast">
 <div class="block">Defines a logical unit of work.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Transformer.html#org.cojen.tupl">Transformer</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Transformer.html#org.cojen.tupl">Transformer</a></th>
 <td class="colLast">
-<div class="block">Interface which supports filtering and transforming the entries within a <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><code>View</code></a>.</div>
+<div class="block">Interface which supports filtering and transforming the entries within a <a href="View.html" title="interface in org.cojen.tupl"><code>View</code></a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/UnmodifiableViewException.html#org.cojen.tupl">UnmodifiableViewException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/UnmodifiableViewException.html#org.cojen.tupl">UnmodifiableViewException</a></th>
 <td class="colLast">
 <div class="block">Thrown when attempting to make a change to an index or view which doesn't
  permit modifications.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Updater.html#org.cojen.tupl">Updater</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Updater.html#org.cojen.tupl">Updater</a></th>
 <td class="colLast">
 <div class="block">Scans through all entries in a view, updating them along the way.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/ValueAccessor.html#org.cojen.tupl">ValueAccessor</a></th>
+<th class="colFirst" scope="row"><a href="class-use/ValueAccessor.html#org.cojen.tupl">ValueAccessor</a></th>
 <td class="colLast">
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/VerificationObserver.html#org.cojen.tupl">VerificationObserver</a></th>
+<th class="colFirst" scope="row"><a href="class-use/VerificationObserver.html#org.cojen.tupl">VerificationObserver</a></th>
 <td class="colLast">
 <div class="block">Index verification observer.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/View.html#org.cojen.tupl">View</a></th>
+<th class="colFirst" scope="row"><a href="class-use/View.html#org.cojen.tupl">View</a></th>
 <td class="colLast">
 <div class="block">Mapping of keys to values, in no particular order.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/ViewConstraintException.html#org.cojen.tupl">ViewConstraintException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/ViewConstraintException.html#org.cojen.tupl">ViewConstraintException</a></th>
 <td class="colLast">
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
 </td>
@@ -379,44 +379,44 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tbody>
 </table>
 </li>
-<li class="blockList"><a name="org.cojen.tupl.ext">
+<li class="blockList"><a id="org.cojen.tupl.ext">
 <!--   -->
 </a>
-<table class="useSummary" summary="Use table, listing classes, and an explanation">
-<caption><span>Classes in <a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a> used by <a href="../../../org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></span><span class="tabEnd">&nbsp;</span></caption>
+<table class="useSummary">
+<caption><span>Classes in <a href="package-summary.html">org.cojen.tupl</a> used by <a href="ext/package-summary.html">org.cojen.tupl.ext</a></span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Class</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tbody>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/ConfirmationFailureException.html#org.cojen.tupl.ext">ConfirmationFailureException</a></th>
+<th class="colFirst" scope="row"><a href="class-use/ConfirmationFailureException.html#org.cojen.tupl.ext">ConfirmationFailureException</a></th>
 <td class="colLast">
-<div class="block">Thrown by <a href="../../../org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication cannot be confirmed.</div>
+<div class="block">Thrown by <a href="ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication cannot be confirmed.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Database.html#org.cojen.tupl.ext">Database</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Database.html#org.cojen.tupl.ext">Database</a></th>
 <td class="colLast">
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/EventListener.html#org.cojen.tupl.ext">EventListener</a></th>
+<th class="colFirst" scope="row"><a href="class-use/EventListener.html#org.cojen.tupl.ext">EventListener</a></th>
 <td class="colLast">
 <div class="block">Listener which receives notifications of actions being performed by the
  database.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Index.html#org.cojen.tupl.ext">Index</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Index.html#org.cojen.tupl.ext">Index</a></th>
 <td class="colLast">
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Transaction.html#org.cojen.tupl.ext">Transaction</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Transaction.html#org.cojen.tupl.ext">Transaction</a></th>
 <td class="colLast">
 <div class="block">Defines a logical unit of work.</div>
 </td>
@@ -424,25 +424,25 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tbody>
 </table>
 </li>
-<li class="blockList"><a name="org.cojen.tupl.tools">
+<li class="blockList"><a id="org.cojen.tupl.tools">
 <!--   -->
 </a>
-<table class="useSummary" summary="Use table, listing classes, and an explanation">
-<caption><span>Classes in <a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a> used by <a href="../../../org/cojen/tupl/tools/package-summary.html">org.cojen.tupl.tools</a></span><span class="tabEnd">&nbsp;</span></caption>
+<table class="useSummary">
+<caption><span>Classes in <a href="package-summary.html">org.cojen.tupl</a> used by <a href="tools/package-summary.html">org.cojen.tupl.tools</a></span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Class</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tbody>
 <tr class="altColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/Index.html#org.cojen.tupl.tools">Index</a></th>
+<th class="colFirst" scope="row"><a href="class-use/Index.html#org.cojen.tupl.tools">Index</a></th>
 <td class="colLast">
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colFirst" scope="row"><a href="../../../org/cojen/tupl/class-use/VerificationObserver.html#org.cojen.tupl.tools">VerificationObserver</a></th>
+<th class="colFirst" scope="row"><a href="class-use/VerificationObserver.html#org.cojen.tupl.tools">VerificationObserver</a></th>
 <td class="colLast">
 <div class="block">Index verification observer.</div>
 </td>
@@ -452,16 +452,19 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </li>
 </ul>
 </div>
+</main>
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li>Class</li>
 <li class="navBarCell1Rev">Use</li>
@@ -471,16 +474,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li>Prev</li>
-<li>Next</li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/package-use.html" target="_top">Frames</a></li>
-<li><a href="package-use.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -497,10 +492,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

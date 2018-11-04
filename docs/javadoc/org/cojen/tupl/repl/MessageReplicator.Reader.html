@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6};
+var data = {"i0":6,"i1":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/MessageReplicator.Reader.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/repl/MessageReplicator.Reader.html" target="_top">Frames</a></li>
-<li><a href="MessageReplicator.Reader.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../../org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.repl</a></div>
 <h2 title="Interface MessageReplicator.Reader" class="title">Interface MessageReplicator.Reader</h2>
 </div>
 <div class="contentContainer">
@@ -124,22 +124,22 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code>, <code><a href="DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></code></dd>
 </dl>
 <dl>
 <dt>Enclosing interface:</dt>
-<dd><a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dd>
+<dd><a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dd>
 </dl>
 <hr>
 <pre>public static interface <span class="typeNameLabel">MessageReplicator.Reader</span>
-extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></pre>
+extends <a href="DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></pre>
 <div class="block">Interface called by any group member for reading committed messages. Readers don't track
  which messages are applied &mdash; applications are responsible for tracking the highest
  applied index. When an application restarts, it must open the reader at an appropriate
  index.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/repl/MessageReplicator.html#newReader-long-boolean-"><code>newReader</code></a></dd>
+<dd><a href="MessageReplicator.html#newReader(long,boolean)"><code>newReader</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -148,12 +148,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <ul class="blockList">
 <li class="blockList">
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -162,14 +163,14 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage--">readMessage</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readMessage()">readMessage</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Blocks until a log message is available, never reading past a commit index or term.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage-byte:A-int-int-">readMessage</a></span>&#8203;(byte[]&nbsp;buf,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readMessage(byte%5B%5D,int,int)">readMessage</a></span>&#8203;(byte[]&nbsp;buf,
            int&nbsp;offset,
            int&nbsp;length)</code></th>
 <td class="colLast">
@@ -179,14 +180,15 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Accessor">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Accessor">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></h3>
-<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#close--">close</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#commitIndex--">commitIndex</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#index--">index</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#term--">term</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex--">termEndIndex</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex--">termStartIndex</a></code></li>
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></h3>
+<code><a href="DirectReplicator.Accessor.html#close()">close</a>, <a href="DirectReplicator.Accessor.html#commitIndex()">commitIndex</a>, <a href="DirectReplicator.Accessor.html#index()">index</a>, <a href="DirectReplicator.Accessor.html#term()">term</a>, <a href="DirectReplicator.Accessor.html#termEndIndex()">termEndIndex</a>, <a href="DirectReplicator.Accessor.html#termStartIndex()">termStartIndex</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -194,18 +196,19 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="readMessage--">
+<a id="readMessage()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>readMessage</h4>
-<pre>byte[]&nbsp;readMessage()
+<pre class="methodSignature">byte[]&nbsp;readMessage()
             throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Blocks until a log message is available, never reading past a commit index or term.</div>
 <dl>
@@ -218,13 +221,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 </dl>
 </li>
 </ul>
-<a name="readMessage-byte:A-int-int-">
+<a id="readMessage(byte[],int,int)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>readMessage</h4>
-<pre>int&nbsp;readMessage&#8203;(byte[]&nbsp;buf,
+<pre class="methodSignature">int&nbsp;readMessage&#8203;(byte[]&nbsp;buf,
                 int&nbsp;offset,
                 int&nbsp;length)
          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
@@ -247,21 +250,25 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/MessageReplicator.Reader.html">Use</a></li>
@@ -271,16 +278,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/MessageReplicator.Writer.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/repl/MessageReplicator.Reader.html" target="_top">Frames</a></li>
-<li><a href="MessageReplicator.Reader.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -312,10 +311,12 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.Reader.html" t
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

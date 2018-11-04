@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Database.Stats.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Database.Stats.html" target="_top">Frames</a></li>
-<li><a href="Database.Stats.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h2 title="Class Database.Stats" class="title">Class Database.Stats</h2>
 </div>
 <div class="contentContainer">
@@ -136,13 +136,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <dl>
 <dt>Enclosing interface:</dt>
-<dd><a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dd>
+<dd><a href="Database.html" title="interface in org.cojen.tupl">Database</a></dd>
 </dl>
 <hr>
 <pre>public static class <span class="typeNameLabel">Database.Stats</span>
 extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
 implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a></pre>
-<div class="block">Collection of database <a href="../../../org/cojen/tupl/Database.html#stats--"><code>statistics</code></a>.</div>
+<div class="block">Collection of database <a href="Database.html#stats()"><code>statistics</code></a>.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="../../../serialized-form.html#org.cojen.tupl.Database.Stats">Serialized Form</a></dd>
@@ -154,12 +154,13 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <ul class="blockList">
 <li class="blockList">
 <!-- =========== FIELD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="field.summary">
+<li class="blockList"><a id="field.summary">
 <!--   -->
 </a>
 <h3>Field Summary</h3>
-<table class="memberSummary" summary="Field Summary table, listing fields, and an explanation">
+<table class="memberSummary">
 <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -168,83 +169,87 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#cachedPages">cachedPages</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachedPages">cachedPages</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#cursorCount">cursorCount</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cursorCount">cursorCount</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#dirtyPages">dirtyPages</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#dirtyPages">dirtyPages</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#freePages">freePages</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#freePages">freePages</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#lockCount">lockCount</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockCount">lockCount</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#openIndexes">openIndexes</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndexes">openIndexes</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#pageSize">pageSize</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageSize">pageSize</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#totalPages">totalPages</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#totalPages">totalPages</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#txnCount">txnCount</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#txnCount">txnCount</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#txnsCreated">txnsCreated</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#txnsCreated">txnsCreated</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.summary">
+<li class="blockList"><a id="constructor.summary">
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary" summary="Constructor Summary table, listing constructors, and an explanation">
+<table class="memberSummary">
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#Stats--">Stats</a></span>()</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">Stats</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -253,83 +258,83 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#cachedPages--">cachedPages</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachedPages()">cachedPages</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current size of the cache, in pages.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
-<td class="colFirst"><code><a href="../../../org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#clone--">clone</a></span>()</code></th>
+<td class="colFirst"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#clone()">clone</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#cursorCount--">cursorCount</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cursorCount()">cursorCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the amount of cursors which are in a non-reset state.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#dirtyPages--">dirtyPages</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#dirtyPages()">dirtyPages</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#equals-java.lang.Object-">equals</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#freePages--">freePages</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#freePages()">freePages</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the amount of unused pages in the database.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#hashCode--">hashCode</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#hashCode()">hashCode</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#lockCount--">lockCount</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockCount()">lockCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the amount of locks currently allocated.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#openIndexes--">openIndexes</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndexes()">openIndexes</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the amount of indexes currently open.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#pageSize--">pageSize</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageSize()">pageSize</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the allocation page size.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#toString--">toString</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i11" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#totalPages--">totalPages</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#totalPages()">totalPages</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total amount of pages in the database.</div>
 </td>
 </tr>
 <tr id="i12" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#transactionCount--">transactionCount</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#transactionCount()">transactionCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the amount of fully-established transactions which are in a non-reset
  state.</div>
@@ -337,7 +342,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 <tr id="i13" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Database.Stats.html#transactionsCreated--">transactionsCreated</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#transactionsCreated()">transactionsCreated</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total amount of fully-established transactions created over the life of
  the database.</div>
@@ -345,14 +350,15 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
+<li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -360,12 +366,13 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ FIELD DETAIL =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="field.detail">
+<li class="blockList"><a id="field.detail">
 <!--   -->
 </a>
 <h3>Field Detail</h3>
-<a name="pageSize">
+<a id="pageSize">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -374,7 +381,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;int pageSize</pre>
 </li>
 </ul>
-<a name="freePages">
+<a id="freePages">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -383,7 +390,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long freePages</pre>
 </li>
 </ul>
-<a name="totalPages">
+<a id="totalPages">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -392,7 +399,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long totalPages</pre>
 </li>
 </ul>
-<a name="cachedPages">
+<a id="cachedPages">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -401,7 +408,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long cachedPages</pre>
 </li>
 </ul>
-<a name="dirtyPages">
+<a id="dirtyPages">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -410,7 +417,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long dirtyPages</pre>
 </li>
 </ul>
-<a name="openIndexes">
+<a id="openIndexes">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -419,7 +426,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;int openIndexes</pre>
 </li>
 </ul>
-<a name="lockCount">
+<a id="lockCount">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -428,7 +435,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long lockCount</pre>
 </li>
 </ul>
-<a name="cursorCount">
+<a id="cursorCount">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -437,7 +444,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long cursorCount</pre>
 </li>
 </ul>
-<a name="txnCount">
+<a id="txnCount">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -446,7 +453,7 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <pre>public&nbsp;long txnCount</pre>
 </li>
 </ul>
-<a name="txnsCreated">
+<a id="txnsCreated">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -457,13 +464,15 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </ul>
 </li>
 </ul>
+</section>
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.detail">
+<li class="blockList"><a id="constructor.detail">
 <!--   -->
 </a>
 <h3>Constructor Detail</h3>
-<a name="Stats--">
+<a id="&lt;init&gt;()">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -474,190 +483,196 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </ul>
 </li>
 </ul>
+</section>
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="pageSize--">
+<a id="pageSize()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>pageSize</h4>
-<pre>public&nbsp;int&nbsp;pageSize()</pre>
+<pre class="methodSignature">public&nbsp;int&nbsp;pageSize()</pre>
 <div class="block">Returns the allocation page size.</div>
 </li>
 </ul>
-<a name="freePages--">
+<a id="freePages()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>freePages</h4>
-<pre>public&nbsp;long&nbsp;freePages()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;freePages()</pre>
 <div class="block">Returns the amount of unused pages in the database.</div>
 </li>
 </ul>
-<a name="totalPages--">
+<a id="totalPages()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>totalPages</h4>
-<pre>public&nbsp;long&nbsp;totalPages()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;totalPages()</pre>
 <div class="block">Returns the total amount of pages in the database.</div>
 </li>
 </ul>
-<a name="cachedPages--">
+<a id="cachedPages()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>cachedPages</h4>
-<pre>public&nbsp;long&nbsp;cachedPages()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;cachedPages()</pre>
 <div class="block">Returns the current size of the cache, in pages.</div>
 </li>
 </ul>
-<a name="dirtyPages--">
+<a id="dirtyPages()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>dirtyPages</h4>
-<pre>public&nbsp;long&nbsp;dirtyPages()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;dirtyPages()</pre>
 <div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
 </li>
 </ul>
-<a name="openIndexes--">
+<a id="openIndexes()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>openIndexes</h4>
-<pre>public&nbsp;int&nbsp;openIndexes()</pre>
+<pre class="methodSignature">public&nbsp;int&nbsp;openIndexes()</pre>
 <div class="block">Returns the amount of indexes currently open.</div>
 </li>
 </ul>
-<a name="lockCount--">
+<a id="lockCount()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>lockCount</h4>
-<pre>public&nbsp;long&nbsp;lockCount()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;lockCount()</pre>
 <div class="block">Returns the amount of locks currently allocated. Locks are created as transactions
  access or modify records, and they are destroyed when transactions exit or reset. An
  accumulation of locks can indicate that transactions are not being reset properly.</div>
 </li>
 </ul>
-<a name="cursorCount--">
+<a id="cursorCount()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>cursorCount</h4>
-<pre>public&nbsp;long&nbsp;cursorCount()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;cursorCount()</pre>
 <div class="block">Returns the amount of cursors which are in a non-reset state. An accumulation of
  cursors can indicate that they are not being reset properly.</div>
 </li>
 </ul>
-<a name="transactionCount--">
+<a id="transactionCount()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>transactionCount</h4>
-<pre>public&nbsp;long&nbsp;transactionCount()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;transactionCount()</pre>
 <div class="block">Returns the amount of fully-established transactions which are in a non-reset
  state. This value is unaffected by transactions which make no changes, and it is
  also unaffected by auto-commit transactions. An accumulation of transactions can
  indicate that they are not being reset properly.</div>
 </li>
 </ul>
-<a name="transactionsCreated--">
+<a id="transactionsCreated()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>transactionsCreated</h4>
-<pre>public&nbsp;long&nbsp;transactionsCreated()</pre>
+<pre class="methodSignature">public&nbsp;long&nbsp;transactionsCreated()</pre>
 <div class="block">Returns the total amount of fully-established transactions created over the life of
  the database. This value is unaffected by transactions which make no changes, and it
  is also unaffected by auto-commit transactions. A resurrected transaction can become
  fully-established again, further increasing the total created value.</div>
 </li>
 </ul>
-<a name="clone--">
+<a id="clone()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>clone</h4>
-<pre>public&nbsp;<a href="../../../org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a>&nbsp;clone()</pre>
+<pre class="methodSignature">public&nbsp;<a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a>&nbsp;clone()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang" class="externalLink">clone</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="hashCode--">
+<a id="hashCode()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>hashCode</h4>
-<pre>public&nbsp;int&nbsp;hashCode()</pre>
+<pre class="methodSignature">public&nbsp;int&nbsp;hashCode()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang" class="externalLink">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="equals-java.lang.Object-">
+<a id="equals(java.lang.Object)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>equals</h4>
-<pre>public&nbsp;boolean&nbsp;equals&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;equals&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang" class="externalLink">equals</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="toString--">
+<a id="toString()">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>toString</h4>
-<pre>public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString()</pre>
+<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Database.Stats.html">Use</a></li>
@@ -667,16 +682,8 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Database.Stats.html" target="_top">Frames</a></li>
-<li><a href="Database.Stats.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -708,10 +715,12 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

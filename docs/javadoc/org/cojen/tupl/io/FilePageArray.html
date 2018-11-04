@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/FilePageArray.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/io/LengthOption.html" title="enum in org.cojen.tupl.io"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/io/FilePageArray.html" target="_top">Frames</a></li>
-<li><a href="FilePageArray.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../../org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.io</a></div>
 <h2 title="Class FilePageArray" class="title">Class FilePageArray</h2>
 </div>
 <div class="contentContainer">
@@ -123,7 +123,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a></li>
 <li>
 <ul class="inheritance">
-<li><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">org.cojen.tupl.io.PageArray</a></li>
+<li><a href="PageArray.html" title="class in org.cojen.tupl.io">org.cojen.tupl.io.PageArray</a></li>
 <li>
 <ul class="inheritance">
 <li>org.cojen.tupl.io.FilePageArray</li>
@@ -137,12 +137,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="../../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">FilePageArray</span>
-extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></pre>
-<div class="block">Basic <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a file.</div>
+extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></pre>
+<div class="block">Basic <a href="PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a file.</div>
 </li>
 </ul>
 </div>
@@ -150,40 +150,43 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <ul class="blockList">
 <li class="blockList">
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.summary">
+<li class="blockList"><a id="constructor.summary">
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary" summary="Constructor Summary table, listing constructors, and an explanation">
+<table class="memberSummary">
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#FilePageArray-int-java.io.File-java.util.EnumSet-">FilePageArray</a></span>&#8203;(int&nbsp;pageSize,
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(int,java.io.File,java.util.EnumSet)">FilePageArray</a></span>&#8203;(int&nbsp;pageSize,
              <a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file,
-             <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
+             <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#FilePageArray-int-java.io.File-org.cojen.tupl.io.FileFactory-java.util.EnumSet-">FilePageArray</a></span>&#8203;(int&nbsp;pageSize,
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(int,java.io.File,org.cojen.tupl.io.FileFactory,java.util.EnumSet)">FilePageArray</a></span>&#8203;(int&nbsp;pageSize,
              <a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file,
-             <a href="../../../../org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a>&nbsp;factory,
-             <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
+             <a href="FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a>&nbsp;factory,
+             <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -192,34 +195,34 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#close-java.lang.Throwable-">close</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close(java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#getPageCount--">getPageCount</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCount()">getPageCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#isDirectIO--">isDirectIO</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isDirectIO()">isDirectIO</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#isEmpty--">isEmpty</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#isReadOnly--">isReadOnly</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#readPage-long-byte:A-int-int-">readPage</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         byte[]&nbsp;dst,
         int&nbsp;offset,
         int&nbsp;length)</code></th>
@@ -227,7 +230,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#readPage-long-long-int-int-">readPage</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         long&nbsp;dstPtr,
         int&nbsp;offset,
         int&nbsp;length)</code></th>
@@ -235,21 +238,21 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#setPageCount-long-">setPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#setPageCount(long)">setPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#sync-boolean-">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#writePage-long-byte:A-int-">writePage</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;src,
          int&nbsp;offset)</code></th>
 <td class="colLast">
@@ -258,7 +261,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/io/FilePageArray.html#writePage-long-long-int-">writePage</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;srcPtr,
          int&nbsp;offset)</code></th>
 <td class="colLast">
@@ -267,21 +270,22 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.io.PageArray">
+<!--   -->
+</a>
+<h3>Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
+<code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#copyPage(long,long)">copyPage</a>, <a href="PageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer</a>, <a href="PageArray.html#directPagePointer(long)">directPagePointer</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a>, <a href="PageArray.html#evictPage(long,long)">evictPage</a>, <a href="PageArray.html#getPageCountLimit()">getPageCountLimit</a>, <a href="PageArray.html#open()">open</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#syncPage(long)">syncPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></li>
+</ul>
+<ul class="blockList">
+<li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
-</ul>
-<ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.io.PageArray">
-<!--   -->
-</a>
-<h3>Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
-<code><a href="../../../../org/cojen/tupl/io/PageArray.html#cachePage-long-byte:A-">cachePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#cachePage-long-byte:A-int-">cachePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#cachePage-long-long-">cachePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#cachePage-long-long-int-">cachePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#close--">close</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#copyPage-long-long-">copyPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#copyPageFromPointer-long-long-">copyPageFromPointer</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#directPagePointer-long-">directPagePointer</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#dirtyPage-long-">dirtyPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#evictPage-long-byte:A-">evictPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#evictPage-long-long-">evictPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCountLimit--">getPageCountLimit</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#open--">open</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#pageSize--">pageSize</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-byte:A-">readPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-long-">readPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#syncPage-long-">syncPage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#uncachePage-long-">uncachePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-byte:A-">writePage</a>, <a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-long-">writePage</a></code></li>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -289,12 +293,13 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <ul class="blockList">
 <li class="blockList">
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.detail">
+<li class="blockList"><a id="constructor.detail">
 <!--   -->
 </a>
 <h3>Constructor Detail</h3>
-<a name="FilePageArray-int-java.io.File-java.util.EnumSet-">
+<a id="&lt;init&gt;(int,java.io.File,java.util.EnumSet)">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -302,7 +307,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>FilePageArray</h4>
 <pre>public&nbsp;FilePageArray&#8203;(int&nbsp;pageSize,
                      <a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file,
-                     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)
+                     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)
               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -310,7 +315,7 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="FilePageArray-int-java.io.File-org.cojen.tupl.io.FileFactory-java.util.EnumSet-">
+<a id="&lt;init&gt;(int,java.io.File,org.cojen.tupl.io.FileFactory,java.util.EnumSet)">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -318,8 +323,8 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <h4>FilePageArray</h4>
 <pre>public&nbsp;FilePageArray&#8203;(int&nbsp;pageSize,
                      <a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file,
-                     <a href="../../../../org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a>&nbsp;factory,
-                     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="../../../../org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)
+                     <a href="FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a>&nbsp;factory,
+                     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)
               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -329,106 +334,108 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </ul>
 </li>
 </ul>
+</section>
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="isDirectIO--">
+<a id="isDirectIO()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>isDirectIO</h4>
-<pre>public&nbsp;boolean&nbsp;isDirectIO()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isDirectIO()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#isDirectIO--">isDirectIO</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#isDirectIO()">isDirectIO</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="isReadOnly--">
+<a id="isReadOnly()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>isReadOnly</h4>
-<pre>public&nbsp;boolean&nbsp;isReadOnly()</pre>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isReadOnly()</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#isReadOnly--">isReadOnly</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#isReadOnly()">isReadOnly</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="isEmpty--">
+<a id="isEmpty()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>isEmpty</h4>
-<pre>public&nbsp;boolean&nbsp;isEmpty()
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isEmpty()
                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#isEmpty--">isEmpty</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#isEmpty()">isEmpty</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="getPageCount--">
+<a id="getPageCount()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>getPageCount</h4>
-<pre>public&nbsp;long&nbsp;getPageCount()
+<pre class="methodSignature">public&nbsp;long&nbsp;getPageCount()
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCount--">PageArray</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#getPageCount()">PageArray</a></code></span></div>
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#getPageCount--">getPageCount</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#getPageCount()">getPageCount</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="setPageCount-long-">
+<a id="setPageCount(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>setPageCount</h4>
-<pre>public&nbsp;void&nbsp;setPageCount&#8203;(long&nbsp;count)
+<pre class="methodSignature">public&nbsp;void&nbsp;setPageCount&#8203;(long&nbsp;count)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#setPageCount-long-">PageArray</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#setPageCount(long)">PageArray</a></code></span></div>
 <div class="block">Set the total count of pages, truncating or growing the array as necessary. Array
  implementation might not support setting the page count, in which case this method does
  nothing.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#setPageCount-long-">setPageCount</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#setPageCount(long)">setPageCount</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="readPage-long-byte:A-int-int-">
+<a id="readPage(long,byte[],int,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>readPage</h4>
-<pre>public&nbsp;void&nbsp;readPage&#8203;(long&nbsp;index,
+<pre class="methodSignature">public&nbsp;void&nbsp;readPage&#8203;(long&nbsp;index,
                      byte[]&nbsp;dst,
                      int&nbsp;offset,
                      int&nbsp;length)
               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-byte:A-int-int-">readPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#readPage(long,byte%5B%5D,int,int)">readPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - zero-based page index to read</dd>
 <dd><code>dst</code> - receives read data</dd>
@@ -438,20 +445,20 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="readPage-long-long-int-int-">
+<a id="readPage(long,long,int,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>readPage</h4>
-<pre>public&nbsp;void&nbsp;readPage&#8203;(long&nbsp;index,
+<pre class="methodSignature">public&nbsp;void&nbsp;readPage&#8203;(long&nbsp;index,
                      long&nbsp;dstPtr,
                      int&nbsp;offset,
                      int&nbsp;length)
               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#readPage-long-long-int-int-">readPage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#readPage(long,long,int,int)">readPage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - zero-based page index to read</dd>
 <dd><code>dstPtr</code> - receives read data</dd>
@@ -461,23 +468,23 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="writePage-long-byte:A-int-">
+<a id="writePage(long,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>writePage</h4>
-<pre>public&nbsp;void&nbsp;writePage&#8203;(long&nbsp;index,
+<pre class="methodSignature">public&nbsp;void&nbsp;writePage&#8203;(long&nbsp;index,
                       byte[]&nbsp;src,
                       int&nbsp;offset)
                throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-byte:A-int-">PageArray</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#writePage(long,byte%5B%5D,int)">PageArray</a></code></span></div>
 <div class="block">Writes a page, which is lazily flushed. The array grows automatically if the index is
  greater than or equal to the current page count. If array supports caching, page must be
  immediately copied into it.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-byte:A-int-">writePage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#writePage(long,byte%5B%5D,int)">writePage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - zero-based page index to write</dd>
 <dd><code>src</code> - data to write</dd>
@@ -487,23 +494,23 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="writePage-long-long-int-">
+<a id="writePage(long,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>writePage</h4>
-<pre>public&nbsp;void&nbsp;writePage&#8203;(long&nbsp;index,
+<pre class="methodSignature">public&nbsp;void&nbsp;writePage&#8203;(long&nbsp;index,
                       long&nbsp;srcPtr,
                       int&nbsp;offset)
                throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-long-int-">PageArray</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#writePage(long,long,int)">PageArray</a></code></span></div>
 <div class="block">Writes a page, which is lazily flushed. The array grows automatically if the index is
  greater than or equal to the current page count. If array supports caching, page must be
  immediately copied into it.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#writePage-long-long-int-">writePage</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#writePage(long,long,int)">writePage</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - zero-based page index to write</dd>
 <dd><code>srcPtr</code> - data to write</dd>
@@ -513,19 +520,19 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="sync-boolean-">
+<a id="sync(boolean)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>sync</h4>
-<pre>public&nbsp;void&nbsp;sync&#8203;(boolean&nbsp;metadata)
+<pre class="methodSignature">public&nbsp;void&nbsp;sync&#8203;(boolean&nbsp;metadata)
           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html#sync-boolean-">PageArray</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#sync(boolean)">PageArray</a></code></span></div>
 <div class="block">Durably flushes all writes to the underlying device.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#sync-boolean-">sync</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#sync(boolean)">sync</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>metadata</code> - pass true to flush all file metadata</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -533,19 +540,19 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </dl>
 </li>
 </ul>
-<a name="close-java.lang.Throwable-">
+<a id="close(java.lang.Throwable)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>close</h4>
-<pre>public&nbsp;void&nbsp;close&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)
+<pre class="methodSignature">public&nbsp;void&nbsp;close&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)
            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/CauseCloseable.html#close-java.lang.Throwable-">close</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
+<dd><code><a href="CauseCloseable.html#close(java.lang.Throwable)">close</a></code>&nbsp;in interface&nbsp;<code><a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/io/PageArray.html#close-java.lang.Throwable-">close</a></code>&nbsp;in class&nbsp;<code><a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#close(java.lang.Throwable)">close</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>cause</code> - null if close is not caused by a failure</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -555,21 +562,25 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/FilePageArray.html">Use</a></li>
@@ -579,16 +590,8 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/io/LengthOption.html" title="enum in org.cojen.tupl.io"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/io/FilePageArray.html" target="_top">Frames</a></li>
-<li><a href="FilePageArray.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -620,10 +623,12 @@ extends <a href="../../../../org/cojen/tupl/io/PageArray.html" title="class in o
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

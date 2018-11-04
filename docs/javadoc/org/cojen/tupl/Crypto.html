@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":18,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":18,"i8":6,"i9":6};
+var data = {"i0":18,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":18,"i8":6,"i9":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Crypto.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/CorruptDatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Crypto.html" target="_top">Frames</a></li>
-<li><a href="Crypto.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h2 title="Interface Crypto" class="title">Interface Crypto</h2>
 </div>
 <div class="contentContainer">
@@ -124,14 +124,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="../../../org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></code></dd>
+<dd><code><a href="CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Crypto</span></pre>
 <div class="block">Support for encrypting an entire database.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../org/cojen/tupl/DatabaseConfig.html#encrypt-org.cojen.tupl.Crypto-"><code>DatabaseConfig.encrypt(org.cojen.tupl.Crypto)</code></a></dd>
+<dd><a href="DatabaseConfig.html#encrypt(org.cojen.tupl.Crypto)"><code>DatabaseConfig.encrypt(org.cojen.tupl.Crypto)</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -140,12 +140,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -154,7 +155,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-byte:A-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,byte%5B%5D,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;page,
            int&nbsp;pageOffset)</code></th>
@@ -165,7 +166,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-byte:A-int-byte:A-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;src,
            int&nbsp;srcOffset,
@@ -178,7 +179,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-long-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,long,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;pagePtr,
            int&nbsp;pageOffset)</code></th>
@@ -189,7 +190,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-long-int-long-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,long,int,long,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;srcPtr,
            int&nbsp;srcOffset,
@@ -202,7 +203,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-byte:A-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,byte%5B%5D,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;page,
            int&nbsp;pageOffset)</code></th>
@@ -213,7 +214,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-byte:A-int-byte:A-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;src,
            int&nbsp;srcOffset,
@@ -226,7 +227,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-long-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,long,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;pagePtr,
            int&nbsp;pageOffset)</code></th>
@@ -237,7 +238,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-long-int-long-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,long,int,long,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;srcPtr,
            int&nbsp;srcOffset,
@@ -250,7 +251,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#newDecryptingStream-long-java.io.InputStream-">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
                    <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an InputStream for supporting decryption.</div>
@@ -258,7 +259,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Crypto.html#newEncryptingStream-long-java.io.OutputStream-">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
                    <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
@@ -267,6 +268,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </table>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -274,18 +276,19 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="encryptPage-long-int-byte:A-int-">
+<a id="encryptPage(long,int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          byte[]&nbsp;page,
                          int&nbsp;pageOffset)
@@ -302,13 +305,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="encryptPage-long-int-byte:A-int-byte:A-int-">
+<a id="encryptPage(long,int,byte[],int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                  int&nbsp;pageSize,
                  byte[]&nbsp;src,
                  int&nbsp;srcOffset,
@@ -329,13 +332,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="encryptPage-long-int-long-int-">
+<a id="encryptPage(long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          long&nbsp;pagePtr,
                          int&nbsp;pageOffset)
@@ -352,13 +355,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="encryptPage-long-int-long-int-long-int-">
+<a id="encryptPage(long,int,long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          long&nbsp;srcPtr,
                          int&nbsp;srcOffset,
@@ -379,13 +382,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-byte:A-int-">
+<a id="decryptPage(long,int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          byte[]&nbsp;page,
                          int&nbsp;pageOffset)
@@ -402,13 +405,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-byte:A-int-byte:A-int-">
+<a id="decryptPage(long,int,byte[],int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                  int&nbsp;pageSize,
                  byte[]&nbsp;src,
                  int&nbsp;srcOffset,
@@ -429,13 +432,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-long-int-">
+<a id="decryptPage(long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          long&nbsp;pagePtr,
                          int&nbsp;pageOffset)
@@ -452,13 +455,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-long-int-long-int-">
+<a id="decryptPage(long,int,long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">default&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                          int&nbsp;pageSize,
                          long&nbsp;srcPtr,
                          int&nbsp;srcOffset,
@@ -479,13 +482,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="newEncryptingStream-long-java.io.OutputStream-">
+<a id="newEncryptingStream(long,java.io.OutputStream)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newEncryptingStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
                                  <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)
                           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
                                  <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
@@ -503,13 +506,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 </li>
 </ul>
-<a name="newDecryptingStream-long-java.io.InputStream-">
+<a id="newDecryptingStream(long,java.io.InputStream)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>newDecryptingStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
                                 <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)
                          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
                                 <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
@@ -529,21 +532,25 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Crypto.html">Use</a></li>
@@ -553,16 +560,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/CorruptDatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Crypto.html" target="_top">Frames</a></li>
-<li><a href="Crypto.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -594,10 +593,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

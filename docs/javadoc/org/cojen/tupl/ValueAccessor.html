@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6};
+var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/ValueAccessor.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/ValueAccessor.html" target="_top">Frames</a></li>
-<li><a href="ValueAccessor.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h2 title="Interface ValueAccessor" class="title">Interface ValueAccessor</h2>
 </div>
 <div class="contentContainer">
@@ -128,18 +128,18 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
-<dd><code><a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
+<dd><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Implementing Classes:</dt>
-<dd><code><a href="../../../org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></code></dd>
+<dd><code><a href="WrappedCursor.html" title="class in org.cojen.tupl">WrappedCursor</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">ValueAccessor</span>
 extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation. This interface permits values to be larger than what can fit in main memory.
- When using a <a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a> to access values, <a href="../../../org/cojen/tupl/Cursor.html#autoload-boolean-"><code>autoload</code></a> should be disabled to prevent values from being fully loaded automatically
+ When using a <a href="Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a> to access values, <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a> should be disabled to prevent values from being fully loaded automatically
 
  <p>When making transactional changes through this interface, undo actions may require that
  copies be made of the original value. Partial truncation of a large value isn't optimized to
@@ -147,7 +147,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
  original value instead of creating a copy.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-"><code>View.newAccessor</code></a></dd>
+<dd><a href="View.html#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)"><code>View.newAccessor</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -156,12 +156,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <ul class="blockList">
 <li class="blockList">
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -170,21 +171,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#close--">close</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Closes the accessor, but doesn't flush any OutputStream instances.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-">newValueInputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueInputStream(long)">newValueInputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
 <td class="colLast">
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueInputStream-long-int-">newValueInputStream</a></span>&#8203;(long&nbsp;pos,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueInputStream(long,int)">newValueInputStream</a></span>&#8203;(long&nbsp;pos,
                    int&nbsp;bufferSize)</code></th>
 <td class="colLast">
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
@@ -192,14 +193,14 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-">newValueOutputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueOutputStream(long)">newValueOutputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
 <td class="colLast">
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#newValueOutputStream-long-int-">newValueOutputStream</a></span>&#8203;(long&nbsp;pos,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueOutputStream(long,int)">newValueOutputStream</a></span>&#8203;(long&nbsp;pos,
                     int&nbsp;bufferSize)</code></th>
 <td class="colLast">
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value.</div>
@@ -207,7 +208,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueClear-long-long-">valueClear</a></span>&#8203;(long&nbsp;pos,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueClear(long,long)">valueClear</a></span>&#8203;(long&nbsp;pos,
           long&nbsp;length)</code></th>
 <td class="colLast">
 <div class="block">Writes over a range of the value with zeros, starting from any position.</div>
@@ -215,21 +216,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueLength--">valueLength</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength()">valueLength</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueLength-long-">valueLength</a></span>&#8203;(long&nbsp;length)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength(long)">valueLength</a></span>&#8203;(long&nbsp;length)</code></th>
 <td class="colLast">
 <div class="block">Extends or truncates the accessed value.</div>
 </td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueRead-long-byte:A-int-int-">valueRead</a></span>&#8203;(long&nbsp;pos,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueRead(long,byte%5B%5D,int,int)">valueRead</a></span>&#8203;(long&nbsp;pos,
          byte[]&nbsp;buf,
          int&nbsp;off,
          int&nbsp;len)</code></th>
@@ -239,7 +240,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/ValueAccessor.html#valueWrite-long-byte:A-int-int-">valueWrite</a></span>&#8203;(long&nbsp;pos,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueWrite(long,byte%5B%5D,int,int)">valueWrite</a></span>&#8203;(long&nbsp;pos,
           byte[]&nbsp;buf,
           int&nbsp;off,
           int&nbsp;len)</code></th>
@@ -250,6 +251,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </table>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -257,18 +259,19 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="valueLength--">
+<a id="valueLength()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>valueLength</h4>
-<pre>long&nbsp;valueLength()
+<pre class="methodSignature">long&nbsp;valueLength()
           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Returns the total length of the accessed value.</div>
 <dl>
@@ -280,13 +283,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="valueLength-long-">
+<a id="valueLength(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>valueLength</h4>
-<pre>void&nbsp;valueLength&#8203;(long&nbsp;length)
+<pre class="methodSignature">void&nbsp;valueLength&#8203;(long&nbsp;length)
           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Extends or truncates the accessed value. When extended, the new portion of the value is
  filled with zeros.</div>
@@ -296,18 +299,18 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if length is too large</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="valueRead-long-byte:A-int-int-">
+<a id="valueRead(long,byte[],int,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>valueRead</h4>
-<pre>int&nbsp;valueRead&#8203;(long&nbsp;pos,
+<pre class="methodSignature">int&nbsp;valueRead&#8203;(long&nbsp;pos,
               byte[]&nbsp;buf,
               int&nbsp;off,
               int&nbsp;len)
@@ -332,13 +335,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="valueWrite-long-byte:A-int-int-">
+<a id="valueWrite(long,byte[],int,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>valueWrite</h4>
-<pre>void&nbsp;valueWrite&#8203;(long&nbsp;pos,
+<pre class="methodSignature">void&nbsp;valueWrite&#8203;(long&nbsp;pos,
                 byte[]&nbsp;buf,
                 int&nbsp;off,
                 int&nbsp;len)
@@ -355,18 +358,18 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if position is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IndexOutOfBoundsException</a></code></dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="valueClear-long-long-">
+<a id="valueClear(long,long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>valueClear</h4>
-<pre>void&nbsp;valueClear&#8203;(long&nbsp;pos,
+<pre class="methodSignature">void&nbsp;valueClear&#8203;(long&nbsp;pos,
                 long&nbsp;length)
          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Writes over a range of the value with zeros, starting from any position. The length of
@@ -378,25 +381,25 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if position or length is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if closed</dd>
-<dd><code><a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
+<dd><code><a href="IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></code> - if not locked for writing</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="newValueInputStream-long-">
+<a id="newValueInputStream(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newValueInputStream&#8203;(long&nbsp;pos)
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newValueInputStream&#8203;(long&nbsp;pos)
                          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value. When the
  InputStream is closed, it closes the accessor too. The InputStream is bound to the
  accessor, and so only one thread can access either at a time.
 
  <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
- Reading from a value which doesn't exist causes a <a href="../../../org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl"><code>NoSuchValueException</code></a> to be
+ Reading from a value which doesn't exist causes a <a href="NoSuchValueException.html" title="class in org.cojen.tupl"><code>NoSuchValueException</code></a> to be
  thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -409,13 +412,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="newValueInputStream-long-int-">
+<a id="newValueInputStream(long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueInputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newValueInputStream&#8203;(long&nbsp;pos,
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newValueInputStream&#8203;(long&nbsp;pos,
                                 int&nbsp;bufferSize)
                          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Returns a new buffered InputStream instance, which reads from the value. When the
@@ -423,7 +426,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
  accessor, and so only one thread can access either at a time.
 
  <p>Reading past the end of the stream returns -1 (EOF), as per the InputStream contract.
- Reading from a value which doesn't exist causes a <a href="../../../org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl"><code>NoSuchValueException</code></a> to be
+ Reading from a value which doesn't exist causes a <a href="NoSuchValueException.html" title="class in org.cojen.tupl"><code>NoSuchValueException</code></a> to be
  thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -438,13 +441,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="newValueOutputStream-long-">
+<a id="newValueOutputStream(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newValueOutputStream&#8203;(long&nbsp;pos)
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newValueOutputStream&#8203;(long&nbsp;pos)
                            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value. When the
  OutputStream is closed, it closes the accessor too. The OutputStream is bound to the
@@ -461,13 +464,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="newValueOutputStream-long-int-">
+<a id="newValueOutputStream(long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newValueOutputStream</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newValueOutputStream&#8203;(long&nbsp;pos,
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newValueOutputStream&#8203;(long&nbsp;pos,
                                   int&nbsp;bufferSize)
                            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Returns a new buffered OutputStream instance, which writes to the value. When the
@@ -486,39 +489,43 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </dl>
 </li>
 </ul>
-<a name="close--">
+<a id="close()">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>close</h4>
-<pre>void&nbsp;close()</pre>
+<pre class="methodSignature">void&nbsp;close()</pre>
 <div class="block">Closes the accessor, but doesn't flush any OutputStream instances.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 </li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/ValueAccessor.html">Use</a></li>
@@ -528,16 +535,8 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/ValueAccessor.html" target="_top">Frames</a></li>
-<li><a href="ValueAccessor.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -569,10 +568,12 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

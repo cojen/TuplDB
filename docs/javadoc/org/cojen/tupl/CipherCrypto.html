@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":9,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":9,"i17":9};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":9,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":9,"i17":9};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/CipherCrypto.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/CacheExhaustedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/CipherCrypto.html" target="_top">Frames</a></li>
-<li><a href="CipherCrypto.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h2 title="Class CipherCrypto" class="title">Class CipherCrypto</h2>
 </div>
 <div class="contentContainer">
@@ -132,12 +132,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">CipherCrypto</span>
 extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
-implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></pre>
+implements <a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></pre>
 <div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm with a
  128-bit key.</div>
 </li>
@@ -147,31 +147,32 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 <ul class="blockList">
 <li class="blockList">
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.summary">
+<li class="blockList"><a id="constructor.summary">
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary" summary="Constructor Summary table, listing constructors, and an explanation">
+<table class="memberSummary">
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#CipherCrypto--">CipherCrypto</a></span>()</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">CipherCrypto</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Construct with a new key, available from the <a href="../../../org/cojen/tupl/CipherCrypto.html#secretKey--"><code>secretKey</code></a> method.</div>
+<div class="block">Construct with a new key, available from the <a href="#secretKey()"><code>secretKey</code></a> method.</div>
 </td>
 </tr>
 <tr class="rowColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#CipherCrypto-byte:A-">CipherCrypto</a></span>&#8203;(byte[]&nbsp;encodedKey)</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(byte%5B%5D)">CipherCrypto</a></span>&#8203;(byte[]&nbsp;encodedKey)</code></th>
 <td class="colLast">
 <div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#CipherCrypto-javax.crypto.SecretKey-">CipherCrypto</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(javax.crypto.SecretKey)">CipherCrypto</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Construct with an existing key.</div>
 </td>
@@ -179,13 +180,15 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </table>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t1" class="tableTab"><span><a href="javascript:show(1);">Static Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -194,14 +197,14 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--">algorithm</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#algorithm()">algorithm</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns "AES" by default; override to change the algorithm.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#decryptPage-long-int-byte:A-int-byte:A-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;src,
            int&nbsp;srcOffset,
@@ -214,7 +217,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#decryptPage-long-int-long-int-long-int-">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#decryptPage(long,int,long,int,long,int)">decryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;srcPtr,
            int&nbsp;srcOffset,
@@ -227,7 +230,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#encryptPage-long-int-byte:A-int-byte:A-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            byte[]&nbsp;src,
            int&nbsp;srcOffset,
@@ -240,7 +243,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#encryptPage-long-int-long-int-long-int-">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encryptPage(long,int,long,int,long,int)">encryptPage</a></span>&#8203;(long&nbsp;pageIndex,
            int&nbsp;pageSize,
            long&nbsp;srcPtr,
            int&nbsp;srcOffset,
@@ -253,15 +256,15 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#generateKey--">generateKey</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#generateKey()">generateKey</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Called to generate a key, using the <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a> and <a href="../../../org/cojen/tupl/CipherCrypto.html#keySize--"><code>key
+<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and <a href="#keySize()"><code>key
  size</code></a> of this instance.</div>
 </td>
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code>protected void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-">initCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey)">initCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
           int&nbsp;opmode,
           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
 <td class="colLast">
@@ -271,7 +274,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>protected void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-javax.crypto.spec.IvParameterSpec-">initCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey,javax.crypto.spec.IvParameterSpec)">initCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
           int&nbsp;opmode,
           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key,
           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/spec/IvParameterSpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink">IvParameterSpec</a>&nbsp;ivSpec)</code></th>
@@ -282,28 +285,28 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>protected int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#keySize--">keySize</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#keySize()">keySize</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns 128 bits by default; override to use any size supported by the algorithm.</div>
 </td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#main-java.lang.String:A-">main</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#main(java.lang.String%5B%5D)">main</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)</code></th>
 <td class="colLast">
 <div class="block">Generates and prints a new key.</div>
 </td>
 </tr>
 <tr id="i10" class="altColor">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#newCipher-java.lang.String-">newCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;transformation)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newCipher(java.lang.String)">newCipher</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;transformation)</code></th>
 <td class="colLast">
 <div class="block">Called to instantiate all <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> instances, with the given transformation.</div>
 </td>
 </tr>
 <tr id="i11" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#newDecryptingStream-long-java.io.InputStream-">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
                    <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an InputStream for supporting decryption.</div>
@@ -311,7 +314,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i12" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#newEncryptingStream-long-java.io.OutputStream-">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
                    <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
@@ -319,56 +322,57 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </tr>
 <tr id="i13" class="rowColor">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#newPageCipher--">newPageCipher</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newPageCipher()">newPageCipher</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting database pages,
- using the fixed instance <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
+ using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
 </td>
 </tr>
 <tr id="i14" class="altColor">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#newStreamCipher--">newStreamCipher</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newStreamCipher()">newStreamCipher</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
- the fixed instance <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>.</div>
+ the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
 </td>
 </tr>
 <tr id="i15" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#secretKey--">secretKey</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#secretKey()">secretKey</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i16" class="altColor">
 <td class="colFirst"><code>static <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#toString-byte:A-">toString</a></span>&#8203;(byte[]&nbsp;key)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString(byte%5B%5D)">toString</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
 </td>
 </tr>
 <tr id="i17" class="rowColor">
 <td class="colFirst"><code>static <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/CipherCrypto.html#toString-javax.crypto.SecretKey-">toString</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString(javax.crypto.SecretKey)">toString</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
 </td>
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.Crypto">
-<!--   -->
-</a>
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.<a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></h3>
-<code><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-byte:A-int-">decryptPage</a>, <a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-long-int-">decryptPage</a>, <a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-byte:A-int-">encryptPage</a>, <a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-long-int-">encryptPage</a></code></li>
-</ul>
-<ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.lang.Object">
+<li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
-<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone--" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals-java.lang.Object-" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize--" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass--" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode--" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify--" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll--" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString--" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait--" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait-long-int-" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
+</ul>
+<ul class="blockList">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.Crypto">
+<!--   -->
+</a>
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.<a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></h3>
+<code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int)">decryptPage</a>, <a href="Crypto.html#decryptPage(long,int,long,int)">decryptPage</a>, <a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int)">encryptPage</a>, <a href="Crypto.html#encryptPage(long,int,long,int)">encryptPage</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -376,12 +380,13 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 <ul class="blockList">
 <li class="blockList">
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="constructor.detail">
+<li class="blockList"><a id="constructor.detail">
 <!--   -->
 </a>
 <h3>Constructor Detail</h3>
-<a name="CipherCrypto--">
+<a id="&lt;init&gt;()">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -389,14 +394,14 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 <h4>CipherCrypto</h4>
 <pre>public&nbsp;CipherCrypto()
              throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block">Construct with a new key, available from the <a href="../../../org/cojen/tupl/CipherCrypto.html#secretKey--"><code>secretKey</code></a> method.</div>
+<div class="block">Construct with a new key, available from the <a href="#secretKey()"><code>secretKey</code></a> method.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="CipherCrypto-byte:A-">
+<a id="&lt;init&gt;(byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
@@ -411,7 +416,7 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="CipherCrypto-javax.crypto.SecretKey-">
+<a id="&lt;init&gt;(javax.crypto.SecretKey)">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -428,19 +433,21 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </ul>
 </li>
 </ul>
+</section>
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="main-java.lang.String:A-">
+<a id="main(java.lang.String[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>main</h4>
-<pre>public static&nbsp;void&nbsp;main&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)
+<pre class="methodSignature">public static&nbsp;void&nbsp;main&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)
                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink">Exception</a></pre>
 <div class="block">Generates and prints a new key.</div>
 <dl>
@@ -449,38 +456,38 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="secretKey--">
+<a id="secretKey()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>secretKey</h4>
-<pre>public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;secretKey()</pre>
+<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;secretKey()</pre>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if key was passed into the constructor</dd>
 </dl>
 </li>
 </ul>
-<a name="encryptPage-long-int-byte:A-int-byte:A-int-">
+<a id="encryptPage(long,int,byte[],int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>public final&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">public final&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                               int&nbsp;pageSize,
                               byte[]&nbsp;src,
                               int&nbsp;srcOffset,
                               byte[]&nbsp;dst,
                               int&nbsp;dstOffset)
                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-byte:A-int-byte:A-int-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-byte:A-int-byte:A-int-">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>src</code> - original unencrypted page</dd>
@@ -492,25 +499,25 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="encryptPage-long-int-long-int-long-int-">
+<a id="encryptPage(long,int,long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>encryptPage</h4>
-<pre>public final&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">public final&nbsp;void&nbsp;encryptPage&#8203;(long&nbsp;pageIndex,
                               int&nbsp;pageSize,
                               long&nbsp;srcPtr,
                               int&nbsp;srcOffset,
                               long&nbsp;dstPtr,
                               int&nbsp;dstOffset)
                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-long-int-long-int-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#encryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#encryptPage-long-int-long-int-long-int-">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#encryptPage(long,int,long,int,long,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>srcPtr</code> - original unencrypted page</dd>
@@ -522,25 +529,25 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-byte:A-int-byte:A-int-">
+<a id="decryptPage(long,int,byte[],int,byte[],int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>public final&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">public final&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                               int&nbsp;pageSize,
                               byte[]&nbsp;src,
                               int&nbsp;srcOffset,
                               byte[]&nbsp;dst,
                               int&nbsp;dstOffset)
                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-byte:A-int-byte:A-int-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-byte:A-int-byte:A-int-">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>src</code> - encrypted page</dd>
@@ -552,25 +559,25 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="decryptPage-long-int-long-int-long-int-">
+<a id="decryptPage(long,int,long,int,long,int)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>decryptPage</h4>
-<pre>public final&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
+<pre class="methodSignature">public final&nbsp;void&nbsp;decryptPage&#8203;(long&nbsp;pageIndex,
                               int&nbsp;pageSize,
                               long&nbsp;srcPtr,
                               int&nbsp;srcOffset,
                               long&nbsp;dstPtr,
                               int&nbsp;dstOffset)
                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-long-int-long-int-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#decryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#decryptPage-long-int-long-int-long-int-">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#decryptPage(long,int,long,int,long,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>srcPtr</code> - encrypted page</dd>
@@ -582,22 +589,22 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="newEncryptingStream-long-java.io.OutputStream-">
+<a id="newEncryptingStream(long,java.io.OutputStream)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newEncryptingStream</h4>
-<pre>public final&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
+<pre class="methodSignature">public final&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;newEncryptingStream&#8203;(long&nbsp;id,
                                               <a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)
                                        throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
                                               <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#newEncryptingStream-long-java.io.OutputStream-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#newEncryptingStream(long,java.io.OutputStream)">Crypto</a></code></span></div>
 <div class="block">Called to wrap an OutputStream for supporting encryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#newEncryptingStream-long-java.io.OutputStream-">newEncryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>id</code> - stream identifier</dd>
 <dd><code>out</code> - encrypted data destination</dd>
@@ -609,22 +616,22 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="newDecryptingStream-long-java.io.InputStream-">
+<a id="newDecryptingStream(long,java.io.InputStream)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newDecryptingStream</h4>
-<pre>public final&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
+<pre class="methodSignature">public final&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;newDecryptingStream&#8203;(long&nbsp;id,
                                              <a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)
                                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
                                              <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html#newDecryptingStream-long-java.io.InputStream-">Crypto</a></code></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from interface:&nbsp;<code><a href="Crypto.html#newDecryptingStream(long,java.io.InputStream)">Crypto</a></code></span></div>
 <div class="block">Called to wrap an InputStream for supporting decryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../org/cojen/tupl/Crypto.html#newDecryptingStream-long-java.io.InputStream-">newDecryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>id</code> - stream identifier</dd>
 <dd><code>in</code> - encrypted data source</dd>
@@ -636,55 +643,55 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="toString-javax.crypto.SecretKey-">
+<a id="toString(javax.crypto.SecretKey)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>toString</h4>
-<pre>public static&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</pre>
+<pre class="methodSignature">public static&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</pre>
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
 </li>
 </ul>
-<a name="toString-byte:A-">
+<a id="toString(byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>toString</h4>
-<pre>public static&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString&#8203;(byte[]&nbsp;key)</pre>
+<pre class="methodSignature">public static&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString&#8203;(byte[]&nbsp;key)</pre>
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
 </li>
 </ul>
-<a name="algorithm--">
+<a id="algorithm()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>algorithm</h4>
-<pre>protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;algorithm()</pre>
+<pre class="methodSignature">protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;algorithm()</pre>
 <div class="block">Returns "AES" by default; override to change the algorithm.</div>
 </li>
 </ul>
-<a name="keySize--">
+<a id="keySize()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>keySize</h4>
-<pre>protected&nbsp;int&nbsp;keySize()</pre>
+<pre class="methodSignature">protected&nbsp;int&nbsp;keySize()</pre>
 <div class="block">Returns 128 bits by default; override to use any size supported by the algorithm.</div>
 </li>
 </ul>
-<a name="generateKey--">
+<a id="generateKey()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>generateKey</h4>
-<pre>protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;generateKey()
+<pre class="methodSignature">protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;generateKey()
                          throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
-<div class="block">Called to generate a key, using the <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a> and <a href="../../../org/cojen/tupl/CipherCrypto.html#keySize--"><code>key
+<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and <a href="#keySize()"><code>key
  size</code></a> of this instance.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -692,13 +699,13 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="newCipher-java.lang.String-">
+<a id="newCipher(java.lang.String)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newCipher</h4>
-<pre>protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;transformation)
+<pre class="methodSignature">protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;transformation)
                     throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called to instantiate all <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> instances, with the given transformation.</div>
 <dl>
@@ -707,16 +714,16 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="newPageCipher--">
+<a id="newPageCipher()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newPageCipher</h4>
-<pre>protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newPageCipher()
+<pre class="methodSignature">protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newPageCipher()
                         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting database pages,
- using the fixed instance <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>. Mode applied is CTR, with no
+ using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Mode applied is CTR, with no
  padding.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -724,29 +731,29 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="newStreamCipher--">
+<a id="newStreamCipher()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newStreamCipher</h4>
-<pre>protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newStreamCipher()
+<pre class="methodSignature">protected&nbsp;<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;newStreamCipher()
                           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
- the fixed instance <a href="../../../org/cojen/tupl/CipherCrypto.html#algorithm--"><code>algorithm</code></a>. Mode applied is CTR, with no padding.</div>
+ the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Mode applied is CTR, with no padding.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-">
+<a id="initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>initCipher</h4>
-<pre>protected&nbsp;void&nbsp;initCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
+<pre class="methodSignature">protected&nbsp;void&nbsp;initCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
                           int&nbsp;opmode,
                           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)
                    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></pre>
@@ -758,13 +765,13 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </dl>
 </li>
 </ul>
-<a name="initCipher-javax.crypto.Cipher-int-javax.crypto.SecretKey-javax.crypto.spec.IvParameterSpec-">
+<a id="initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey,javax.crypto.spec.IvParameterSpec)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>initCipher</h4>
-<pre>protected&nbsp;void&nbsp;initCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
+<pre class="methodSignature">protected&nbsp;void&nbsp;initCipher&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a>&nbsp;cipher,
                           int&nbsp;opmode,
                           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key,
                           <a href="https://docs.oracle.com/javase/10/docs/api/javax/crypto/spec/IvParameterSpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink">IvParameterSpec</a>&nbsp;ivSpec)
@@ -779,21 +786,25 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/CipherCrypto.html">Use</a></li>
@@ -803,16 +814,8 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/CacheExhaustedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/CipherCrypto.html" target="_top">Frames</a></li>
-<li><a href="CipherCrypto.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -844,10 +847,12 @@ implements <a href="../../../org/cojen/tupl/Crypto.html" title="interface in org
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

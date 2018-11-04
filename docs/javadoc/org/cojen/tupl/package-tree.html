@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,21 +27,25 @@
     catch(err) {
     }
 //-->
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li>Class</li>
 <li>Use</li>
@@ -50,16 +55,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li>Prev</li>
-<li><a href="../../../org/cojen/tupl/ext/package-tree.html">Next</a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/package-tree.html" target="_top">Frames</a></li>
-<li><a href="package-tree.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -82,7 +79,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -92,6 +89,9 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
+<main role="main">
 <div class="header">
 <h1 class="title">Hierarchy For Package org.cojen.tupl</h1>
 <span class="packageHierarchyLabel">Package Hierarchies:</span>
@@ -100,64 +100,65 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="contentContainer">
+<section role="region">
 <h2 title="Class Hierarchy">Class Hierarchy</h2>
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">Object</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl"><span class="typeNameLink">CipherCrypto</span></a> (implements org.cojen.tupl.<a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl">Crypto</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/CompactionObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">CompactionObserver</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Database.Stats</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseConfig</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DeadlockSet.html" title="class in org.cojen.tupl"><span class="typeNameLink">DeadlockSet</span></a> (implements java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventLogger</span></a> (implements org.cojen.tupl.<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventPrinter</span></a> (implements org.cojen.tupl.<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Index.Stats</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="CipherCrypto.html" title="class in org.cojen.tupl"><span class="typeNameLink">CipherCrypto</span></a> (implements org.cojen.tupl.<a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="CompactionObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">CompactionObserver</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Database.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Database.Stats</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="DatabaseConfig.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseConfig</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="DeadlockSet.html" title="class in org.cojen.tupl"><span class="typeNameLink">DeadlockSet</span></a> (implements java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="EventLogger.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventLogger</span></a> (implements org.cojen.tupl.<a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="EventPrinter.html" title="class in org.cojen.tupl"><span class="typeNameLink">EventPrinter</span></a> (implements org.cojen.tupl.<a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Index.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Index.Stats</span></a> (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a>, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)</li>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">Throwable</span></a> (implements java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">Exception</span></a>
 <ul>
 <li class="circle">java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink"><span class="typeNameLink">IOException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseException</span></a>
+<li class="circle">org.cojen.tupl.<a href="DatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/CacheExhaustedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">CacheExhaustedException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationFailureException</span></a>
+<li class="circle">org.cojen.tupl.<a href="CacheExhaustedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">CacheExhaustedException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ConfirmationFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationFailureException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ConfirmationInterruptedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationInterruptedException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationTimeoutException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ConfirmationInterruptedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationInterruptedException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ConfirmationTimeoutException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationTimeoutException</span></a></li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/CorruptDatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">CorruptDatabaseException</span></a>
+<li class="circle">org.cojen.tupl.<a href="CorruptDatabaseException.html" title="class in org.cojen.tupl"><span class="typeNameLink">CorruptDatabaseException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/IncompleteRestoreException.html" title="class in org.cojen.tupl"><span class="typeNameLink">IncompleteRestoreException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="IncompleteRestoreException.html" title="class in org.cojen.tupl"><span class="typeNameLink">IncompleteRestoreException</span></a></li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DatabaseFullException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseFullException</span></a>
+<li class="circle">org.cojen.tupl.<a href="DatabaseFullException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DatabaseFullException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/WriteFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">WriteFailureException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="WriteFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">WriteFailureException</span></a></li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/InvalidTransactionException.html" title="class in org.cojen.tupl"><span class="typeNameLink">InvalidTransactionException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LargeKeyException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LargeKeyException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LargeValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LargeValueException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockFailureException</span></a>
+<li class="circle">org.cojen.tupl.<a href="InvalidTransactionException.html" title="class in org.cojen.tupl"><span class="typeNameLink">InvalidTransactionException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LargeKeyException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LargeKeyException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LargeValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LargeValueException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockFailureException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/IllegalUpgradeException.html" title="class in org.cojen.tupl"><span class="typeNameLink">IllegalUpgradeException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockInterruptedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockInterruptedException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockTimeoutException</span></a>
+<li class="circle">org.cojen.tupl.<a href="IllegalUpgradeException.html" title="class in org.cojen.tupl"><span class="typeNameLink">IllegalUpgradeException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockInterruptedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockInterruptedException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockTimeoutException.html" title="class in org.cojen.tupl"><span class="typeNameLink">LockTimeoutException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DeadlockException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="DeadlockException.html" title="class in org.cojen.tupl"><span class="typeNameLink">DeadlockException</span></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/NoSuchValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">NoSuchValueException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/UnmodifiableReplicaException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnmodifiableReplicaException</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ViewConstraintException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ViewConstraintException</span></a>
+<li class="circle">org.cojen.tupl.<a href="NoSuchValueException.html" title="class in org.cojen.tupl"><span class="typeNameLink">NoSuchValueException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="UnmodifiableReplicaException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnmodifiableReplicaException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ViewConstraintException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ViewConstraintException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/UnmodifiableViewException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnmodifiableViewException</span></a>
+<li class="circle">org.cojen.tupl.<a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnmodifiableViewException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ClosedIndexException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ClosedIndexException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ClosedIndexException</span></a></li>
 </ul>
 </li>
 </ul>
@@ -170,7 +171,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">IllegalStateException</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/UnpositionedCursorException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnpositionedCursorException</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="UnpositionedCursorException.html" title="class in org.cojen.tupl"><span class="typeNameLink">UnpositionedCursorException</span></a></li>
 </ul>
 </li>
 </ul>
@@ -179,92 +180,100 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">VerificationObserver</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/WrappedCursor.html" title="class in org.cojen.tupl"><span class="typeNameLink">WrappedCursor</span></a>&lt;C&gt; (implements org.cojen.tupl.<a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="VerificationObserver.html" title="class in org.cojen.tupl"><span class="typeNameLink">VerificationObserver</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="WrappedCursor.html" title="class in org.cojen.tupl"><span class="typeNameLink">WrappedCursor</span></a>&lt;C&gt; (implements org.cojen.tupl.<a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>)</li>
 </ul>
 </li>
 </ul>
+</section>
+<section role="region">
 <h2 title="Interface Hierarchy">Interface Hierarchy</h2>
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">AutoCloseable</span></a>
 <ul>
 <li class="circle">java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink"><span class="typeNameLink">Closeable</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.io.<a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io"><span class="typeNameLink">CauseCloseable</span></a>
+<li class="circle">org.cojen.tupl.io.<a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io"><span class="typeNameLink">CauseCloseable</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a>)</li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Cursor</span></a> (also extends org.cojen.tupl.<a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends org.cojen.tupl.<a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Snapshot</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/ValueAccessor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">ValueAccessor</span></a>
+<li class="circle">org.cojen.tupl.<a href="Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Cursor</span></a> (also extends org.cojen.tupl.<a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAccessor</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends org.cojen.tupl.<a href="View.html" title="interface in org.cojen.tupl">View</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Snapshot.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Snapshot</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="ValueAccessor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">ValueAccessor</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Cursor</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Cursor.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Cursor</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>)</li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Scanner</span></a>
+<li class="circle">org.cojen.tupl.<a href="Scanner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Scanner</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a>)</li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Combiner</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Crypto.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Crypto</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryConsumer</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryFunction</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EventListener</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Combiner.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Combiner</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Crypto.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Crypto</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="EntryConsumer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryConsumer</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="EntryFunction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EntryFunction</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="EventListener.html" title="interface in org.cojen.tupl"><span class="typeNameLink">EventListener</span></a></li>
 <li class="circle">java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink"><span class="typeNameLink">Flushable</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends org.cojen.tupl.io.<a href="../../../org/cojen/tupl/io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>)</li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transaction</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends org.cojen.tupl.<a href="../../../org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> (also extends org.cojen.tupl.io.<a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Transaction.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transaction</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Updater.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Updater</span></a> (also extends org.cojen.tupl.<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>)</li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Sorter</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Transformer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transformer</span></a>
+<li class="circle">org.cojen.tupl.<a href="Sorter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Sorter</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Transformer.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Transformer</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Filter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Filter</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Filter.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Filter</span></a></li>
 </ul>
 </li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl"><span class="typeNameLink">View</span></a>
+<li class="circle">org.cojen.tupl.<a href="View.html" title="interface in org.cojen.tupl"><span class="typeNameLink">View</span></a>
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>)</li>
+<li class="circle">org.cojen.tupl.<a href="Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> (also extends java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>)</li>
 </ul>
 </li>
 </ul>
+</section>
+<section role="region">
 <h2 title="Enum Hierarchy">Enum Hierarchy</h2>
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">Object</span></a>
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Enum.html?is-external=true" title="class or interface in java.lang" class="externalLink"><span class="typeNameLink">Enum</span></a>&lt;E&gt; (implements java.lang.<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Comparable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Comparable</a>&lt;T&gt;, java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a>)
 <ul>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/DurabilityMode.html" title="enum in org.cojen.tupl"><span class="typeNameLink">DurabilityMode</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl"><span class="typeNameLink">EventType</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl"><span class="typeNameLink">EventType.Category</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockMode.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockMode</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockResult</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/LockUpgradeRule.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockUpgradeRule</span></a></li>
-<li class="circle">org.cojen.tupl.<a href="../../../org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl"><span class="typeNameLink">Ordering</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="DurabilityMode.html" title="enum in org.cojen.tupl"><span class="typeNameLink">DurabilityMode</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="EventType.html" title="enum in org.cojen.tupl"><span class="typeNameLink">EventType</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="EventType.Category.html" title="enum in org.cojen.tupl"><span class="typeNameLink">EventType.Category</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockMode.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockMode</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockResult.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockResult</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="LockUpgradeRule.html" title="enum in org.cojen.tupl"><span class="typeNameLink">LockUpgradeRule</span></a></li>
+<li class="circle">org.cojen.tupl.<a href="Ordering.html" title="enum in org.cojen.tupl"><span class="typeNameLink">Ordering</span></a></li>
 </ul>
 </li>
 </ul>
 </li>
 </ul>
+</section>
 </div>
+</main>
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li>Class</li>
 <li>Use</li>
@@ -274,16 +283,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li>Prev</li>
-<li><a href="../../../org/cojen/tupl/ext/package-tree.html">Next</a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/package-tree.html" target="_top">Frames</a></li>
-<li><a href="package-tree.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -300,10 +301,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

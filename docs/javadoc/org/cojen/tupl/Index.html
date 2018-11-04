@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
+var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Index.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/IncompleteRestoreException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Index.html" target="_top">Frames</a></li>
-<li><a href="Index.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../org/cojen/tupl/package-summary.html">org.cojen.tupl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h2 title="Interface Index" class="title">Interface Index</h2>
 </div>
 <div class="contentContainer">
@@ -124,17 +124,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Index</span>
-extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
+extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order. Although Java bytes are signed, they are treated as unsigned for
  ordering purposes. The natural order of an index cannot be changed.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><code>Database</code></a></dd>
+<dd><a href="Database.html" title="interface in org.cojen.tupl"><code>Database</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -143,12 +143,13 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 <ul class="blockList">
 <li class="blockList">
 <!-- ======== NESTED CLASS SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="nested.class.summary">
+<li class="blockList"><a id="nested.class.summary">
 <!--   -->
 </a>
 <h3>Nested Class Summary</h3>
-<table class="memberSummary" summary="Nested Class Summary table, listing nested classes, and an explanation">
+<table class="memberSummary">
 <caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -157,21 +158,23 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static class&nbsp;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></span></code></th>
 <td class="colLast">
-<div class="block">Collection of stats from the <a href="../../../org/cojen/tupl/Index.html#analyze-byte:A-byte:A-"><code>analyze</code></a> method.</div>
+<div class="block">Collection of stats from the <a href="#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
 </td>
 </tr>
 </table>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -179,8 +182,8 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code><a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#analyze-byte:A-byte:A-">analyze</a></span>&#8203;(byte[]&nbsp;lowKey,
+<td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#analyze(byte%5B%5D,byte%5B%5D)">analyze</a></span>&#8203;(byte[]&nbsp;lowKey,
        byte[]&nbsp;highKey)</code></th>
 <td class="colLast">
 <div class="block">Estimates the size of this index with a single random probe.</div>
@@ -188,24 +191,24 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#close--">close</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Closes this index reference, causing it to appear empty and <a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>.</div>
+<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#drop--">drop</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#drop()">drop</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Fully closes and removes an empty index.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#evict-org.cojen.tupl.Transaction-byte:A-byte:A-org.cojen.tupl.Filter-boolean-">evict</a></span>&#8203;(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evict(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,org.cojen.tupl.Filter,boolean)">evict</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;lowKey,
      byte[]&nbsp;highKey,
-     <a href="../../../org/cojen/tupl/Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;evictionFilter,
+     <a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;evictionFilter,
      boolean&nbsp;autoload)</code></th>
 <td class="colLast">
 <div class="block">Select a few entries, and delete them from the index.</div>
@@ -213,41 +216,42 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#getId--">getId</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getId()">getId</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#getName--">getName</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getName()">getName</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i6" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#getNameString--">getNameString</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getNameString()">getNameString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i7" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#isClosed--">isClosed</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isClosed()">isClosed</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../org/cojen/tupl/Index.html#verify-org.cojen.tupl.VerificationObserver-">verify</a></span>&#8203;(<a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#verify(org.cojen.tupl.VerificationObserver)">verify</a></span>&#8203;(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></th>
 <td class="colLast">
 <div class="block">Verifies the integrity of the index.</div>
 </td>
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.View">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.View">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.<a href="../../../org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></h3>
-<code><a href="../../../org/cojen/tupl/View.html#count-byte:A-byte:A-">count</a>, <a href="../../../org/cojen/tupl/View.html#delete-org.cojen.tupl.Transaction-byte:A-">delete</a>, <a href="../../../org/cojen/tupl/View.html#exchange-org.cojen.tupl.Transaction-byte:A-byte:A-">exchange</a>, <a href="../../../org/cojen/tupl/View.html#exists-org.cojen.tupl.Transaction-byte:A-">exists</a>, <a href="../../../org/cojen/tupl/View.html#getComparator--">getComparator</a>, <a href="../../../org/cojen/tupl/View.html#getOrdering--">getOrdering</a>, <a href="../../../org/cojen/tupl/View.html#insert-org.cojen.tupl.Transaction-byte:A-byte:A-">insert</a>, <a href="../../../org/cojen/tupl/View.html#isModifyAtomic--">isModifyAtomic</a>, <a href="../../../org/cojen/tupl/View.html#isUnmodifiable--">isUnmodifiable</a>, <a href="../../../org/cojen/tupl/View.html#load-org.cojen.tupl.Transaction-byte:A-">load</a>, <a href="../../../org/cojen/tupl/View.html#lockCheck-org.cojen.tupl.Transaction-byte:A-">lockCheck</a>, <a href="../../../org/cojen/tupl/View.html#lockExclusive-org.cojen.tupl.Transaction-byte:A-">lockExclusive</a>, <a href="../../../org/cojen/tupl/View.html#lockShared-org.cojen.tupl.Transaction-byte:A-">lockShared</a>, <a href="../../../org/cojen/tupl/View.html#lockUpgradable-org.cojen.tupl.Transaction-byte:A-">lockUpgradable</a>, <a href="../../../org/cojen/tupl/View.html#newAccessor-org.cojen.tupl.Transaction-byte:A-">newAccessor</a>, <a href="../../../org/cojen/tupl/View.html#newCursor-org.cojen.tupl.Transaction-">newCursor</a>, <a href="../../../org/cojen/tupl/View.html#newScanner-org.cojen.tupl.Transaction-">newScanner</a>, <a href="../../../org/cojen/tupl/View.html#newTransaction-org.cojen.tupl.DurabilityMode-">newTransaction</a>, <a href="../../../org/cojen/tupl/View.html#newUpdater-org.cojen.tupl.Transaction-">newUpdater</a>, <a href="../../../org/cojen/tupl/View.html#remove-org.cojen.tupl.Transaction-byte:A-byte:A-">remove</a>, <a href="../../../org/cojen/tupl/View.html#replace-org.cojen.tupl.Transaction-byte:A-byte:A-">replace</a>, <a href="../../../org/cojen/tupl/View.html#store-org.cojen.tupl.Transaction-byte:A-byte:A-">store</a>, <a href="../../../org/cojen/tupl/View.html#touch-org.cojen.tupl.Transaction-byte:A-">touch</a>, <a href="../../../org/cojen/tupl/View.html#tryLockExclusive-org.cojen.tupl.Transaction-byte:A-long-">tryLockExclusive</a>, <a href="../../../org/cojen/tupl/View.html#tryLockShared-org.cojen.tupl.Transaction-byte:A-long-">tryLockShared</a>, <a href="../../../org/cojen/tupl/View.html#tryLockUpgradable-org.cojen.tupl.Transaction-byte:A-long-">tryLockUpgradable</a>, <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-">update</a>, <a href="../../../org/cojen/tupl/View.html#update-org.cojen.tupl.Transaction-byte:A-byte:A-byte:A-">update</a>, <a href="../../../org/cojen/tupl/View.html#viewDifference-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewDifference</a>, <a href="../../../org/cojen/tupl/View.html#viewGe-byte:A-">viewGe</a>, <a href="../../../org/cojen/tupl/View.html#viewGt-byte:A-">viewGt</a>, <a href="../../../org/cojen/tupl/View.html#viewIntersection-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewIntersection</a>, <a href="../../../org/cojen/tupl/View.html#viewKeys--">viewKeys</a>, <a href="../../../org/cojen/tupl/View.html#viewLe-byte:A-">viewLe</a>, <a href="../../../org/cojen/tupl/View.html#viewLt-byte:A-">viewLt</a>, <a href="../../../org/cojen/tupl/View.html#viewPrefix-byte:A-int-">viewPrefix</a>, <a href="../../../org/cojen/tupl/View.html#viewReverse--">viewReverse</a>, <a href="../../../org/cojen/tupl/View.html#viewTransformed-org.cojen.tupl.Transformer-">viewTransformed</a>, <a href="../../../org/cojen/tupl/View.html#viewUnion-org.cojen.tupl.Combiner-org.cojen.tupl.View-">viewUnion</a>, <a href="../../../org/cojen/tupl/View.html#viewUnmodifiable--">viewUnmodifiable</a></code></li>
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.<a href="View.html" title="interface in org.cojen.tupl">View</a></h3>
+<code><a href="View.html#count(byte%5B%5D,byte%5B%5D)">count</a>, <a href="View.html#delete(org.cojen.tupl.Transaction,byte%5B%5D)">delete</a>, <a href="View.html#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">exchange</a>, <a href="View.html#exists(org.cojen.tupl.Transaction,byte%5B%5D)">exists</a>, <a href="View.html#getComparator()">getComparator</a>, <a href="View.html#getOrdering()">getOrdering</a>, <a href="View.html#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">insert</a>, <a href="View.html#isModifyAtomic()">isModifyAtomic</a>, <a href="View.html#isUnmodifiable()">isUnmodifiable</a>, <a href="View.html#load(org.cojen.tupl.Transaction,byte%5B%5D)">load</a>, <a href="View.html#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)">lockCheck</a>, <a href="View.html#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)">lockExclusive</a>, <a href="View.html#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)">lockShared</a>, <a href="View.html#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)">lockUpgradable</a>, <a href="View.html#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)">newAccessor</a>, <a href="View.html#newCursor(org.cojen.tupl.Transaction)">newCursor</a>, <a href="View.html#newScanner(org.cojen.tupl.Transaction)">newScanner</a>, <a href="View.html#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a>, <a href="View.html#newUpdater(org.cojen.tupl.Transaction)">newUpdater</a>, <a href="View.html#remove(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">remove</a>, <a href="View.html#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">replace</a>, <a href="View.html#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">store</a>, <a href="View.html#touch(org.cojen.tupl.Transaction,byte%5B%5D)">touch</a>, <a href="View.html#tryLockExclusive(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockExclusive</a>, <a href="View.html#tryLockShared(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockShared</a>, <a href="View.html#tryLockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockUpgradable</a>, <a href="View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">update</a>, <a href="View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)">update</a>, <a href="View.html#viewDifference(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewDifference</a>, <a href="View.html#viewGe(byte%5B%5D)">viewGe</a>, <a href="View.html#viewGt(byte%5B%5D)">viewGt</a>, <a href="View.html#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewIntersection</a>, <a href="View.html#viewKeys()">viewKeys</a>, <a href="View.html#viewLe(byte%5B%5D)">viewLe</a>, <a href="View.html#viewLt(byte%5B%5D)">viewLt</a>, <a href="View.html#viewPrefix(byte%5B%5D,int)">viewPrefix</a>, <a href="View.html#viewReverse()">viewReverse</a>, <a href="View.html#viewTransformed(org.cojen.tupl.Transformer)">viewTransformed</a>, <a href="View.html#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewUnion</a>, <a href="View.html#viewUnmodifiable()">viewUnmodifiable</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -255,60 +259,61 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="getId--">
+<a id="getId()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>getId</h4>
-<pre>long&nbsp;getId()</pre>
+<pre class="methodSignature">long&nbsp;getId()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>randomly assigned, unique non-zero identifier for this index</dd>
 </dl>
 </li>
 </ul>
-<a name="getName--">
+<a id="getName()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>getName</h4>
-<pre>byte[]&nbsp;getName()</pre>
+<pre class="methodSignature">byte[]&nbsp;getName()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>unique user-specified index name</dd>
 </dl>
 </li>
 </ul>
-<a name="getNameString--">
+<a id="getNameString()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>getNameString</h4>
-<pre><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;getNameString()</pre>
+<pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;getNameString()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>name decoded as UTF-8</dd>
 </dl>
 </li>
 </ul>
-<a name="evict-org.cojen.tupl.Transaction-byte:A-byte:A-org.cojen.tupl.Filter-boolean-">
+<a id="evict(org.cojen.tupl.Transaction,byte[],byte[],org.cojen.tupl.Filter,boolean)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>evict</h4>
-<pre>long&nbsp;evict&#8203;(<a href="../../../org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<pre class="methodSignature">long&nbsp;evict&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
            byte[]&nbsp;lowKey,
            byte[]&nbsp;highKey,
-           <a href="../../../org/cojen/tupl/Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;evictionFilter,
+           <a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;evictionFilter,
            boolean&nbsp;autoload)
     throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Select a few entries, and delete them from the index. Implementation should attempt to
@@ -328,13 +333,13 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </dl>
 </li>
 </ul>
-<a name="analyze-byte:A-byte:A-">
+<a id="analyze(byte[],byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>analyze</h4>
-<pre><a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;analyze&#8203;(byte[]&nbsp;lowKey,
+<pre class="methodSignature"><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;analyze&#8203;(byte[]&nbsp;lowKey,
                     byte[]&nbsp;highKey)
              throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Estimates the size of this index with a single random probe. To improve the estimate,
@@ -348,13 +353,13 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </dl>
 </li>
 </ul>
-<a name="verify-org.cojen.tupl.VerificationObserver-">
+<a id="verify(org.cojen.tupl.VerificationObserver)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>verify</h4>
-<pre>boolean&nbsp;verify&#8203;(<a href="../../../org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)
+<pre class="methodSignature">boolean&nbsp;verify&#8203;(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)
         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Verifies the integrity of the index.</div>
 <dl>
@@ -367,44 +372,44 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </dl>
 </li>
 </ul>
-<a name="close--">
+<a id="close()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>close</h4>
-<pre>void&nbsp;close()
+<pre class="methodSignature">void&nbsp;close()
     throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Closes this index reference, causing it to appear empty and <a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>. The underlying index is still valid and can be re-opened.
+<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>. The underlying index is still valid and can be re-opened.
 
  <p>In general, indexes should not be closed if they are referenced by active
  transactions. Although closing the index is safe, the transaction might re-open it.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close--" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
 </ul>
-<a name="isClosed--">
+<a id="isClosed()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>isClosed</h4>
-<pre>boolean&nbsp;isClosed()</pre>
+<pre class="methodSignature">boolean&nbsp;isClosed()</pre>
 </li>
 </ul>
-<a name="drop--">
+<a id="drop()">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>drop</h4>
-<pre>void&nbsp;drop()
+<pre class="methodSignature">void&nbsp;drop()
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Fully closes and removes an empty index. An exception is thrown if the index isn't empty
  or if an in-progress transaction is modifying it.</div>
@@ -412,30 +417,34 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index isn't empty or if any pending transactional
  changes exist</dd>
-<dd><code><a href="../../../org/cojen/tupl/ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if this index reference is closed</dd>
+<dd><code><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if this index reference is closed</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../org/cojen/tupl/Database.html#deleteIndex-org.cojen.tupl.Index-"><code>Database.deleteIndex</code></a></dd>
+<dd><a href="Database.html#deleteIndex(org.cojen.tupl.Index)"><code>Database.deleteIndex</code></a></dd>
 </dl>
 </li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/Index.html">Use</a></li>
@@ -445,16 +454,8 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../org/cojen/tupl/IncompleteRestoreException.html" title="class in org.cojen.tupl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../index.html?org/cojen/tupl/Index.html" target="_top">Frames</a></li>
-<li><a href="Index.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -486,10 +487,12 @@ extends <a href="../../../org/cojen/tupl/View.html" title="interface in org.coje
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>

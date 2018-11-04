@@ -1,4 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML>
 <!-- NewPage -->
 <html lang="en">
 <head>
@@ -13,7 +13,8 @@
 <!--[if IE]>
 <script type="text/javascript" src="../../../../jquery/jszip-utils/dist/jszip-utils-ie.min.js"></script>
 <![endif]-->
-<script type="text/javascript" src="../../../../jquery/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-3.3.1.js"></script>
+<script type="text/javascript" src="../../../../jquery/jquery-migrate-3.0.1.js"></script>
 <script type="text/javascript" src="../../../../jquery/jquery-ui.js"></script>
 </head>
 <body>
@@ -26,27 +27,31 @@
     catch(err) {
     }
 //-->
-var methods = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":1};
+var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":1};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
 var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
+var pathtoroot = "../../../../";
+var useModuleDirectories = true;
+loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
+<header role="banner">
+<nav role="navigation">
 <div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a name="navbar.top">
+<div class="topNav"><a id="navbar.top">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.top.firstrow">
+<a id="navbar.top.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/StreamReplicator.html">Use</a></li>
@@ -56,16 +61,8 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/repl/StreamReplicator.html" target="_top">Frames</a></li>
-<li><a href="StreamReplicator.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <ul class="navListSearch">
 <li><label for="search">SEARCH:</label>
@@ -103,7 +100,7 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.top">
+<a id="skip.navbar.top">
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
@@ -113,9 +110,12 @@ var pathtoroot = "../../../../";loadScripts(document, 'script');</script>
 $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 //-->
 </script>
+</nav>
+</header>
 <!-- ======== START OF CLASS DATA ======== -->
+<main role="main">
 <div class="header">
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="../../../../org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></div>
+<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.repl</a></div>
 <h2 title="Interface StreamReplicator" class="title">Interface StreamReplicator</h2>
 </div>
 <div class="contentContainer">
@@ -124,11 +124,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li class="blockList">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code>, <code><a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code>, <code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">StreamReplicator</span>
-extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></pre>
+extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></pre>
 <div class="block">Low-level replication interface, which receives messages in a non-delineated stream.
  Applications using this interface are responsible for encoding messages such that they can
  be properly separated. Consider an application which writes these two messages (inside the
@@ -141,12 +141,12 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  and then only <code>["hello"]</code> is read. If <code>["helloworld"]</code> was written, no tearing
  of the two words can occur. They might both be read or both be dropped, atomically.
 
- <p>StreamReplicators require that a control message <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>
- be installed for supporting group membership changes. Consider using <a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a> instead, although it has slightly higher overhead. In order for control
- messages to be processed, replicas must be actively reading and calling <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-"><code>controlMessageReceived</code></a> as necessary.</div>
+ <p>StreamReplicators require that a control message <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>
+ be installed for supporting group membership changes. Consider using <a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a> instead, although it has slightly higher overhead. In order for control
+ messages to be processed, replicas must be actively reading and calling <a href="#controlMessageReceived(long,byte%5B%5D)"><code>controlMessageReceived</code></a> as necessary.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../../../../org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a></dd>
+<dd><a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -155,12 +155,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <ul class="blockList">
 <li class="blockList">
 <!-- ======== NESTED CLASS SUMMARY ======== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="nested.class.summary">
+<li class="blockList"><a id="nested.class.summary">
 <!--   -->
 </a>
 <h3>Nested Class Summary</h3>
-<table class="memberSummary" summary="Nested Class Summary table, listing nested classes, and an explanation">
+<table class="memberSummary">
 <caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -169,35 +170,37 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>static interface&nbsp;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></span></code></th>
 <td class="colLast">
 <div class="block">Interface called by any group member for reading committed messages.</div>
 </td>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>static interface&nbsp;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></span></code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></span></code></th>
 <td class="colLast">
 <div class="block">Interface called by the group leader for proposing messages.</div>
 </td>
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="nested.classes.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
+<li class="blockList"><a id="nested.classes.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
 <!--   -->
 </a>
-<h3>Nested classes/interfaces inherited from interface&nbsp;org.cojen.tupl.repl.<a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h3>
-<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code></li>
+<h3>Nested classes/interfaces inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h3>
+<code><a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.summary">
+<li class="blockList"><a id="method.summary">
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary" summary="Method Summary table, listing methods, and an explanation">
+<table class="memberSummary">
 <caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t1" class="tableTab"><span><a href="javascript:show(1);">Static Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
@@ -206,7 +209,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-">controlMessageAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#controlMessageAcceptor(java.util.function.Consumer)">controlMessageAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
  which must propagate through the replication log.</div>
@@ -214,67 +217,68 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-">controlMessageReceived</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#controlMessageReceived(long,byte%5B%5D)">controlMessageReceived</a></span>&#8203;(long&nbsp;index,
                       byte[]&nbsp;message)</code></th>
 <td class="colLast">
-<div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>.</div>
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newReader-long-boolean-">newReader</a></span>&#8203;(long&nbsp;index,
+<td class="colFirst"><code><a href="StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;index,
          boolean&nbsp;follow)</code></th>
 <td class="colLast">
 <div class="block">Returns a new reader which accesses data starting from the given index.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter--">newWriter</a></span>()</code></th>
+<td class="colFirst"><code><a href="StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter()">newWriter</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
-<td class="colFirst"><code><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#newWriter-long-">newWriter</a></span>&#8203;(long&nbsp;index)</code></th>
+<td class="colFirst"><code><a href="StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
 </td>
 </tr>
 <tr id="i5" class="rowColor">
-<td class="colFirst"><code>static <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#open-org.cojen.tupl.repl.ReplicatorConfig-">open</a></span>&#8203;(<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
+<td class="colFirst"><code>static <a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open(org.cojen.tupl.repl.ReplicatorConfig)">open</a></span>&#8203;(<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="colLast">
 <div class="block">Open a replicator instance, creating it if necessary.</div>
 </td>
 </tr>
 </table>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.java.io.Closeable">
+<li class="blockList"><a id="methods.inherited.from.class.java.io.Closeable">
 <!--   -->
 </a>
 <h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></h3>
-<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close--" title="class or interface in java.io" class="externalLink">close</a></code></li>
+<code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code></li>
 </ul>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h3>
-<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#compact-long-">compact</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#requestSnapshot-java.util.Map-">requestSnapshot</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#restore-java.util.Map-">restore</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#snapshotRequestAcceptor-java.util.function.Consumer-">snapshotRequestAcceptor</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#start--">start</a>, <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#syncCommit-long-long-">syncCommit</a></code></li>
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h3>
+<code><a href="DirectReplicator.html#compact(long)">compact</a>, <a href="DirectReplicator.html#requestSnapshot(java.util.Map)">requestSnapshot</a>, <a href="DirectReplicator.html#restore(java.util.Map)">restore</a>, <a href="DirectReplicator.html#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a>, <a href="DirectReplicator.html#start()">start</a>, <a href="DirectReplicator.html#syncCommit(long,long)">syncCommit</a></code></li>
 </ul>
 <ul class="blockList">
-<li class="blockList"><a name="methods.inherited.from.class.org.cojen.tupl.repl.Replicator">
+<li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.repl.Replicator">
 <!--   -->
 </a>
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="../../../../org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></h3>
-<code><a href="../../../../org/cojen/tupl/repl/Replicator.html#connect-java.net.SocketAddress-">connect</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html#getLocalAddress--">getLocalAddress</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html#getLocalMemberId--">getLocalMemberId</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html#getLocalRole--">getLocalRole</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html#socketAcceptor-java.util.function.Consumer-">socketAcceptor</a>, <a href="../../../../org/cojen/tupl/repl/Replicator.html#sync--">sync</a></code></li>
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></h3>
+<code><a href="Replicator.html#connect(java.net.SocketAddress)">connect</a>, <a href="Replicator.html#getLocalAddress()">getLocalAddress</a>, <a href="Replicator.html#getLocalMemberId()">getLocalMemberId</a>, <a href="Replicator.html#getLocalRole()">getLocalRole</a>, <a href="Replicator.html#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a>, <a href="Replicator.html#sync()">sync</a></code></li>
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
@@ -282,18 +286,19 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <ul class="blockList">
 <li class="blockList">
 <!-- ============ METHOD DETAIL ========== -->
+<section role="region">
 <ul class="blockList">
-<li class="blockList"><a name="method.detail">
+<li class="blockList"><a id="method.detail">
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a name="open-org.cojen.tupl.repl.ReplicatorConfig-">
+<a id="open(org.cojen.tupl.repl.ReplicatorConfig)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>open</h4>
-<pre>static&nbsp;<a href="../../../../org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;open&#8203;(<a href="../../../../org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)
+<pre class="methodSignature">static&nbsp;<a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;open&#8203;(<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)
                       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Open a replicator instance, creating it if necessary.</div>
 <dl>
@@ -303,13 +308,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </dl>
 </li>
 </ul>
-<a name="newReader-long-boolean-">
+<a id="newReader(long,boolean)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newReader</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader&#8203;(long&nbsp;index,
+<pre class="methodSignature"><a href="StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a>&nbsp;newReader&#8203;(long&nbsp;index,
                                   boolean&nbsp;follow)</pre>
 <div class="block">Returns a new reader which accesses data starting from the given index. The reader
  returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
@@ -322,7 +327,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  <p><b>Note: Reader instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#newReader-long-boolean-">newReader</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="DirectReplicator.html#newReader(long,boolean)">newReader</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - index to start reading from, known to have been committed</dd>
 <dd><code>follow</code> - pass true to obtain an active reader, even if local member is the leader</dd>
@@ -333,13 +338,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </dl>
 </li>
 </ul>
-<a name="newWriter--">
+<a id="newWriter()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter()</pre>
+<pre class="methodSignature"><a href="StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter()</pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -347,7 +352,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#newWriter--">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="DirectReplicator.html#newWriter()">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -355,13 +360,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </dl>
 </li>
 </ul>
-<a name="newWriter-long-">
+<a id="newWriter(long)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter&#8203;(long&nbsp;index)</pre>
+<pre class="methodSignature"><a href="StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a>&nbsp;newWriter&#8203;(long&nbsp;index)</pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -369,7 +374,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html#newWriter-long-">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="DirectReplicator.html#newWriter(long)">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - expected index to start writing from as leader; method returns null if
  index doesn't match</dd>
@@ -380,16 +385,16 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </dl>
 </li>
 </ul>
-<a name="controlMessageReceived-long-byte:A-">
+<a id="controlMessageReceived(long,byte[])">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
 <h4>controlMessageReceived</h4>
-<pre>void&nbsp;controlMessageReceived&#8203;(long&nbsp;index,
+<pre class="methodSignature">void&nbsp;controlMessageReceived&#8203;(long&nbsp;index,
                             byte[]&nbsp;message)
                      throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Called to pass along a control message, which was originally provided through an <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor-java.util.function.Consumer-"><code>acceptor</code></a>. Control messages must be passed along in the original
+<div class="block">Called to pass along a control message, which was originally provided through an <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>. Control messages must be passed along in the original
  order in which they were created. A control message cannot be treated as applied until
  after this method returns.</div>
 <dl>
@@ -400,13 +405,13 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </dl>
 </li>
 </ul>
-<a name="controlMessageAcceptor-java.util.function.Consumer-">
+<a id="controlMessageAcceptor(java.util.function.Consumer)">
 <!--   -->
 </a>
 <ul class="blockListLast">
 <li class="blockList">
 <h4>controlMessageAcceptor</h4>
-<pre>void&nbsp;controlMessageAcceptor&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</pre>
+<pre class="methodSignature">void&nbsp;controlMessageAcceptor&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;byte[]&gt;&nbsp;acceptor)</pre>
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
  which must propagate through the replication log. From the perspective of the acceptor,
  control messages should be treated as opaque. Control messages are primarily used for
@@ -414,7 +419,7 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
  removed.
 
  <p>Acceptor implementations are expected to wrap messages such that they can be
- propagated along with regular messages, and then later be passed to the <a href="../../../../org/cojen/tupl/repl/StreamReplicator.html#controlMessageReceived-long-byte:A-"><code>controlMessageReceived</code></a> method. If a control message cannot be
+ propagated along with regular messages, and then later be passed to the <a href="#controlMessageReceived(long,byte%5B%5D)"><code>controlMessageReceived</code></a> method. If a control message cannot be
  written (possibly because the local member isn't the leader), it might be silently
  dropped. Implementations are not required to pass control messages to a remote leader.</div>
 <dl>
@@ -425,21 +430,25 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </ul>
 </li>
 </ul>
+</section>
 </li>
 </ul>
 </div>
 </div>
+</main>
 <!-- ========= END OF CLASS DATA ========= -->
+<footer role="contentinfo">
+<nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a name="navbar.bottom">
+<div class="bottomNav"><a id="navbar.bottom">
 <!--   -->
 </a>
 <div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a name="navbar.bottom.firstrow">
+<a id="navbar.bottom.firstrow">
 <!--   -->
 </a>
 <ul class="navList" title="Navigation">
-<li><a href="../../../../overview-summary.html">Overview</a></li>
+<li><a href="../../../../index.html">Overview</a></li>
 <li><a href="package-summary.html">Package</a></li>
 <li class="navBarCell1Rev">Class</li>
 <li><a href="class-use/StreamReplicator.html">Use</a></li>
@@ -449,16 +458,8 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList">
-<li><a href="../../../../org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Prev&nbsp;Class</span></a></li>
-<li><a href="../../../../org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Next&nbsp;Class</span></a></li>
-</ul>
-<ul class="navList">
-<li><a href="../../../../index.html?org/cojen/tupl/repl/StreamReplicator.html" target="_top">Frames</a></li>
-<li><a href="StreamReplicator.html" target="_top">No&nbsp;Frames</a></li>
-</ul>
 <ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses-noframe.html">All&nbsp;Classes</a></li>
+<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
 </ul>
 <div>
 <script type="text/javascript"><!--
@@ -490,10 +491,12 @@ extends <a href="../../../../org/cojen/tupl/repl/DirectReplicator.html" title="i
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<a name="skip.navbar.bottom">
+<a id="skip.navbar.bottom">
 <!--   -->
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
+</nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+</footer>
 </body>
 </html>
