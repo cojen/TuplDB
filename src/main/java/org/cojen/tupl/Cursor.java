@@ -337,7 +337,7 @@ public interface Cursor extends ValueAccessor, Closeable {
 
     /**
      * Moves the Cursor to find the closest available entry greater than or equal to the given
-     * key. Logically equivalent to {@link java.util.NavigableMap#ceilingEntry(K)
+     * key. Logically equivalent to {@link java.util.NavigableMap#ceilingEntry(Object)
      * NavigableMap.ceilingEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
@@ -362,7 +362,7 @@ public interface Cursor extends ValueAccessor, Closeable {
 
     /**
      * Moves the Cursor to find the closest available entry greater than the given key.
-     * Logically equivalent to {@link java.util.NavigableMap#higherEntry(K)
+     * Logically equivalent to {@link java.util.NavigableMap#higherEntry(Object)
      * NavigableMap.higherEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
@@ -381,7 +381,7 @@ public interface Cursor extends ValueAccessor, Closeable {
 
     /**
      * Moves the Cursor to find the closest available entry less than or equal to the given
-     * key. Logically equivalent to {@link java.util.NavigableMap#floorEntry(K)
+     * key. Logically equivalent to {@link java.util.NavigableMap#floorEntry(Object)
      * NavigableMap.floorEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
@@ -406,7 +406,7 @@ public interface Cursor extends ValueAccessor, Closeable {
 
     /**
      * Moves the Cursor to find the closest available entry less than the given key. Logically
-     * equivalent to {@link java.util.NavigableMap#lowerEntry(K) NavigableMap.lowerEntry}.
+     * equivalent to {@link java.util.NavigableMap#lowerEntry(Object) NavigableMap.lowerEntry}.
      *
      * <p>Ownership of the key instance transfers to the Cursor, and it must
      * not be modified after calling this method.
