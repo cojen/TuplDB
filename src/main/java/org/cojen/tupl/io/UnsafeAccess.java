@@ -45,6 +45,9 @@ public class UnsafeAccess {
         UNSUPPORTED = unsupported;
     }
 
+    private UnsafeAccess() {
+    }
+
     /**
      * @return null if not supported
      */
