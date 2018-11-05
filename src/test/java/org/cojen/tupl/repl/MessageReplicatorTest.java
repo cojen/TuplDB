@@ -352,7 +352,9 @@ public class MessageReplicatorTest {
 
             // Note: Actual commit index might be higher, because of control messages which
             // were sent by the replication system for membership changes.
-            assertTrue(highIndex >= writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+            long commitIndex = writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS);
+            assertTrue("highIndex: " + highIndex + ", commitIndex: " + commitIndex,
+                       commitIndex >= highIndex);
 
             for (int j=0; j<readers.length; j++) {
                 Reader reader = readers[j];
