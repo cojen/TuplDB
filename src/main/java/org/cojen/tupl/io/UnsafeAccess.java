@@ -56,10 +56,40 @@ public class UnsafeAccess {
      * @throws UnsupportedOperationException if not supported
      */
     public static sun.misc.Unsafe obtain() throws UnsupportedOperationException {
-        sun.misc.Unsafe u = UNSAFE;
-        if (u == null) {
+        if (UNSAFE == null) {
             throw new UnsupportedOperationException(UNSUPPORTED);
         }
-        return u;
+        return UNSAFE;
+    }
+
+    /**
+     * @return object to pass to enableIllegalAccessLogger
+     */
+    static Object disableIllegalAccessLogger() {
+        try {
+            Class clazz = Class.forName("jdk.internal.module.IllegalAccessLogger");
+            Field field = clazz.getDeclaredField("logger");
+            long offset = UNSAFE.staticFieldOffset(field);
+            Object original = UNSAFE.getObjectVolatile(clazz, offset);
+            UNSAFE.putObjectVolatile(clazz, offset, null);
+            return original;
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
+    /**
+     * @param logger provided by disableIllegalAccessLogger
+     */
+    static void enableIllegalAccessLogger(Object logger) {
+        if (logger != null) {
+            try {
+                Class clazz = Class.forName("jdk.internal.module.IllegalAccessLogger");
+                Field field = clazz.getDeclaredField("logger");
+                long offset = UNSAFE.staticFieldOffset(field);
+                UNSAFE.putObjectVolatile(clazz, offset, logger);
+            } catch (Throwable e) {
+            }
+        }
     }
 }

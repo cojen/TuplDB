@@ -382,6 +382,7 @@ public class Utils {
         }
 
         if (deleteSupport == 0) {
+            Object logger = UnsafeAccess.disableIllegalAccessLogger();
             try {
                 Method m = bb.getClass().getMethod("cleaner");
                 m.setAccessible(true);
@@ -397,6 +398,8 @@ public class Utils {
             } catch (Exception e) {
                 // Try another way.
                 cDeleteSupport = 1;
+            } finally {
+                UnsafeAccess.enableIllegalAccessLogger(logger);
             }
         }
 
