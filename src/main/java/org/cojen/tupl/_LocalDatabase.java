@@ -3365,7 +3365,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
     /**
      * _Tree instances retain a reference to an unevictable root node. If tree is no longer in
-     * use, allow it to be evicted. Method cannot be called while a checkpoint is in progress.
+     * use, allow it to be evicted.
      */
     private void cleanupUnreferencedTrees() throws IOException {
         final ReferenceQueue<_Tree> queue = mOpenTreesRefQueue;
@@ -3404,7 +3404,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
                 mOpenTreesById.remove(ref.mId);
                 root.makeEvictableNow();
-                if (root.mId != 0) {
+                if (root.mId > 0) {
                     nodeMapPut(root);
                 }
             } finally {
@@ -4021,13 +4021,8 @@ final class _LocalDatabase extends AbstractDatabase {
 
             checkClosed();
 
-            CommitLock.Shared shared = mCommitLock.acquireShared();
-            try {
-                // Try to free up nodes from unreferenced trees.
-                cleanupUnreferencedTrees();
-            } finally {
-                shared.release();
-            }
+            // Try to free up nodes from unreferenced trees.
+            cleanupUnreferencedTrees();
         }
 
         if (fail == null && mPageDb.isDurable()) {
