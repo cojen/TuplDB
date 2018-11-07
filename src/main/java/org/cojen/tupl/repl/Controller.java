@@ -183,7 +183,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            mChanMan.setLocalMemberId(mGroupFile.localMemberId(), localSocket);
+            long localMemberId = mGroupFile.localMemberId();
+
+            if (localMemberId == 0) {
+                throw new JoinException("Not in the replication group. Local address \""
+                                        + mGroupFile.localMemberAddress() + "\" wasn't found in "
+                                        + groupFile.getPath());
+            }
+
+            mChanMan.setLocalMemberId(localMemberId, localSocket);
 
             refreshPeerSet();
         } catch (Throwable e) {
