@@ -414,7 +414,7 @@ public class GroupFileTest {
         try {
             gf.applyJoin(123, new byte[1]);
             fail();
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (IndexOutOfBoundsException e) {
         }
 
         byte[] message = gf.proposeJoin((byte) 1, null, (in, index) -> {});
