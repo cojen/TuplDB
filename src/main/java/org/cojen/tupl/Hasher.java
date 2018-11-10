@@ -17,6 +17,9 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.nio.ByteOrder;
 
 import org.cojen.tupl.io.UnsafeAccess;
@@ -30,7 +33,7 @@ import org.cojen.tupl.io.UnsafeAccess;
  *
  * @author Brian S O'Neill
  */
-class Hasher {
+abstract class Hasher {
     private static final Hasher INSTANCE;
 
     static {
@@ -49,58 +52,74 @@ class Hasher {
             }
         }
 
-        INSTANCE = instance == null ? new Hasher() : instance;
+        INSTANCE = instance == null ? new SafeLE() : instance;
     }
 
     public static long hash(long hash, byte[] b) {
         return INSTANCE.doHash(hash, b);
     }
 
-    @SuppressWarnings("fallthrough")
-    long doHash(long hash, byte[] b) {
-        int len = b.length;
-        hash ^= len;
+    abstract long doHash(long hash, byte[] b);
 
-        if (len < 8) {
-            long v = 0;
-            switch (len) {
-            case 7:
-                v = (v << 8) | (b[6] & 0xffL);
-            case 6:
-                v = (v << 8) | (b[5] & 0xffL);
-            case 5:
-                v = (v << 8) | (b[4] & 0xffL);
-            case 4:
-                v = (v << 8) | (b[3] & 0xffL);
-            case 3:
-                v = (v << 8) | (b[2] & 0xffL);
-            case 2:
-                v = (v << 8) | (b[1] & 0xffL);
-            case 1:
-                v = (v << 8) | (b[0] & 0xffL);
+    private static class SafeLE extends Hasher {
+        private static final VarHandle cArrayHandle;
+
+        static {
+            try {
+                cArrayHandle = MethodHandles.byteArrayViewVarHandle
+                    (long[].class, ByteOrder.LITTLE_ENDIAN);
+            } catch (Throwable e) {
+                throw new ExceptionInInitializerError();
             }
-            hash = (hash << 5) - hash ^ Utils.scramble(v);
+        }
+
+        @Override
+        @SuppressWarnings("fallthrough")
+        long doHash(long hash, byte[] b) {
+            int len = b.length;
+            hash ^= len;
+
+            if (len < 8) {
+                long v = 0;
+                switch (len) {
+                case 7:
+                    v = (v << 8) | (b[6] & 0xffL);
+                case 6:
+                    v = (v << 8) | (b[5] & 0xffL);
+                case 5:
+                    v = (v << 8) | (b[4] & 0xffL);
+                case 4:
+                    v = (v << 8) | (b[3] & 0xffL);
+                case 3:
+                    v = (v << 8) | (b[2] & 0xffL);
+                case 2:
+                    v = (v << 8) | (b[1] & 0xffL);
+                case 1:
+                    v = (v << 8) | (b[0] & 0xffL);
+                }
+                hash = ((hash << 5) - hash) ^ Utils.scramble(v);
+                return hash;
+            }
+
+            int end = len & ~7;
+            int i = 0;
+
+            while (i < end) {
+                hash = ((hash << 5) - hash) ^ Utils.scramble((long) cArrayHandle.get(b, i));
+                i += 8;
+            }
+
+            if ((len & 7) != 0) {
+                hash = ((hash << 5) - hash) ^ Utils.scramble((long) cArrayHandle.get(b, len - 8));
+            }
+
             return hash;
         }
-
-        int end = len & ~7;
-        int i = 0;
-
-        while (i < end) {
-            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, i));
-            i += 8;
-        }
-
-        if ((len & 7) != 0) {
-            hash = (hash << 5) - hash ^ Utils.scramble(Utils.decodeLongLE(b, len - 8));
-        }
-
-        return hash;
     }
 
     /**
-     * Same as default implementation except longs are read directly using Unsafe to avoid the
-     * shifting transformation.
+     * Same as default implementation except using Unsafe to avoid implicit bounds checks or
+     * alignment checks.
      */
     @SuppressWarnings("restriction")
     private static class UnsafeLE extends Hasher {
