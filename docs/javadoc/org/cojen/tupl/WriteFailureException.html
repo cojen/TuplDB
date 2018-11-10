@@ -129,12 +129,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li><a href="DatabaseException.html" title="class in org.cojen.tupl">org.cojen.tupl.DatabaseException</a></li>
 <li>
 <ul class="inheritance">
-<li><a href="DatabaseFullException.html" title="class in org.cojen.tupl">org.cojen.tupl.DatabaseFullException</a></li>
-<li>
-<ul class="inheritance">
 <li>org.cojen.tupl.WriteFailureException</li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>
@@ -155,7 +150,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">WriteFailureException</span>
-extends <a href="DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></pre>
+extends <a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></pre>
 <div class="block">Thrown when writing to the underlying storage device failed.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
@@ -182,6 +177,15 @@ extends <a href="DatabaseFullException.html" title="class in org.cojen.tupl">Dat
 </tr>
 <tr class="altColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">WriteFailureException</a></span>()</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr class="rowColor">
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(java.lang.String)">WriteFailureException</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message)</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr class="altColor">
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(java.lang.String,java.lang.Throwable)">WriteFailureException</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message,
+                     <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor">
@@ -241,10 +245,29 @@ extends <a href="DatabaseFullException.html" title="class in org.cojen.tupl">Dat
 <a id="&lt;init&gt;(java.lang.Throwable)">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>WriteFailureException</h4>
 <pre>public&nbsp;WriteFailureException&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</pre>
+</li>
+</ul>
+<a id="&lt;init&gt;(java.lang.String,java.lang.Throwable)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>WriteFailureException</h4>
+<pre>public&nbsp;WriteFailureException&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message,
+                             <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</pre>
+</li>
+</ul>
+<a id="&lt;init&gt;(java.lang.String)">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>WriteFailureException</h4>
+<pre>public&nbsp;WriteFailureException&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message)</pre>
 </li>
 </ul>
 </li>

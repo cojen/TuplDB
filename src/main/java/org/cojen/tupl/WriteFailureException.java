@@ -22,7 +22,7 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class WriteFailureException extends DatabaseFullException {
+public class WriteFailureException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
     public WriteFailureException() {
@@ -30,5 +30,18 @@ public class WriteFailureException extends DatabaseFullException {
 
     public WriteFailureException(Throwable cause) {
         super(cause);
+    }
+
+    public WriteFailureException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public WriteFailureException(String message) {
+        super(message);
+    }
+
+    @Override
+    boolean isRecoverable() {
+        return true;
     }
 }

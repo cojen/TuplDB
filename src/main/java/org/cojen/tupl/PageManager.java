@@ -607,7 +607,7 @@ final class PageManager {
                 if (mReserveList != null) {
                     mReserveList.preCommit();
                 }
-            } catch (DatabaseFullException e) {
+            } catch (WriteFailureException | DatabaseFullException e) {
                 // Should not happen with page limit override.
                 throw e;
             } catch (IOException e) {
