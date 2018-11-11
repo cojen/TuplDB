@@ -29,9 +29,6 @@ import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.UnsafeAccess;
 
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
-
 /**
  * 
  *
@@ -105,23 +102,12 @@ final class DirectPageOps {
         return STUB_TREE_PAGE;
     }
 
-    static class JNA {
-        static {
-            Native.register(Platform.C_LIBRARY_NAME);
-        }
-
-        // TODO: Define variant that works on Windows.
-        static native long valloc(int size);
-    }
-
     static long p_alloc(int size, boolean aligned) {
-        return aligned ? JNA.valloc(size) : UNSAFE.allocateMemory(size);
+        return UnsafeAccess.alloc(size, aligned);
     }
 
     static long p_calloc(int size, boolean aligned) {
-        long ptr = p_alloc(size, aligned);
-        UNSAFE.setMemory(ptr, size, (byte) 0);
-        return ptr;
+        return UnsafeAccess.calloc(size, aligned);
     }
 
     static long[] p_allocArray(int size) {
@@ -131,7 +117,7 @@ final class DirectPageOps {
     static void p_delete(final long page) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
         if (page != CLOSED_TREE_PAGE && page != EMPTY_TREE_LEAF && !inArena(page)) {
-            UNSAFE.freeMemory(page);
+            UnsafeAccess.free(page);
         }
     }
 
@@ -283,7 +269,7 @@ final class DirectPageOps {
 
     static long p_clone(final long page, int length, boolean aligned) {
         long dst = p_alloc(length, aligned);
-        UNSAFE.copyMemory(page, dst, length);
+        UnsafeAccess.copy(page, dst, length);
         return dst;
     }
 
@@ -619,7 +605,7 @@ final class DirectPageOps {
                     throw new ArrayIndexOutOfBoundsException(toIndex);
                 }
             }
-            UNSAFE.setMemory(page + fromIndex, len, (byte) 0);
+            UnsafeAccess.fill(page + fromIndex, len, (byte) 0);
         }
     }
 
@@ -684,7 +670,7 @@ final class DirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
-        UNSAFE.copyMemory(srcPage + srcStart, dstPage + dstStart, len);
+        UnsafeAccess.copy(srcPage + srcStart, dstPage + dstStart, len);
     }
 
     static void p_copies(final long page,

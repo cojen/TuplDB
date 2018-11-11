@@ -19,6 +19,9 @@ package org.cojen.tupl.io;
 
 import java.lang.reflect.Field;
 
+import com.sun.jna.Native;
+import com.sun.jna.Platform;
+
 /**
  * Utility for accessing the unsupported Unsafe class.
  *
@@ -94,5 +97,51 @@ public class UnsafeAccess {
             } catch (Throwable e) {
             }
         }
+    }
+
+    /**
+     * Allocate native memory.
+     */
+    public static long alloc(int size, boolean aligned) {
+        return aligned ? JNA.valloc(size) : UNSAFE.allocateMemory(size);
+    }
+
+    /**
+     * Allocate native memory, zero filled.
+     */
+    public static long calloc(int size, boolean aligned) {
+        long ptr = alloc(size, aligned);
+        UNSAFE.setMemory(ptr, size, (byte) 0);
+        return ptr;
+    }
+
+    /**
+     * Fill a range of native memory.
+     */
+    public static void fill(long ptr, long len, byte value) {
+        UNSAFE.setMemory(ptr, len, value);
+    }
+
+    /**
+     * Copy native memory.
+     */
+    public static void copy(long srcPtr, long dstPtr, long len) {
+        UNSAFE.copyMemory(srcPtr, dstPtr, len);
+    }
+
+    /**
+     * Free allocated native memory.
+     */
+    public static void free(long ptr) {
+        UNSAFE.freeMemory(ptr);
+    }
+
+    static class JNA {
+        static {
+            Native.register(Platform.C_LIBRARY_NAME);
+        }
+
+        // TODO: Define variant that works on Windows.
+        static native long valloc(int size);
     }
 }
