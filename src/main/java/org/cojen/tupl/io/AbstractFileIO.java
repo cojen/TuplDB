@@ -290,16 +290,10 @@ abstract class AbstractFileIO extends FileIO {
                             return;
                         }
 
-                        int limit = bb.limit();
-                        bb.limit(bb.position() + mavail);
-                        try {
-                            if (read) {
-                                mapping.read(mpos, bb);
-                            } else {
-                                mapping.write(mpos, bb);
-                            }
-                        } finally {
-                            bb.limit(limit);
+                        if (read) {
+                            mapping.read(mpos, bb, mavail);
+                        } else {
+                            mapping.write(mpos, bb, mavail);
                         }
 
                         pos += mavail;
