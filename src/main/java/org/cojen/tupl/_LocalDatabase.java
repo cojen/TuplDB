@@ -68,7 +68,6 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.FileFactory;
-import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -471,7 +470,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         (debugListener, dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
                     /*P*/ // [|
                     fullyMapped = crypto == null && cache == null
-                                  && dataPageArray instanceof MappedPageArray;
+                                  && dataPageArray.isFullyMapped();
                     /*P*/ // ]
                 }
             } else {
