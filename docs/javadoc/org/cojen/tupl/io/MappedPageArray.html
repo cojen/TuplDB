@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":9,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":9,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -213,17 +213,22 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isFullyMapped()">isFullyMapped</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i9" class="rowColor">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr id="i10" class="altColor">
 <td class="colFirst"><code><a href="MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open()">open</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to open or reopen the page array.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>static <a href="MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open(int,long,java.io.File,java.util.EnumSet)">open</a></span>&#8203;(int&nbsp;pageSize,
     long&nbsp;pageCount,
@@ -231,7 +236,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         byte[]&nbsp;buf,
@@ -239,7 +244,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         long&nbsp;ptr,
@@ -247,28 +252,28 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#setPageCount(long)">setPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncPage(long)">syncPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i17" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;buf,
@@ -277,7 +282,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i18" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;ptr,
@@ -292,7 +297,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
-<code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a>, <a href="PageArray.html#evictPage(long,long)">evictPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></li>
+<code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#directPageSize()">directPageSize</a>, <a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a>, <a href="PageArray.html#evictPage(long,long)">evictPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></li>
 </ul>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
@@ -333,6 +338,19 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <dd><code>file</code> - file to store pages, or null if anonymous</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a id="isFullyMapped()">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isFullyMapped</h4>
+<pre class="methodSignature">public final&nbsp;boolean&nbsp;isFullyMapped()</pre>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="PageArray.html#isFullyMapped()">isFullyMapped</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 </dl>
 </li>
 </ul>

@@ -39,8 +39,13 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public boolean isDirectIO() {
-        return mSource.isDirectIO();
+    public int directPageSize() {
+        return mSource.directPageSize();
+    }
+
+    @Override
+    public boolean isFullyMapped() {
+        return mSource.isFullyMapped();
     }
 
     @Override
@@ -110,7 +115,7 @@ final class CryptoPageArray extends PageArray {
             return;
         }
 
-        long page = DirectPageOps.p_alloc(pageSize, mSource.isDirectIO());
+        long page = DirectPageOps.p_allocPage(mSource.directPageSize());
         try {
             readPage(index, page);
             DirectPageOps.p_copy(page, 0, dstPtr, offset, length);
@@ -138,7 +143,7 @@ final class CryptoPageArray extends PageArray {
         try {
             int pageSize = pageSize();
             // Unknown if source contents can be destroyed, so create a new one.
-            long encrypted = DirectPageOps.p_alloc(pageSize, mSource.isDirectIO());
+            long encrypted = DirectPageOps.p_allocPage(mSource.directPageSize());
             try {
                 mCrypto.encryptPage(index, pageSize, srcPtr, offset, encrypted, 0);
                 mSource.writePage(index, encrypted, 0);

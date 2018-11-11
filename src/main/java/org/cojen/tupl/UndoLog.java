@@ -280,7 +280,7 @@ final class UndoLog implements DatabaseAccess {
         if ((payload[off] & 0xc0) == 0xc0) {
             // Key is fragmented and cannot be stored as-is, so expand it fully and switch to
             // using the "LK" op variant.
-            /*P*/ byte[] copy = p_transfer(payload, false);
+            /*P*/ byte[] copy = p_transfer(payload);
             try {
                 payload = Node.expandKeyAtLoc(this, copy, off, len, op != OP_UNDELETE_FRAGMENTED);
             } finally {
@@ -1100,7 +1100,7 @@ final class UndoLog implements DatabaseAccess {
 
     private byte[] decodeNodeKey(byte[] entry) throws IOException {
         byte[] key;
-        /*P*/ byte[] pentry = p_transfer(entry, false);
+        /*P*/ byte[] pentry = p_transfer(entry);
         try {
             key = Node.retrieveKeyAtLoc(this, pentry, 0);
         } finally {
@@ -1111,7 +1111,7 @@ final class UndoLog implements DatabaseAccess {
 
     private byte[][] decodeNodeKeyValuePair(byte[] entry) throws IOException {
         byte[][] pair;
-        /*P*/ byte[] pentry = p_transfer(entry, false);
+        /*P*/ byte[] pentry = p_transfer(entry);
         try {
             pair = Node.retrieveKeyValueAtLoc(this, pentry, 0);
         } finally {

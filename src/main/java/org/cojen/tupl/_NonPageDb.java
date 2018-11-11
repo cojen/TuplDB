@@ -64,8 +64,8 @@ final class _NonPageDb extends _PageDb {
     }
 
     @Override
-    public boolean isDirectIO() {
-        return false;
+    public int directPageSize() {
+        return pageSize();
     }
 
     @Override

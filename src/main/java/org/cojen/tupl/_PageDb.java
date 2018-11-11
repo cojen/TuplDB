@@ -42,7 +42,11 @@ abstract class _PageDb implements CauseCloseable {
 
     public abstract boolean isDurable();
 
-    public abstract boolean isDirectIO();
+    /**
+     * Returns a positive page size if not using direct I/O, else negate to get the page size
+     * to allocate for direct I/O.
+     */
+    public abstract int directPageSize();
 
     /**
      * @return 0 or _NodeGroup.MODE_NO_EVICT

@@ -163,6 +163,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns "AES" by default; override to change the algorithm.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#alloc(int)">alloc(int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
+<dd>
+<div class="block">Allocate native memory.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#alloc(int,boolean)">alloc(int, boolean)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>
 <div class="block">Allocate native memory.</div>
@@ -977,6 +981,15 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#directPagePointer(long)">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#directPageSize()">directPageSize()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#directPageSize()">directPageSize()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>
+<div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
+ to allocate for direct I/O.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#directPageSize()">directPageSize()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">DirectReplicator</span></a> - Interface in <a href="org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
 <div class="block">Replicator interface for applications which directly control the replication data, and are
@@ -1770,11 +1783,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#isDirectIO()">isDirectIO()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#isDirectIO()">isDirectIO()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#isDirectIO()">isDirectIO()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#isDirectIO()">isDirectIO()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#isEmpty()">isEmpty()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
@@ -1788,6 +1797,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns true if no waiters are enqueued.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/DeadlockException.html#isGuilty()">isGuilty()</a></span> - Method in exception org.cojen.tupl.<a href="org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/LockResult.html#isHeld()">isHeld()</a></span> - Method in enum org.cojen.tupl.<a href="org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></dt>

@@ -104,11 +104,21 @@ final class PageOps {
         return STUB_TREE_PAGE;
     }
 
-    static /*P*/ byte[] p_alloc(int size, boolean aligned) {
+    static /*P*/ byte[] p_alloc(int size) {
         return new byte[size];
     }
 
-    static /*P*/ byte[] p_calloc(int size, boolean aligned) {
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
+    static /*P*/ byte[] p_allocPage(int size) {
+        return p_callocPage(size);
+    }
+
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
+    static /*P*/ byte[] p_callocPage(int size) {
         return new byte[size];
     }
 
@@ -143,13 +153,17 @@ final class PageOps {
      * Allocate a zero-filled page from an arena. If arena is null or depleted, then a regular
      * page is allocated.
      *
+     * @param size pass negative for size for aligned allocation (if possible)
      * @throws IllegalArgumentException if unknown arena or if page size doesn't match
      */
-    static /*P*/ byte[] p_calloc(Object arena, int size, boolean aligned) {
-        return p_calloc(size, aligned);
+    static /*P*/ byte[] p_callocPage(Object arena, int size) {
+        return p_callocPage(size);
     }
 
-    static /*P*/ byte[] p_clone(/*P*/ byte[] page, int length, boolean aligned) {
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
+    static /*P*/ byte[] p_clonePage(/*P*/ byte[] page, int pageSize) {
         return page.clone();
     }
 
@@ -158,7 +172,14 @@ final class PageOps {
      *
      * @return original array or a newly allocated page
      */
-    static /*P*/ byte[] p_transfer(byte[] array, boolean aligned) {
+    static /*P*/ byte[] p_transfer(byte[] array) {
+        return array;
+    }
+
+    /**
+     * @param size pass negative for size for aligned allocation (if possible)
+     */
+    static /*P*/ byte[] p_transferPage(byte[] array, int pageSize) {
         return array;
     }
 

@@ -52,8 +52,12 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public boolean isDirectIO() {
-        return mFio.isDirectIO();
+    public int directPageSize() {
+        int size = pageSize();
+        if (mFio.isDirectIO()) {
+            size = -size;
+        }
+        return size;
     }
 
     @Override

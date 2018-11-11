@@ -207,6 +207,14 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i4" class="altColor">
+<td class="colFirst"><code>int</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#directPageSize()">directPageSize</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
+ to allocate for direct I/O.</div>
+</td>
+</tr>
+<tr id="i5" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,byte%5B%5D)">evictPage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;buf)</code></th>
@@ -215,7 +223,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
  be returned.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr id="i6" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,long)">evictPage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;bufPtr)</code></th>
@@ -224,24 +232,19 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
  be returned.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr id="i7" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCount()">getPageCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr id="i8" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCountLimit()">getPageCountLimit</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 </td>
-</tr>
-<tr id="i8" class="altColor">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isDirectIO()">isDirectIO</a></span>()</code></th>
-<td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i9" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
@@ -321,7 +324,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <!--   -->
 </a>
 <h3>Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
-<code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></li>
+<code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#isFullyMapped()">isFullyMapped</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></li>
 </ul>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
@@ -365,16 +368,19 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <!--   -->
 </a>
 <h3>Method Detail</h3>
-<a id="isDirectIO()">
+<a id="directPageSize()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>isDirectIO</h4>
-<pre class="methodSignature">public final&nbsp;boolean&nbsp;isDirectIO()</pre>
+<h4>directPageSize</h4>
+<pre class="methodSignature">public final&nbsp;int&nbsp;directPageSize()</pre>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#directPageSize()">PageArray</a></code></span></div>
+<div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
+ to allocate for direct I/O.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="PageArray.html#isDirectIO()">isDirectIO</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#directPageSize()">directPageSize</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 </dl>
 </li>
 </ul>

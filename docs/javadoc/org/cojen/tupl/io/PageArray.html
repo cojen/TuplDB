@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":6,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":6,"i13":10,"i14":10,"i15":6,"i16":6,"i17":10,"i18":10,"i19":10,"i20":6,"i21":10,"i22":10,"i23":6,"i24":6,"i25":10,"i26":10,"i27":10,"i28":6,"i29":10,"i30":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":6,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":6,"i14":10,"i15":10,"i16":6,"i17":10,"i18":6,"i19":10,"i20":10,"i21":10,"i22":6,"i23":10,"i24":10,"i25":6,"i26":6,"i27":10,"i28":10,"i29":10,"i30":6,"i31":10,"i32":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -249,11 +249,19 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr id="i9" class="rowColor">
+<td class="colFirst"><code>int</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#directPageSize()">directPageSize</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
+ to allocate for direct I/O.</div>
+</td>
+</tr>
+<tr id="i10" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#dirtyPage(long)">dirtyPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i10" class="altColor">
+<tr id="i11" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,byte%5B%5D)">evictPage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;buf)</code></th>
@@ -262,7 +270,7 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
  be returned.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr id="i12" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,long)">evictPage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;bufPtr)</code></th>
@@ -271,56 +279,61 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
  be returned.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr id="i13" class="rowColor">
 <td class="colFirst"><code>abstract long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCount()">getPageCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr id="i14" class="altColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCountLimit()">getPageCountLimit</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr id="i15" class="rowColor">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isDirectIO()">isDirectIO</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i16" class="altColor">
+<tr id="i17" class="rowColor">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isFullyMapped()">isFullyMapped</a></span>()</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr id="i18" class="altColor">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr id="i19" class="rowColor">
 <td class="colFirst"><code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open()">open</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to open or reopen the page array.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr id="i20" class="altColor">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageSize()">pageSize</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed size of all pages in the array, in bytes.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr id="i21" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D)">readPage</a></span>&#8203;(long&nbsp;index,
         byte[]&nbsp;dst)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i20" class="altColor">
+<tr id="i22" class="altColor">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         byte[]&nbsp;dst,
@@ -328,13 +341,13 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr id="i23" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long)">readPage</a></span>&#8203;(long&nbsp;index,
         long&nbsp;dstPtr)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i22" class="altColor">
+<tr id="i24" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         long&nbsp;dstPtr,
@@ -342,35 +355,35 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr id="i25" class="rowColor">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#setPageCount(long)">setPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr id="i26" class="altColor">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr id="i27" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncPage(long)">syncPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr id="i28" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uncachePage(long)">uncachePage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">If supported, removes a page from the cache.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr id="i29" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D)">writePage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;src)</code></th>
@@ -378,7 +391,7 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr id="i30" class="altColor">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;src,
@@ -387,7 +400,7 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr id="i31" class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long)">writePage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;srcPtr)</code></th>
@@ -395,7 +408,7 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr id="i32" class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;srcPtr,
@@ -453,7 +466,7 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <ul class="blockList">
 <li class="blockList">
 <h4>isDirectIO</h4>
-<pre class="methodSignature">public&nbsp;boolean&nbsp;isDirectIO()</pre>
+<pre class="methodSignature">public final&nbsp;boolean&nbsp;isDirectIO()</pre>
 </li>
 </ul>
 <a id="pageSize()">
@@ -464,6 +477,26 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <h4>pageSize</h4>
 <pre class="methodSignature">public final&nbsp;int&nbsp;pageSize()</pre>
 <div class="block">Returns the fixed size of all pages in the array, in bytes.</div>
+</li>
+</ul>
+<a id="directPageSize()">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>directPageSize</h4>
+<pre class="methodSignature">public&nbsp;int&nbsp;directPageSize()</pre>
+<div class="block">Returns a positive page size if not using direct I/O, else negate to get the page size
+ to allocate for direct I/O.</div>
+</li>
+</ul>
+<a id="isFullyMapped()">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isFullyMapped</h4>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isFullyMapped()</pre>
 </li>
 </ul>
 <a id="isReadOnly()">

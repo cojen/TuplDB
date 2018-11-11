@@ -235,10 +235,10 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
 
             /*P*/ byte[] page;
             /*P*/ // [
-            page = p_calloc(arena, mPageSize, mDatabase.mPageDb.isDirectIO());
+            page = p_callocPage(arena, mDatabase.mPageDb.directPageSize());
             /*P*/ // |
             /*P*/ // page = mDatabase.mFullyMapped ? p_nonTreePage()
-            /*P*/ //        : p_calloc(arena, mPageSize, mDatabase.mPageDb.isDirectIO());
+            /*P*/ //        : p_callocPage(arena, mDatabase.mPageDb.directPageSize());
             /*P*/ // ]
 
             Node node = new Node(this, page);

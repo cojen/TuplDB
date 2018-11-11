@@ -32,7 +32,7 @@ import java.util.concurrent.RejectedExecutionException;
  */
 public class StripedPageArray extends PageArray {
     private final PageArray[] mArrays;
-    private final boolean mDirect;
+    private final int mDirectPageSize;
     private final boolean mReadOnly;
 
     private final ExecutorService mSyncService;
@@ -41,12 +41,21 @@ public class StripedPageArray extends PageArray {
     public StripedPageArray(PageArray... arrays) {
         super(pageSize(arrays));
         mArrays = arrays;
-        boolean direct = false, readOnly = false;
+
+        int directPageSize = arrays[0].directPageSize();
+        for (int i=1; i<arrays.length; i++) {
+            if (arrays[i].directPageSize() != directPageSize) {
+                directPageSize = pageSize();
+                break;
+            }
+        }
+        mDirectPageSize = directPageSize;
+
+        boolean readOnly = false;
         for (PageArray pa : arrays) {
-            direct |= pa.isDirectIO();
             readOnly |= pa.isReadOnly();
         }
-        mDirect = direct;
+
         mReadOnly = readOnly;
 
         mSyncService = Executors.newCachedThreadPool(new NamedThreadFactory("Syncer"));
@@ -68,8 +77,8 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public final boolean isDirectIO() {
-        return mDirect;
+    public final int directPageSize() {
+        return mDirectPageSize;
     }
 
     @Override

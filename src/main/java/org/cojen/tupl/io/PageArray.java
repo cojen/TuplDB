@@ -35,8 +35,8 @@ public abstract class PageArray implements CauseCloseable {
         mPageSize = pageSize;
     }
 
-    public boolean isDirectIO() {
-        return false;
+    public final boolean isDirectIO() {
+        return directPageSize() < 0;
     }
 
     /**
@@ -44,6 +44,18 @@ public abstract class PageArray implements CauseCloseable {
      */
     public final int pageSize() {
         return mPageSize;
+    }
+
+    /**
+     * Returns a positive page size if not using direct I/O, else negate to get the page size
+     * to allocate for direct I/O.
+     */
+    public int directPageSize() {
+        return pageSize();
+    }
+
+    public boolean isFullyMapped() {
+        return false;
     }
 
     public abstract boolean isReadOnly();

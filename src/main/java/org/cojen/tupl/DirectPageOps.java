@@ -71,7 +71,7 @@ final class DirectPageOps {
     }
 
     private static long newEmptyTreePage(int pageSize, int type) {
-        long empty = p_calloc(pageSize, false);
+        long empty = p_callocPage(pageSize);
 
         p_bytePut(empty, 0, type);
 
@@ -102,12 +102,16 @@ final class DirectPageOps {
         return STUB_TREE_PAGE;
     }
 
-    static long p_alloc(int size, boolean aligned) {
-        return UnsafeAccess.alloc(size, aligned);
+    static long p_alloc(int size) {
+        return UnsafeAccess.alloc(size);
     }
 
-    static long p_calloc(int size, boolean aligned) {
-        return UnsafeAccess.calloc(size, aligned);
+    static long p_allocPage(int size) {
+        return UnsafeAccess.alloc(Math.abs(size), size < 0); // aligned if negative
+    }
+
+    static long p_callocPage(int size) {
+        return UnsafeAccess.calloc(Math.abs(size), size < 0); // aligned if negative
     }
 
     static long[] p_allocArray(int size) {
@@ -254,9 +258,10 @@ final class DirectPageOps {
         }
     }
 
-    static long p_calloc(Object arena, int size, boolean aligned) {
+    static long p_callocPage(Object arena, int size) {
         if (arena instanceof Arena) {
-            final long page = ((Arena) arena).p_calloc(size); // assumed to be aligned
+            // Assume arena allocations are always aligned.
+            final long page = ((Arena) arena).p_calloc(Math.abs(size));
             if (page != p_null()) {
                 return page;
             }
@@ -264,19 +269,25 @@ final class DirectPageOps {
             throw new IllegalArgumentException();
         }
 
-        return p_calloc(size, aligned);
+        return p_callocPage(size);
     }
 
-    static long p_clone(final long page, int length, boolean aligned) {
-        long dst = p_alloc(length, aligned);
-        UnsafeAccess.copy(page, dst, length);
+    static long p_clonePage(final long page, int pageSize) {
+        long dst = p_allocPage(pageSize);
+        UnsafeAccess.copy(page, dst, Math.abs(pageSize));
         return dst;
     }
 
-    static long p_transfer(byte[] array, boolean aligned) {
+    static long p_transfer(byte[] array) {
         int length = array.length;
-        final long page = p_alloc(length, aligned);
+        final long page = p_alloc(length);
         p_copyFromArray(array, 0, page, 0, length);
+        return page;
+    }
+
+    static long p_transferPage(byte[] array, int pageSize) {
+        final long page = p_allocPage(pageSize);
+        p_copyFromArray(array, 0, page, 0, Math.abs(pageSize));
         return page;
     }
 

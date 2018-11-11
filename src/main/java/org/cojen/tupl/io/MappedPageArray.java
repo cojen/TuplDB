@@ -91,6 +91,11 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
+    public final boolean isFullyMapped() {
+        return true;
+    }
+
+    @Override
     public final boolean isReadOnly() {
         return mReadOnly;
     }
@@ -114,6 +119,7 @@ public abstract class MappedPageArray extends PageArray {
         return mPageCount;
     }
 
+    @Override
     public void readPage(long index, byte[] buf, int offset, int length)
         throws IOException
     {
@@ -121,6 +127,7 @@ public abstract class MappedPageArray extends PageArray {
         UNSAFE.copyMemory(null, mappingPtr() + index * mPageSize, buf, ARRAY + offset, length);
     }
 
+    @Override
     public void readPage(long index, long ptr, int offset, int length)
         throws IOException
     {
@@ -135,12 +142,14 @@ public abstract class MappedPageArray extends PageArray {
         }
     }
 
+    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
         UNSAFE.copyMemory(buf, ARRAY + offset, null, mappingPtr() + index * pageSize, pageSize);
     }
 
+    @Override
     public void writePage(long index, long ptr, int offset) throws IOException {
         writeCheck(index);
 

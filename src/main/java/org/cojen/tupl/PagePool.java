@@ -30,11 +30,14 @@ final class PagePool extends Latch {
     private final /*P*/ byte[][] mPool;
     private int mPos;
 
-    PagePool(int pageSize, int poolSize, boolean aligned) {
+    /**
+     * @param pageSize pass negative for size for aligned allocation (if possible)
+     */
+    PagePool(int pageSize, int poolSize) {
         mQueue = new LatchCondition();
         /*P*/ byte[][] pool = PageOps.p_allocArray(poolSize);
         for (int i=0; i<poolSize; i++) {
-            pool[i] = PageOps.p_calloc(pageSize, aligned);
+            pool[i] = PageOps.p_callocPage(pageSize);
         }
         mPool = pool;
         mPos = poolSize;

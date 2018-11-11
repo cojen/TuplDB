@@ -102,6 +102,13 @@ public class UnsafeAccess {
     /**
      * Allocate native memory.
      */
+    public static long alloc(int size) {
+        return UNSAFE.allocateMemory(size);
+    }
+
+    /**
+     * Allocate native memory.
+     */
     public static long alloc(int size, boolean aligned) {
         return aligned ? JNA.valloc(size) : UNSAFE.allocateMemory(size);
     }

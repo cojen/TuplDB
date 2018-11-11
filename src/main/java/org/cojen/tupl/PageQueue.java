@@ -144,7 +144,7 @@ final class PageQueue implements IntegerRef {
         mAllocMode = allocMode;
         mAggressive = aggressive;
 
-        mRemoveHead = p_calloc(mPageSize, array.isDirectIO());
+        mRemoveHead = p_callocPage(array.directPageSize());
 
         if (appendLock == null) {
             // This lock must be reentrant. The appendPage method can call into
@@ -159,7 +159,7 @@ final class PageQueue implements IntegerRef {
         }
 
         mAppendHeap = new IdHeap(mPageSize - I_NODE_START);
-        mAppendTail = p_calloc(mPageSize, array.isDirectIO());
+        mAppendTail = p_callocPage(array.directPageSize());
     }
 
     /**
@@ -581,7 +581,7 @@ final class PageQueue implements IntegerRef {
 
         if (nodeId != 0) {
             PageArray pa = mManager.pageArray();
-            /*P*/ byte[] node = p_clone(mRemoveHead, pageSize(mRemoveHead), pa.isDirectIO());
+            /*P*/ byte[] node = p_clonePage(mRemoveHead, pa.directPageSize());
             try {
                 long pageId = mRemoveHeadFirstPageId;
                 IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
