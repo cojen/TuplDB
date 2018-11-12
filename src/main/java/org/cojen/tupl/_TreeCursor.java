@@ -3063,7 +3063,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 }
             }
 
-            deleteNoRedo(txn, leaf, shared);
+            deleteNoRedo(txn, leaf);
         } else {
             shared = prepareStore(leaf);
 
@@ -3080,7 +3080,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 }
             }
 
-            storeNoRedo(txn, leaf, shared, value);
+            storeNoRedo(txn, leaf, value);
         }
 
         if (storeMode() <= 1) {
@@ -3313,9 +3313,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                     node.releaseExclusive();
                     break doStore;
                 }
-                deleteNoRedo(txn, leaf, shared);
+                deleteNoRedo(txn, leaf);
             } else {
-                storeNoRedo(txn, leaf, shared, newValue);
+                storeNoRedo(txn, leaf, newValue);
             }
 
             if (storeMode() <= 1) {
@@ -3360,7 +3360,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                         return false;
                     }
                     if (node.hasLeafValue(leaf.mNodePos) == null) {
-                        deleteNoRedo(_LocalTransaction.BOGUS, leaf, shared);
+                        deleteNoRedo(_LocalTransaction.BOGUS, leaf);
                     } else {
                         // Non-ghost value exists.
                         node.releaseExclusive();
@@ -3391,12 +3391,12 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         if (value == null) {
             shared = prepareDelete(leaf);
             if (shared != null) {
-                deleteNoRedo(txn, leaf, shared);
+                deleteNoRedo(txn, leaf);
                 shared.release();
             }
         } else {
             shared = prepareStore(leaf);
-            storeNoRedo(txn, leaf, shared, value);
+            storeNoRedo(txn, leaf, value);
             shared.release();
         }
 
@@ -3421,10 +3421,10 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 mValue = null;
                 return;
             }
-            deleteNoRedo(txn, leaf, shared);
+            deleteNoRedo(txn, leaf);
         } else {
             shared = prepareStore(leaf);
-            storeNoRedo(txn, leaf, shared, value);
+            storeNoRedo(txn, leaf, value);
         }
 
         mValue = value;
@@ -3526,12 +3526,12 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
      * Must call prepareDelete before calling this method, which ensures that the node is
      * dirtied and not split, and that the leaf position isn't negative.
      *
+     * Caller must have acquired the shared commit lock, which is released by this method if an
+     * exception is thrown.
+     *
      * @param leaf leaf frame, latched exclusively, which is always released by this method
-     * @param shared held commit lock, which is released only if an exception is thrown
      */
-    private void deleteNoRedo(_LocalTransaction txn, _CursorFrame leaf, CommitLock.Shared shared)
-        throws IOException
-    {
+    private void deleteNoRedo(_LocalTransaction txn, _CursorFrame leaf) throws IOException {
         try {
             _Node node = leaf.mNode;
             int pos = leaf.mNodePos;
@@ -3557,7 +3557,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 node.releaseExclusive();
             }
         } catch (Throwable e) {
-            shared.release();
+            // Release the shared lock.
+            mTree.mDatabase.commitLock().unlock();
+
             DatabaseException.rethrowIfRecoverable(e);
             if (txn != null) {
                 txn.reset(e);
@@ -3599,11 +3601,12 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
      * Must call prepareStore before calling this method, which ensures that the node is
      * dirtied and not split.
      *
+     * Caller must have acquired the shared commit lock, which is released by this method if an
+     * exception is thrown.
+     *
      * @param leaf leaf frame, latched exclusively, which is always released by this method
-     * @param shared held commit lock, which is released only if an exception is thrown
      */
-    private void storeNoRedo(_LocalTransaction txn, _CursorFrame leaf, CommitLock.Shared shared,
-                             byte[] value)
+    private void storeNoRedo(_LocalTransaction txn, _CursorFrame leaf, byte[] value)
         throws IOException
     {
         try {
@@ -3653,7 +3656,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
                 node.releaseExclusive();
             }
         } catch (Throwable e) {
-            shared.release();
+            // Release the shared lock.
+            mTree.mDatabase.commitLock().unlock();
+
             DatabaseException.rethrowIfRecoverable(e);
             if (txn != null) {
                 txn.reset(e);
