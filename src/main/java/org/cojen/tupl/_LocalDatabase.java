@@ -902,10 +902,6 @@ final class _LocalDatabase extends AbstractDatabase {
                                 file.delete();
                             }
                         }
-
-                        // Delete lingering fragmented values after undo logs have been
-                        // processed, ensuring deletes were committed.
-                        emptyAllFragmentedTrash(true);
                     }
 
                     recoveryComplete(recoveryStart);
@@ -5099,17 +5095,6 @@ final class _LocalDatabase extends AbstractDatabase {
 
     long levelCap(int level) {
         return mFragmentInodeLevelCaps[level];
-    }
-
-    /**
-     * If fragmented trash exists, non-transactionally delete all fragmented values. Expected
-     * to be called only during recovery or replication leader switch.
-     */
-    private void emptyAllFragmentedTrash(boolean checkpoint) throws IOException {
-        _FragmentedTrash trash = mFragmentedTrash;
-        if (trash != null && trash.emptyAllTrash(mEventListener) && checkpoint) {
-            checkpoint(false, 0, 0);
-        }
     }
 
     /**

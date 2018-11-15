@@ -27,8 +27,8 @@ import static org.cojen.tupl.Utils.*;
 import static java.util.Arrays.compareUnsigned;
 
 /**
- * Persisted collection of fragmented values which should be deleted. Trash is
- * emptied after transactions commit and during recovery.
+ * Persisted collection of fragmented values which should be deleted. Trash is emptied after
+ * transactions commit.
  *
  * @author Brian S O'Neill
  */
@@ -56,8 +56,6 @@ final class FragmentedTrash {
              /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
-        // It would be nice if cursor store supported array slices. Instead, a
-        // temporary array needs to be created.
         byte[] payload = new byte[valueLen];
         p_copyToArray(entry, valueStart, payload, 0, valueLen);
 
@@ -231,49 +229,6 @@ final class FragmentedTrash {
         } catch (Throwable e) {
             throw closeOnFailure(cursor, e);
         }
-    }
-
-    /**
-     * Non-transactionally deletes all fragmented values. Expected to be called only during
-     * recovery, and never when other calls into the trash are being made concurrently.
-     *
-     * @return true if any trash was found
-     */
-    boolean emptyAllTrash(EventListener listener) throws IOException {
-        boolean found = false;
-
-        LocalDatabase db = mTrash.mDatabase;
-        final CommitLock commitLock = db.commitLock();
-
-        TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
-        try {
-            cursor.autoload(false);
-            cursor.first();
-
-            if (cursor.key() != null) {
-                if (listener != null) {
-                    listener.notify(EventType.RECOVERY_DELETE_FRAGMENTS,
-                                    "Deleting unused large fragments");
-                }
-
-                do {
-                    CommitLock.Shared shared = commitLock.acquireShared();
-                    try {
-                        found |= deleteFragmented(db, cursor);
-                    } finally {
-                        shared.release();
-                    }
-
-                    cursor.next();
-                } while (cursor.key() != null);
-            }
-
-            cursor.reset();
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
-
-        return found;
     }
 
     private static boolean deleteFragmented(LocalDatabase db, Cursor cursor) throws IOException {

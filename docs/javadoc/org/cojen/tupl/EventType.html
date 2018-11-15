@@ -284,72 +284,66 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Enum.html?
 </td>
 </tr>
 <tr class="altColor">
-<th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_DELETE_FRAGMENTS">RECOVERY_DELETE_FRAGMENTS</a></span></code></th>
-<td class="colLast">
-<div class="block">Signals that large value fragments in the trash are being deleted.</div>
-</td>
-</tr>
-<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_HANDLER_UNCAUGHT">RECOVERY_HANDLER_UNCAUGHT</a></span></code></th>
 <td class="colLast">
 <div class="block">An uncaught exception from a recovery handler.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_LOAD_UNDO_LOGS">RECOVERY_LOAD_UNDO_LOGS</a></span></code></th>
 <td class="colLast">
 <div class="block">Signals that undo logs of in-flight transactions are being loaded.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_NO_HANDLER">RECOVERY_NO_HANDLER</a></span></code></th>
 <td class="colLast">
 <div class="block">Prepared two-phase commit transactions remain, but no handler is installed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_PROCESS_REMAINING">RECOVERY_PROCESS_REMAINING</a></span></code></th>
 <td class="colLast">
 <div class="block">Signals that transactions not expliticly committed or rolled back are being processed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_PROGRESS">RECOVERY_PROGRESS</a></span></code></th>
 <td class="colLast">
 <div class="block">Generic recovery progress message.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#RECOVERY_REDO_LOG_CORRUPTION">RECOVERY_REDO_LOG_CORRUPTION</a></span></code></th>
 <td class="colLast">
 <div class="block">Signals that some redo operations were not recovered due to log file corruption.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#REPLICATION_DEBUG">REPLICATION_DEBUG</a></span></code></th>
 <td class="colLast">
 <div class="block">Generic debug message from the replication system.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#REPLICATION_INFO">REPLICATION_INFO</a></span></code></th>
 <td class="colLast">
 <div class="block">Generic info message from the replication system.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#REPLICATION_PANIC">REPLICATION_PANIC</a></span></code></th>
 <td class="colLast">
 <div class="block">Unhandled in the replication system, and the database must be shutdown.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#REPLICATION_RESTORE">REPLICATION_RESTORE</a></span></code></th>
 <td class="colLast">
 <div class="block">Snapshot restore progress event.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#REPLICATION_WARNING">REPLICATION_WARNING</a></span></code></th>
 <td class="colLast">
 <div class="block">Generic warning message from the replication system.</div>
@@ -565,16 +559,6 @@ the order they are declared.</div>
 <h4>RECOVERY_HANDLER_UNCAUGHT</h4>
 <pre>public static final&nbsp;<a href="EventType.html" title="enum in org.cojen.tupl">EventType</a> RECOVERY_HANDLER_UNCAUGHT</pre>
 <div class="block">An uncaught exception from a recovery handler.</div>
-</li>
-</ul>
-<a id="RECOVERY_DELETE_FRAGMENTS">
-<!--   -->
-</a>
-<ul class="blockList">
-<li class="blockList">
-<h4>RECOVERY_DELETE_FRAGMENTS</h4>
-<pre>public static final&nbsp;<a href="EventType.html" title="enum in org.cojen.tupl">EventType</a> RECOVERY_DELETE_FRAGMENTS</pre>
-<div class="block">Signals that large value fragments in the trash are being deleted.</div>
 </li>
 </ul>
 <a id="RECOVERY_COMPLETE">

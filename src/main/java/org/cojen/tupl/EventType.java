@@ -52,8 +52,6 @@ public enum EventType {
     RECOVERY_NO_HANDLER(Category.RECOVERY, Level.SEVERE),
     /** An uncaught exception from a recovery handler. */
     RECOVERY_HANDLER_UNCAUGHT(Category.RECOVERY, Level.SEVERE),
-    /** Signals that large value fragments in the trash are being deleted. */
-    RECOVERY_DELETE_FRAGMENTS(Category.RECOVERY, Level.INFO),
     /** Signals the end of database recovery, reporting the duration. */
     RECOVERY_COMPLETE(Category.RECOVERY, Level.INFO),
 
