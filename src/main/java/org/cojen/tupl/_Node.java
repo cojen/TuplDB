@@ -1995,7 +1995,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         // Replace value with ghost.
         p_bytePut(page, valueHeaderLoc, -1);
-        garbage(garbage() + loc - valueHeaderLoc - 1);
+        spaceFreed(valueHeaderLoc + 1, loc);
     }
 
     /**
@@ -3546,6 +3546,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             final int valueLen = value.length;
             if (valueLen > len) {
                 // Old entry is too small, and so it becomes garbage.
+                // TODO: Try to extend the length instead of creating garbage.
                 keyLen = valueHeaderLoc - start;
                 garbage = garbage() + loc + len - start;
                 break quick;
@@ -3563,8 +3564,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     }
                 }
             } else {
-                garbage(garbage() + loc + len - copyToLeafValue
-                        (page, vfrag, value, valueHeaderLoc) - valueLen);
+                // New entry is smaller, so some space is freed.
+                int valueLoc = copyToLeafValue(page, vfrag, value, valueHeaderLoc);
+                spaceFreed(valueLoc + valueLen, loc + len);
             }
 
             return;
@@ -3832,8 +3834,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
      */
     void deleteLeafEntry(int pos) throws IOException {
         long page = mPage;
-        int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
-        finishDeleteLeafEntry(pos, doDeleteLeafEntry(page, entryLoc) - entryLoc);
+        int startLoc = p_ushortGetLE(page, searchVecStart() + pos);
+        int endLoc = doDeleteLeafEntry(page, startLoc);
+        finishDeleteLeafEntry(pos, startLoc, endLoc);
     }
 
     /**
@@ -3879,12 +3882,51 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     /**
-     * Finish the delete by updating garbage size and adjusting search vector.
+     * Increase the garbage size or adjust the free space, depending on the location of the
+     * space which was freed.
+     *
+     * @param startLoc start location of freed space, inclusive
+     * @param endLoc end location of freed space, exclusive
+     */
+    private void spaceFreed(int startLoc, int endLoc) {
+        if (endLoc == leftSegTail()) {
+            // Deleted entry is adjacent to the left free space, so just extend it.
+            leftSegTail(startLoc);
+        } else if ((startLoc - 1) == rightSegTail()) {
+            // Deleted entry is adjacent to the right free space, so just extend it.
+            rightSegTail(endLoc - 1);
+        } else {
+            // Not adjacent to free space, so update the garbage size.
+            garbage(garbage() + (endLoc - startLoc));
+        }
+    }
+
+    /**
+     * Finish the delete by updating garbage size and adjusting the search vector. Call this
+     * variant when it's not expected that the node will have entries inserted into it again.
      */
     void finishDeleteLeafEntry(int pos, int entryLen) {
         // Increment garbage by the size of the encoded entry.
         garbage(garbage() + entryLen);
+        doFinishDeleteLeafEntry(pos);
+    }
 
+    /**
+     * Finish the delete by adjusting the free space or by updating the garbage size, and then
+     * adjust the search vector.
+     *
+     * @param startLoc entry start location, inclusive
+     * @param endLoc entry end location, exclusive
+     */
+    void finishDeleteLeafEntry(int pos, int startLoc, int endLoc) {
+        spaceFreed(startLoc, endLoc);
+        doFinishDeleteLeafEntry(pos);
+    }
+
+    /**
+     * Finish the delete by only adjusting the search vector.
+     */
+    private void doFinishDeleteLeafEntry(int pos) {
         long page = mPage;
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
