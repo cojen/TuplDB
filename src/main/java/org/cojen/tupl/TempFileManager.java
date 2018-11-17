@@ -28,7 +28,7 @@ import org.cojen.tupl.io.CauseCloseable;
 import org.cojen.tupl.io.FileFactory;
 
 /**
- * 
+ * Manages temporary files, which are used by {@link SnapshotPageArray}.
  *
  * @author Brian S O'Neill
  */

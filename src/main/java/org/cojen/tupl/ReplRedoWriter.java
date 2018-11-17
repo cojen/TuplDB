@@ -26,7 +26,7 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.util.Latch;
 
 /**
- * 
+ * Implementation of a replicated redo log, used by {@link ReplRedoController}.
  *
  * @author Brian S O'Neill
  */

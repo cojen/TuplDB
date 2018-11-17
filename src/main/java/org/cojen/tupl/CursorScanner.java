@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 /**
- * 
+ * Simple Scanner implementation which wraps a Cursor.
  *
  * @author Brian S O'Neill
  */

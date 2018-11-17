@@ -26,7 +26,7 @@ import java.util.Comparator;
 import static org.cojen.tupl.BoundedView.*;
 
 /**
- * 
+ * Cursor implementation vended by {@link BoundedView}.
  *
  * @author Brian S O'Neill
  */

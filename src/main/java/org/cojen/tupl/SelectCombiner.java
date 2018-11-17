@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Implements stock combiners which simply select the first or second value, or neither of them.
  *
  * @author Brian S O'Neill
  */

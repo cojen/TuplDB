@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.cojen.tupl.io.PageArray;
 
 /**
- * Manages free and deleted pages.
+ * Manages free and deleted pages for {@link DurablePageDb}.
  *
  * @author Brian S O'Neill
  */

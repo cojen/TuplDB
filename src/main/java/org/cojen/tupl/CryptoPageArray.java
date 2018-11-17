@@ -24,7 +24,8 @@ import java.security.GeneralSecurityException;
 import org.cojen.tupl.io.PageArray;
 
 /**
- * 
+ * Wraps a PageArray to apply encryption operations on all pages. Is constructed by {@link
+ * DurablePageDb} when encryption is enabled via {@link DatabaseConfig#encrypt}.
  *
  * @author Brian S O'Neill
  */

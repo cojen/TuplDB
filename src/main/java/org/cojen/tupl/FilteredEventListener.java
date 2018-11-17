@@ -26,7 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 
+ * Base class for EventListeners which will filter notifications based on category and level.
  *
  * @author Brian S O'Neill
  */

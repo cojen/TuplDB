@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Defines all the valid operations which can be written to the redo log.
  *
  * @author Brian S O'Neill
  */

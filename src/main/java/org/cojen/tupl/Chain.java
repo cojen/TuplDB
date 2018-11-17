@@ -18,7 +18,8 @@
 package org.cojen.tupl;
 
 /**
- * Simple linked list iterator.
+ * Simple linked list iterator. Is used by {@link TreeSeparator} and {@link TreeMerger}, which
+ * in turn are used by {@link ParallelSorter}.
  *
  * @author Brian S O'Neill
  */

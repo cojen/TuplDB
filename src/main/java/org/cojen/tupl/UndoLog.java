@@ -33,7 +33,8 @@ import static org.cojen.tupl.Utils.*;
 import org.cojen.tupl.ext.TransactionHandler;
 
 /**
- * Specialized stack used by UndoLog.
+ * Specialized stack used to record compensating actions for rolling back transactions. UndoLog
+ * instances are created on a per-transaction basis -- they're not shared.
  *
  * @author Brian S O'Neill
  */

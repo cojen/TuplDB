@@ -28,7 +28,7 @@ import org.cojen.tupl.util.LatchCondition;
 import static org.cojen.tupl.LockResult.*;
 
 /**
- * 
+ * Manages all Lock instances using a specialized striped hashtable.
  *
  * @author Brian S O'Neill
  */

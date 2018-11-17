@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.lang.ref.WeakReference;
 
 /**
- * Shutdown operation registered with Checkpointer.
+ * Shutdown operation registered with {@link Checkpointer}.
  *
  * @author Brian S O'Neill
  */

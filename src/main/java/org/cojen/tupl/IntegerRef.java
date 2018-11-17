@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Interface which makes it possible to pass an int around by reference.
  *
  * @author Brian S O'Neill
  */
@@ -27,6 +27,9 @@ interface IntegerRef {
 
     void set(int v);
 
+    /**
+     * Mutable alterative to java.lang.Integer.
+     */
     static class Value implements IntegerRef {
         int value;
 

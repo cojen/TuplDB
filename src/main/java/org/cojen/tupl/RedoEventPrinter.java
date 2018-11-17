@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 
+ * Debugging utility enabled by {@link DatabaseConfig#debugOpen}.
  *
  * @author Brian S O'Neill
  */

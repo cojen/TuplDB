@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Used by {@link ReplRedoWriter} to queue up transactions which commit asynchronously.
  *
  * @author Brian S O'Neill
  */

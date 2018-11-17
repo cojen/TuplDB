@@ -24,7 +24,7 @@ import static org.cojen.tupl.Utils.*;
 import static java.util.Arrays.compareUnsigned;
 
 /**
- * 
+ * View implementation vended by methods such as {@link View#viewGe}.
  *
  * @author Brian S O'Neill
  */

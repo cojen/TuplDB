@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 
+ * Collection of static utility methods for acting on Views.
  *
  * @author Brian S O'Neill
  */

@@ -24,6 +24,9 @@ import java.util.function.LongConsumer;
 import org.cojen.tupl.io.CauseCloseable;
 
 /**
+ * Interface which defines a simple "page database" layer, or a "database of pages". The real
+ * database depends on this simpler database internally.
+ *
  * @author Brian S O'Neill
  * @see DurablePageDb
  * @see NonPageDb

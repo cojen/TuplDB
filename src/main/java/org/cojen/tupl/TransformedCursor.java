@@ -24,7 +24,7 @@ import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 
+ * Cursor implementation vended by {@link TransformedView}.
  *
  * @author Brian S O'Neill
  */

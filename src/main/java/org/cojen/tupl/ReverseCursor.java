@@ -24,7 +24,7 @@ import java.io.OutputStream;
 import java.util.Comparator;
 
 /**
- * 
+ * Cursor implementation vended by {@link ReverseView}.
  *
  * @author Brian S O'Neill
  */

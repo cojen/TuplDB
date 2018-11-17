@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 /**
- * 
+ * View implementation vended by {@link View#viewKeys}.
  *
  * @author Brian S O'Neill
  */

@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 /**
- * 
+ * Cursor implementation vended by {@link KeyOnlyView}.
  *
  * @author Brian S O'Neill
  */

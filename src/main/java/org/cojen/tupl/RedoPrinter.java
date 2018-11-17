@@ -20,11 +20,14 @@ package org.cojen.tupl;
 import java.io.PrintStream;
 
 /**
- * 
+ * Debugging tool which reads and prints all the redo operations from a local log.
  *
  * @author Brian S O'Neill
  */
 class RedoPrinter implements RedoVisitor {
+    /**
+     * @param args [0]: database base file, [1]: first log number to read from
+     */
     public static void main(String[] args) throws Exception {
         java.io.File baseFile = new java.io.File(args[0]);
         long logId = Long.parseLong(args[1]);

@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.util.logging.Level;
 
 /**
- * 
+ * Wraps an EventListener and drops all exceptions that it might throw from the notify method.
  *
  * @author Brian S O'Neill
  */

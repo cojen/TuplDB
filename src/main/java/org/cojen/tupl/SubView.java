@@ -22,7 +22,8 @@ import java.io.IOException;
 import java.util.Comparator;
 
 /**
- * 
+ * Base class for {@link BoundedView}, with the intent that other kinds of implementations
+ * might someday exist.
  *
  * @author Brian S O'Neill
  */

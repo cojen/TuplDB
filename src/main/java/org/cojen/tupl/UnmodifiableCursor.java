@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Returned by {@link UnmodifiableView}.
+ * Cursor implementation vended by {@link UnmodifiableView}.
  *
  * @author Brian S O'Neill
  */

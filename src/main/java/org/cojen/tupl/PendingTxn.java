@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * Undo log and a set of exclusive locks from a transaction ready to be committed.
+ * References an UndoLog and a set of exclusive locks from a transaction ready to be committed.
  *
  * @author Brian S O'Neill
  */

@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 /**
- * 
+ * View implementation vended by {@link View#viewUnmodifiable}.
  *
  * @author Brian S O'Neill
  */

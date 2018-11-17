@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Cursor implementation vended by {@link IntersectionView}.
  *
  * @author Brian S O'Neill
  */

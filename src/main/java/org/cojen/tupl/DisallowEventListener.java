@@ -26,7 +26,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * 
+ * Wraps an EventListener and disallows notifications for specific event categories and
+ * levels. Also drops all exceptions that might be thrown by the wrapped EventListener.
  *
  * @author Brian S O'Neill
  */

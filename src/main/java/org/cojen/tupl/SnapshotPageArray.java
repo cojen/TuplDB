@@ -37,7 +37,7 @@ import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * 
+ * Wraps a {@link PageArray} to support database {@link Snapshot snapshots}.
  *
  * @author Brian S O'Neill
  */

@@ -29,7 +29,7 @@ import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.scramble;
 
 /**
- * Used by PageManager to implement free lists.
+ * Used by {@link PageManager} to implement free lists.
  *
  * @author Brian S O'Neill
  */

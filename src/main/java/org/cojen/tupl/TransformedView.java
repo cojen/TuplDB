@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 /**
- * 
+ * View implementation vended by {@link View#viewTransformed}.
  *
  * @author Brian S O'Neill
  */

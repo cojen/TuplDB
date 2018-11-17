@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Used by DurablePageDb.
+ * Used by {@link DurablePageDb} to abort opening the database if misconfigured.
  *
  * @author Brian S O'Neill
  */

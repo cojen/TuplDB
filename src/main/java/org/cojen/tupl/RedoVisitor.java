@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Visitor design pattern for decoding operations from a redo log.
  *
  * @author Brian S O'Neill
  */

@@ -24,11 +24,20 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * 
+ * Utility which generates files that access pages directly (unsafe). A direct page is native
+ * memory not managed by the JVM. The utility non-recursively scans all java source files in a
+ * directory, looking for the magic *P* comment which indicates a page access operation.
+ *
+ * <p>The basic transformation which is applied converts all "byte[]" page references to "long"
+ * references. The long is used as raw memory pointer type. Another transformation pattern
+ * allows for simple #ifdef style preprocessing behavior.
  *
  * @author Brian S O'Neill
  */
 class PageAccessTransformer {
+    /**
+     * @param args [0]: source directory, [1]: destination directory
+     */
     public static void main(String[] args) throws Exception {
         File src = new File(args[0]);
         File dst = new File(args[1]);

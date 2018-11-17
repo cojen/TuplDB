@@ -24,10 +24,9 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.util.Latch;
 
 /**
- * 
+ * RedoDecoder used by {@link ReplRedoEngine}, the replication system.
  *
  * @author Brian S O'Neill
- * @see ReplRedoEngine
  */
 final class ReplRedoDecoder extends RedoDecoder {
     volatile boolean mDeactivated;

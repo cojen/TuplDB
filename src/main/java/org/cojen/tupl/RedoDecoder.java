@@ -25,10 +25,9 @@ import org.cojen.tupl.util.Latch;
 import static org.cojen.tupl.RedoOps.*;
 
 /**
- * 
+ * Base class which decodes {@link RedoOps} which were encoded by {@link RedoWriter}.
  *
  * @author Brian S O'Neill
- * @see RedoWriter
  */
 abstract class RedoDecoder {
     private final boolean mLenient;

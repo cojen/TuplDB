@@ -78,7 +78,9 @@ import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
 /**
- * Standard database implementation.
+ * Standard database implementation. The name "LocalDatabase" is used to imply that the
+ * database is local to the current machine and not remotely accessed, although no remote
+ * database layer exists. This class could just as well have been named "DatabaseImpl".
  *
  * @author Brian S O'Neill
  */

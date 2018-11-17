@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * View implementation vended by {@link View#viewDifference}.
  *
  * @author Brian S O'Neill
  */

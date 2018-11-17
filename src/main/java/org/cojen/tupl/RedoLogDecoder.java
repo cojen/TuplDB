@@ -23,10 +23,10 @@ import java.io.IOException;
 import org.cojen.tupl.util.Latch;
 
 /**
- * 
+ * Log operations written by {@link RedoLog} encode a special terminator, as a crude way to
+ * detect if the log was truncated. This class decodes and verifies the terminators.
  *
  * @author Brian S O'Neill
- * @see RedoLog
  */
 /*P*/
 final class RedoLogDecoder extends RedoDecoder {

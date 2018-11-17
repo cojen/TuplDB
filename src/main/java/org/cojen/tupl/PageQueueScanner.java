@@ -26,7 +26,8 @@ import org.cojen.tupl.io.PageArray;
 import static org.cojen.tupl.PageQueue.*;
 
 /**
- * 
+ * Used by {@link DurablePageDb} to scan all pages in a free list, directly decoding the data
+ * structure starting from the header page.
  *
  * @author Brian S O'Neill
  */

@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Cursor implementation vended by {@link DifferenceView}.
  *
  * @author Brian S O'Neill
  */

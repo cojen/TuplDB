@@ -27,7 +27,8 @@ import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 
 /**
- * 
+ * Utility to acquire a file lock and report a better exception when the lock cannot be
+ * acquired.
  *
  * @author Brian S O'Neill
  */

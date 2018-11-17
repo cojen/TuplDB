@@ -20,7 +20,10 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Provides access to features of LocalDatabase implementation class, to reduce the number of
+ * generated classes. In particular, there's no generated _Checkpointer class because
+ * Checkpointer references only AbstractDatabase instead of LocalDatabase. Without this, a
+ * _Checkpointer would be generated to reference the generated _LocalDatabase.
  *
  * @author Brian S O'Neill
  */

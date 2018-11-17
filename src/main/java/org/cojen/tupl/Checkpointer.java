@@ -34,7 +34,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.cojen.tupl.util.Latch;
 
 /**
- * 
+ * Runs the background task to checkpoint databases, and also tracks all the database shutdown
+ * hooks. This class also launches parallel checkpoint flush tasks, when using the {@link
+ * DatabaseConfig#maxCheckpointThreads} option.
  *
  * @author Brian S O'Neill
  */
