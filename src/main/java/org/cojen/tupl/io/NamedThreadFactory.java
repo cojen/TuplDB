@@ -25,24 +25,21 @@ import java.util.concurrent.ThreadFactory;
  * @author Brian S O'Neill
  */
 final class NamedThreadFactory implements ThreadFactory {
-    private static int cThreadCounter;
-
     private final String mPrefix;
     private final ThreadGroup mGroup;
 
     NamedThreadFactory(String prefix) {
-        mPrefix = prefix == null ? "Thread" : prefix;
+        mPrefix = prefix;
         SecurityManager sm = System.getSecurityManager();
         mGroup = (sm != null) ? sm.getThreadGroup() : Thread.currentThread().getThreadGroup();
     }
 
     @Override
     public Thread newThread(Runnable r) {
-        int num;
-        synchronized (NamedThreadFactory.class) {
-            num = ++cThreadCounter;
+        Thread t = new Thread(mGroup, r);
+        if (mPrefix != null) {
+            t.setName(mPrefix + '-' + Long.toUnsignedString(t.getId()));
         }
-        Thread t = new Thread(mGroup, r, mPrefix + '-' + (num & 0xffffffffL));
         t.setDaemon(true);
         return t;
     }
