@@ -25,43 +25,43 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @author Brian S O'Neill
  */
-final class PartitionedPageCache implements PageCache {
-    private final PageCache[] mPartitions;
-    private final long mPartitionShift;
+final class StripedPageCache implements PageCache {
+    private final PageCache[] mStripes;
+    private final long mStripeShift;
     private final long mCapacity;
     private final long mMaxEntryCount;
 
     /**
      * @param capacity capacity in bytes
      */
-    PartitionedPageCache(long capacity, int pageSize) {
+    StripedPageCache(long capacity, int pageSize) {
         this(capacity, pageSize, Runtime.getRuntime().availableProcessors() * 4);
     }
 
     /**
      * @param capacity capacity in bytes
      */
-    PartitionedPageCache(long capacity, final int pageSize, int minPartitions) {
+    StripedPageCache(long capacity, final int pageSize, int minStripes) {
         capacity = Math.min(capacity, 0x1000_0000_0000_0000L);
-        minPartitions = (int) Math.max(minPartitions, (capacity + 0x3fff_ffffL) / 0x4000_0000L);
+        minStripes = (int) Math.max(minStripes, (capacity + 0x3fff_ffffL) / 0x4000_0000L);
 
-        final int pcount = Utils.roundUpPower2(minPartitions);
-        final double psize = capacity / (double) pcount;
-        final int[] pcapacities = new int[pcount];
+        final int s_count = Utils.roundUpPower2(minStripes);
+        final double s_size = capacity / (double) s_count;
+        final int[] s_capacities = new int[s_count];
 
         capacity = 0;
         long maxEntryCount = 0;
 
-        for (int i=0; i<pcount; i++) {
-            int pcapacity = (int) (((long) ((i + 1) * psize)) - capacity);
-            int pentryCount = BasicPageCache.entryCountFor(pcapacity, pageSize);
-            pcapacities[i] = BasicPageCache.capacityFor(pentryCount, pageSize);
-            capacity += pcapacities[i];
-            maxEntryCount += pentryCount;
+        for (int i=0; i<s_count; i++) {
+            int s_capacity = (int) (((long) ((i + 1) * s_size)) - capacity);
+            int s_entryCount = BasicPageCache.entryCountFor(s_capacity, pageSize);
+            s_capacities[i] = BasicPageCache.capacityFor(s_entryCount, pageSize);
+            capacity += s_capacities[i];
+            maxEntryCount += s_entryCount;
         }
 
-        mPartitions = new PageCache[pcount];
-        mPartitionShift = Long.numberOfLeadingZeros(pcount - 1);
+        mStripes = new PageCache[s_count];
+        mStripeShift = Long.numberOfLeadingZeros(s_count - 1);
         mCapacity = capacity;
         mMaxEntryCount = maxEntryCount;
 
@@ -69,13 +69,13 @@ final class PartitionedPageCache implements PageCache {
 
         try {
             if (capacity <= 0x1_000_000L || procCount <= 1) {
-                for (int i=pcount; --i>=0; ) {
-                    mPartitions[i] = new BasicPageCache(pcapacities[i], pageSize);
+                for (int i=s_count; --i>=0; ) {
+                    mStripes[i] = new BasicPageCache(s_capacities[i], pageSize);
                 }
             } else {
                 // Initializing the buffers takes a long time, so do in parallel.
 
-                final AtomicInteger slot = new AtomicInteger(pcount);
+                final AtomicInteger slot = new AtomicInteger(s_count);
 
                 class Init extends Thread {
                     volatile Throwable mEx;
@@ -90,7 +90,7 @@ final class PartitionedPageCache implements PageCache {
                                 if (!slot.compareAndSet(i, --i)) {
                                     continue;
                                 }
-                                mPartitions[i] = new BasicPageCache(pcapacities[i], pageSize);
+                                mStripes[i] = new BasicPageCache(s_capacities[i], pageSize);
                             }
                         } catch (Throwable e) {
                             mEx = e;
@@ -137,43 +137,37 @@ final class PartitionedPageCache implements PageCache {
     @Override
     public boolean add(long pageId, byte[] page, int offset, boolean canEvict) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .add(pageId, page, offset, canEvict);
+        return mStripes[(int) (pageId >>> mStripeShift)].add(pageId, page, offset, canEvict);
     }
 
     @Override
     public boolean add(long pageId, long pagePtr, int offset, boolean canEvict) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .add(pageId, pagePtr, offset, canEvict);
+        return mStripes[(int) (pageId >>> mStripeShift)].add(pageId, pagePtr, offset, canEvict);
     }
 
     @Override
     public boolean copy(long pageId, int start, byte[] page, int offset) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .copy(pageId, start, page, offset);
+        return mStripes[(int) (pageId >>> mStripeShift)].copy(pageId, start, page, offset);
     }
 
     @Override
     public boolean copy(long pageId, int start, long pagePtr, int offset) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .copy(pageId, start, pagePtr, offset);
+        return mStripes[(int) (pageId >>> mStripeShift)].copy(pageId, start, pagePtr, offset);
     }
 
     @Override
     public boolean remove(long pageId, byte[] page, int offset, int length) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .remove(pageId, page, offset, length);
+        return mStripes[(int) (pageId >>> mStripeShift)].remove(pageId, page, offset, length);
     }
 
     @Override
     public boolean remove(long pageId, long pagePtr, int offset, int length) {
         pageId = Utils.scramble(pageId);
-        return mPartitions[(int) (pageId >>> mPartitionShift)]
-            .remove(pageId, pagePtr, offset, length);
+        return mStripes[(int) (pageId >>> mStripeShift)].remove(pageId, pagePtr, offset, length);
     }
 
     @Override
@@ -188,7 +182,7 @@ final class PartitionedPageCache implements PageCache {
 
     @Override
     public void close() {
-        for (PageCache cache : mPartitions) {
+        for (PageCache cache : mStripes) {
             if (cache != null) {
                 cache.close();
             }

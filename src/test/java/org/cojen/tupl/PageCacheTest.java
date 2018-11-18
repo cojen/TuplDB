@@ -181,8 +181,8 @@ public class PageCacheTest {
     }
 
     @Test
-    public void partitions() {
-        PageCache cache = new PartitionedPageCache(1_000_000, 4096, 16);
+    public void stripes() {
+        PageCache cache = new StripedPageCache(1_000_000, 4096, 16);
         assertTrue(cache.capacity() > 0);
         assertTrue(cache.capacity() <= 1_000_000);
         assertTrue(cache.maxEntryCount() > 0);

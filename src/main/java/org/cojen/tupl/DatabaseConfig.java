@@ -513,7 +513,7 @@ public class DatabaseConfig implements Cloneable, Serializable {
                             "Initializing %1$d bytes for secondary cache", size);
         }
 
-        return new PartitionedPageCache(size, mPageSize);
+        return new StripedPageCache(size, mPageSize);
 
         // Note: The page cache could be shared with other Database instances, if they have the
         // same page size. The upper 2 bytes of the page id are unused, and so the cache can be
