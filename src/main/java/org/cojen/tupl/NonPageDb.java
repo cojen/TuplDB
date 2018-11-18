@@ -31,7 +31,7 @@ import java.util.function.LongConsumer;
 import static org.cojen.tupl.PageOps.*;
 
 /**
- * PageDb implementation which doesn't actually work. Used for non-durable
+ * PageDb implementation which doesn't actually persist anything. Used for non-durable
  * databases.
  *
  * @author Brian S O'Neill
@@ -39,6 +39,8 @@ import static org.cojen.tupl.PageOps.*;
 final class NonPageDb extends PageDb {
     private final int mPageSize;
     private final PageCache mCache;
+
+    private final int mAllocMode;
 
     private final AtomicLong mAllocId;
     private final LongAdder mFreePageCount;
@@ -49,6 +51,9 @@ final class NonPageDb extends PageDb {
     NonPageDb(int pageSize, PageCache cache) {
         mPageSize = pageSize;
         mCache = cache;
+
+        mAllocMode = cache == null ? NodeGroup.MODE_NO_EVICT : 0;
+
         // Next assigned id is 2, the first legal identifier.
         mAllocId = new AtomicLong(1);
         mFreePageCount = new LongAdder();
@@ -70,7 +75,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public int allocMode() {
-        return NodeGroup.MODE_NO_EVICT;
+        return mAllocMode;
     }
 
     @Override
