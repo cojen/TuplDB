@@ -79,8 +79,8 @@ public class Latch {
     volatile int mLatchState;
 
     // Queue of waiting threads.
-    private transient volatile WaitNode mLatchFirst;
-    private transient volatile WaitNode mLatchLast;
+    private volatile WaitNode mLatchFirst;
+    private volatile WaitNode mLatchLast;
 
     public Latch() {
     }
@@ -766,7 +766,6 @@ public class Latch {
         return trials;
     }
 
-    @SuppressWarnings("serial")
     static class WaitNode {
         volatile Thread mWaiter;
         volatile boolean mFair;
@@ -829,7 +828,6 @@ public class Latch {
         }
     }
 
-    @SuppressWarnings("serial")
     static class Timed extends WaitNode {
         private long mNanosTimeout;
         private long mEndNanos;
@@ -856,7 +854,6 @@ public class Latch {
         }
     }
 
-    @SuppressWarnings("serial")
     static class Shared extends WaitNode {
         /**
          * @return {@literal <0 if thread should park; 0 if acquired and node should also be
@@ -905,7 +902,6 @@ public class Latch {
         }
     }
 
-    @SuppressWarnings("serial")
     static class TimedShared extends Shared {
         private long mNanosTimeout;
         private long mEndNanos;

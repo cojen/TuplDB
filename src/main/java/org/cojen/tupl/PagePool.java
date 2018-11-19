@@ -26,7 +26,7 @@ import org.cojen.tupl.util.LatchCondition;
  * @author Brian S O'Neill
  */
 final class PagePool extends Latch {
-    private final transient LatchCondition mQueue;
+    private final LatchCondition mQueue;
     private final /*P*/ byte[][] mPool;
     private int mPos;
 

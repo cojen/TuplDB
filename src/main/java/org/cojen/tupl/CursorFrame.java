@@ -44,7 +44,6 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("serial")
 /*P*/
 class CursorFrame {
     // Under contention a thread will initially spin up to SPIN_LIMIT before yielding, after

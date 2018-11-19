@@ -268,10 +268,10 @@ final class _Node extends Clutch implements _DatabaseAccess {
     _Node mNodeMapNext;
 
     // Linked stack of CursorFrames bound to this _Node.
-    transient volatile _CursorFrame mLastCursorFrame;
+    volatile _CursorFrame mLastCursorFrame;
 
     // Set by a partially completed split.
-    transient _Split mSplit;
+    _Split mSplit;
 
     _Node(_NodeGroup group, long page) {
         mGroup = group;
