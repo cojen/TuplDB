@@ -280,7 +280,7 @@ final class _TreeValue {
                         // Truncate non-fragmented value. 
 
                         int newLen = (int) pos;
-                        int oldLen = (int) vLen;
+                        int oldLen = vLen;
                         int garbageAccum = oldLen - newLen;
 
                         if (txn != null) {
@@ -1365,6 +1365,7 @@ final class _TreeValue {
      * @param fLen new fragmented value length
      * @return 0, 2, 4, or 6
      */
+    @SuppressWarnings("fallthrough")
     private static int lengthFieldGrowth(int fHeader, long fLen) {
         int growth = 0;
 

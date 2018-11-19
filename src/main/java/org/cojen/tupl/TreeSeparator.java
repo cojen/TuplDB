@@ -38,6 +38,7 @@ import static java.util.Arrays.compareUnsigned;
  * @author Brian S O'Neill
  */
 /*P*/
+@SuppressWarnings("serial")
 abstract class TreeSeparator extends LongAdder {
     protected final LocalDatabase mDatabase;
     protected final Tree[] mSources;

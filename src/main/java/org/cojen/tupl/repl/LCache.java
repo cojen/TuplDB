@@ -37,7 +37,7 @@ final class LCache<E extends LCache.Entry<E>> {
     private E mMostRecentlyUsed;
     private E mLeastRecentlyUsed;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     LCache(int maxSize) {
         if (maxSize <= 0) {
             throw new IllegalArgumentException();

@@ -1129,6 +1129,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     /**
      * @return false if socket should be closed
      */
+    @SuppressWarnings("fallthrough")
     private boolean doRequestJoin(Socket s) throws IOException {
         ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
 

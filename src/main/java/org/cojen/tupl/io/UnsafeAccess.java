@@ -27,7 +27,7 @@ import com.sun.jna.Platform;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("restriction")
+@SuppressWarnings({"restriction", "rawtypes"})
 public class UnsafeAccess {
     private static final sun.misc.Unsafe UNSAFE;
     private static final Throwable UNSUPPORTED;

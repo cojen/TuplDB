@@ -298,9 +298,7 @@ public class LatchCondition {
         Node node = mHead;
         while (node != null) {
             if (node.mWaitState >= Node.WAITING) {
-                if (node.mWaiter instanceof Thread) {
-                    ((Thread) node.mWaiter).interrupt();
-                }
+                node.mWaiter.interrupt();
             }
             node.mPrev = null;
             Node next = node.mNext;

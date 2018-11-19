@@ -22,6 +22,7 @@ package org.cojen.tupl.repl;
  *
  * @author Brian S O'Neill
  */
+@SuppressWarnings("rawtypes")
 interface LKey<T extends LKey> extends Comparable<LKey<T>> {
     long key();
 

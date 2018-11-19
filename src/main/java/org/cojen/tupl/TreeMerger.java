@@ -26,6 +26,7 @@ import java.util.concurrent.Executor;
  * @author Brian S O'Neill
  */
 /*P*/
+@SuppressWarnings("serial")
 abstract class TreeMerger extends TreeSeparator {
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread

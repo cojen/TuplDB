@@ -4913,6 +4913,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         return childNode.verifyTreeNode(level, observer);
     }
 
+    @SuppressWarnings("fallthrough")
     private boolean verifyParentChildFrames(int level,
                                             CursorFrame parentFrame, Node parentNode,
                                             CursorFrame childFrame, Node childNode,

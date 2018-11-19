@@ -133,7 +133,7 @@ final class PosixFileIO extends AbstractFileIO {
         if (bb.isDirect()) {
             doRead(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
         } else {
-            doRead(pos, (byte[]) bb.array(), bb.arrayOffset() + bufPos, bufLen);
+            doRead(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
         bb.position(bb.limit());
     }
@@ -159,7 +159,7 @@ final class PosixFileIO extends AbstractFileIO {
         if (bb.isDirect()) {
             doWrite(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
         } else {
-            doWrite(pos, (byte[]) bb.array(), bb.arrayOffset() + bufPos, bufLen);
+            doWrite(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
         bb.position(bb.limit());
     }
