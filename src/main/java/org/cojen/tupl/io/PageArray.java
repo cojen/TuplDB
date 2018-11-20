@@ -260,18 +260,22 @@ public abstract class PageArray implements CauseCloseable {
     public void uncachePage(long index) throws IOException {
     }
 
+    // Only expected to be called when isFullyMapped.
     public long directPagePointer(long index) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    // Only expected to be called when isFullyMapped.
     public long dirtyPage(long index) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    // Only expected to be called when isFullyMapped.
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    // Only expected to be called when isFullyMapped.
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
