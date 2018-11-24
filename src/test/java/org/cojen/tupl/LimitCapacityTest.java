@@ -59,6 +59,7 @@ public class LimitCapacityTest {
         Cursor fill = ix.newCursor(Transaction.BOGUS);
 
         mDb.suspendCheckpoints();
+        mDb.checkpoint();
 
         for (int i=0; i<50_000_000; i++) {
             Utils.encodeInt48BE(key, 0, i);
@@ -80,7 +81,7 @@ public class LimitCapacityTest {
         Database.Stats stats = mDb.stats();
         long size = stats.totalPages() * stats.pageSize();
 
-        assertTrue(size < mDb.capacityLimit());
+        assertTrue(size + " < " + mDb.capacityLimit(), size < mDb.capacityLimit());
     }
 
     private static void trim(Database db, Index ix) throws Exception {
