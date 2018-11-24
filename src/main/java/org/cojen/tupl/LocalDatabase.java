@@ -5039,7 +5039,12 @@ final class LocalDatabase extends AbstractDatabase {
             /*P*/ // [
             node.type(TYPE_FRAGMENT);
             /*P*/ // ]
-            readNode(node, nodeId);
+            try {
+                readNode(node, nodeId);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
         }
         return node;
     }
