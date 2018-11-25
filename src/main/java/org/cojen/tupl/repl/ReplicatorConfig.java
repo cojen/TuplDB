@@ -33,6 +33,9 @@ import java.util.function.BiConsumer;
 
 import java.util.logging.Level;
 
+import javax.net.ServerSocketFactory;
+import javax.net.SocketFactory;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -55,6 +58,8 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     Role mLocalRole;
     Set<SocketAddress> mSeeds;
     transient BiConsumer<Level, String> mEventListener;
+    transient SocketFactory mSocketFactory;
+    transient ServerSocketFactory mServerSocketFactory;
 
     public ReplicatorConfig() {
         createFilePath(true);
@@ -246,6 +251,22 @@ public class ReplicatorConfig implements Cloneable, Serializable {
      */
     public ReplicatorConfig eventListener(BiConsumer<Level, String> listener) {
         mEventListener = listener;
+        return this;
+    }
+
+    /**
+     * Set a factory for creating new client-side sockets.
+     */
+    public ReplicatorConfig socketFactory(SocketFactory factory) {
+        mSocketFactory = factory;
+        return this;
+    }
+
+    /**
+     * Set a factory for creating new server-side sockets.
+     */
+    public ReplicatorConfig serverSocketFactory(ServerSocketFactory factory) {
+        mServerSocketFactory = factory;
         return this;
     }
 

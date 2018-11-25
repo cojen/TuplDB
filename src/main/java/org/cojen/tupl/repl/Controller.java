@@ -48,6 +48,8 @@ import java.util.function.Supplier;
 
 import java.util.logging.Level;
 
+import javax.net.SocketFactory;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 
@@ -124,28 +126,31 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mSnapshotSessionCount;
 
     /**
-    * @param localSocket optional; used for testing
+     * @param factory optional
+     * @param localSocket optional; used for testing
      */
     static Controller open(BiConsumer<Level, String> eventListener,
                            StateLog log, long groupToken, File groupFile,
+                           SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
         GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, seeds.isEmpty());
-        Controller con = new Controller(eventListener, log, groupToken, gf);
+        Controller con = new Controller(eventListener, log, groupToken, gf, factory);
         con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         return con;
     }
 
     private Controller(BiConsumer<Level, String> eventListener,
-                       StateLog log, long groupToken, GroupFile gf)
+                       StateLog log, long groupToken, GroupFile gf, SocketFactory factory)
         throws IOException
     {
         mEventListener = eventListener;
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(mScheduler, groupToken, gf == null ? 0 : gf.groupId());
+        mChanMan = new ChannelManager
+            (factory, mScheduler, groupToken, gf == null ? 0 : gf.groupId());
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
     }

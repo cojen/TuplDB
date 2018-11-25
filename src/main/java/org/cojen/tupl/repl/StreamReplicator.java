@@ -97,7 +97,8 @@ public interface StreamReplicator extends DirectReplicator {
             // Attempt to bind the socket early, failing if the port is in use. This prevents
             // joining the group early, which can cause an existing member's role to be
             // downgraded to observer.
-            localSocket = ChannelManager.newServerSocket(listenAddress);
+            localSocket = ChannelManager.newServerSocket
+                (config.mServerSocketFactory, listenAddress);
         }
 
         Set<SocketAddress> seeds = config.mSeeds;
@@ -113,6 +114,7 @@ public interface StreamReplicator extends DirectReplicator {
         return Controller.open(config.mEventListener,
                                new FileStateLog(base), groupToken,
                                new File(base.getPath() + ".group"), 
+                               config.mSocketFactory,
                                localAddress, listenAddress, config.mLocalRole,
                                seeds, localSocket);
     }

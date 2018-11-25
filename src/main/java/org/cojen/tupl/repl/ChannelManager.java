@@ -47,6 +47,9 @@ import java.util.function.LongPredicate;
 import java.util.zip.Checksum;
 import java.util.zip.CRC32C;
 
+import javax.net.ServerSocketFactory;
+import javax.net.SocketFactory;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.io.Utils.*;
@@ -99,6 +102,7 @@ final class ChannelManager {
         OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19,
         OP_GROUP_FILE     = 20, OP_GROUP_FILE_REPLY     = 21;
 
+    private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
     private final long mGroupToken;
     private final Map<SocketAddress, Peer> mPeerMap;
@@ -117,10 +121,14 @@ final class ChannelManager {
 
     volatile boolean mPartitioned;
 
-    ChannelManager(Scheduler scheduler, long groupToken, long groupId) {
+    /**
+     * @param factory optional
+     */
+    ChannelManager(SocketFactory factory, Scheduler scheduler, long groupToken, long groupId) {
         if (scheduler == null) {
             throw new IllegalArgumentException();
         }
+        mSocketFactory = factory;
         mScheduler = scheduler;
         mGroupToken = groupToken;
         mPeerMap = new HashMap<>();
@@ -131,9 +139,13 @@ final class ChannelManager {
 
     /**
      * Creates and binds a server socket, which can be passed to the setLocalMemberId method.
+     *
+     * @param factory optional
      */
-    static ServerSocket newServerSocket(SocketAddress listenAddress) throws IOException {
-        ServerSocket ss = new ServerSocket();
+    static ServerSocket newServerSocket(ServerSocketFactory factory, SocketAddress listenAddress)
+        throws IOException
+    {
+        ServerSocket ss = factory == null ? new ServerSocket() : factory.createServerSocket();
         try {
             ss.setReuseAddress(true);
             ss.bind(listenAddress);
@@ -354,7 +366,7 @@ final class ChannelManager {
             return null;
         }
 
-        Socket s = new Socket();
+        Socket s = mSocketFactory == null ? new Socket() : mSocketFactory.createSocket();
 
         doConnect: try {
             s.connect(peer.mAddress, CONNECT_TIMEOUT_MILLIS);

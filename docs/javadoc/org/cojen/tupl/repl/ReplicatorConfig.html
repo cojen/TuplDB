@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -290,6 +290,20 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <div class="block">Explicitly specify a connected local socket, intended only for testing.</div>
 </td>
 </tr>
+<tr id="i14" class="altColor">
+<td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#serverSocketFactory(javax.net.ServerSocketFactory)">serverSocketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</code></th>
+<td class="colLast">
+<div class="block">Set a factory for creating new server-side sockets.</div>
+</td>
+</tr>
+<tr id="i15" class="rowColor">
+<td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketFactory(javax.net.SocketFactory)">socketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</code></th>
+<td class="colLast">
+<div class="block">Set a factory for creating new client-side sockets.</div>
+</td>
+</tr>
 </table>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
@@ -525,6 +539,26 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <h4>eventListener</h4>
 <pre class="methodSignature">public&nbsp;<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;eventListener&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="https://docs.oracle.com/javase/10/docs/api/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>,&#8203;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;listener)</pre>
 <div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
+</li>
+</ul>
+<a id="socketFactory(javax.net.SocketFactory)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>socketFactory</h4>
+<pre class="methodSignature">public&nbsp;<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;socketFactory&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</pre>
+<div class="block">Set a factory for creating new client-side sockets.</div>
+</li>
+</ul>
+<a id="serverSocketFactory(javax.net.ServerSocketFactory)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>serverSocketFactory</h4>
+<pre class="methodSignature">public&nbsp;<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;serverSocketFactory&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</pre>
+<div class="block">Set a factory for creating new server-side sockets.</div>
 </li>
 </ul>
 <a id="clone()">
