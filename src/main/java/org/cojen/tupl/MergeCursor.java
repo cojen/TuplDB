@@ -541,11 +541,6 @@ abstract class MergeCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
-    public void close() {
-        reset();
-    }
-
-    @Override
     public long valueLength() throws IOException {
         throw new UnsupportedOperationException();
     }

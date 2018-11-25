@@ -321,9 +321,4 @@ final class TrimmedCursor implements Cursor {
         mKey = null;
         mSource.reset();
     }
-
-    @Override
-    public void close() {
-        reset();
-    }
 }

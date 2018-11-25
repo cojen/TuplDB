@@ -618,5 +618,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      * Cursor is re-opened automatically if positioned again.
      */
     @Override
-    public void close();
+    public default void close() {
+        reset();
+    }
 }

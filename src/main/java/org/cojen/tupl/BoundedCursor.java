@@ -607,9 +607,4 @@ final class BoundedCursor implements Cursor {
         mSource.reset();
         mOutOfBounds = false;
     }
-
-    @Override
-    public void close() {
-        reset();
-    }
 }

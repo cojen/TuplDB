@@ -4435,11 +4435,6 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     }
 
     @Override
-    public final void close() {
-        reset();
-    }
-
-    @Override
     public final void close(Throwable cause) {
         try {
             if (cause instanceof DatabaseException) {
