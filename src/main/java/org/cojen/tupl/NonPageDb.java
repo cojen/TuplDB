@@ -165,7 +165,7 @@ final class NonPageDb extends PageDb {
     public void cachePage(long id, /*P*/ byte[] page) throws IOException {
         PageCache cache = mCache;
         if (cache != null && !cache.add(id, page, 0, false)) {
-            fail(false);
+            fail(true);
         }
     }
 
