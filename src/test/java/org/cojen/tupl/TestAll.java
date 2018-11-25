@@ -123,6 +123,7 @@ public class TestAll {
             SorterTest.class,
             SorterDirectTest.class,
             CursorRegisterTest.class,
+            SecondaryCacheTest.class,
         };
 
         String[] names = new String[classes.length];

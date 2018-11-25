@@ -2832,71 +2832,77 @@ final class Node extends Clutch implements DatabaseAccess {
     {
         final Split split = splitChild.mSplit;
         final Node newChild = splitChild.rebindSplitFrames(split);
+
+        splitChild.mSplit = null;
+
+        //final Node leftChild;
+        final Node rightChild;
+        int newChildPos = keyPos >> 1;
+        if (split.mSplitRight) {
+            //leftChild = splitChild;
+            rightChild = newChild;
+            newChildPos++;
+        } else {
+            //leftChild = newChild;
+            rightChild = splitChild;
+        }
+
+        // Positions of frames higher than split key need to be incremented.
+        for (CursorFrame f = mLastCursorFrame; f != null; ) {
+            int fPos = f.mNodePos;
+            if (fPos > keyPos) {
+                f.mNodePos = fPos + 2;
+            }
+            f = f.mPrevCousin;
+        }
+
+        // Positions of frames equal to split key are in the split itself. Only
+        // frames for the right split need to be incremented.
+        for (CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+            childFrame.adjustParentPosition(+2);
+            childFrame = childFrame.mPrevCousin;
+        }
+
+        InResult result;
         try {
-            splitChild.mSplit = null;
-
-            //final Node leftChild;
-            final Node rightChild;
-            int newChildPos = keyPos >> 1;
-            if (split.mSplitRight) {
-                //leftChild = splitChild;
-                rightChild = newChild;
-                newChildPos++;
-            } else {
-                //leftChild = newChild;
-                rightChild = splitChild;
-            }
-
-            // Positions of frames higher than split key need to be incremented.
-            for (CursorFrame f = mLastCursorFrame; f != null; ) {
-                int fPos = f.mNodePos;
-                if (fPos > keyPos) {
-                    f.mNodePos = fPos + 2;
-                }
-                f = f.mPrevCousin;
-            }
-
-            // Positions of frames equal to split key are in the split itself. Only
-            // frames for the right split need to be incremented.
-            for (CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
-                childFrame.adjustParentPosition(+2);
-                childFrame = childFrame.mPrevCousin;
-            }
-
-            // Note: Invocation of createInternalEntry may cause splitInternal to be called,
-            // which in turn might throw a recoverable exception. State changes can be undone
-            // by decrementing the incremented frame positions, and then by undoing the
-            // rebindSplitFrames call. However, this would create an orphaned child node.
-            // Panicking the database is the safest option.
-
-            InResult result = new InResult();
-            try {
-                createInternalEntry(frame, result, tree, keyPos, split.splitKeyEncodedLength(),
-                                    newChildPos << 3, true);
-            } catch (Throwable e) {
-                panic(e);
-                throw e;
-            }
-
-            // Write new child id.
-            p_longPutLE(result.mPage, result.mNewChildLoc, newChild.mId);
-
-            int entryLoc = result.mEntryLoc;
-            if (entryLoc < 0) {
-                // If loc is negative, then node was split and new key was chosen to be promoted.
-                // It must be written into the new split.
-                mSplit.setKey(split);
-            } else {
-                // Write key entry itself.
-                split.copySplitKeyToParent(result.mPage, entryLoc);
-            }
+            result = new InResult();
         } catch (Throwable e) {
             splitChild.releaseExclusive();
             newChild.releaseExclusive();
             releaseExclusive();
             throw e;
         }
-        
+
+        // Note: Invocation of createInternalEntry may cause splitInternal to be called,
+        // which in turn might throw a recoverable exception. State changes can be undone
+        // by decrementing the incremented frame positions, and then by undoing the
+        // rebindSplitFrames call. However, this would create an orphaned child node.
+        // Panicking the database is the safest option.
+
+        try {
+            createInternalEntry(frame, result, tree, keyPos, split.splitKeyEncodedLength(),
+                                newChildPos << 3, true);
+        } catch (Throwable e) {
+            splitChild.releaseExclusive();
+            newChild.releaseExclusive();
+            releaseExclusive();
+            panic(e);
+            throw e;
+        }
+
+        // Write new child id.
+        p_longPutLE(result.mPage, result.mNewChildLoc, newChild.mId);
+
+        int entryLoc = result.mEntryLoc;
+        if (entryLoc < 0) {
+            // If loc is negative, then node was split and new key was chosen to be promoted.
+            // It must be written into the new split.
+            mSplit.setKey(split);
+        } else {
+            // Write key entry itself.
+            split.copySplitKeyToParent(result.mPage, entryLoc);
+        }
+
         splitChild.releaseExclusive();
         newChild.releaseExclusive();
 

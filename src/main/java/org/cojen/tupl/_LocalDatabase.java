@@ -2652,7 +2652,19 @@ final class _LocalDatabase extends AbstractDatabase {
      * If any closed cause exception, wraps it as a DatabaseException and throws it.
      */
     void checkClosed() throws DatabaseException {
+        checkClosed(null);
+    }
+
+    /**
+     * If any closed cause exception, wraps it as a DatabaseException and throws it.
+     *
+     * @param caught exception which was caught; will be rethrown if matches the closed cause
+     */
+    void checkClosed(Throwable caught) throws DatabaseException {
         if (isClosed()) {
+            if (caught != null && caught == mClosedCause) {
+                throw rethrow(caught);
+            }
             String message = "Closed";
             Throwable cause = mClosedCause;
             if (cause != null) {

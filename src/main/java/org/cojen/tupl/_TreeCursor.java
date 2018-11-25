@@ -4180,7 +4180,7 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
     private IOException handleException(Throwable e, boolean reset) throws IOException {
         // Checks if cause of exception is likely due to the database being closed. If so, the
         // given exception is discarded and a new DatabaseException is thrown.
-        mTree.mDatabase.checkClosed();
+        mTree.mDatabase.checkClosed(e);
 
         if (mFrame == null && e instanceof IllegalStateException) {
             // Exception is caused by cursor state; store is safe.
