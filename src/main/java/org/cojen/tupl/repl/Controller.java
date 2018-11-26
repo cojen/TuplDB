@@ -881,7 +881,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void requestMissingData(final long startIndex, final long endIndex) {
-        event(Level.FINE, () -> "Requesting missing data: [" + startIndex + ", " + endIndex + ')');
+        event(Level.FINE, () ->
+              String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
+                            endIndex - startIndex, startIndex, endIndex));
 
         // TODO: Need a way to abort outstanding requests.
 
