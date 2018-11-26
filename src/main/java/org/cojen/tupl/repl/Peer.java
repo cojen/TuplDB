@@ -65,6 +65,9 @@ final class Peer implements Comparable<Peer> {
 
     private volatile SnapshotScore mSnapshotScore;
 
+    // Used for election stability.
+    volatile long mLeaderCheck;
+
     /**
      * Construct a key for finding peers in an ordered set.
      */

@@ -100,7 +100,8 @@ final class ChannelManager {
         OP_SNAPSHOT_SCORE = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
         OP_UPDATE_ROLE    = 16, OP_UPDATE_ROLE_REPLY    = 17,
         OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19,
-        OP_GROUP_FILE     = 20, OP_GROUP_FILE_REPLY     = 21;
+        OP_GROUP_FILE     = 20, OP_GROUP_FILE_REPLY     = 21,
+        OP_LEADER_CHECK   = 22, OP_LEADER_CHECK_REPLY   = 23;
 
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
@@ -924,6 +925,13 @@ final class ChannelManager {
                     case OP_GROUP_FILE_REPLY:
                         localServer.groupFileReply(this, in);
                         break;
+                    case OP_LEADER_CHECK:
+                        localServer.leaderCheck(this);
+                        break;
+                    case OP_LEADER_CHECK_REPLY:
+                        localServer.leaderCheckReply(this, in.readLongLE());
+                        commandLength -= (8 * 1);
+                        break;
                     default:
                         localServer.unknown(this, op);
                         break;
@@ -1161,6 +1169,16 @@ final class ChannelManager {
                 releaseExclusive();
             }
             return null;
+        }
+
+        @Override
+        public boolean leaderCheck(Channel from) {
+            return writeCommand(OP_LEADER_CHECK);
+        }
+
+        @Override
+        public boolean leaderCheckReply(Channel from, long term) {
+            return writeCommand(OP_LEADER_CHECK_REPLY, term);
         }
 
         private boolean writeCommand(int op) {

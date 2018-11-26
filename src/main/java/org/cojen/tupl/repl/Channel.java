@@ -197,4 +197,15 @@ interface Channel {
      * @return stream to pass to GroupFile.writeTo; is null if cannot send at the moment
      */
     OutputStream groupFileReply(Channel from, InputStream in) throws IOException;
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean leaderCheck(Channel from);
+
+    /**
+     * @param term -1 if leader isn't validated
+     * @return false if not sent or processed
+     */
+    boolean leaderCheckReply(Channel from, long term);
 }

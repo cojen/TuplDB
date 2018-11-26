@@ -944,24 +944,50 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void doElectionTask() {
-        Channel[] peerChannels;
-        long term, candidateId;
-        LogInfo info;
-
         acquireExclusive();
-        try {
-            if (mLocalMode == MODE_LEADER) {
-                doAffirmLeadership();
-                return;
-            }
 
-            if (mElectionValidated >= 0) {
-                // Current leader or candidate is still active, so don't start an election yet.
-                mElectionValidated--;
+        if (mLocalMode == MODE_LEADER) {
+            doAffirmLeadership();
+            return;
+        }
+
+        Channel[] peerChannels;
+
+        if (mElectionValidated >= 0) {
+            // Current leader or candidate is still active, so don't start an election yet.
+            mElectionValidated--;
+
+            if (mElectionValidated >= 0
+                || mGroupFile.localMemberRole() != Role.NORMAL
+                || (peerChannels = mConsensusChannels).length <= 0)
+            {
                 releaseExclusive();
                 return;
             }
 
+            // Next time around, the local member might try to become a candidate. Ask the
+            // peers if they still have an active leader and check later. This process isn't
+            // actually necessary, but it helps with election stability.
+
+            long term = mStateLog.captureHighest().mTerm;
+
+            for (Channel peerChan : peerChannels) {
+                peerChan.peer().mLeaderCheck = term;
+            }
+
+            releaseExclusive();
+
+            for (Channel peerChan : peerChannels) {
+                peerChan.leaderCheck(null);
+            }
+
+            return;
+        }
+
+        LogInfo info;
+        long term, candidateId;
+
+        try {
             if (mLocalMode == MODE_CANDIDATE) {
                 // Abort current election and start a new one.
                 toFollower("election timed out");
@@ -973,15 +999,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
 
-            // Convert to candidate.
-            // TODO: Don't permit rogue members to steal leadership if process is
-            // suspended. Need to double check against local clock to detect this. Or perhaps
-            // check with peers to see if leader is up.
-            mLocalMode = MODE_CANDIDATE;
-
             peerChannels = mConsensusChannels;
-
             info = mStateLog.captureHighest();
+
+            int noLeaderCount = 1; // include self
+            for (Channel peerChan : peerChannels) {
+                if (peerChan.peer().mLeaderCheck == -1) {
+                    noLeaderCount++;
+                }
+            }
+
+            if (noLeaderCount <= (peerChannels.length + 1) / 2) {
+                // A majority must indicate that there's no leader, so don't anything this time.
+                mElectionValidated = 0;
+                releaseExclusive();
+                return;
+            }
+
+            // Convert to candidate.
+            mLocalMode = MODE_CANDIDATE;
 
             candidateId = mChanMan.getLocalMemberId();
 
@@ -2085,6 +2121,34 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         return null;
+    }
+
+    @Override
+    public boolean leaderCheck(Channel from) {
+        long term;
+
+        acquireShared();
+        try {
+            if (mElectionValidated <= 0) {
+                // Permit peer to become a candidate.
+                term = -1;
+            } else {
+                // Reply with the current term, in case local member or peer is behind.
+                term = mStateLog.captureHighest().mTerm;
+            }
+        } finally {
+            releaseShared();
+        }
+
+        from.leaderCheckReply(null, term);
+
+        return true;
+    }
+
+    @Override
+    public boolean leaderCheckReply(Channel from, long term) {
+        from.peer().mLeaderCheck = term;
+        return true;
     }
 
     /**
