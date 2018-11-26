@@ -967,9 +967,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower("election timed out");
             }
 
-            mLeaderReplyChannel = null;
-            mLeaderRequestChannel = null;
-
             if (mGroupFile.localMemberRole() != Role.NORMAL) {
                 // Only NORMAL members can become candidates.
                 releaseExclusive();
@@ -1480,6 +1477,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             event(Level.INFO, "Local member is the leader: term=" + term + ", index=" + index);
 
+            mLeaderReplyChannel = null;
+            mLeaderRequestChannel = null;
+
             long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
 
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
@@ -1773,6 +1773,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         boolean first = false;
         if (term != mValidatedTerm) {
             mValidatedTerm = term;
+            // Find it later when leaderRequestChannel is called.
+            mLeaderRequestChannel = null;
             first = true;
         }
 
