@@ -847,11 +847,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseShared();
         }
 
-        if (mReceivingMissingData) {
-            // Avoid overlapping requests for missing data if results are flowing in.
-            mReceivingMissingData = false;
-        }
-
         class Collector implements IndexRange {
             long[] mRanges;
             int mSize;
@@ -868,13 +863,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         };
 
-        Collector collector = new Collector();
-        mMissingContigIndex = mStateLog.checkForMissingData(mMissingContigIndex, collector);
+        if (mReceivingMissingData) {
+            // Avoid overlapping requests for missing data if results are flowing in.
+            mReceivingMissingData = false;
+        } else {
+            Collector collector = new Collector();
+            mMissingContigIndex = mStateLog.checkForMissingData(mMissingContigIndex, collector);
 
-        for (int i=0; i<collector.mSize; ) {
-            long startIndex = collector.mRanges[i++];
-            long endIndex = collector.mRanges[i++];
-            requestMissingData(startIndex, endIndex);
+            for (int i=0; i<collector.mSize; ) {
+                long startIndex = collector.mRanges[i++];
+                long endIndex = collector.mRanges[i++];
+                requestMissingData(startIndex, endIndex);
+            }
         }
 
         scheduleMissingDataTask();
