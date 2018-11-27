@@ -72,6 +72,8 @@ final class FileTermLog extends Latch implements TermLog {
     private final long mLogTerm;
     private final long mLogStartIndex;
 
+    private volatile long mLogVersion;
+
     /*
       In general, legal index values are bounded as follows:
 
@@ -627,6 +629,12 @@ final class FileTermLog extends Latch implements TermLog {
                     ("Cannot finish term below commit index: " + endIndex + " < " + commitIndex);
             }
 
+            if (endIndex == mLogEndIndex) {
+                return;
+            }
+
+            mLogVersion++;
+
             if (endIndex >= mLogEndIndex) {
                 mLogEndIndex = endIndex;
                 return;
@@ -725,22 +733,28 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (writer == null) {
             writer = new SegmentWriter();
-
             acquireExclusive();
             try {
-                writer.mWriterPrevTerm = startIndex == mLogStartIndex ? mLogPrevTerm : mLogTerm;
-                writer.mWriterStartIndex = startIndex;
-                writer.mWriterIndex = startIndex;
-
-                if (startIndex > mLogContigIndex && startIndex < mLogEndIndex) {
-                    mNonContigWriters.add(writer);
-                }
+                init(writer, startIndex);
             } finally {
                 releaseExclusive();
             }
         }
 
         return writer;
+    }
+
+    // Caller must hold exclusive latch.
+    private void init(SegmentWriter writer, long startIndex) {
+        writer.mWriterVersion = mLogVersion;
+        writer.mWriterPrevTerm = startIndex == mLogStartIndex ? mLogPrevTerm : mLogTerm;
+        writer.mWriterStartIndex = startIndex;
+        writer.mWriterIndex = startIndex;
+        writer.mWriterHighestIndex = 0;
+
+        if (startIndex > mLogContigIndex && startIndex < mLogEndIndex) {
+            mNonContigWriters.add(writer);
+        }
     }
 
     @Override
@@ -881,11 +895,19 @@ final class FileTermLog extends Latch implements TermLog {
      * @return null if index is at or higher than end index, or if segment doesn't exist and is
      * lower than the commit index
      */
-    Segment segmentForWriting(long index) throws IOException {
+    Segment segmentForWriting(SegmentWriter writer, long index) throws IOException {
         LKey<Segment> key = new LKey.Finder<>(index);
 
         acquireExclusive();
         find: try {
+            if (writer.mWriterVersion != mLogVersion) {
+                // Re-init the writer as if it was just opened, starting from where the
+                // in-progress write operation began. This prevents creation of false
+                // contiguous data when the term is truncated and later extended.
+                mNonContigWriters.remove(writer);
+                init(writer, writer.mWriterIndex);
+            }
+
             if (index >= mLogEndIndex) {
                 releaseExclusive();
                 return null;
@@ -1072,6 +1094,10 @@ final class FileTermLog extends Latch implements TermLog {
 
     void release(SegmentWriter writer, boolean recycle) {
         if (recycle) {
+            if (writer.mWriterVersion != mLogVersion) {
+                writer.close();
+                return;
+            }
             writer = mWriterCache.add(writer);
         }
 
@@ -1201,6 +1227,7 @@ final class FileTermLog extends Latch implements TermLog {
     final class SegmentWriter extends LogWriter
         implements LKey<SegmentWriter>, LCache.Entry<SegmentWriter>
     {
+        long mWriterVersion;
         long mWriterPrevTerm;
         long mWriterStartIndex;
         long mWriterIndex;
@@ -1293,7 +1320,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (mWriterClosed) {
                 throw new IOException("Closed");
             }
-            return FileTermLog.this.segmentForWriting(index);
+            return FileTermLog.this.segmentForWriting(this, index);
         }
 
         @Override
