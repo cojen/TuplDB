@@ -3032,15 +3032,14 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         find(null, key, VARIANT_CHECK, new _CursorFrame(), latchRootNode());
 
         _CursorFrame leaf = mFrame;
-        _Node node = leaf.mNode;
+
+        if (!leaf.mNode.tryUpgrade()) {
+            leaf.mNode.releaseShared();
+            leaf.acquireExclusive();
+        }
 
         CommitLock.Shared shared;
         byte[] originalValue;
-
-        if (!node.tryUpgrade()) {
-            node.releaseShared();
-            node = leaf.acquireExclusive();
-        }
 
         if (value == null) {
             shared = prepareDelete(leaf);
@@ -3053,6 +3052,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             originalValue = null;
 
             if (!mKeyOnly) {
+                // Note: Must obtain reference to node after calling prepareDelete, because it
+                // might have released and reacquired the latch.
+                _Node node = leaf.mNode;
                 int pos = leaf.mNodePos;
                 try {
                     originalValue = node.retrieveLeafValue(pos);
@@ -3071,6 +3073,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             int pos = leaf.mNodePos;
 
             if (pos >= 0 && !mKeyOnly) {
+                // Note: Must obtain reference to node after calling prepareStore, because it
+                // might have released and reacquired the latch.
+                _Node node = leaf.mNode;
                 try {
                     originalValue = node.retrieveLeafValue(pos);
                 } catch (Throwable e) {
@@ -3222,21 +3227,18 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
         throws IOException
     {
         _CursorFrame leaf;
-        _Node node;
 
         if (key == null) {
             leaf = frameExclusive();
-            node = leaf.mNode;
         } else {
             // Find with no lock because caller must already acquire exclusive lock.
             find(null, key, VARIANT_CHECK, new _CursorFrame(), latchRootNode());
 
             leaf = mFrame;
-            node = leaf.mNode;
 
-            if (!node.tryUpgrade()) {
-                node.releaseShared();
-                node = leaf.acquireExclusive();
+            if (!leaf.mNode.tryUpgrade()) {
+                leaf.mNode.releaseShared();
+                leaf.acquireExclusive();
             }
         }
 
@@ -3251,6 +3253,9 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
             shared = prepareStore(leaf);
         }
 
+        // Note: Must obtain reference to node after calling prepareStore or prepareDelete,
+        // because it might have released and reacquired the latch.
+        _Node node = leaf.mNode;
         int pos = leaf.mNodePos;
 
         byte[] originalValue;
