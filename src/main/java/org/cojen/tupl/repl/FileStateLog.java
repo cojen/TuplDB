@@ -60,7 +60,7 @@ final class FileStateLog extends Latch implements StateLog {
     /*
       File naming:
 
-      <base>.md                                 (metadata file)
+      <base>                                    (metadata file)
       <base>.<term>.<start index>[.<prevTerm>]  (log files)
 
       Metadata file stores little-endian fields at offset 0 and 4096, alternating.
@@ -133,7 +133,7 @@ final class FileStateLog extends Latch implements StateLog {
         mTermLogs = new ConcurrentSkipListSet<>();
 
         mMetadataFile = FileChannel.open
-            (new File(base.getPath() + ".md").toPath(),
+            (base.toPath(),
              StandardOpenOption.READ,
              StandardOpenOption.WRITE,
              StandardOpenOption.CREATE,
@@ -151,7 +151,19 @@ final class FileStateLog extends Latch implements StateLog {
             throw new IOException("Replicator is open and locked by another process");
         }
 
-        final boolean mdFileExists = mMetadataFile.size() != 0;
+        boolean mdFileExists = mMetadataFile.size() != 0;
+
+        if (!mdFileExists) {
+            // Check if old ".md" file exists and copy it.
+            File oldFile = new File(base.getPath() + ".md");
+            if (oldFile.exists()) {
+                FileChannel old = FileChannel.open(oldFile.toPath(), StandardOpenOption.READ);
+                mMetadataFile.transferFrom(old, 0, old.size());
+                old.close();
+                oldFile.delete();
+            }
+            mdFileExists = mMetadataFile.size() != 0;
+        }
 
         mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
