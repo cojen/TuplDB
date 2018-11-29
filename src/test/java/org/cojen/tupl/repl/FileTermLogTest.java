@@ -1094,6 +1094,56 @@ public class FileTermLogTest {
         assertEquals(100, result.get());
     }
 
+    @Test
+    public void writeTruncateExtend() throws Exception {
+        // Existing writers cannot create false contiguous data when the term is truncated and
+        // extended again.
+
+        LogWriter writer = mLog.openWriter(0);
+
+        byte[] data1 = new byte[100];
+        Arrays.fill(data1, (byte) 1);
+        write(writer, data1, 50);
+
+        mLog.finishTerm(50);
+        mLog.finishTerm(100_000);
+
+        byte[] data2 = new byte[100];
+        Arrays.fill(data2, (byte) 2);
+        write(writer, data2);
+
+        LogInfo info = new LogInfo();
+        mLog.captureHighest(info);
+        assertEquals(50, info.mHighestIndex);
+
+        LogReader reader = mLog.openReader(0);
+        byte[] buf = new byte[1000];
+        assertEquals(50, reader.tryReadAny(buf, 0, buf.length));
+        for (int i=0; i<50; i++) {
+            assertEquals(1, buf[i]);
+        }
+
+        // Fill in the gap.
+        writer.release();
+        byte[] data3 = new byte[50];
+        Arrays.fill(data3, (byte) 3);
+        writer = mLog.openWriter(50);
+        write(writer, data3);
+
+        mLog.captureHighest(info);
+        assertEquals(200, info.mHighestIndex);
+
+        assertEquals(150, reader.tryReadAny(buf, 50, buf.length - 50));
+        for (int i=50; i<100; i++) {
+            assertEquals(3, buf[i]);
+        }
+        for (int i=100; i<200; i++) {
+            assertEquals(2, buf[i]);
+        }
+
+        assertEquals(0, reader.tryReadAny(buf, 0, buf.length));
+    }
+
     private static void write(LogWriter writer, byte[] data) throws IOException {
         int amt = writer.write(data, 0, data.length, writer.index() + data.length);
         assertEquals(data.length, amt);
