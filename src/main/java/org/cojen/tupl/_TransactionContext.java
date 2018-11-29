@@ -172,6 +172,21 @@ final class _TransactionContext extends Latch implements Flushable {
     }
 
     /**
+     * Called when switching to replica mode, instead of referencing the useless old _RedoWriter
+     * instance indefinitely. This permits the garbage collector to delete it.
+     */
+    void discardRedoWriter(_RedoWriter expect) {
+        acquireExclusive();
+        if (mRedoWriter == expect) {
+            mRedoPos = 0;
+            mRedoTerminatePos = 0;
+            mRedoFirstTxnId = 0;
+            mRedoWriter = null;
+        }
+        releaseExclusive();
+    }
+
+    /**
      * Auto-commit transactional store.
      *
      * @param indexId non-zero index id

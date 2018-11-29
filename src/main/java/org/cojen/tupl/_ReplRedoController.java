@@ -344,6 +344,9 @@ final class _ReplRedoController extends _ReplRedoWriter {
         mTxnRedoWriter = this;
         mSwitchingToReplica = false;
         releaseExclusive();
+
+        // Allow old redo object to be garbage collected.
+        mEngine.mDatabase.discardRedoWriter(redo);
     }
 
     /**

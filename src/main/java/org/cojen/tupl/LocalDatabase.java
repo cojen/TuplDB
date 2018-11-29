@@ -1892,6 +1892,15 @@ final class LocalDatabase extends AbstractDatabase {
         return mTxnContexts[(num & 0x7fffffff) % mTxnContexts.length];
     }
 
+    /**
+     * Calls discardRedoWriter on all TransactionContexts.
+     */
+    void discardRedoWriter(RedoWriter expect) {
+        for (TransactionContext context : mTxnContexts) {
+            context.discardRedoWriter(expect);
+        }
+    }
+
     @Override
     public long preallocate(long bytes) throws IOException {
         if (!isClosed() && mPageDb.isDurable()) {
