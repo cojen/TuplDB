@@ -219,6 +219,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
+            // Assume that mDecodeLatch is held exclusively.
             mWorkerGroup.join(interrupt);
         }
 
@@ -272,6 +273,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     public boolean control(byte[] message) throws IOException {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
+            // Assume that mDecodeLatch is held exclusively.
             mWorkerGroup.join(false);
         }
 
@@ -907,7 +909,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     // When the transaction changes, the assigned worker can change too. Wait
                     // for tasks in the original queue to drain before enqueueing against the
                     // new worker. This prevents cursor operations from running out of order,
-                    // or from accessing the cursor concurrently.
+                    // or from accessing the cursor concurrently. Assume that mDecodeLatch is
+                    // held exclusively.
                     w.join(false);
                     ce.mWorker = txnWorker;
                 }
@@ -1075,16 +1078,17 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
      */
     void suspend() {
         // Prevent new operations from being decoded.
-        mDecodeLatch.acquireShared();
+        mDecodeLatch.acquireExclusive();
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
+            // To call this in a thread-safe fashion, mDecodeLatch must be held.
             mWorkerGroup.join(false);
         }
     }
 
     void resume() {
-        mDecodeLatch.releaseShared();
+        mDecodeLatch.releaseExclusive();
     }
 
     /**
@@ -1303,7 +1307,14 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
             // Wait for work to complete.
             if (mWorkerGroup != null) {
-                mWorkerGroup.join(false);
+                mDecodeLatch.acquireExclusive();
+                try {
+                    // Can only call mWorkerGroup when mDecodeLatch is held. Otherwise, call
+                    // isn't thread-safe.
+                    mWorkerGroup.join(false);
+                } finally {
+                    mDecodeLatch.releaseExclusive();
+                }
             }
 
             // Rollback any lingering non-2PC transactions.

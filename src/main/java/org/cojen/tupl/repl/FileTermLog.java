@@ -841,7 +841,9 @@ final class FileTermLog extends Latch implements TermLog {
             try {
                 // Wait for any pending truncate tasks to complete first. New tasks cannot be
                 // enqueued with exclusive latch held.
-                mWorker.join(false);
+                synchronized (mWorker) {
+                    mWorker.join(false);
+                }
                 mLogClosed = true;
 
                 for (LKey<Segment> key : mSegments) {

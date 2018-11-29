@@ -1050,6 +1050,8 @@ final class FileStateLog extends Latch implements StateLog {
             mMetadataLatch.releaseExclusive();
         }
 
-        mWorker.join(true);
+        synchronized (mWorker) {
+            mWorker.join(true);
+        }
     }
 }
