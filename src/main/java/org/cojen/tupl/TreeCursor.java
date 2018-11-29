@@ -3033,16 +3033,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         CursorFrame leaf = mFrame;
 
-        if (!leaf.mNode.tryUpgrade()) {
-            leaf.mNode.releaseShared();
-            leaf.acquireExclusive();
-        }
-
         CommitLock.Shared shared;
         byte[] originalValue;
 
         if (value == null) {
-            shared = prepareDelete(leaf);
+            shared = prepareDeleteUpgrade(leaf);
 
             if (shared == null) {
                 // Entry doesn't exist, so nothing to do.
@@ -3052,8 +3047,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             originalValue = null;
 
             if (!mKeyOnly) {
-                // Note: Must obtain reference to node after calling prepareDelete, because it
-                // might have released and reacquired the latch.
                 Node node = leaf.mNode;
                 int pos = leaf.mNodePos;
                 try {
@@ -3067,14 +3060,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             deleteNoRedo(txn, leaf);
         } else {
-            shared = prepareStore(leaf);
+            shared = prepareStoreUpgrade(leaf);
 
             originalValue = null;
             int pos = leaf.mNodePos;
 
             if (pos >= 0 && !mKeyOnly) {
-                // Note: Must obtain reference to node after calling prepareStore, because it
-                // might have released and reacquired the latch.
                 Node node = leaf.mNode;
                 try {
                     originalValue = node.retrieveLeafValue(pos);
@@ -3227,30 +3218,60 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         throws IOException
     {
         CursorFrame leaf;
-
-        if (key == null) {
-            leaf = frameExclusive();
-        } else {
-            // Find with no lock because caller must already acquire exclusive lock.
-            find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
-
-            leaf = mFrame;
-
-            if (!leaf.mNode.tryUpgrade()) {
-                leaf.mNode.releaseShared();
-                leaf.acquireExclusive();
-            }
-        }
-
         CommitLock.Shared shared;
-        if (newValue == null) {
-            shared = prepareDelete(leaf);
-            if (shared == null) {
-                // Entry doesn't exist.
-                return oldValue == null || oldValue == MODIFY_INSERT;
+
+        check: {
+            if (key == null) {
+                // Assume that cursor is already positioned.
+
+                shared = mTree.mDatabase.commitLock().acquireShared();
+                leaf = mFrame;
+                leaf.acquireExclusive();
+
+                try {
+                    if (newValue != null) {
+                        // Releases leaf latch if an exception is thrown.
+                        notSplitDirty(leaf);
+                        break check;
+                    }
+                    if (leaf.mNodePos >= 0) {
+                        // Releases leaf latch if an exception is thrown.
+                        notSplitDirty(leaf);
+
+                        // The notSplitDirty method might have released and re-acquired the
+                        // node latch, so double check the position.
+                        if (leaf.mNodePos >= 0) {
+                            // Entry still exists, so proceed with the delete.
+                            break check;
+                        }
+                    }
+                } catch (Throwable e) {
+                    shared.release();
+                    throw e;
+                }
+
+                // Entry doesn't exist, so nothing to do.
+                leaf.mNode.releaseExclusive();
+                shared.release();
+            } else {
+                // Find with no lock because caller must already acquire exclusive lock.
+                find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
+
+                leaf = mFrame;
+
+                if (newValue != null) {
+                    shared = prepareStoreUpgrade(leaf);
+                    break check;
+                }
+
+                shared = prepareDeleteUpgrade(leaf);
+                if (shared != null) {
+                    break check;
+                }
             }
-        } else {
-            shared = prepareStore(leaf);
+
+            // Reached if newValue is null and entry doesn't exist.
+            return oldValue == null || oldValue == MODIFY_INSERT;
         }
 
         // Note: Must obtain reference to node after calling prepareStore or prepareDelete,
@@ -3348,17 +3369,10 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 CursorFrame leaf = mFrame;
-                Node node = leaf.mNode;
-
-                if (!node.tryUpgrade()) {
-                    node.releaseShared();
-                    leaf.acquireExclusive();
-                }
-
-                CommitLock.Shared shared = prepareDelete(leaf);
+                CommitLock.Shared shared = prepareDeleteUpgrade(leaf);
 
                 if (shared != null) {
-                    node = leaf.mNode;
+                    Node node = leaf.mNode;
                     if (node.mPage == p_closedTreePage()) {
                         node.releaseExclusive();
                         shared.release();
@@ -3390,18 +3404,15 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeNoRedo(LocalTransaction txn, byte[] value) throws IOException {
-        CursorFrame leaf = frameExclusive();
-        CommitLock.Shared shared;
-
         if (value == null) {
-            shared = prepareDelete(leaf);
+            CommitLock.Shared shared = prepareDelete();
             if (shared != null) {
-                deleteNoRedo(txn, leaf);
+                deleteNoRedo(txn, mFrame);
                 shared.release();
             }
         } else {
-            shared = prepareStore(leaf);
-            storeNoRedo(txn, leaf, value);
+            CommitLock.Shared shared = prepareStore();
+            storeNoRedo(txn, mFrame, value);
             shared.release();
         }
 
@@ -3417,19 +3428,18 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeAndRedo(LocalTransaction txn, byte[] value) throws IOException {
-        CursorFrame leaf = frameExclusive();
         CommitLock.Shared shared;
 
         if (value == null) {
-            shared = prepareDelete(leaf);
+            shared = prepareDelete();
             if (shared == null) {
                 mValue = null;
                 return;
             }
-            deleteNoRedo(txn, leaf);
+            deleteNoRedo(txn, mFrame);
         } else {
-            shared = prepareStore(leaf);
-            storeNoRedo(txn, leaf, value);
+            shared = prepareStore();
+            storeNoRedo(txn, mFrame, value);
         }
 
         mValue = value;
@@ -3478,26 +3488,66 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * With leaf frame held exclusively, acquires the shared commit lock, and prepares the
-     * frame for a delete operation (not split, dirty). Leaf latch might be released and
-     * re-acquired by this method.
+     * Acquires the shared commit lock, acquires exclusive frame latch, and prepares the frame
+     * for a delete operation (not split, dirty).
      *
-     * @param leaf non-null leaf frame, held exclusively, released if an exception is thrown
+     * @return held commitLock, or null if nothing needs to be deleted
+     */
+    private CommitLock.Shared prepareDelete() throws IOException {
+        CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
+        CursorFrame leaf = frameExclusive();
+
+        if (leaf.mNodePos >= 0) {
+            try {
+                // Releases leaf latch if an exception is thrown.
+                notSplitDirty(leaf);
+            } catch (Throwable e) {
+                shared.release();
+                throw e;
+            }
+
+            // The notSplitDirty method might have released and re-acquired the node latch, so
+            // double check the position.
+            if (leaf.mNodePos >= 0) {
+                return shared;
+            }
+        }
+
+        // Entry doesn't exist, so nothing to do.
+        leaf.mNode.releaseExclusive();
+        shared.release();
+        return null;
+    }
+
+    /**
+     * With leaf frame held shared, acquires the shared commit lock, upgrades the frame to
+     * exclusive, and prepares the frame for a delete operation (not split, dirty). Leaf latch
+     * might be released and re-acquired by this method.
+     *
+     * @param leaf non-null leaf frame, held shared, released if an exception is thrown
      * @return held commitLock, or null if nothing needs to be deleted, and latch is released
      */
-    private CommitLock.Shared prepareDelete(CursorFrame leaf) throws IOException {
+    private CommitLock.Shared prepareDeleteUpgrade(CursorFrame leaf) throws IOException {
         if (leaf.mNodePos < 0) {
             // Entry doesn't exist, so nothing to do.
-            leaf.mNode.releaseExclusive();
+            leaf.mNode.releaseShared();
             return null;
         }
 
         CommitLock commitLock = mTree.mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.tryAcquireShared();
 
-        if (shared == null) {
-            leaf.mNode.releaseExclusive();
-            shared = commitLock.acquireShared();
+        lockIt: {
+            if (shared != null) {
+                if (leaf.mNode.tryUpgrade()) {
+                    break lockIt;
+                }
+                leaf.mNode.releaseShared();
+            } else {
+                leaf.mNode.releaseShared();
+                shared = commitLock.acquireShared();
+            }
+
             leaf.acquireExclusive();
 
             // Need to check if exists again.
@@ -3574,20 +3624,49 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * With leaf frame held exclusively, acquires the shared commit lock, and prepares the
-     * frame for a store operation (not split, dirty). Leaf latch might be released and
-     * re-acquired by this method.
+     * Acquires the shared commit lock, acquires exclusive frame latch, and prepares the frame
+     * for a store operation (not split, dirty).
      *
-     * @param leaf non-null leaf frame, held exclusively, released if an exception is thrown
      * @return held commitLock
      */
-    private CommitLock.Shared prepareStore(CursorFrame leaf) throws IOException {
+    private CommitLock.Shared prepareStore() throws IOException {
+        CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
+        CursorFrame leaf = frameExclusive();
+
+        try {
+            // Releases leaf latch if an exception is thrown.
+            notSplitDirty(leaf);
+        } catch (Throwable e) {
+            shared.release();
+            throw e;
+        }
+
+        return shared;
+    }
+
+    /**
+     * With leaf frame held shared, acquires the shared commit lock, upgrades the frame to
+     * exclusive, and prepares the frame for a store operation (not split, dirty). Leaf latch
+     * might be released and re-acquired by this method.
+     *
+     * @param leaf non-null leaf frame, held shared, released if an exception is thrown
+     * @return held commitLock
+     */
+    private CommitLock.Shared prepareStoreUpgrade(CursorFrame leaf) throws IOException {
         CommitLock commitLock = mTree.mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.tryAcquireShared();
 
-        if (shared == null) {
-            leaf.mNode.releaseExclusive();
-            shared = commitLock.acquireShared();
+        lockIt: {
+            if (shared != null) {
+                if (leaf.mNode.tryUpgrade()) {
+                    break lockIt;
+                }
+                leaf.mNode.releaseShared();
+            } else {
+                leaf.mNode.releaseShared();
+                shared = commitLock.acquireShared();
+            }
+
             leaf.acquireExclusive();
         }
 
@@ -3736,8 +3815,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             throw new IllegalArgumentException("Value is null");
         }
 
-        final CursorFrame leaf = frameExclusive();
-        final CommitLock.Shared shared = prepareStore(leaf);
+        final CommitLock.Shared shared = prepareStore();
+        final CursorFrame leaf = mFrame;
         Node node = leaf.mNode;
 
         try {
@@ -4334,8 +4413,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             undoTxn = txn;
         }
 
-        final CursorFrame leaf = frameExclusive();
-        final CommitLock.Shared shared = prepareStore(leaf);
+        final CommitLock.Shared shared = prepareStore();
+        final CursorFrame leaf = mFrame;
 
         try {
             TreeValue.action(undoTxn, this, leaf, op, pos, buf, off, len);
@@ -4708,12 +4787,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 Node n = node;
                                 node = null; // don't release in the finally block
 
-                                if (!n.tryUpgrade()) {
-                                    n.releaseShared();
-                                    frame.acquireExclusive();
-                                }
-
-                                CommitLock.Shared shared = prepareStore(frame);
+                                CommitLock.Shared shared = prepareStoreUpgrade(frame);
 
                                 try {
                                     TreeValue.action(null, this, frame, TreeValue.OP_WRITE,
