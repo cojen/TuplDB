@@ -537,6 +537,7 @@ final class FileStateLog extends Latch implements StateLog {
         while (it.hasNext()) {
             TermLog termLog = (TermLog) it.next();
             if (termLog.compact(index)) {
+                termLog.close();
                 it.remove();
             } else {
                 break;
@@ -742,6 +743,11 @@ final class FileStateLog extends Latch implements StateLog {
                 while (it.hasNext()) {
                     termLog = (TermLog) it.next();
                     termLog.finishTerm(termLog.startIndex());
+                    try {
+                        termLog.close();
+                    } catch (IOException e) {
+                        // Ignore.
+                    }
                 }
 
                 termLog = newTermLog;
