@@ -447,7 +447,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            if (nanosTimeout > 0 && (nanosTimeout -= nanosEnd - System.nanoTime()) < 0) {
+            if (nanosTimeout > 0 && (nanosTimeout = (nanosEnd - System.nanoTime())) < 0) {
                 nanosTimeout = 0;
             }
         }
@@ -802,6 +802,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan.stop();
         mScheduler.shutdown();
         mStateLog.close();
+        mSyncCommitCondition.signalAll();
     }
 
     void uncaught(Throwable e) {
