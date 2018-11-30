@@ -73,6 +73,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 5000;
     private static final int JOIN_TIMEOUT_MILLIS = 5000;
     private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
+    private static final int SYNC_RATE_LOW_MILLIS = 2000;
+    private static final int SYNC_RATE_HIGH_MILLIS = 3000;
 
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2,
         CONTROL_OP_UNJOIN = 3;
@@ -293,6 +295,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             scheduleElectionTask();
             scheduleMissingDataTask();
+            scheduleSyncTask();
 
             mChanMan.joinAcceptor(this::requestJoin);
 
@@ -828,6 +831,45 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         for (Channel channel : channels) {
             timeoutMillis = channel.waitForConnection(timeoutMillis);
         }
+    }
+
+    private void scheduleSyncTask() {
+        // Runs a task which checks if the durable index is advancing, and if not, forces it to
+        // advance by calling syncCommit. This allows peers to compact their logs even if the
+        // application isn't calling syncCommit very often.
+
+        new Delayed(0) {
+            {
+                schedule();
+            }
+
+            private long mTargetDurableIndex;
+
+            @Override
+            protected void doRun(long counter) {
+                StateLog log = mStateLog;
+                long commitIndex = log.captureHighest().mCommitIndex;
+
+                if (!log.isDurable(mTargetDurableIndex)) {
+                    try {
+                        syncCommit(mTargetDurableIndex, -1);
+                    } catch (IOException e) {
+                        // Ignore.
+                    }
+                }
+
+                mTargetDurableIndex = commitIndex;
+
+                schedule();
+            }
+
+            private void schedule() {
+                int delayMillis = ThreadLocalRandom.current()
+                    .nextInt(SYNC_RATE_LOW_MILLIS, SYNC_RATE_HIGH_MILLIS);
+                mCounter = System.currentTimeMillis() + delayMillis;
+                mScheduler.schedule(this);
+            }
+        };
     }
 
     private void scheduleMissingDataTask() {
