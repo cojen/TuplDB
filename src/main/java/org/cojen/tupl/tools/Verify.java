@@ -89,9 +89,9 @@ public class Verify extends VerificationObserver {
     public String toString() {
         // Note: Entry count also includes internal nodes, and so it will exceed the total
         // number of actual keys.
-        return "totalNodeCount: " + totalNodeCount +
-            ", totalEntryCount: " + totalEntryCount +
-            ", totalFreeBytes: " + totalFreeBytes +
-            ", totalLargeValues: " + totalLargeValues;
+        return "nodeCount: " + totalNodeCount +
+            ", entryCount: " + totalEntryCount +
+            ", freeBytes: " + totalFreeBytes +
+            ", largeValues: " + totalLargeValues;
     }
 }
