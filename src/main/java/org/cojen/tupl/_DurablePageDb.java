@@ -785,10 +785,12 @@ final class _DurablePageDb extends _PageDb {
             byte[] buffer = new byte[pa.pageSize()];
             readFully(in, buffer, 0, buffer.length);
 
-            try {
-                crypto.decryptPage(0, buffer.length, buffer, 0);
-            } catch (GeneralSecurityException e) {
-                throw new DatabaseException(e);
+            if (crypto != null) {
+                try {
+                    crypto.decryptPage(0, buffer.length, buffer, 0);
+                } catch (GeneralSecurityException e) {
+                    throw new DatabaseException(e);
+                }
             }
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));

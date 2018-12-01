@@ -2005,6 +2005,9 @@ final class LocalDatabase extends AbstractDatabase {
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
 
             restored = DurablePageDb.restoreFromSnapshot(dataPageArray, null, config.mCrypto, in);
+
+            // Delete the object, but keep the page array open.
+            restored.delete();
         } else {
             for (File f : dataFiles) {
                 // Delete old data file.
@@ -2027,12 +2030,12 @@ final class LocalDatabase extends AbstractDatabase {
 
             restored = DurablePageDb.restoreFromSnapshot
                 (pageSize, dataFiles, factory, options, null, config.mCrypto, in);
-        }
 
-        try {
-            restored.close();
-        } finally {
-            restored.delete();
+            try {
+                restored.close();
+            } finally {
+                restored.delete();
+            }
         }
 
         return Database.open(config);

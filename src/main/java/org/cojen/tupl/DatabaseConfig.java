@@ -698,13 +698,17 @@ public class DatabaseConfig implements Cloneable, Serializable {
 
             File[] dataFiles = dataFiles();
             if (dataFiles == null) {
-                // No data files are expected.
-                break shouldRestore;
-            }
-
-            for (File file : dataFiles) if (file.exists()) {
-                // Don't restore if any data files are found to exist.
-                break shouldRestore;
+                if (mDataPageArray == null || !mDataPageArray.isEmpty()) {
+                    // No data files are expected.
+                    break shouldRestore;
+                }
+            } else {
+                for (File file : dataFiles) {
+                    if (file.exists()) {
+                        // Don't restore if any data files are found to exist.
+                        break shouldRestore;
+                    }
+                }
             }
 
             // ReplicationManager returns null if no restore should be performed.
