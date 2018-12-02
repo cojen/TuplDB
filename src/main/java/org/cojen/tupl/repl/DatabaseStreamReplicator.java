@@ -22,14 +22,17 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.reflect.Constructor;
+
 import java.net.Socket;
 import java.net.SocketAddress;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 import java.util.function.Consumer;
 
+import java.util.zip.CheckedOutputStream;
 import java.util.zip.Checksum;
 import java.util.zip.CRC32C;
 
@@ -96,7 +99,18 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     @Override
     public InputStream restoreRequest(EventListener listener) throws IOException {
-        Map<String, String> options = Collections.singletonMap("checksum", "CRC32C");
+        Map<String, String> options = new HashMap<>();
+        options.put("checksum", "CRC32C");
+
+        Constructor<?> lz4Input;
+        try {
+            Class<?> clazz = Class.forName("net.jpountz.lz4.LZ4FrameInputStream");
+            lz4Input = clazz.getConstructor(InputStream.class);
+            options.put("compress", "LZ4Frame");
+        } catch (Throwable e) {
+            lz4Input = null;
+        }
+
         SnapshotReceiver receiver = mRepl.restore(options);
 
         if (receiver == null) {
@@ -107,18 +121,32 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
         try {
             in = receiver.inputStream();
+            options = receiver.options();
+            long length = receiver.length();
 
-            String checksumOption = receiver.options().get("checksum");
+            String compressOption = options.get("compress");
+
+            if (compressOption != null) {
+                if (compressOption.equals("LZ4Frame")) {
+                    try {
+                        in = (InputStream) lz4Input.newInstance(in);
+                    } catch (Throwable e) {
+                        throw new IOException("Unable to decompress", e);
+                    }
+                } else {
+                    throw new IOException("Unknown compress option: " + compressOption);
+                }
+            }
+
+            String checksumOption = options.get("checksum");
 
             if (checksumOption != null) {
                 if (checksumOption.equals("CRC32C")) {
-                    in = new CheckedInputStream(in, new CRC32C(), receiver.length());
+                    in = new CheckedInputStream(in, new CRC32C(), length);
                 } else {
                     throw new IOException("Unknown checksum option: " + checksumOption);
                 }
             }
-
-            long length = receiver.length();
 
             if (listener != null && length >= 0 && (mRepl instanceof Controller)) {
                 Scheduler scheduler = ((Controller) mRepl).scheduler();
@@ -302,24 +330,53 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
-        Map<String, String> options = null;
-        Checksum checksum = null;
+        Map<String, String> requestedOptions = sender.options();
 
-        if ("CRC32C".equals(sender.options().get("checksum"))) {
-            options = Collections.singletonMap("checksum", "CRC32C");
+        Map<String, String> options = new HashMap<>();
+
+        Checksum checksum = null;
+        if ("CRC32C".equals(requestedOptions.get("checksum"))) {
+            options.put("checksum", "CRC32C");
             checksum = new CRC32C();
         }
 
-        try (Snapshot snapshot = db.beginSnapshot();
-             OutputStream out = sender.begin(snapshot.length(), snapshot.position(), options))
-        {
-            if (checksum == null) {
-                snapshot.writeTo(out);
-            } else {
-                CheckedOutputStream cout = new CheckedOutputStream(out, checksum);
-                snapshot.writeTo(cout);
-                cout.writeChecksum();
+        Constructor lz4Output = null;
+        if ("LZ4Frame".equals(requestedOptions.get("compress"))) {
+            try {
+                Class<?> clazz = Class.forName("net.jpountz.lz4.LZ4FrameOutputStream");
+                lz4Output = clazz.getConstructor(OutputStream.class);
+                options.put("compress", "LZ4Frame");
+            } catch (Throwable e) {
+                // Not supported.
             }
+        }
+
+        Snapshot snapshot = db.beginSnapshot();
+
+        OutputStream out = sender.begin(snapshot.length(), snapshot.position(), options);
+        try {
+            if (lz4Output != null) {
+                try {
+                    out = (OutputStream) lz4Output.newInstance(out);
+                } catch (Throwable e) {
+                    throw new IOException("Unable to compress", e);
+                }
+            }
+
+            CheckedOutputStream cout = null;
+            if (checksum != null) {
+                out = cout = new CheckedOutputStream(out, checksum);
+            }
+
+            snapshot.writeTo(out);
+
+            if (cout != null) {
+                byte[] buf = new byte[4];
+                Utils.encodeIntLE(buf, 0, (int) checksum.getValue());
+                out.write(buf);
+            }
+        } finally {
+            out.close();
         }
     }
 
