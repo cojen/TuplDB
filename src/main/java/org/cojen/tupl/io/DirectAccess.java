@@ -49,7 +49,7 @@ public class DirectAccess {
 
             local = new ThreadLocal<>();
             local2 = new ThreadLocal<>();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             clazz = null;
             addrOffset = 0;
             capOffset = 0;

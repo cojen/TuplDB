@@ -423,13 +423,6 @@ public abstract class Clutch extends Latch {
             cIntArrayHandle = MethodHandles.arrayElementVarHandle(int[].class);
         }
 
-        private static int computeShift(int scale) {
-            if ((scale & (scale - 1)) != 0) {
-                throw new Error("data type scale not a power of two");
-            }
-            return 31 - Integer.numberOfLeadingZeros(scale);
-        }
-
         private final int mCores;
         private final Object[] mSlots;
         private final int[] mCounters;

@@ -24,8 +24,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -36,6 +36,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.UnknownHostException;
+
+import java.nio.charset.StandardCharsets;
 
 import java.security.SecureRandom;
 
@@ -192,8 +194,8 @@ final class GroupFile extends Latch {
      */
     private long parseFile(RandomAccessFile raf) throws IOException {
         Properties props = new Properties();
-        try (Reader r = new BufferedReader(new FileReader(raf.getFD()))) {
-            props.load(r);
+        try (InputStream in = new FileInputStream(raf.getFD())) {
+            props.load(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
         }
 
         NavigableSet<Peer> peerSet =
@@ -465,7 +467,7 @@ final class GroupFile extends Latch {
 
         acquireExclusive();
         try {
-            in.read(buf, 0, 16);
+            in.readNBytes(buf, 0, 16);
             version = Utils.decodeLongLE(buf, 0);
             length = Utils.decodeLongLE(buf, 8);
             checksum.update(buf, 0, 16);
@@ -510,7 +512,7 @@ final class GroupFile extends Latch {
 
                 // Read the checksum.
                 int expect = (int) checksum.getValue();
-                in.read(buf, 0, 4);
+                in.readNBytes(buf, 0, 4);
                 int actual = Utils.decodeIntLE(buf, 0);
                 if (expect != actual) {
                     throw new IOException("Checksum mismatch: " + expect + " != " + actual);
@@ -1109,7 +1111,8 @@ final class GroupFile extends Latch {
         File newFile = new File(path + ".new");
 
         try (FileOutputStream out = new FileOutputStream(newFile)) {
-            BufferedWriter w = new BufferedWriter(new OutputStreamWriter(out));
+            BufferedWriter w = new BufferedWriter
+                (new OutputStreamWriter(out, StandardCharsets.UTF_8));
 
             w.write('#');
             w.write(getClass().getName());

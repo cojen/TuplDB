@@ -518,7 +518,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public void controlMessageReceived(long index, byte[] message) throws IOException {
         boolean quickCommit = false;
-        Role oldRole = null, newRole = null;
 
         acquireExclusive();
         try {
@@ -532,10 +531,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 refresh = mGroupFile.applyJoin(index, message) != null;
                 break;
             case CONTROL_OP_UPDATE_ROLE:
-                oldRole = mGroupFile.localMemberRole();
-                if (refresh = mGroupFile.applyUpdateRole(message)) {
-                    newRole = mGroupFile.localMemberRole();
-                }
+                refresh = mGroupFile.applyUpdateRole(message);
                 break;
             case CONTROL_OP_UNJOIN:
                 refresh = mGroupFile.applyRemovePeer(message);
@@ -1510,7 +1506,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
 
         final long originalTerm = mCurrentTerm;
-        String reason;
 
         if (term < 0 && (term &= ~(1L << 63)) == originalTerm) {
             // Vote granted.
@@ -1521,34 +1516,28 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return true;
             }
 
-            if (mLocalMode == MODE_CANDIDATE) {
-                LogInfo info = mStateLog.captureHighest();
-                toLeader(term, info.mHighestIndex);
-                return true;
-            }
-
-            reason = "stale vote reply";
-        } else {
-            // Vote denied.
-
-            try {
-                mCurrentTerm = mStateLog.checkCurrentTerm(term);
-            } catch (IOException e) {
-                releaseExclusive();
-                uncaught(e);
-                return false;
-            }
-
-            if (mCurrentTerm <= originalTerm) {
-                // Remain candidate for now, waiting for more votes.
-                releaseExclusive();
-                return true;
-            }
-
-            reason = "vote denied";
+            LogInfo info = mStateLog.captureHighest();
+            toLeader(term, info.mHighestIndex);
+            return true;
         }
 
-        toFollower(reason);
+        // Vote denied.
+
+        try {
+            mCurrentTerm = mStateLog.checkCurrentTerm(term);
+        } catch (IOException e) {
+            releaseExclusive();
+            uncaught(e);
+            return false;
+        }
+
+        if (mCurrentTerm <= originalTerm) {
+            // Remain candidate for now, waiting for more votes.
+            releaseExclusive();
+            return true;
+        }
+
+        toFollower("vote denied");
         releaseExclusive();
         return true;
     }
@@ -2143,15 +2132,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
         boolean refresh;
-        Role oldRole = null, newRole = null;
 
         acquireExclusive();
         try {
-            oldRole = mGroupFile.localMemberRole();
             refresh = mGroupFile.readFrom(in);
             if (refresh) {
                 refreshPeerSet();
-                newRole = mGroupFile.localMemberRole();
             }
         } finally {
             releaseExclusive();

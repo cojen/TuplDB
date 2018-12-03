@@ -4546,8 +4546,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     final void appendTransfer(Node source) throws IOException {
         try {
             final CursorFrame tleaf = mFrame;
-            Node tnode = tleaf.acquireExclusive();
-            tnode = notSplitDirty(tleaf);
+            tleaf.acquireExclusive();
+            Node tnode = notSplitDirty(tleaf);
 
             try {
                 final /*P*/ byte[] spage = source.mPage;
@@ -4598,8 +4598,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         CursorFrame sleaf;
         try {
             final CursorFrame tleaf = mFrame;
-            Node tnode = tleaf.acquireExclusive();
-            tnode = notSplitDirty(tleaf);
+            tleaf.acquireExclusive();
+            Node tnode = notSplitDirty(tleaf);
 
             sleaf = source.mFrame;
             Node snode = sleaf.acquireExclusive();
@@ -4784,7 +4784,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             }
 
                             if (result > 0) {
-                                Node n = node;
                                 node = null; // don't release in the finally block
 
                                 CommitLock.Shared shared = prepareStoreUpgrade(frame);

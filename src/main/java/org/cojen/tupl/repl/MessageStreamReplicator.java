@@ -432,12 +432,14 @@ final class MessageStreamReplicator implements MessageReplicator {
             throw new IllegalStateException("Illegal message: " + length + ", " + b);
         }
 
+        /*
         private void fillBuffer(int required) throws IOException {
             int avail = mEnd - mPos;
             if ((required -= avail) > 0) {
                 fillBuffer(required, avail);
             }
         }
+        */
 
         private void fillBuffer(int required, int avail) throws IOException {
             byte[] buf = mBuffer;

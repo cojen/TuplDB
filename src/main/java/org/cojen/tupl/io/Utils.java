@@ -356,7 +356,7 @@ public class Utils {
                 m.setAccessible(true);
                 m.invoke(cleaner);
                 return true;
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 // Try another way.
                 cDeleteSupport = 1;
             } finally {
@@ -376,7 +376,7 @@ public class Utils {
                 return false;
             }
             throw rethrow(cause);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             // Unsupported.
             cDeleteSupport = -1;
             return false;

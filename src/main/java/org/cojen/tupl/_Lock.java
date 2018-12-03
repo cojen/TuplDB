@@ -253,9 +253,7 @@ final class _Lock {
             if (count != 0 && isSharedLockOwner(locker)) {
                 if (!locker.canAttemptUpgrade(count)) {
                     // Signal that another waiter can get the lock instead.
-                    if (queueU != null) {
-                        queueU.signal();
-                    }
+                    queueU.signal();
                     locker.mWaitingFor = null;
                     return ILLEGAL;
                 }
