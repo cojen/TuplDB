@@ -250,7 +250,7 @@ class CursorFrame {
                   because step 10 atomically claims the new last frame within the list.
 
                 */
-                while (node.mLastCursorFrame != last);
+                while (node.mLastCursorFrame != last) Thread.onSpinWait();
 
                 node.mLastCursorFrame = this;
                 return;
