@@ -212,12 +212,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Caller must hold exclusive latch.
     private void refreshPeerSet() {
-        Map<Long, Channel> currentPeerChannels = new HashMap<>();
+        Map<Long, Channel> oldPeerChannels = new HashMap<>();
 
         if (mAllChannels != null) {
             for (Channel channel : mAllChannels) {
-                currentPeerChannels.put(channel.peer().mMemberId, channel);
+                oldPeerChannels.put(channel.peer().mMemberId, channel);
             }
+        }
+
+        Map<Long, Channel> newPeerChannels = new HashMap<>();
+
+        for (Peer peer : mGroupFile.allPeers()) {
+            Long memberId = peer.mMemberId;
+            newPeerChannels.put(memberId, oldPeerChannels.remove(memberId));
+        }
+
+        for (long toRemove : oldPeerChannels.keySet()) {
+            mChanMan.disconnect(toRemove);
         }
 
         List<Peer> consensusPeers = new ArrayList<>();
@@ -225,7 +236,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         List<Channel> allChannels = new ArrayList<>();
 
         for (Peer peer : mGroupFile.allPeers()) {
-            Channel channel = currentPeerChannels.remove(peer.mMemberId);
+            Channel channel = newPeerChannels.get(peer.mMemberId);
 
             if (channel == null) {
                 channel = mChanMan.connect(peer, this);
@@ -237,10 +248,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 consensusPeers.add(peer);
                 consensusChannels.add(channel);
             }
-        }
-
-        for (long toRemove : currentPeerChannels.keySet()) {
-            mChanMan.disconnect(toRemove);
         }
 
         mConsensusPeers = consensusPeers.toArray(new Peer[0]);
