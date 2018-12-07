@@ -409,6 +409,11 @@ final class _SnapshotPageArray extends PageArray {
         }
 
         @Override
+        public boolean isCompressible() {
+            return mNodeCache != null;
+        }
+
+        @Override
         public void writeTo(OutputStream out) throws IOException {
             mSnapshotLatch.acquireExclusive();
             try {

@@ -340,8 +340,10 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             checksum = new CRC32C();
         }
 
+        Snapshot snapshot = db.beginSnapshot();
+
         Constructor lz4Output = null;
-        if ("LZ4Frame".equals(requestedOptions.get("compress"))) {
+        if (snapshot.isCompressible() && "LZ4Frame".equals(requestedOptions.get("compress"))) {
             try {
                 Class<?> clazz = Class.forName("net.jpountz.lz4.LZ4FrameOutputStream");
                 lz4Output = clazz.getConstructor(OutputStream.class);
@@ -350,8 +352,6 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 // Not supported.
             }
         }
-
-        Snapshot snapshot = db.beginSnapshot();
 
         OutputStream out = sender.begin(snapshot.length(), snapshot.position(), options);
         try {

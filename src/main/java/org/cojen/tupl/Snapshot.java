@@ -42,6 +42,12 @@ public interface Snapshot extends Closeable {
     public long position();
 
     /**
+     * Returns false if the snapshot isn't compressible, either because it's already
+     * compressed, or if it's encrypted.
+     */
+    public boolean isCompressible();
+
+    /**
      * Writes out snapshot data, and then closes this object. Snapshot aborts
      * if the OutputStream throws an exception or if another thread closes this
      * Snapshot instance.
