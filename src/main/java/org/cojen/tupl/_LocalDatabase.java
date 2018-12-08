@@ -2909,12 +2909,11 @@ final class _LocalDatabase extends AbstractDatabase {
         }
     }
 
-    void unregisterCursor(_TreeCursor cursor) {
+    void unregisterCursor(long cursorId) {
         try {
             byte[] cursorIdBytes = new byte[8];
-            encodeLongBE(cursorIdBytes, 0, cursor.mCursorId);
+            encodeLongBE(cursorIdBytes, 0, cursorId);
             openCursorRegistry().store(Transaction.BOGUS, cursorIdBytes, null);
-            cursor.mCursorId = 0;
         } catch (Throwable e) {
             // Database is borked, cleanup later.
         }

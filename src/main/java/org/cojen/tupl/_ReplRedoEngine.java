@@ -226,9 +226,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         synchronized (mCursors) {
             mCursors.traverse(entry -> {
                 _TreeCursor cursor = entry.mCursor;
-                // Unregister first, to prevent close from writing a redo log entry.
-                mDatabase.unregisterCursor(cursor);
-                cursor.close();
+                mDatabase.unregisterCursor(cursor.mCursorId);
+                reset(cursor);
                 return true;
             });
         }
@@ -660,6 +659,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (ix != null) {
             _TreeCursor tc = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
             tc.mKeyOnly = true;
+            tc.mCursorId = cursorId;
             synchronized (mCursors) {
                 mCursors.insert(scrambledCursorId).mCursor = tc;
             }
@@ -682,11 +682,11 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             Worker w = ce.mWorker;
             if (w == null) {
                 // Cursor was never actually used.
-                tc.reset();
+                reset(tc);
             } else {
                 w.enqueue(new Worker.Task() {
                     public void run() throws IOException {
-                        tc.reset();
+                        reset(tc);
                     }
                 });
             }
@@ -1252,33 +1252,37 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private _TreeCursor reopenCursor(Throwable e, CursorEntry ce) throws IOException {
         checkClosedIndex(e);
 
-        long scrambledCursorId = mix(ce.key);
         _TreeCursor tc = ce.mCursor;
         Index ix = openIndex(tc.mTree.mId);
 
         if (ix == null) {
             synchronized (mCursors) {
-                mCursors.remove(scrambledCursorId);
+                mCursors.remove(ce.key);
             }
         } else {
+            long cursorId = tc.mCursorId;
+
             _LocalTransaction txn = tc.mTxn;
             byte[] key = tc.key();
-            tc.reset();
+            reset(tc);
 
             tc = (_TreeCursor) ix.newCursor(txn);
             tc.mKeyOnly = true;
             tc.mTxn = txn;
-            tc.find(key);
+            tc.mCursorId = cursorId;
+            // After cursor id has been assigned, call findNearby instead of find. The find
+            // method unregisters the cursor, which then tries to write a redo log entry.
+            tc.findNearby(key);
 
             synchronized (mCursors) {
-                if (ce == mCursors.get(scrambledCursorId)) {
+                if (ce == mCursors.get(ce.key)) {
                     ce.mCursor = tc;
                     return tc;
                 }
             }
         }
 
-        tc.reset();
+        reset(tc);
 
         return null;
     }
@@ -1398,6 +1402,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
+    static void reset(_TreeCursor cursor) {
+        // Clear cursor id first, to prevent reset from writing a redo log entry.
+        cursor.mCursorId = 0;
+        cursor.reset();
+    }
+
     static final class CursorEntry extends LHashTable.Entry<CursorEntry> {
         _TreeCursor mCursor;
         Worker mWorker;
@@ -1406,8 +1416,6 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         void recovered(_TreeCursor c) {
             mCursor = c;
             mKey = c.key();
-            // Clear this to prevent attepting to write a redo when cursor is reset.
-            c.mCursorId = 0;
         }
     }
 

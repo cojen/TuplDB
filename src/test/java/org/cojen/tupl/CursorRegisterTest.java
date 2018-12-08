@@ -21,6 +21,7 @@ import java.io.OutputStream;
 
 import java.net.ServerSocket;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
@@ -219,12 +220,12 @@ public class CursorRegisterTest {
             .replicate(replConfig);
 
         Database leaderDb = newTempDatabase(getClass(), config);
+        Index leaderIx = null;
 
         {
-            Index ix = null;
             for (int i=10; --i>=0; ) {
                 try {
-                    ix = leaderDb.openIndex("test");
+                    leaderIx = leaderDb.openIndex("test");
                     break;
                 } catch (UnmodifiableReplicaException e) {
                     if (i == 0) {
@@ -235,7 +236,7 @@ public class CursorRegisterTest {
             }
 
             Transaction txn = leaderDb.newTransaction();
-            Cursor c = ix.newCursor(txn);
+            Cursor c = leaderIx.newCursor(txn);
             assertTrue(c.register());
             c.findNearby("hello".getBytes());
             c.store("world".getBytes());
@@ -275,5 +276,49 @@ public class CursorRegisterTest {
         assertEquals(2, ix.count(null, null));
         fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
         fastAssertArrayEquals("world!".getBytes(), ix.load(null, "hello!".getBytes()));
+
+        // Test cursor reopen after replica has closed the index.
+
+        Transaction txn = leaderDb.newTransaction();
+        Cursor c = leaderIx.newCursor(txn);
+        assertTrue(c.register());
+        byte[] key = "key".getBytes();
+        c.findNearby(key);
+        byte[] value = "value".getBytes();
+        c.store(value);
+        txn.flush();
+
+        wait: {
+            for (int i=0; i<50; i++) {
+                try {
+                    ix.exists(null, key);
+                } catch (LockTimeoutException e) {
+                    // Cannot acquire lock because transaction isn't committed yet.
+                    break wait;
+                }
+                Thread.sleep(100);
+            }
+            fail("Replica isn't caught up(2)");
+        }
+
+        // Replica can freely close the index.
+        ix.close();
+
+        byte[] value2 = "value2".getBytes();
+        c.store(value2);
+        txn.commit();
+
+        ix = replicaDb.openIndex("test");
+        
+        wait: {
+            for (int i=0; i<50; i++) {
+                byte[] found = ix.load(null, key);
+                if (Arrays.equals(found, value2)) {
+                    break wait;
+                }
+                Thread.sleep(100);
+            }
+            fail("Replica isn't caught up(3)");
+        }
     }
 }

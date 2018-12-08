@@ -4674,8 +4674,8 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
             context.redoCursorUnregister(redo, cursorId);
 
-            // Sets mCursorId to 0 as a side-effect.
-            db.unregisterCursor(this);
+            db.unregisterCursor(cursorId);
+            mCursorId = 0;
         } catch (UnmodifiableReplicaException e) {
             // Ignore.
         } catch (IOException e) {
