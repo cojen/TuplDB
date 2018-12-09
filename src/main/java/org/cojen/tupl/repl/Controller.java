@@ -764,11 +764,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 commitIndex = writer.mCommitIndex;
             }
 
-            // TODO: stream it
-            data = Arrays.copyOfRange(data, offset, offset + length);
-
             for (Channel peerChan : peerChannels) {
-                peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, data);
+                peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
+                                   data, offset, length);
             }
 
             return amt;
@@ -1145,7 +1143,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         long index = writer.index();
 
         for (Channel peerChan : peerChannels) {
-            peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex, EMPTY_DATA);
+            peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
+                               EMPTY_DATA, 0, 0);
         }
     }
 
@@ -1682,11 +1681,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         break;
                     }
 
-                    // TODO: stream it
-                    byte[] data = new byte[amt];
-                    System.arraycopy(buf, 0, data, 0, amt);
-
-                    from.queryDataReply(null, currentTerm, prevTerm, term, index, data);
+                    from.queryDataReply(null, currentTerm, prevTerm, term, index, buf, 0, amt);
 
                     startIndex += amt;
                     remaining -= amt;
@@ -1707,7 +1702,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean queryDataReply(Channel from, long currentTerm,
-                                  long prevTerm, long term, long index, byte[] data)
+                                  long prevTerm, long term, long index,
+                                  byte[] data, int off, int len)
     {
         if (currentTerm != 0 && !validateLeaderTerm(from, currentTerm)) {
             return false;
@@ -1721,7 +1717,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
             if (writer != null) {
                 try {
-                    writer.write(data, 0, data.length, 0);
+                    writer.write(data, off, len, 0);
                 } finally {
                     writer.release();
                 }
@@ -1735,7 +1731,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean writeData(Channel from, long prevTerm, long term, long index,
-                             long highestIndex, long commitIndex, byte[] data)
+                             long highestIndex, long commitIndex, byte[] data, int off, int len)
     {
         if (!validateLeaderTerm(from, term)) {
             return false;
@@ -1763,7 +1759,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             try {
-                writer.write(data, 0, data.length, highestIndex);
+                writer.write(data, off, len, highestIndex);
                 mStateLog.commit(commitIndex);
                 mStateLog.captureHighest(writer);
                 long highestTerm = writer.mTerm;

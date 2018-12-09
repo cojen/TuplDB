@@ -102,10 +102,13 @@ interface Channel {
      * @param prevTerm expected term at previous index
      * @param term term at given index
      * @param index any index in the term to write to
+     * @param off data offset
+     * @param len data length
      * @return false if not sent or processed
      */
     boolean queryDataReply(Channel from, long currentTerm,
-                           long prevTerm, long term, long index, byte[] data);
+                           long prevTerm, long term, long index,
+                           byte[] data, int off, int len);
 
     /**
      * @param prevTerm expected term at previous index
@@ -113,10 +116,13 @@ interface Channel {
      * @param index any index in the term to write to
      * @param highestIndex highest index (exclusive) which can become the commit index
      * @param commitIndex current commit index (exclusive)
+     * @param off data offset
+     * @param len data length
      * @return false if not sent or processed
      */
     boolean writeData(Channel from, long prevTerm, long term, long index,
-                      long highestIndex, long commitIndex, byte[] data);
+                      long highestIndex, long commitIndex,
+                      byte[] data, int off, int len);
 
     /**
      * @return false if not sent or processed

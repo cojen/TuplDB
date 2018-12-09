@@ -450,10 +450,8 @@ final class FileStateLog extends Latch implements StateLog {
             commitLog = (TermLog) mTermLogs.first();
         }
 
-        LogInfo info = new LogInfo();
         while (true) {
-            commitLog.captureHighest(info);
-            if (info.mCommitIndex < commitLog.endIndex()) {
+            if (commitLog.isUnfinished()) {
                 break;
             }
             commitLog = (TermLog) mTermLogs.higher(commitLog); // findGt

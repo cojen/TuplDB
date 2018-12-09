@@ -430,6 +430,14 @@ final class FileTermLog extends Latch implements TermLog {
         releaseShared();
     }
 
+    @Override
+    public boolean isUnfinished() {
+        acquireShared();
+        boolean result = doAppliableCommitIndex() < mLogEndIndex;
+        releaseShared();
+        return result;
+    }
+
     // Caller must hold any latch.
     private void doCaptureHighest(LogInfo info) {
         info.mHighestIndex = mLogHighestIndex;

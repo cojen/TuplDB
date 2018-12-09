@@ -686,6 +686,9 @@ final class ChannelManager {
         // 0: not writing;  1: writing;  2+: tagged to be closed due to timeout
         volatile int mWriteState;
 
+        // Probably too small, but start with something.
+        private byte[] mWriteBuffer = new byte[128];
+
         SocketChannel(Peer peer, Channel localServer) {
             mPeer = peer;
             mLocalServer = localServer;
@@ -778,7 +781,8 @@ final class ChannelManager {
             ChannelInputStream in;
             try {
                 out = s.getOutputStream();
-                in = new ChannelInputStream(s.getInputStream(), 8192);
+                // Initial buffer is probably too small, but start with something.
+                in = new ChannelInputStream(s.getInputStream(), 128);
             } catch (Throwable e) {
                 closeQuietly(s);
                 return false;
@@ -856,9 +860,10 @@ final class ChannelManager {
                         long term = in.readLongLE();
                         long index = in.readLongLE();
                         commandLength -= (8 * 4);
-                        byte[] data = new byte[commandLength];
-                        readFully(in, data, 0, data.length);
-                        localServer.queryDataReply(this, currentTerm, prevTerm, term, index, data);
+                        in.readFully(commandLength);
+                        localServer.queryDataReply(this, currentTerm, prevTerm, term, index,
+                                                   in.mBuffer, in.mPos, commandLength);
+                        in.mPos += commandLength;
                         commandLength = 0;
                         break;
                     case OP_WRITE_DATA:
@@ -868,10 +873,11 @@ final class ChannelManager {
                         long highestIndex = in.readLongLE();
                         long commitIndex = in.readLongLE();
                         commandLength -= (8 * 5);
-                        data = new byte[commandLength];
-                        readFully(in, data, 0, data.length);
+                        in.readFully(commandLength);
                         localServer.writeData(this, prevTerm, term, index,
-                                              highestIndex, commitIndex, data);
+                                              highestIndex, commitIndex,
+                                              in.mBuffer, in.mPos, commandLength);
+                        in.mPos += commandLength;
                         commandLength = 0;
                         break;
                     case OP_WRITE_DATA_REPLY:
@@ -1028,9 +1034,10 @@ final class ChannelManager {
 
         @Override
         public boolean queryDataReply(Channel from, long currentTerm,
-                                      long prevTerm, long term, long index, byte[] data)
+                                      long prevTerm, long term, long index,
+                                      byte[] data, int off, int len)
         {
-            if (data.length > ((1 << 24) - (8 * 3))) {
+            if (len > ((1 << 24) - (8 * 3))) {
                 // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
             }
@@ -1041,14 +1048,15 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[(8 + 8 * 4) + data.length];
-                prepareCommand(out, command, OP_QUERY_DATA_REPLY, 0, command.length - 8);
+                final int commandLength = (8 + 8 * 4) + len;
+                byte[] command = allocWriteBuffer(commandLength);
+                prepareCommand(out, command, OP_QUERY_DATA_REPLY, 0, commandLength - 8);
                 encodeLongLE(command, 8, currentTerm);
                 encodeLongLE(command, 16, prevTerm);
                 encodeLongLE(command, 24, term);
                 encodeLongLE(command, 32, index);
-                System.arraycopy(data, 0, command, 40, data.length);
-                return writeCommand(out, command, 0, command.length);
+                System.arraycopy(data, off, command, 40, len);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1056,9 +1064,9 @@ final class ChannelManager {
 
         @Override
         public boolean writeData(Channel from, long prevTerm, long term, long index,
-                                 long highestIndex, long commitIndex, byte[] data)
+                                 long highestIndex, long commitIndex, byte[] data, int off, int len)
         {
-            if (data.length > ((1 << 24) - (8 * 5))) {
+            if (len > ((1 << 24) - (8 * 5))) {
                 // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
             }
@@ -1069,15 +1077,16 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[(8 + 8 * 5) + data.length];
-                prepareCommand(out, command, OP_WRITE_DATA, 0, command.length - 8);
+                final int commandLength = (8 + 8 * 5) + len;
+                byte[] command = allocWriteBuffer(commandLength);
+                prepareCommand(out, command, OP_WRITE_DATA, 0, commandLength - 8);
                 encodeLongLE(command, 8, prevTerm);
                 encodeLongLE(command, 16, term);
                 encodeLongLE(command, 24, index);
                 encodeLongLE(command, 32, highestIndex);
                 encodeLongLE(command, 40, commitIndex);
-                System.arraycopy(data, 0, command, 48, data.length);
-                return writeCommand(out, command, 0, command.length);
+                System.arraycopy(data, off, command, 48, len);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1116,11 +1125,12 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 4 * 2];
+                final int commandLength = 8 + 4 * 2;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
                 encodeIntLE(command, 8, activeSessions);
                 encodeIntLE(command, 12, Float.floatToIntBits(weight));
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1159,9 +1169,10 @@ final class ChannelManager {
             try {
                 OutputStream out = mOut;
                 if (out != null) {
-                    byte[] command = new byte[8];
+                    final int commandLength = 8;
+                    byte[] command = allocWriteBuffer(commandLength);
                     prepareCommand(out, command, OP_GROUP_FILE_REPLY, 0, 0);
-                    if (writeCommand(out, command, 0, command.length)) {
+                    if (writeCommand(out, command, 0, commandLength)) {
                         return out;
                     }
                 }
@@ -1188,9 +1199,10 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8];
+                final int commandLength = 8;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 0);
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1203,10 +1215,11 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 8 * 1];
+                final int commandLength = 8 + 8 * 1;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 8 * 1);
                 encodeLongLE(command, 8, a);
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1219,11 +1232,12 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 8 * 2];
+                final int commandLength = 8 + 8 * 2;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 8 * 2);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1236,12 +1250,13 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 8 * 2 + 1];
+                final int commandLength = 8 + 8 * 2 + 1;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 8 * 2 + 1);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 command[24] = c;
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1254,12 +1269,13 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 8 * 3];
+                final int commandLength = 8 + 8 * 3;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 8 * 3);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
@@ -1272,16 +1288,37 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                byte[] command = new byte[8 + 8 * 4];
+                final int commandLength = 8 + 8 * 4;
+                byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, 8 * 4);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
                 encodeLongLE(command, 32, d);
-                return writeCommand(out, command, 0, command.length);
+                return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
             }
+        }
+
+        /**
+         * Caller must hold exclusive latch.
+         */
+        private byte[] allocWriteBuffer(int size) {
+            byte[] buf = mWriteBuffer;
+            if (size > buf.length) {
+                buf = growWriteBuffer(size);
+            }
+            return buf;
+        }
+
+        /**
+         * Caller must hold exclusive latch.
+         */
+        private byte[] growWriteBuffer(int size) {
+            byte[] buf = new byte[Math.max(size, (int) (mWriteBuffer.length * 1.5))];
+            mWriteBuffer = buf;
+            return buf;
         }
 
         /**

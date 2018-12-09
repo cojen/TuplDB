@@ -90,6 +90,11 @@ interface TermLog extends LKey<TermLog>, Closeable {
     void captureHighest(LogInfo info);
 
     /**
+     * Returns true if the highest commit index is less than the end index.
+     */
+    boolean isUnfinished();
+
+    /**
      * Permit the commit index to advance. If the highest index (over a contiguous range)
      * is less than the given commit index, the actual commit index doesn't advance until
      * the highest index catches up.

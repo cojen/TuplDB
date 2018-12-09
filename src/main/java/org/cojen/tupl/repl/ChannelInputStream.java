@@ -48,8 +48,8 @@ final class ChannelInputStream extends InputStream {
     }
 
     private final InputStream mSource;
-    private final byte[] mBuffer;
-    private int mPos;
+    byte[] mBuffer;
+    int mPos;
     private int mEnd;
     private volatile long mReadAmount;
 
@@ -108,6 +108,23 @@ final class ChannelInputStream extends InputStream {
             off += amt;
             len -= amt;
         }
+    }
+
+    /**
+     * Fully read and expand the buffer if necessary. The buffer instance might be replaced
+     * as a result of making this call.
+     */
+    void readFully(int length) throws IOException {
+        if (mBuffer.length < length) {
+            byte[] newBuffer = new byte[Math.max(length, (int) (mBuffer.length * 1.5))];
+            int avail = mEnd - mPos;
+            System.arraycopy(mBuffer, mPos, newBuffer, 0, avail);
+            mBuffer = newBuffer;
+            mPos = 0;
+            mEnd = avail;
+        }
+
+        fillBuffer(length);
     }
 
     void skipFully(long n) throws IOException {
