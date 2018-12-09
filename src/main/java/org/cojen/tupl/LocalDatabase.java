@@ -5234,22 +5234,30 @@ final class LocalDatabase extends AbstractDatabase {
                     return;
                 }
 
-                // Thresholds for a full checkpoint are met.
-                treeCheck: {
+                // Thresholds for a checkpoint are met, but it might not be necessary.
+
+                boolean full = false;
+
+                if (mRedoWriter != null && (mRedoWriter instanceof ReplRedoController)) {
+                    if (mRedoWriter.shouldCheckpoint(1)) {
+                        // Clean up the replication log.
+                        full = true;
+                    }
+                } else {
                     root.acquireShared();
                     try {
                         if (root.mCachedState != CACHED_CLEAN) {
-                            // Root is dirty, do a full checkpoint.
-                            break treeCheck;
+                            // Root is dirty, so do a full checkpoint.
+                            full = true;
                         }
                     } finally {
                         root.releaseShared();
                     }
+                }
 
-                    // Root is clean, so no need for full checkpoint, but fully sync the redo
-                    // log for durability.
+                if (!full) {
+                    // No need for full checkpoint, but fully sync the redo log for durability.
                     flush(2); // flush and sync metadata
-
                     return;
                 }
             }

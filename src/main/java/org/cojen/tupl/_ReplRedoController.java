@@ -63,6 +63,9 @@ final class _ReplRedoController extends _ReplRedoWriter {
         acquireExclusive();
         try {
             mLeaderNotifyCondition = new LatchCondition();
+            // Init for the shouldCheckpoint method. Without this, an initial checkpoint is
+            // performed even if it's not necessary.
+            mCheckpointPos = mManager.readPosition() | (1L << 63);
         } finally {
             releaseExclusive();
         }
