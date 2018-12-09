@@ -8,12 +8,30 @@ v1.4.5
 * Fix race condition when copying pages from the secondary cache.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
 * Fix data loss when replicating values using the ValueAccessor API.
+* Fix replication ABA race condition which caused a blank range of data (zeros) to appear as
+  valid to the replica, when a term is truncated and extended.
+* Fix recovery and cleanup of registered cursors.
+* Fix handling of snapshot/restore with custom data page array.
 * Wait for replication recovery when starting up, and wait for the local member to become the
   leader if it's the only group member which can become the leader.
 * Speed up redo log recovery by using multiple threads.
 * Reduce memory requirements when running the test suite.
 * Simplify TransactionHandler interface, and unify it to some extent with RecoveryHandler.
 * Update dependencies to support Java 11.
+* WriteFailureException no longer extends DatabaseFullException.
+* Optimize update and delete by not always increasing the node garbage size.
+* Permit non-durable database to utilize a secondary cache.
+* Handle edge cases where a latches wouldn't get released when an exception was thrown.
+* Define a default Cursor.close method.
+* Add socket factory support to replicator.
+* Improve replication election stability.
+* Reduce the number of latch acquisition retries when storing entries (performance).
+* Thread safety fixes in replication layer during checkpoints and leadership changes.
+* Introduce background syncCommit task, which allows peers to compact their log even when the
+  database isn't running checkpoints.
+* Support LZ4 compression with replication peer restore.
+* When refreshing the replication peer set, must disconnect old peers before connecting new
+  ones, to prevent possible false address collisions.
 
 v1.4.4 (2018-06-30)
 ------
