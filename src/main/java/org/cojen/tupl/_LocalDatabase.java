@@ -5238,20 +5238,20 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 boolean full = false;
 
-                if (mRedoWriter != null && (mRedoWriter instanceof _ReplRedoController)) {
+                root.acquireShared();
+                try {
+                    if (root.mCachedState != CACHED_CLEAN) {
+                        // Root is dirty, so do a full checkpoint.
+                        full = true;
+                    }
+                } finally {
+                    root.releaseShared();
+                }
+
+                if (!full && mRedoWriter != null && (mRedoWriter instanceof _ReplRedoController)) {
                     if (mRedoWriter.shouldCheckpoint(1)) {
                         // Clean up the replication log.
                         full = true;
-                    }
-                } else {
-                    root.acquireShared();
-                    try {
-                        if (root.mCachedState != CACHED_CLEAN) {
-                            // Root is dirty, so do a full checkpoint.
-                            full = true;
-                        }
-                    } finally {
-                        root.releaseShared();
                     }
                 }
 
