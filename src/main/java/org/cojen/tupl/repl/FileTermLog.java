@@ -431,9 +431,9 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public boolean isUnfinished() {
+    public boolean isFinished() {
         acquireShared();
-        boolean result = doAppliableCommitIndex() < mLogEndIndex;
+        boolean result = doAppliableCommitIndex() >= mLogEndIndex;
         releaseShared();
         return result;
     }

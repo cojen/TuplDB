@@ -440,26 +440,16 @@ final class FileStateLog extends Latch implements StateLog {
     public void commit(long commitIndex) {
         acquireShared();
 
-        TermLog commitLog = mCommitTermLog;
-
-        if (commitLog == null) {
-            if (mTermLogs.isEmpty()) {
-                releaseShared();
-                return;
-            }
-            commitLog = (TermLog) mTermLogs.first();
+        if (mCommitTermLog != null) {
+            // Commit the known highest unfinished term.
+            mCommitTermLog.commit(commitIndex);
+            releaseShared();
+            return;
         }
 
-        while (true) {
-            if (commitLog.isUnfinished()) {
-                break;
-            }
-            commitLog = (TermLog) mTermLogs.higher(commitLog); // findGt
-        }
-
-        if (commitLog != mCommitTermLog && tryUpgrade()) {
-            mCommitTermLog = commitLog;
-            downgrade();
+        if (mTermLogs.isEmpty()) {
+            releaseShared();
+            return;
         }
 
         // Pass the commit index to the terms in descending order, to prevent a race condition
@@ -469,15 +459,33 @@ final class FileStateLog extends Latch implements StateLog {
         // from going too far ahead. Descending order commit is simpler.
 
         Iterator<LKey<TermLog>> it = mTermLogs.descendingIterator();
-        while (it.hasNext()) {
-            TermLog termLog = (TermLog) it.next();
+        final TermLog highestLog = (TermLog) it.next();
+        TermLog termLog = highestLog;
+
+        while (true) {
             termLog.commit(commitIndex);
-            if (termLog == commitLog) {
+            if (!it.hasNext()) {
+                if (termLog == highestLog) {
+                    break;
+                }
+                releaseShared();
+                return;
+            }
+            TermLog lowerLog = (TermLog) it.next();
+            if (termLog == highestLog && lowerLog.isFinished()) {
                 break;
             }
+            termLog = lowerLog;
         }
 
-        releaseShared();
+        if (tryUpgrade()) {
+            // There's no point in allocating an iterator each time, since this is the only
+            // term which needs to be committed.
+            mCommitTermLog = highestLog;
+            releaseExclusive();
+        } else {
+            releaseShared();
+        }
     }
 
     @Override
@@ -721,7 +729,7 @@ final class FileStateLog extends Latch implements StateLog {
                 mTermLogs.add(newTermLog);
 
                 mHighestTermLog = fixTermRef(mHighestTermLog);
-                mCommitTermLog = fixTermRef(mCommitTermLog);
+                mCommitTermLog = null; // re-assign when commit is called
                 mContigTermLog = fixTermRef(mContigTermLog);
 
                 // Same as doSync, except without re-acquiring any latches.
@@ -763,7 +771,7 @@ final class FileStateLog extends Latch implements StateLog {
      * object.
      */
     private TermLog fixTermRef(TermLog termLog) {
-        // When lower terms are extended, the the reference might need to go lower, hence
+        // When lower terms are extended, the reference might need to go lower, hence
         // findLe. The methods which examine terms are designed to start low, possibly at the
         // first term. Null implies that the first term should be examined, and so everything
         // should work fine even if this method always returns null. Finding a valid term
