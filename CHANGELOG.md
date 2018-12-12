@@ -32,6 +32,7 @@ v1.4.5
 * Support LZ4 compression with replication peer restore.
 * When refreshing the replication peer set, must disconnect old peers before connecting new
   ones, to prevent possible false address collisions.
+* Reduce object allocations and copies within the replication subsystem.
 
 v1.4.4 (2018-06-30)
 ------
