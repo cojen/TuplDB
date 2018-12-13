@@ -58,7 +58,8 @@ public class FileTermLogTest {
     public void setup() throws Exception {
         mBase = TestUtils.newTempBaseFile(getClass());
         mWorker = Worker.make(1, 15, TimeUnit.SECONDS, null);
-        mLog = FileTermLog.openTerm(mWorker, mBase, 0, 1, 0, 0, 0, null);
+        mCaches = new FileTermLog.Caches();
+        mLog = FileTermLog.openTerm(mCaches, mWorker, mBase, 0, 1, 0, 0, 0, null);
     }
 
     @After
@@ -76,6 +77,7 @@ public class FileTermLogTest {
 
     private File mBase;
     private Worker mWorker;
+    private FileTermLog.Caches mCaches;
     private TermLog mLog;
 
     @Test
@@ -121,7 +123,8 @@ public class FileTermLogTest {
             mLog.captureHighest(info);
             mLog.sync();
             mLog.close();
-            mLog = FileTermLog.openTerm(mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex, null);
+            mLog = FileTermLog.openTerm
+                (mCaches, mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex, null);
         }
 
         rnd = new Random(seed);
@@ -210,7 +213,7 @@ public class FileTermLogTest {
         final long term = 1;
         final long startIndex = 1000;
         mLog = FileTermLog.openTerm
-            (mWorker, mBase, prevTerm, term, startIndex, startIndex, startIndex, null);
+            (mCaches, mWorker, mBase, prevTerm, term, startIndex, startIndex, startIndex, null);
 
         final byte[] buf = new byte[1000];
         Random rnd = new Random(62723);
@@ -273,7 +276,7 @@ public class FileTermLogTest {
         } else {
             try {
                 FileTermLog.openTerm
-                    (mWorker, mBase, -1, term, -1, startIndex, info.mHighestIndex, null);
+                    (mCaches, mWorker, mBase, -1, term, -1, startIndex, info.mHighestIndex, null);
                 fail();
             } catch (Exception e) {
                 assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
@@ -287,14 +290,15 @@ public class FileTermLogTest {
 
         try {
             mLog = FileTermLog.openTerm
-                (mWorker, mBase, 12, term, startWith, startIndex, info.mHighestIndex, null);
+                (mCaches, mWorker, mBase, 12, term, startWith, startIndex,
+                 info.mHighestIndex, null);
             fail();
         } catch (IllegalStateException e) {
             // Mismatched previous term.
         }
 
         mLog = FileTermLog.openTerm
-            (mWorker, mBase, -1, term, startWith, startIndex, info.mHighestIndex, null);
+            (mCaches, mWorker, mBase, -1, term, startWith, startIndex, info.mHighestIndex, null);
 
         if (low != null) {
             assertTrue(!low.exists());
@@ -338,7 +342,8 @@ public class FileTermLogTest {
 
         try {
             FileTermLog.openTerm
-                (mWorker, mBase, prevTerm, term, startWith, startIndex, info.mHighestIndex, null);
+                (mCaches, mWorker, mBase, prevTerm, term, startWith, startIndex,
+                 info.mHighestIndex, null);
             fail();
         } catch (Exception e) {
             String msg = e.getMessage();

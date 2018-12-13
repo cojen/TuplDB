@@ -101,6 +101,7 @@ final class FileStateLog extends Latch implements StateLog {
 
     private final File mBase;
     private final Worker mWorker;
+    private final FileTermLog.Caches mCaches;
 
     // Terms are keyed only by their start index.
     private final ConcurrentSkipListSet<LKey<TermLog>> mTermLogs;
@@ -271,11 +272,13 @@ final class FileStateLog extends Latch implements StateLog {
             }
         }
 
+        mCaches = new FileTermLog.Caches();
+
         long prevTerm = -1;
         for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
             long term = e.getKey();
             TermLog termLog = FileTermLog.openTerm
-                (mWorker, mBase, prevTerm, term, -1, 0, highestIndex, e.getValue());
+                (mCaches, mWorker, mBase, prevTerm, term, -1, 0, highestIndex, e.getValue());
             mTermLogs.add(termLog);
             prevTerm = term;
         }
@@ -306,8 +309,9 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (mTermLogs.isEmpty()) {
             // Create a primordial term.
-            mTermLogs.add(FileTermLog.newTerm(mWorker, mBase, highestPrevTerm, highestTerm,
-                                              highestIndex, durableIndex));
+            mTermLogs.add(FileTermLog.newTerm
+                          (mCaches, mWorker, mBase, highestPrevTerm, highestTerm,
+                           highestIndex, durableIndex));
         }
 
         if (durableIndex > 0) {
@@ -566,7 +570,8 @@ final class FileStateLog extends Latch implements StateLog {
                 compact(Long.MAX_VALUE);
 
                 // Create a new primordial term.
-                highestLog = FileTermLog.newTerm(mWorker, mBase, prevTerm, term, index, index);
+                highestLog = FileTermLog.newTerm(mCaches, mWorker, mBase, prevTerm, term,
+                                                 index, index);
                 mTermLogs.add(highestLog);
             } finally {
                 releaseExclusive();
@@ -725,7 +730,8 @@ final class FileStateLog extends Latch implements StateLog {
                 mTermLogs.removeAll(toDelete);
 
                 final TermLog newTermLog = FileTermLog.newTerm
-                    (mWorker, mBase, prevTerm, term, index, termLog.potentialCommitIndex());
+                    (mCaches, mWorker, mBase, prevTerm, term,
+                     index, termLog.potentialCommitIndex());
                 mTermLogs.add(newTermLog);
 
                 mHighestTermLog = fixTermRef(mHighestTermLog);

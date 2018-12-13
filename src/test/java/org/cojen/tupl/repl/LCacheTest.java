@@ -32,37 +32,37 @@ public class LCacheTest {
 
     @Test
     public void singleton() {
-        LCache<TestEntry> cache = new LCache<>(1);
+        LCache<TestEntry, Object> cache = new LCache<>(1);
 
         TestEntry e1 = new TestEntry(1, 1);
         TestEntry e2 = new TestEntry(2, 2);
 
-        assertNull(cache.remove(1));
+        assertNull(cache.remove(1, this));
         assertNull(cache.add(e1));
-        assertNull(cache.remove(2));
-        assertTrue(e1 == cache.remove(1));
-        assertNull(cache.remove(1));
+        assertNull(cache.remove(2, this));
+        assertTrue(e1 == cache.remove(1, this));
+        assertNull(cache.remove(1, this));
 
         assertNull(cache.add(e1));
         assertTrue(e1 == cache.add(e2));
-        assertNull(cache.remove(1));
-        assertTrue(e2 == cache.remove(2));
-        assertNull(cache.remove(2));
+        assertNull(cache.remove(1, this));
+        assertTrue(e2 == cache.remove(2, this));
+        assertNull(cache.remove(2, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e1));
-        assertTrue(e1 == cache.remove(1));
+        assertTrue(e1 == cache.remove(1, this));
 
         TestEntry alt1 = new TestEntry(1, 1);
         assertNull(cache.add(e1));
         assertTrue(alt1 == cache.add(alt1));
         assertNull(cache.add(e1));
-        assertTrue(e1 == cache.remove(1));
+        assertTrue(e1 == cache.remove(1, this));
     }
 
     @Test
     public void evictLRU() {
-        LCache<TestEntry> cache = new LCache<>(3);
+        LCache<TestEntry, Object> cache = new LCache<>(3);
 
         TestEntry e1 = new TestEntry(1, 1);
         TestEntry e2 = new TestEntry(2, 2);
@@ -73,46 +73,61 @@ public class LCacheTest {
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
         assertTrue(e1 == cache.add(e4));
-        assertNull(cache.remove(1));
-        assertTrue(e2 == cache.remove(2));
-        assertTrue(e3 == cache.remove(3));
-        assertTrue(e4 == cache.remove(4));
+        assertNull(cache.remove(1, this));
+        assertTrue(e2 == cache.remove(2, this));
+        assertTrue(e3 == cache.remove(3, this));
+        assertTrue(e4 == cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e1 == cache.remove(1));
+        assertTrue(e1 == cache.remove(1, this));
         assertNull(cache.add(e4));
         assertTrue(e2 == cache.add(e1));
-        assertTrue(e1 == cache.remove(1));
-        assertNull(cache.remove(2));
-        assertTrue(e3 == cache.remove(3));
-        assertTrue(e4 == cache.remove(4));
+        assertTrue(e1 == cache.remove(1, this));
+        assertNull(cache.remove(2, this));
+        assertTrue(e3 == cache.remove(3, this));
+        assertTrue(e4 == cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e2 == cache.remove(2));
+        assertTrue(e2 == cache.remove(2, this));
         assertNull(cache.add(e4));
         assertTrue(e1 == cache.add(e2));
-        assertNull(cache.remove(1));
-        assertTrue(e2 == cache.remove(2));
-        assertTrue(e3 == cache.remove(3));
-        assertTrue(e4 == cache.remove(4));
+        assertNull(cache.remove(1, this));
+        assertTrue(e2 == cache.remove(2, this));
+        assertTrue(e3 == cache.remove(3, this));
+        assertTrue(e4 == cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e3 == cache.remove(3));
+        assertTrue(e3 == cache.remove(3, this));
         assertNull(cache.add(e4));
         assertTrue(e1 == cache.add(e3));
-        assertNull(cache.remove(1));
-        assertTrue(e2 == cache.remove(2));
-        assertTrue(e3 == cache.remove(3));
-        assertTrue(e4 == cache.remove(4));
+        assertNull(cache.remove(1, this));
+        assertTrue(e2 == cache.remove(2, this));
+        assertTrue(e3 == cache.remove(3, this));
+        assertTrue(e4 == cache.remove(4, this));
     }
 
-    static class TestEntry implements LCache.Entry<TestEntry> {
+    @Test
+    public void cacheCheck() {
+        LCache<TestEntry, Object> cache = new LCache<>(3);
+
+        TestEntry e1 = new TestEntry(1, 1);
+        TestEntry e2 = new TestEntry(2, 2);
+
+        assertNull(cache.add(e1));
+        assertNull(cache.add(e2));
+
+        assertNull(cache.remove(1, "foo"));
+        assertTrue(e2 == cache.remove(2, this));
+        assertTrue(e1 == cache.remove(1, this));
+    }
+
+    static class TestEntry implements LCache.Entry<TestEntry, Object> {
         final long mKey;
         final Object mData;
 
@@ -126,6 +141,11 @@ public class LCacheTest {
         @Override
         public long cacheKey() {
             return mKey;
+        }
+
+        @Override
+        public boolean cacheCheck(Object check) {
+            return check instanceof LCacheTest;
         }
 
         @Override

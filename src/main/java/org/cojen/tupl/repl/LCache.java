@@ -22,7 +22,7 @@ package org.cojen.tupl.repl;
  *
  * @author Brian S O'Neill
  */
-final class LCache<E extends LCache.Entry<E>> {
+final class LCache<E extends LCache.Entry<E, C>, C> {
     // TODO: stripe for concurrency
 
     // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
@@ -48,16 +48,17 @@ final class LCache<E extends LCache.Entry<E>> {
     }
 
     /**
+     * @param check passed to cacheCheck method
      * @return null if none found
      */
-    public E remove(long key) {
+    public E remove(long key, C check) {
         final E[] entries = mEntries;
         final int slot = hash(key) & (entries.length - 1);
 
         synchronized (entries) {
             for (E entry = entries[slot], prev = null; entry != null; ) {
                 E next = entry.cacheNext();
-                if (entry.cacheKey() != key) {
+                if (entry.cacheKey() != key || !entry.cacheCheck(check)) {
                     prev = entry;
                     entry = next;
                     continue;
@@ -172,8 +173,13 @@ final class LCache<E extends LCache.Entry<E>> {
         return Long.hashCode(v * HASH_SPREAD);
     }
 
-    static interface Entry<E extends Entry<E>> {
+    static interface Entry<E extends Entry<E, C>, C> {
         long cacheKey();
+
+        /**
+         * @return true if entry is the right kind of object
+         */
+        boolean cacheCheck(C check);
 
         E cacheNext();
 

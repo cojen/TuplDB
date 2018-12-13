@@ -56,10 +56,6 @@ import org.cojen.tupl.util.Worker;
  * @author Brian S O'Neill
  */
 final class FileTermLog extends Latch implements TermLog {
-    private static final int MAX_CACHED_SEGMENTS = 10;
-    private static final int MAX_CACHED_WRITERS = 10;
-    private static final int MAX_CACHED_READERS = 10;
-
     private static final int EOF = -1;
     private static final int WAIT_TERM_END = EOF;
     private static final int WAIT_TIMEOUT = -2;
@@ -93,9 +89,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final PriorityQueue<SegmentWriter> mNonContigWriters;
 
-    private final LCache<Segment> mSegmentCache;
-    private final LCache<SegmentWriter> mWriterCache;
-    private final LCache<SegmentReader> mReaderCache;
+    private final Caches mCaches;
 
     private final PriorityQueue<Delayed> mCommitTasks;
 
@@ -106,16 +100,22 @@ final class FileTermLog extends Latch implements TermLog {
 
     private boolean mLogClosed;
 
+    static class Caches {
+        final LCache<Segment, FileTermLog> mSegments = new LCache<>(10);
+        final LCache<SegmentWriter, FileTermLog> mWriters = new LCache<>(10);
+        final LCache<SegmentReader, FileTermLog> mReaders = new LCache<>(10);
+    }
+
     /**
      * Create a new term.
      */
-    static TermLog newTerm(Worker worker, File base, long prevTerm, long term,
+    static TermLog newTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                            long startIndex, long commitIndex)
     {
         base = checkBase(base);
 
         FileTermLog termLog = new FileTermLog
-            (worker, base, prevTerm, term, startIndex, commitIndex, startIndex, null);
+            (caches, worker, base, prevTerm, term, startIndex, commitIndex, startIndex, null);
 
         return termLog;
     }
@@ -127,7 +127,7 @@ final class FileTermLog extends Latch implements TermLog {
      * @param startIndex pass -1 to discover the start index
      * @param segmentFileNames pass null to discover segment files
      */
-    static TermLog openTerm(Worker worker, File base, long prevTerm, long term,
+    static TermLog openTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                             long startIndex, long commitIndex, long highestIndex,
                             List<String> segmentFileNames)
     {
@@ -150,7 +150,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         FileTermLog termLog = new FileTermLog
-            (worker, base, prevTerm, term,
+            (caches, worker, base, prevTerm, term,
              startIndex, commitIndex, highestIndex, segmentFileNames);
 
         return termLog;
@@ -175,7 +175,7 @@ final class FileTermLog extends Latch implements TermLog {
      * @param startIndex pass -1 to discover the start index
      * @param segmentFileNames pass null when creating a term
      */
-    private FileTermLog(Worker worker, File base, long prevTerm, long term,
+    private FileTermLog(Caches caches, Worker worker, File base, long prevTerm, long term,
                         long startIndex, final long commitIndex, final long highestIndex,
                         List<String> segmentFileNames)
     {
@@ -307,9 +307,7 @@ final class FileTermLog extends Latch implements TermLog {
             return true;
         });
 
-        mSegmentCache = new LCache<>(MAX_CACHED_SEGMENTS);
-        mWriterCache = new LCache<>(MAX_CACHED_WRITERS);
-        mReaderCache = new LCache<>(MAX_CACHED_READERS);
+        mCaches = caches;
 
         mSyncLatch = new Latch();
         mDirtyLatch = new Latch();
@@ -400,7 +398,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             it.remove();
 
-            mSegmentCache.remove(seg.cacheKey());
+            mCaches.mSegments.remove(seg.cacheKey(), this);
         }
 
         return full && mSegments.isEmpty();
@@ -737,7 +735,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public LogWriter openWriter(long startIndex) {
-        SegmentWriter writer = mWriterCache.remove(startIndex);
+        SegmentWriter writer = mCaches.mWriters.remove(startIndex, this);
 
         if (writer == null) {
             writer = new SegmentWriter();
@@ -767,7 +765,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public LogReader openReader(long startIndex) {
-        SegmentReader reader = mReaderCache.remove(startIndex);
+        SegmentReader reader = mCaches.mReaders.remove(startIndex, this);
 
         if (reader == null) {
             acquireShared();
@@ -926,7 +924,7 @@ final class FileTermLog extends Latch implements TermLog {
             Segment startSegment = (Segment) mSegments.floor(key); // findLe
 
             if (startSegment != null && index < startSegment.endIndex()) {
-                mSegmentCache.remove(startSegment.cacheKey());
+                mCaches.mSegments.remove(startSegment.cacheKey(), this);
                 cRefCountHandle.getAndAdd(startSegment, 1);
                 return startSegment;
             }
@@ -1108,7 +1106,7 @@ final class FileTermLog extends Latch implements TermLog {
                 writer.close();
                 return;
             }
-            writer = mWriterCache.add(writer);
+            writer = mCaches.mWriters.add(writer);
         }
 
         if (writer != null) {
@@ -1122,7 +1120,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     void release(SegmentReader reader, boolean recycle) {
         if (recycle) {
-            reader = mReaderCache.add(reader);
+            reader = mCaches.mReaders.add(reader);
         }
 
         if (reader != null) {
@@ -1141,7 +1139,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         // Unmap the segment and close the least recently used.
 
-        Segment toClose = mSegmentCache.add(segment);
+        Segment toClose = mCaches.mSegments.add(segment);
 
         Worker.Task task = new Worker.Task() {
             @Override
@@ -1198,7 +1196,7 @@ final class FileTermLog extends Latch implements TermLog {
 
                 if (((int) cRefCountHandle.getAndAdd(segment, -1)) <= 0) {
                     try {
-                        doUnreferenced(segment, mSegmentCache.add(segment));
+                        doUnreferenced(segment, mCaches.mSegments.add(segment));
                     } catch (IOException e) {
                         uncaught(e);
                     }
@@ -1235,7 +1233,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     final class SegmentWriter extends LogWriter
-        implements LKey<SegmentWriter>, LCache.Entry<SegmentWriter>
+        implements LKey<SegmentWriter>, LCache.Entry<SegmentWriter, FileTermLog>
     {
         long mWriterVersion;
         long mWriterPrevTerm;
@@ -1361,6 +1359,11 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
+        public boolean cacheCheck(FileTermLog check) {
+            return check == FileTermLog.this;
+        }
+
+        @Override
         public SegmentWriter cacheNext() {
             return mCacheNext;
         }
@@ -1411,7 +1414,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    final class SegmentReader implements LogReader, LCache.Entry<SegmentReader> {
+    final class SegmentReader implements LogReader, LCache.Entry<SegmentReader, FileTermLog> {
         private long mReaderPrevTerm;
         long mReaderIndex;
         private long mReaderCommitIndex;
@@ -1592,6 +1595,11 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
+        public boolean cacheCheck(FileTermLog check) {
+            return check == FileTermLog.this;
+        }
+
+        @Override
         public SegmentReader cacheNext() {
             return mCacheNext;
         }
@@ -1644,7 +1652,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment> {
+    final class Segment extends Latch implements LKey<Segment>, LCache.Entry<Segment, FileTermLog> {
         private static final int OPEN_HANDLE_COUNT = 8;
 
         final long mStartIndex;
@@ -1982,6 +1990,11 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         public long cacheKey() {
             return key();
+        }
+
+        @Override
+        public boolean cacheCheck(FileTermLog check) {
+            return check == FileTermLog.this;
         }
 
         @Override
