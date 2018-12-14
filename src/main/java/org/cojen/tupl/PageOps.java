@@ -40,9 +40,8 @@ final class PageOps {
      *
      * References: 1 field per Node instance
      * Node class: 18 fields (mId is counted twice)
-     * Latch class: 0 fields
-     * AbstractQueuedSynchronizer class: 3 fields
-     * AbstractOwnableSynchronizer class: 1 field
+     * Clutch class: 1 field
+     * Latch class: 3 fields
      * Object class: Minimum 8 byte overhead
      * Total: (23 * 4 + 8) = 100
      */
