@@ -124,6 +124,7 @@ final class RedoLog extends RedoWriter {
         releaseExclusive();
 
         if (context != null) {
+            mNextLogId = -1;
             openNextFile(logId);
             applyNextFile(context);
             // Log will be deleted after next checkpoint finishes.
@@ -202,6 +203,11 @@ final class RedoLog extends RedoWriter {
     }
 
     private void openNextFile(long logId) throws IOException {
+        if (mNextLogId == logId) {
+            // Already open.
+            return;
+        }
+
         byte[] header = new byte[8 + 4 + 8 + 4];
 
         final File file = fileFor(mBaseFile, logId);
