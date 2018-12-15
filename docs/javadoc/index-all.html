@@ -567,6 +567,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the current term commit index, which might be lower than the start index.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#commitLock()">commitLock()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Returns the checkpoint commit lock, which can be held to prevent checkpoints from
+ capturing a safe commit point.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#compact(long)">compact(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
 <div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>

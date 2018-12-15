@@ -33,6 +33,7 @@ v1.4.5
 * When refreshing the replication peer set, must disconnect old peers before connecting new
   ones, to prevent possible false address collisions.
 * Reduce object allocations and copies within the replication subsystem.
+* Provide public access to the commit lock.
 
 v1.4.4 (2018-06-30)
 ------

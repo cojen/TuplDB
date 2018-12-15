@@ -24,6 +24,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.locks.Lock;
 
 import java.nio.charset.StandardCharsets;
 
@@ -531,6 +532,18 @@ public interface Database extends CauseCloseable, Flushable {
      * @throws IllegalStateException if resumed more than suspended
      */
     public abstract void resumeCheckpoints();
+
+    /**
+     * Returns the checkpoint commit lock, which can be held to prevent checkpoints from
+     * capturing a safe commit point. By holding the commit lock, multiple modifications can be
+     * made to the database atomically, even without using a transaction.
+     *
+     * <p>The commit lock should only ever be held briefly, because it prevents checkpoints
+     * from starting. Holding the commit lock can stall other threads trying to make
+     * modifications, if a checkpoint is trying to start. In addition, a thread holding the
+     * commit lock must not attempt to issue a checkpoint, because deadlock is possible.
+     */
+    public abstract Lock commitLock();
 
     /**
      * Compacts the database by shrinking the database file. The compaction target is the
