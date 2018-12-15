@@ -328,9 +328,6 @@ public class EnduranceTest {
             try {
                 for (c.first(); c.key() != null; c.next()) {
                 }
-            } catch (Exception e) {
-                e.printStackTrace(System.out);
-                System.exit(1);
             } finally {
                 c.reset();
             }
@@ -345,9 +342,6 @@ public class EnduranceTest {
             try {
                 for (c.last(); c.key() != null; c.previous()) {
                 }
-            } catch (Exception e) {
-                e.printStackTrace(System.out);
-                System.exit(1);
             } finally {
                 c.reset();
             }
@@ -375,6 +369,7 @@ public class EnduranceTest {
         mIx = mDb.openIndex("test");
 
         AtomicBoolean stop = new AtomicBoolean();
+        AtomicReference<Exception> failure = new AtomicReference<>();
 
         class Task extends Thread {
             @Override
@@ -400,8 +395,7 @@ public class EnduranceTest {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace(System.out);
-                    System.exit(1);
+                    failure.set(e);
                 }
             }
         }
@@ -418,6 +412,8 @@ public class EnduranceTest {
         for (Task t : tasks) {
             t.join();
         }
+
+        assertNull(failure.get());
 
         assertEquals(0, mIx.count(null, null));
     }
