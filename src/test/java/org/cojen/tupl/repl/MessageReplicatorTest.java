@@ -36,8 +36,6 @@ import static org.cojen.tupl.repl.MessageReplicator.*;
  *
  * @author Brian S O'Neill
  */
-// High load causes spurious timeouts.
-@net.jcip.annotations.NotThreadSafe
 public class MessageReplicatorTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(MessageReplicatorTest.class.getName());
@@ -323,18 +321,6 @@ public class MessageReplicatorTest {
     public void largeGroupNoWaitToJoin() throws Exception {
         final int count = 10;
 
-        /*
-          FIXME: largeGroupNoWaitToJoin(org.cojen.tupl.repl.MessageReplicatorTest)  Time elapsed: 18.344 s  <<< ERROR!
-          org.cojen.tupl.repl.JoinException: group version mismatch
-          at org.cojen.tupl.repl.GroupJoiner.doJoin(GroupJoiner.java:269)
-          at org.cojen.tupl.repl.GroupJoiner.join(GroupJoiner.java:109)
-          at org.cojen.tupl.repl.Controller.init(Controller.java:171)
-          at org.cojen.tupl.repl.Controller.open(Controller.java:137)
-          at org.cojen.tupl.repl.StreamReplicator.open(StreamReplicator.java:113)
-          at org.cojen.tupl.repl.MessageReplicator.open(MessageReplicator.java:38)
-          at org.cojen.tupl.repl.MessageReplicatorTest.startGroup(MessageReplicatorTest.java:112)
-          at org.cojen.tupl.repl.MessageReplicatorTest.largeGroupNoWaitToJoin(MessageReplicatorTest.java:326)
-        */
         MessageReplicator[] repls = startGroup(count, Role.STANDBY, false);
 
         Writer writer = repls[0].newWriter();
