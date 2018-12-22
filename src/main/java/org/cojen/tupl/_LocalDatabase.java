@@ -1731,7 +1731,7 @@ final class _LocalDatabase extends AbstractDatabase {
             _Node root;
             if (rootId != 0) {
                 root = allocLatchedNode(rootId, _NodeGroup.MODE_UNEVICTABLE);
-                root.mId = rootId;
+                root.id(rootId);
                 try {
                     // Note: Same as redirty method, except mPage is assigned when fully mapped.
                     // The redirty method assumes that the page doesn't change.
@@ -2935,7 +2935,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 /*P*/ // |
                 if (mFullyMapped) {
                     rootNode.mPage = p_nonTreePage(); // always an empty leaf node
-                    rootNode.mId = 0;
+                    rootNode.id(0);
                     rootNode.mCachedState = CACHED_CLEAN;
                 } else {
                     rootNode.asEmptyRoot();
@@ -3424,7 +3424,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
                 mOpenTreesById.remove(ref.mId);
                 root.makeEvictableNow();
-                if (root.mId > 0) {
+                if (root.id() > 0) {
                     nodeMapPut(root);
                 }
             } finally {
@@ -3481,7 +3481,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 return null;
             }
             node.acquireShared();
-            if (nodeId == node.mId) {
+            if (nodeId == node.id()) {
                 return node;
             }
             node.releaseShared();
@@ -3499,7 +3499,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 return null;
             }
             node.acquireExclusive();
-            if (nodeId == node.mId) {
+            if (nodeId == node.id()) {
                 return node;
             }
             node.releaseExclusive();
@@ -3524,7 +3524,7 @@ final class _LocalDatabase extends AbstractDatabase {
         final _Node[] table = mNodeMapTable;
         _Node node = table[hash & (table.length - 1)];
         while (node != null) {
-            if (node.mId == nodeId) {
+            if (node.id() == nodeId) {
                 return node;
             }
             node = node.mNodeMapNext;
@@ -3538,7 +3538,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         node = table[hash & (table.length - 1)];
         while (node != null) {
-            if (node.mId == nodeId) {
+            if (node.id() == nodeId) {
                 latch.releaseShared();
                 return node;
             }
@@ -3553,7 +3553,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * Put a node into the map, but caller must confirm that node is not already present.
      */
     void nodeMapPut(final _Node node) {
-        nodeMapPut(node, Long.hashCode(node.mId));
+        nodeMapPut(node, Long.hashCode(node.id()));
     }
 
     /**
@@ -3572,7 +3572,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 latch.releaseExclusive();
                 return;
             }
-            if (e.mId == node.mId) {
+            if (e.id() == node.id()) {
                 latch.releaseExclusive();
                 throw new AssertionError("Already in NodeMap: " + node + ", " + e + ", " + hash);
             }
@@ -3592,7 +3592,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * @return null if node was inserted, existing node otherwise
      */
     _Node nodeMapPutIfAbsent(final _Node node) {
-        final int hash = Long.hashCode(node.mId);
+        final int hash = Long.hashCode(node.id());
         final Latch[] latches = mNodeMapLatches;
         final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
@@ -3601,7 +3601,7 @@ final class _LocalDatabase extends AbstractDatabase {
         final int index = hash & (table.length - 1);
         _Node e = table[index];
         while (e != null) {
-            if (e.mId == node.mId) {
+            if (e.id() == node.id()) {
                 latch.releaseExclusive();
                 return e;
             }
@@ -3619,7 +3619,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * Replace a node which must be in the map already. Old and new node MUST have the same id.
      */
     void nodeMapReplace(final _Node oldNode, final _Node newNode) {
-        final int hash = Long.hashCode(oldNode.mId);
+        final int hash = Long.hashCode(oldNode.id());
         final Latch[] latches = mNodeMapLatches;
         final Latch latch = latches[hash & (latches.length - 1)];
         latch.acquireExclusive();
@@ -3646,7 +3646,7 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     boolean nodeMapRemove(final _Node node) {
-        return nodeMapRemove(node, Long.hashCode(node.mId));
+        return nodeMapRemove(node, Long.hashCode(node.id()));
     }
 
     boolean nodeMapRemove(final _Node node, final int hash) {
@@ -3693,7 +3693,7 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         node = allocLatchedNode(nodeId);
-        node.mId = nodeId;
+        node.id(nodeId);
 
         // node is currently exclusively locked. Insert it into the node map so that no other
         // thread tries to read it at the same time. If another thread sees it at this point
@@ -3707,14 +3707,14 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Was already loaded, or is currently being loaded.
             existing.acquireShared();
-            if (nodeId == existing.mId) {
+            if (nodeId == existing.id()) {
                 // The item is already loaded. Throw away the node this thread was trying to
                 // allocate.
                 //
                 // Even though node is not currently in the node map, it could have been in
                 // there then got recycled. Other thread may still have a reference to it from
                 // when it was in the node map. So its id needs to be invalidated.
-                node.mId = 0;
+                node.id(0);
                 // This releases the exclusive latch and makes the node immediately usable for
                 // new allocations.
                 node.unused();
@@ -3732,7 +3732,7 @@ final class _LocalDatabase extends AbstractDatabase {
             // Something went wrong reading the node. Remove the node from the map, now that
             // it definitely won't get read.
             nodeMapRemove(node);
-            node.mId = 0;
+            node.id(0);
             node.releaseExclusive();
             throw t;
         }
@@ -3760,7 +3760,7 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         node = allocLatchedNode(nodeId);
-        node.mId = nodeId;
+        node.id(nodeId);
 
         while (true) {
             _Node existing = nodeMapPutIfAbsent(node);
@@ -3768,8 +3768,8 @@ final class _LocalDatabase extends AbstractDatabase {
                 break;
             }
             existing.acquireExclusive();
-            if (nodeId == existing.mId) {
-                node.mId = 0;
+            if (nodeId == existing.id()) {
+                node.id(0);
                 node.unused();
                 return existing;
             }
@@ -3785,7 +3785,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
         } catch (Throwable t) {
             nodeMapRemove(node);
-            node.mId = 0;
+            node.id(0);
             node.releaseExclusive();
             throw t;
         }
@@ -3880,7 +3880,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 evictChild: if (childNode.mCachedState != _Node.CACHED_CLEAN
                                 && parent.mCachedState == _Node.CACHED_CLEAN
                                 // Must be a valid parent -- not a stub from _Node.rootDelete.
-                                && parent.mId > 1)
+                                && parent.id() > 1)
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
@@ -3961,7 +3961,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 } else if (!childNode.tryAcquireExclusive()) {
                     return null;
                 }
-                if (childId == childNode.mId) {
+                if (childId == childNode.id()) {
                     break;
                 }
                 childNode.releaseExclusive();
@@ -3974,7 +3974,7 @@ final class _LocalDatabase extends AbstractDatabase {
         if (childNode.mCachedState != _Node.CACHED_CLEAN
             && parent.mCachedState == _Node.CACHED_CLEAN
             // Must be a valid parent -- not a stub from _Node.rootDelete.
-            && parent.mId > 1)
+            && parent.id() > 1)
         {
             // Parent was evicted before child. Evict child now and mark as clean. If
             // this isn't done, the notSplitDirty method will short-circuit and not
@@ -4074,7 +4074,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         /*P*/ // [|
         if (mFullyMapped) {
-            node.mPage = mPageDb.dirtyPage(node.mId);
+            node.mPage = mPageDb.dirtyPage(node.id());
         }
         /*P*/ // ]
 
@@ -4099,14 +4099,14 @@ final class _LocalDatabase extends AbstractDatabase {
      * Caller must hold commit lock and any latch on node.
      */
     boolean isMutable(_Node node) {
-        return node.mCachedState == mCommitState && node.mId > 1;
+        return node.mCachedState == mCommitState && node.id() > 1;
     }
 
     /**
      * Caller must hold commit lock and any latch on node.
      */
     boolean shouldMarkDirty(_Node node) {
-        return node.mCachedState != mCommitState && node.mId >= 0;
+        return node.mCachedState != mCommitState && node.id() >= 0;
     }
 
     /**
@@ -4117,7 +4117,7 @@ final class _LocalDatabase extends AbstractDatabase {
      * @return true if just made dirty and id changed
      */
     boolean markDirty(_Tree tree, _Node node) throws IOException {
-        if (node.mCachedState == mCommitState || node.mId < 0) {
+        if (node.mCachedState == mCommitState || node.id() < 0) {
             return false;
         } else {
             doMarkDirty(tree, node);
@@ -4141,7 +4141,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             long newId = mPageDb.allocPage();
-            long oldId = node.mId;
+            long oldId = node.id();
 
             if (oldId != 0) {
                 // Must be removed from map before page is deleted. It could be recycled too
@@ -4188,7 +4188,7 @@ final class _LocalDatabase extends AbstractDatabase {
             node.write(mPageDb);
 
             long newId = mPageDb.allocPage();
-            long oldId = node.mId;
+            long oldId = node.id();
 
             try {
                 // No need to force delete when dirtying. Caller is responsible for cleaning up.
@@ -4219,7 +4219,7 @@ final class _LocalDatabase extends AbstractDatabase {
         }
 
         long newId = mPageDb.allocPage();
-        long oldId = node.mId;
+        long oldId = node.id();
 
         try {
             if (node == tree.mRoot) {
@@ -4291,12 +4291,12 @@ final class _LocalDatabase extends AbstractDatabase {
                 node.mPage = mPageDb.dirtyPage(newId);
                 node.asEmptyRoot();
             } else if (node.mPage != p_closedTreePage()) {
-                node.mPage = mPageDb.copyPage(node.mId, newId); // copy on write
+                node.mPage = mPageDb.copyPage(node.id(), newId); // copy on write
             }
         }
         /*P*/ // ]
 
-        node.mId = newId;
+        node.id(newId);
         node.mGroup.addDirty(node, mCommitState);
     }
 
@@ -4316,7 +4316,7 @@ final class _LocalDatabase extends AbstractDatabase {
     void redirty(_Node node) throws IOException {
         /*P*/ // [|
         if (mFullyMapped) {
-            mPageDb.dirtyPage(node.mId);
+            mPageDb.dirtyPage(node.id());
         }
         /*P*/ // ]
         node.mGroup.addDirty(node, mCommitState);
@@ -4373,7 +4373,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     void finishDeleteNode(_Node node, boolean canRecycle) throws IOException {
         try {
-            long id = node.mId;
+            long id = node.id();
 
             if (id != 0) {
                 // Must be removed from map before page is deleted. It could be recycled too
@@ -4404,7 +4404,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 // When id is <= 1, it won't be moved to a secondary cache. Preserve the
                 // original id for non-durable database to recycle it. Durable database relies
                 // on the free list.
-                node.mId = -id;
+                node.id(-id);
             }
 
             // When node is re-allocated, it will be evicted. Ensure that eviction
@@ -4517,7 +4517,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         while (true) {
                             _Node node = allocDirtyFragmentNode();
                             try {
-                                encodeInt48LE(newValue, poffset, node.mId);
+                                encodeInt48LE(newValue, poffset, node.id());
                                 p_copyFromArray(value, voffset, node.mPage, 0, pageSize);
                                 if (pageCount == 1) {
                                     break;
@@ -4590,7 +4590,7 @@ final class _LocalDatabase extends AbstractDatabase {
                             while (true) {
                                 _Node node = allocDirtyFragmentNode();
                                 try {
-                                    encodeInt48LE(newValue, poffset, node.mId);
+                                    encodeInt48LE(newValue, poffset, node.id());
                                     long page = node.mPage;
                                     if (pageCount > 1) {
                                         p_copyFromArray(value, voffset, page, 0, pageSize);
@@ -4636,7 +4636,7 @@ final class _LocalDatabase extends AbstractDatabase {
                     int levels = calculateInodeLevels(vlength);
                     _Node inode = allocDirtyFragmentNode();
                     try {
-                        encodeInt48LE(newValue, offset, inode.mId);
+                        encodeInt48LE(newValue, offset, inode.id());
                         writeMultilevelFragments(levels, inode, value, 0, vlength);
                         inode.releaseExclusive();
                     } catch (DatabaseException e) {
@@ -4722,7 +4722,7 @@ final class _LocalDatabase extends AbstractDatabase {
         try {
             for (int i=0; i<childNodeCount; i++) {
                 _Node childNode = allocDirtyFragmentNode();
-                p_int48PutLE(page, poffset, childNode.mId);
+                p_int48PutLE(page, poffset, childNode.id());
                 poffset += 6;
 
                 int len = (int) Math.min(levelCap, vlength);
@@ -5170,7 +5170,7 @@ final class _LocalDatabase extends AbstractDatabase {
         }
         /*P*/ // ]
 
-        node.mId = id;
+        node.id(id);
 
         // NOTE: If initial state is clean, an optimization is possible, but it's a bit
         // tricky. Too many pages are allocated when evictions are high, write rate is high,
@@ -5313,7 +5313,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
 
                 if (!resume) {
-                    p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.mId);
+                    p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.id());
                 }
 
                 final long redoNum, redoPos, redoTxnId;

@@ -354,7 +354,7 @@ final class _DurablePageDb extends _PageDb {
         long nodeId = allocPage();
         try {
             _Node node = db.allocLatchedNode(nodeId, mode);
-            node.mId = nodeId;
+            node.id(nodeId);
             return node;
         } catch (Throwable e) {
             try {

@@ -904,7 +904,7 @@ class _Tree implements View, Index {
             _Node newRoot = root.cloneNode();
             mDatabase.swapIfDirty(root, newRoot);
 
-            if (root.mId > 0) {
+            if (root.id() > 0) {
                 mDatabase.nodeMapRemove(root);
             }
 
@@ -919,7 +919,7 @@ class _Tree implements View, Index {
             try {
                 mDatabase.treeClosed(this);
                 newRoot.makeEvictableNow();
-                if (newRoot.mId > 0) {
+                if (newRoot.id() > 0) {
                     mDatabase.nodeMapPut(newRoot);
                 }
             } finally {

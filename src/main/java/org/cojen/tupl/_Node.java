@@ -19,6 +19,9 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.util.Clutch;
@@ -79,6 +82,16 @@ final class _Node extends Clutch implements _DatabaseAccess {
     private static final int CLOSED_ID = -1;
 
     static final int ENTRY_FRAGMENTED = 0x40;
+
+    static final VarHandle cIdHandle;
+
+    static {
+        try {
+            cIdHandle = MethodHandles.lookup().findVarHandle(_Node.class, "mId", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     // Group this node belongs to, for tracking dirty nodes and most recently used nodes.
     final _NodeGroup mGroup;
@@ -243,14 +256,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     // Raw contents of node.
     long mPage;
 
-    // Id is often read without acquiring latch, although in most cases, it
-    // doesn't need to be volatile. This is because a double check with the
-    // latch held is always performed. So-called double-checked locking doesn't
-    // work with object initialization, but it's fine with primitive types.
-    // When nodes are evicted, the write operation must complete before the id
-    // is re-assigned. For this reason, the id is volatile. A memory barrier
-    // between the write and re-assignment should work too.
-    volatile long mId;
+    private long mId;
 
     byte mCachedState;
 
@@ -287,7 +293,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         // Special stub id. Page 0 and 1 are never used by nodes, and negative indicates that
         // node shouldn't be persisted.
-        mId = -1;
+        id(-1);
 
         mCachedState = CACHED_CLEAN;
 
@@ -305,7 +311,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     private _Node(long id) {
         super(EXCLUSIVE);
         mGroup = null;
-        mId = id;
+        id(id);
     }
 
     /**
@@ -350,7 +356,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     void asEmptyRoot() {
-        mId = 0;
+        id(0);
         mCachedState = CACHED_CLEAN;
         type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
         clearEntries();
@@ -388,7 +394,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      */
     void closeRoot() {
         // Prevent node from being marked dirty.
-        mId = CLOSED_ID;
+        id(CLOSED_ID);
         mCachedState = CACHED_CLEAN;
         mPage = p_closedTreePage();
         readFields();
@@ -396,7 +402,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     _Node cloneNode() {
         _Node newNode = new _Node(mGroup, mPage);
-        newNode.mId = mId;
+        newNode.id(id());
         newNode.mCachedState = mCachedState;
         /*P*/ // [
         // newNode.type(type());
@@ -500,13 +506,13 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 // Was already loaded, or is currently being loaded.
                 if ((options & OPTION_CHILD_ACQUIRE_EXCLUSIVE) == 0) {
                     childNode.acquireShared();
-                    if (childId == childNode.mId) {
+                    if (childId == childNode.id()) {
                         return childNode;
                     }
                     childNode.releaseShared();
                 } else {
                     childNode.acquireExclusive();
-                    if (childId == childNode.mId) {
+                    if (childId == childNode.id()) {
                         return childNode;
                     }
                     childNode.releaseExclusive();
@@ -525,7 +531,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             _Node childNode;
             try {
                 childNode = db.allocLatchedNode(childId);
-                childNode.mId = childId;
+                childNode.id(childId);
             } catch (Throwable e) {
                 db.nodeMapRemove(lock);
                 throw e;
@@ -541,7 +547,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 // Another thread might access child and see that it's invalid because the id
                 // is zero. It will assume it got evicted and will attempt to reload it
                 db.nodeMapRemove(childNode);
-                childNode.mId = 0;
+                childNode.id(0);
                 childNode.type(TYPE_NONE);
                 childNode.releaseExclusive();
                 throw e;
@@ -562,7 +568,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             // Wake any threads waiting on the lock now that the real child node is ready, or
             // if the load failed. _Lock id must be set to zero to ensure that it's not accepted
             // as the child node.
-            lock.mId = 0;
+            lock.id(0);
             lock.releaseExclusive();
         }
     }
@@ -585,7 +591,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     return null;
                 }
                 // Need to check again in case evict snuck in.
-                if (childId == childNode.mId) {
+                if (childId == childNode.id()) {
                     break latchChild;
                 }
                 childNode.releaseExclusive();
@@ -663,8 +669,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
         final int searchVecStart = pageSize(newRootPage) -
             (((pageSize(newRootPage) - leftSegTail + (2 + 8 + 8)) >> 1) & ~1);
         p_shortPutLE(newRootPage, searchVecStart, TN_HEADER_SIZE);
-        p_longPutLE(newRootPage, searchVecStart + 2, left.mId);
-        p_longPutLE(newRootPage, searchVecStart + 2 + 8, right.mId);
+        p_longPutLE(newRootPage, searchVecStart + 2, left.id());
+        p_longPutLE(newRootPage, searchVecStart + 2 + 8, right.id());
 
         byte newType = isLeaf() ? (byte) (TYPE_TN_BIN | LOW_EXTREMITY | HIGH_EXTREMITY)
             : (byte) (TYPE_TN_IN | LOW_EXTREMITY | HIGH_EXTREMITY);
@@ -749,13 +755,13 @@ final class _Node extends Clutch implements _DatabaseAccess {
             /*P*/ // ]
             type &= ~(LOW_EXTREMITY | HIGH_EXTREMITY);
             if (type >= 0 && type != TYPE_TN_IN && type != TYPE_TN_BIN) {
-                throw new IllegalStateException("Unknown node type: " + type + ", id: " + mId);
+                throw new IllegalStateException("Unknown node type: " + type + ", id: " + id());
             }
         }
 
         if (p_byteGet(page, 1) != 0) {
             throw new IllegalStateException
-                ("Illegal reserved byte in node: " + p_byteGet(page, 1) + ", id: " + mId);
+                ("Illegal reserved byte in node: " + p_byteGet(page, 1) + ", id: " + id());
         }
     }
 
@@ -765,7 +771,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     void write(_PageDb db) throws WriteFailureException {
         long page = prepareWrite();
         try {
-            db.writePage(mId, page);
+            db.writePage(id(), page);
         } catch (IOException e) {
             throw new WriteFailureException(e);
         }
@@ -833,7 +839,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         try {
             // Check if <= 0 (already evicted).
-            long id = mId;
+            long id = id();
             if (id > 0) {
                 _PageDb pageDb = db.mPageDb;
                 if (mCachedState == CACHED_CLEAN) {
@@ -849,7 +855,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 }
 
                 db.nodeMapRemove(this, Long.hashCode(id));
-                mId = 0;
+                id(0);
 
                 // Note: Don't do this. In the fully mapped mode (using MappedPageArray),
                 // setting the type will corrupt the evicted node. The caller swaps in a
@@ -915,7 +921,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     private static _Node createClosedNode() {
         _Node closed = new _Node(null, p_closedTreePage());
-        closed.mId = CLOSED_ID;
+        closed.id(CLOSED_ID);
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
         return closed;
@@ -927,6 +933,22 @@ final class _Node extends Clutch implements _DatabaseAccess {
         /*P*/ // |
         return mGroup.pageSize();
         /*P*/ // ]
+    }
+
+    /**
+     * Get the node identifier, with opaque access. The identifier is often optimistically read
+     * without acquiring latch, and then it's double checked with a latch held. Opaque access
+     * ensures safe ordered access to the identifier, helping to reduce double check retries.
+     */
+    long id() {
+        return (long) cIdHandle.getOpaque(this);
+    }
+
+    /**
+     * Set the node identifier, with opaque access.
+     */
+    void id(long id) {
+        cIdHandle.setOpaque(this, id);
     }
 
     /**
@@ -2416,7 +2438,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     {
         int result;
         // "Randomly" choose left or right node first.
-        if ((mId & 1) == 0) {
+        if ((id() & 1) == 0) {
             result = tryRebalanceLeafLeft(tree, parentFrame, pos, insertLen, minAmount);
             if (result <= 0) {
                 result = tryRebalanceLeafRight(tree, parentFrame, pos, insertLen, minAmount);
@@ -2547,7 +2569,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         try {
             if (tree.mDatabase.markDirty(tree, left)) {
-                parent.updateChildRefId(childPos - 2, left.mId);
+                parent.updateChildRefId(childPos - 2, left.id());
             }
         } catch (IOException e) {
             left.releaseExclusive();
@@ -2738,7 +2760,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         try {
             if (tree.mDatabase.markDirty(tree, right)) {
-                parent.updateChildRefId(childPos + 2, right.mId);
+                parent.updateChildRefId(childPos + 2, right.id());
             }
         } catch (IOException e) {
             right.releaseExclusive();
@@ -2891,7 +2913,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         }
 
         // Write new child id.
-        p_longPutLE(result.mPage, result.mNewChildLoc, newChild.mId);
+        p_longPutLE(result.mPage, result.mNewChildLoc, newChild.id());
 
         int entryLoc = result.mEntryLoc;
         if (entryLoc < 0) {
@@ -3006,7 +3028,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                         }
                         
                         // "Randomly" choose left or right node first.
-                        if ((mId & 1) == 0) {
+                        if ((id() & 1) == 0) {
                             int adjust = tryRebalanceInternalLeft
                                 (tree, parentFrame, keyPos, -remaining);
                             if (adjust == 0) {
@@ -3216,7 +3238,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         try {
             if (tree.mDatabase.markDirty(tree, left)) {
-                parent.updateChildRefId(childPos - 2, left.mId);
+                parent.updateChildRefId(childPos - 2, left.id());
             }
         } catch (IOException e) {
             left.releaseExclusive();
@@ -3404,7 +3426,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         try {
             if (tree.mDatabase.markDirty(tree, right)) {
-                parent.updateChildRefId(childPos + 2, right.mId);
+                parent.updateChildRefId(childPos + 2, right.id());
             }
         } catch (IOException e) {
             right.releaseExclusive();
@@ -5922,7 +5944,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         switch (type()) {
         case TYPE_UNDO_LOG:
-            return "UndoNode: {id=" + mId +
+            return "UndoNode: {id=" + id() +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + garbage() +
                 ", lowerNodeId=" + + p_longGetLE(mPage, 4) +
@@ -5930,7 +5952,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 '}';
             /*P*/ // [
         // case TYPE_FRAGMENT:
-            // return "FragmentNode: {id=" + mId +
+            // return "FragmentNode: {id=" + id() +
                 // ", cachedState=" + mCachedState +
                 // ", latchState=" + super.toString() +
                 // '}';
@@ -5950,7 +5972,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             break;
         default:
             if (!isLeaf()) {
-                return "Node: {id=" + mId +
+                return "Node: {id=" + id() +
                     ", cachedState=" + mCachedState +
                     ", latchState=" + super.toString() +
                     '}';
@@ -5970,7 +5992,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             extremity[1] = 'H';
         }
 
-        return prefix + "Node: {id=" + mId +
+        return prefix + "Node: {id=" + id() +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +
@@ -6036,7 +6058,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
                 long childId = p_uint48GetLE(page, i);
-                if (mId > 1 && childId <= 1) { // stubs don't have a valid child id
+                if (id() > 1 && childId <= 1) { // stubs don't have a valid child id
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
                 LHashTable.IntEntry e = childIds.insert(childId);
@@ -6139,7 +6161,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         } else {
             used += rightSegTail() + 1 - leftSegTail();
             int garbage = pageSize(page) - used;
-            if (garbage() != garbage && mId > 1) { // exclude stubs
+            if (garbage() != garbage && id() > 1) { // exclude stubs
                 return verifyFailed(level, observer, "Garbage: " + garbage() + " != " + garbage);
             }
         }
@@ -6151,7 +6173,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int entryCount = numKeys();
         int freeBytes = availableBytes();
 
-        long id = mId;
+        long id = id();
         releaseShared();
 
         return observer.indexNodePassed(id, level, entryCount, freeBytes, largeValueCount);
@@ -6166,7 +6188,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         if (observer == null) {
             throw new CorruptDatabaseException(message);
         }
-        long id = mId;
+        long id = id();
         releaseShared();
         observer.failed = true;
         return observer.indexNodeFailed(id, level, message);

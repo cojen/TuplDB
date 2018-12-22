@@ -222,7 +222,7 @@ final class _UndoLog implements _DatabaseAccess {
         node.undoTop(mNodeTopPos);
         node.releaseExclusive();
 
-        return mNode.mId;
+        return mNode.id();
     }
 
     /**
@@ -232,7 +232,7 @@ final class _UndoLog implements _DatabaseAccess {
      * @return top node id or 0 if log is empty
      */
     long topNodeId() throws IOException {
-        return mNode == null ? 0 : mNode.mId;
+        return mNode == null ? 0 : mNode.id();
     }
 
     private int pageSize(long page) {
@@ -646,7 +646,7 @@ final class _UndoLog implements _DatabaseAccess {
 
             _Node newNode;
             try {
-                newNode = allocUnevictableNode(node.mId);
+                newNode = allocUnevictableNode(node.id());
             } catch (Throwable e) {
                 // Undo the damage.
                 while (node != mNode) {
@@ -1355,7 +1355,7 @@ final class _UndoLog implements _DatabaseAccess {
             }
             writeHeaderToMaster(workspace);
             encodeLongLE(workspace, (8 + 8), mLength);
-            encodeLongLE(workspace, (8 + 8 + 8), node.mId);
+            encodeLongLE(workspace, (8 + 8 + 8), node.id());
             encodeShortLE(workspace, (8 + 8 + 8 + 8), mNodeTopPos);
             master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
         }
@@ -1404,7 +1404,7 @@ final class _UndoLog implements _DatabaseAccess {
                      "txnId=%1$d, length=%2$d, bufferPos=%3$d, " +
                      "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$s",
                      log.mTxnId, log.mLength, log.mBufferPos,
-                     log.mNode == null ? 0 : log.mNode.mId, log.mNodeTopPos, log.mActiveIndexId);
+                     log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos, log.mActiveIndexId);
             }
 
             _LocalTransaction txn = log.recoverTransaction

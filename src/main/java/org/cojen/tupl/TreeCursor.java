@@ -2537,7 +2537,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             //
                             // - If loaded child is in cache, is a bottom internal node, and
                             // there are no more remaining on BIN, then use the node.
-                            if (childId == child.mId && child.isBottomInternal()
+                            if (childId == child.id() && child.isBottomInternal()
                                 && --remainingAttemptsBIN >= 0)
                             {
                                 // Retry another child of the same node.
@@ -4044,7 +4044,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         try {
             if (db.markDirty(mTree, next)) {
-                parentNode.updateChildRefId(0, next.mId);
+                parentNode.updateChildRefId(0, next.id());
             }
         } finally {
             parentNode.releaseExclusive();
@@ -4168,7 +4168,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         try {
             if (db.markDirty(mTree, previous)) {
-                parentNode.updateChildRefId(pos, previous.mId);
+                parentNode.updateChildRefId(pos, previous.id());
             }
         } finally {
             parentNode.releaseExclusive();
@@ -4798,7 +4798,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                 node = frame.mNode;
                                 node.downgrade();
 
-                                if (node.mId > highestNodeId) {
+                                if (node.id() > highestNodeId) {
                                     // Abort compaction.
                                     return false;
                                 }
@@ -4840,7 +4840,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private long compactFrame(long highestNodeId, CursorFrame frame, Node node)
         throws IOException
     {
-        long id = node.mId;
+        long id = node.id();
         node.releaseShared();
 
         if (id > highestNodeId) {
@@ -4848,12 +4848,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             CommitLock.Shared shared = db.commitLock().acquireShared();
             try {
                 node = frame.acquireExclusive();
-                id = node.mId;
+                id = node.id();
                 if (id > highestNodeId) {
                     // Marking as dirty forces an allocation, which should be outside the
                     // compaction zone.
                     node = notSplitDirty(frame);
-                    id = node.mId;
+                    id = node.id();
                 }
                 node.releaseExclusive();
             } finally {
@@ -4993,7 +4993,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                             VerificationObserver observer)
         throws IOException
     {
-        final long childId = childNode.mId;
+        final long childId = childNode.id();
 
         // Verify child node keys are lower/higher than parent node. Nodes can be empty before
         // they're deleted. Also, skip nodes which are splitting.
@@ -5079,7 +5079,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         switch (parentNode.type()) {
         case Node.TYPE_TN_IN:
-            if (childNode.isLeaf() && parentNode.mId > 1) { // stubs are never bins
+            if (childNode.isLeaf() && parentNode.id() > 1) { // stubs are never bins
                 observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level,
@@ -5239,7 +5239,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     // Parent is ready to be updated.
                     try {
                         db.doMarkDirty(mTree, node);
-                        parentNode.updateChildRefId(parentFrame.mNodePos, node.mId);
+                        parentNode.updateChildRefId(parentFrame.mNodePos, node.id());
                         return node;
                     } catch (Throwable e) {
                         node.releaseExclusive();
@@ -5431,7 +5431,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 if (mTree.markDirty(leftNode)) {
-                    parentNode.updateChildRefId(leftPos, leftNode.mId);
+                    parentNode.updateChildRefId(leftPos, leftNode.id());
                 }
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
@@ -5630,7 +5630,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 if (mTree.markDirty(leftNode)) {
-                    parentNode.updateChildRefId(leftPos, leftNode.mId);
+                    parentNode.updateChildRefId(leftPos, leftNode.id());
                 }
             } catch (Throwable e) {
                 leftNode.releaseExclusive();

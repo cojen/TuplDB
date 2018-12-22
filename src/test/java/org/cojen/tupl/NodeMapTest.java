@@ -47,21 +47,21 @@ public class NodeMapTest {
         for (int i=0; i<count; i++) {
             Node n = new Node(null, p_callocPage(page));
             long id = idOffset + i;
-            n.mId = id;
+            n.id(id);
             db.nodeMapPut(n, Long.hashCode(id));
         }
 
         for (int i=0; i<count; i++) {
             long id = idOffset + i;
             Node n = db.nodeMapGet(id, Long.hashCode(id));
-            assertEquals(id, n.mId);
+            assertEquals(id, n.id());
         }
 
         for (int i=0; i<count; i++) {
             long id = idOffset + i;
             int hash = Long.hashCode(id);
             Node n = db.nodeMapGet(id, hash);
-            assertEquals(id, n.mId);
+            assertEquals(id, n.id());
             db.nodeMapRemove(n, hash);
             n.delete(db);
             assertNull(db.nodeMapGet(id, hash));
@@ -84,7 +84,7 @@ public class NodeMapTest {
         for (int i=0; i<count; i++) {
             Node n = new Node(null, p_callocPage(page));
             long id = idOffset + i;
-            n.mId = id;
+            n.id(id);
             db.nodeMapPut(n, Long.hashCode(id));
             nodes[i] = n;
         }

@@ -460,7 +460,7 @@ final class SnapshotPageArray extends PageArray {
                                 Node node;
                                 if (cache != null && (node = cache.nodeMapGet(index)) != null) {
                                     if (node.tryAcquireShared()) try {
-                                        if (node.mId == index
+                                        if (node.id() == index
                                             && node.mCachedState == Node.CACHED_CLEAN)
                                         {
                                             p_copy(node.mPage, 0, pageBuffer, 0, pageSize());

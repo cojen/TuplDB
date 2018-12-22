@@ -594,7 +594,7 @@ final class _TreeValue {
                         _Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
                         try {
                             if (db.markFragmentDirty(inode)) {
-                                p_int48PutLE(page, loc, inode.mId);
+                                p_int48PutLE(page, loc, inode.id());
                             }
 
                             int levels = db.calculateInodeLevels(fLen - fInlineLen);
@@ -633,7 +633,7 @@ final class _TreeValue {
                                 _Node toDelete = inode;
                                 inode = childNode;
                                 db.deleteNode(toDelete);
-                                inodeId = inode.mId;
+                                inodeId = inode.id();
                             } while (--levels > newLevels);
 
                             p_int48PutLE(page, loc, inodeId);
@@ -697,7 +697,7 @@ final class _TreeValue {
                             _Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                             try {
                                 if (db.markFragmentDirty(fNode)) {
-                                    p_int48PutLE(page, loc, fNode.mId);
+                                    p_int48PutLE(page, loc, fNode.id());
                                 }
                                 long fNodePage = fNode.mPage;
                                 if (txn != null) {
@@ -872,7 +872,7 @@ final class _TreeValue {
 
                             for (_Node upper : newNodes) {
                                 long upage = upper.mPage;
-                                p_int48PutLE(upage, 0, inode.mId);
+                                p_int48PutLE(upage, 0, inode.id());
                                 inode.releaseExclusive();
                                 // Zero-fill the rest.
                                 p_clear(upage, 6, pageSize);
@@ -881,7 +881,7 @@ final class _TreeValue {
 
                             levels = newLevels;
 
-                            p_int48PutLE(page, loc, inode.mId);
+                            p_int48PutLE(page, loc, inode.id());
                         }
 
                         updateLengthField(page, fHeaderLoc, endPos);
@@ -953,7 +953,7 @@ final class _TreeValue {
                             }
                             final _Node fNode = db.allocDirtyFragmentNode();
                             try {
-                                p_int48PutLE(page, loc, fNode.mId);
+                                p_int48PutLE(page, loc, fNode.id());
 
                                 // Now write to the new page, zero-filling the gaps.
                                 long fNodePage = fNode.mPage;
@@ -972,7 +972,7 @@ final class _TreeValue {
                                     .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
                                 try {
                                     if (db.markFragmentDirty(fNode)) {
-                                        p_int48PutLE(page, loc, fNode.mId);
+                                        p_int48PutLE(page, loc, fNode.id());
                                     }
                                     p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
                                 } finally {
@@ -984,7 +984,7 @@ final class _TreeValue {
                                     txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                     pos, fNode.mPage, fNodeOff, amt);
                                     if (db.markFragmentDirty(fNode)) {
-                                        p_int48PutLE(page, loc, fNode.mId);
+                                        p_int48PutLE(page, loc, fNode.id());
                                     }
                                     p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
                                 } finally {
@@ -1114,7 +1114,7 @@ final class _TreeValue {
             }
         }
 
-        p_int48PutLE(page, loc, inode.mId);
+        p_int48PutLE(page, loc, inode.id());
 
         return inode;
     }
@@ -1194,7 +1194,7 @@ final class _TreeValue {
                             throw e;
                         }
 
-                        p_int48PutLE(page, poffset, childNode.mId);
+                        p_int48PutLE(page, poffset, childNode.id());
                     }
 
                     p_copyFromArray(b, bOff, childNode.mPage, (int) ppos, len);
@@ -1231,7 +1231,7 @@ final class _TreeValue {
                             throw e;
                         }
 
-                        p_int48PutLE(page, poffset, childNode.mId);
+                        p_int48PutLE(page, poffset, childNode.id());
                     }
 
                     if (bLen <= 0) {
@@ -1325,7 +1325,7 @@ final class _TreeValue {
                     _Node childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
                     try {
                         if (db.markFragmentDirty(childNode)) {
-                            p_int48PutLE(page, poffset, childNode.mId);
+                            p_int48PutLE(page, poffset, childNode.id());
                         }
                         if (level <= 0) {
                             long childPage = childNode.mPage;
@@ -1690,7 +1690,7 @@ final class _TreeValue {
 
             if (rightNode != null) {
                 // Reference the new node.
-                p_int48PutLE(page, loc - fInlineLen - 2 + tailLen, rightNode.mId);
+                p_int48PutLE(page, loc - fInlineLen - 2 + tailLen, rightNode.id());
             }
 
             // Clear the inline length field.
@@ -1713,7 +1713,7 @@ final class _TreeValue {
                 p_clear(ipage, tailLen, pageSize);
 
                 // Reference the root inode.
-                p_int48PutLE(page, loc, inode.mId);
+                p_int48PutLE(page, loc, inode.id());
                 inode.releaseExclusive();
             }
 
@@ -1774,14 +1774,14 @@ final class _TreeValue {
                     _Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                     fNodes[i] = fNode;
                     if (db.markFragmentDirty(fNode)) {
-                        p_int48PutLE(page, loc, fNode.mId);
+                        p_int48PutLE(page, loc, fNode.id());
                     }
                     requireDest = true;
                 } else if (requireDest) {
                     _Node fNode = db.allocDirtyFragmentNode();
                     p_clear(fNode.mPage, 0, pageSize);
                     fNodes[i] = fNode;
-                    p_int48PutLE(page, loc, fNode.mId);
+                    p_int48PutLE(page, loc, fNode.id());
                     requireDest = false;
                 }
             }
