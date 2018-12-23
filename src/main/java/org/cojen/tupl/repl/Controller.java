@@ -1457,18 +1457,27 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public void unknown(Channel from, int op) {
         event(Level.WARNING,
               "Unknown operation received from: " + from.peer().mAddress + ", op=" + op);
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean nop(Channel from) {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean requestVote(Channel from, long term, long candidateId,
                                long highestTerm, long highestIndex)
     {
@@ -1507,7 +1516,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return term < info.mTerm || (term == info.mTerm && index < info.mHighestIndex);
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean requestVoteReply(Channel from, long term) {
         acquireExclusive();
 
@@ -1578,7 +1590,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         doAffirmLeadership();
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean queryTerms(Channel from, long startIndex, long endIndex) {
         mStateLog.queryTerms(startIndex, endIndex, (prevTerm, term, index) -> {
             from.queryTermsReply(null, prevTerm, term, index);
@@ -1587,7 +1602,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex) {
         try {
             queryReplyTermCheck(term);
@@ -1631,7 +1649,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean queryData(Channel from, long startIndex, long endIndex) {
         if (endIndex <= startIndex) {
             return true;
@@ -1700,7 +1721,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean queryDataReply(Channel from, long currentTerm,
                                   long prevTerm, long term, long index,
                                   byte[] data, int off, int len)
@@ -1729,7 +1753,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean writeData(Channel from, long prevTerm, long term, long index,
                              long highestIndex, long commitIndex, byte[] data, int off, int len)
     {
@@ -1861,7 +1888,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean writeDataReply(Channel from, long term, long highestIndex) {
         long commitIndex;
 
@@ -1910,7 +1940,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean syncCommit(Channel from, long prevTerm, long term, long index) {
         try {
             if (mStateLog.syncCommit(prevTerm, term, index) >= index) {
@@ -1923,7 +1956,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
         checkGroupVersion(groupVersion);
 
@@ -1972,13 +2008,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean compact(Channel from, long index) {
         from.peer().mCompactIndex = index;
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean snapshotScore(Channel from) {
         if (!mChanMan.hasSnapshotRequestAcceptor()) {
             // No acceptor, so reply with infinite score (least preferred).
@@ -1996,13 +2038,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean snapshotScoreReply(Channel from, int activeSessions, float weight) {
         from.peer().snapshotScoreReply(activeSessions, weight);
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean updateRole(Channel from, long groupVersion, long memberId, Role role) {
         Consumer<byte[]> acceptor;
         byte[] message = null;
@@ -2088,7 +2136,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
         if (result != ErrorCodes.SUCCESS) {
             acquireShared();
@@ -2105,7 +2156,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean groupVersion(Channel from, long groupVersion) {
         // Note: If peer group version is higher than local version, can probably resync local
         // group file right away.
@@ -2114,12 +2168,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean groupVersionReply(Channel from, long groupVersion) {
         from.peer().updateGroupVersion(groupVersion);
         return true;
     }
 
+    /**
+     * Called from a remote group member.
+     */
     @Override
     public boolean groupFile(Channel from, long groupVersion) throws IOException {
         if (groupVersion < mGroupFile.version()) {
@@ -2132,7 +2192,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
         boolean refresh;
 
@@ -2157,7 +2220,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return null;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean leaderCheck(Channel from) {
         long term;
 
@@ -2179,7 +2245,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    @Override
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
     public boolean leaderCheckReply(Channel from, long term) {
         from.peer().mLeaderCheck = term;
         return true;
