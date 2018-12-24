@@ -953,9 +953,11 @@ final class FileTermLog extends Latch implements TermLog {
 
             long maxLength = maxSegmentLength();
             long startIndex = index;
+
             if (startSegment != null) {
-                startIndex = startSegment.endIndex()
-                    + ((index - startSegment.endIndex()) / maxLength) * maxLength;
+                long segMaxLength = startSegment.mMaxLength;
+                long segEndIndex = startSegment.mStartIndex + segMaxLength;
+                startIndex = segEndIndex + ((index - segEndIndex) / maxLength) * maxLength;
             }
 
             // Don't allow segment to encroach on next segment or go beyond term end.
@@ -964,7 +966,16 @@ final class FileTermLog extends Latch implements TermLog {
             maxLength = Math.min(maxLength, endIndex - startIndex);
 
             Segment segment = new Segment(startIndex, maxLength);
-            mSegments.add(segment);
+
+            if (!mSegments.add(segment)) {
+                // Untruncate the startSegment and keep using it.
+                if (startIndex != startSegment.mStartIndex || startSegment.mMaxLength != 0) {
+                    throw new AssertionError(startSegment);
+                }
+                startSegment.untruncate(maxLength);
+                segment = startSegment;
+            }
+
             return segment;
         } finally {
             releaseExclusive();
@@ -993,8 +1004,7 @@ final class FileTermLog extends Latch implements TermLog {
             long commitIndex = Math.max(mLogStartIndex, doAppliableCommitIndex());
 
             if (index < commitIndex) {
-                throw new IllegalStateException
-                    ("Index is too low: " + index + " < " + commitIndex);
+                throw new IllegalStateException("Index is too low: " + index + " < " + commitIndex);
             }
         } finally {
             releaseExclusive();
@@ -1963,7 +1973,7 @@ final class FileTermLog extends Latch implements TermLog {
             try {
                 maxLength = mMaxLength;
                 if (maxLength == 0) {
-                    close(true);
+                    close(false);
                     io = null;
                 } else if ((io = openForWriting()) == null) {
                     return;
@@ -1976,6 +1986,21 @@ final class FileTermLog extends Latch implements TermLog {
                 file().delete();
             } else {
                 io.setLength(maxLength);
+            }
+        }
+
+        /**
+         * @throws IOException if permanently closed
+         */
+        void untruncate(long maxLength) throws IOException {
+            acquireExclusive();
+            try {
+                if (mSegmentClosed) {
+                    throw new IOException("Closed");
+                }
+                mMaxLength = maxLength;
+            } finally {
+                releaseExclusive();
             }
         }
 

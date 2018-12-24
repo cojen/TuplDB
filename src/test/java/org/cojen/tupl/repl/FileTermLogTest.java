@@ -1149,6 +1149,61 @@ public class FileTermLogTest {
         assertEquals(0, reader.tryReadAny(buf, 0, buf.length));
     }
 
+    @Test
+    public void writeTruncateExtend2() throws Exception {
+        // Truncate and extend ov er complete segments, forcing them to untruncate. Ordinarily,
+        // a a new segment is created in between, but this isn't possible with a zero-length
+        // segment in the way.
+
+        LogWriter writer = mLog.openWriter(0);
+
+        byte[] data1 = new byte[1024];
+        Arrays.fill(data1, (byte) 1);
+        for (int i = 0; i < (1024 + 2048 + 1000); i++) {
+            write(writer, data1);
+        }
+        mLog.commit(100 * 1024);
+        writer.release();
+
+        LogReader reader = mLog.openReader(0);
+        byte[] buf = new byte[1024];
+
+        for (int i=0; i < 100; i++) {
+            reader.readFully(buf, 0, buf.length);
+            for (int j=0; j<buf.length; j++) {
+                assertEquals(1, buf[j]);
+            }
+        }
+
+        mLog.finishTerm(2000 * 1024);
+        mLog.finishTerm(10 * 1024 * 1024);
+
+        writer = mLog.openWriter(2000 * 1024);
+        byte[] data2 = new byte[1024];
+        Arrays.fill(data2, (byte) 2);
+        for (int i = 0; i < (1024 + 2048 + 1000); i++) {
+            write(writer, data2);
+        }
+        mLog.commit(writer.index());
+        writer.release();
+
+        for (int i = 100; i < 2000; i++) {
+            reader.readFully(buf, 0, buf.length);
+            for (int j=0; j<buf.length; j++) {
+                assertEquals(1, buf[j]);
+            }
+        }
+
+        for (int i = 2000; i < (1024 + 2048 + 1000); i++) {
+            reader.readFully(buf, 0, buf.length);
+            for (int j=0; j<buf.length; j++) {
+                assertEquals(2, buf[j]);
+            }
+        }
+
+        reader.release();
+    }
+
     private static void write(LogWriter writer, byte[] data) throws IOException {
         int amt = writer.write(data, 0, data.length, writer.index() + data.length);
         assertEquals(data.length, amt);
