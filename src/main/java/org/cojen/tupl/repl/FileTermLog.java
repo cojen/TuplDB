@@ -100,6 +100,18 @@ final class FileTermLog extends Latch implements TermLog {
 
     private boolean mLogClosed;
 
+    static final VarHandle cLogClosedHandle;
+
+    static {
+        try {
+            cLogClosedHandle =
+                MethodHandles.lookup().findVarHandle
+                (FileTermLog.class, "mLogClosed", boolean.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     static class Caches {
         final LCache<Segment, FileTermLog> mSegments = new LCache<>(10);
         final LCache<SegmentWriter, FileTermLog> mWriters = new LCache<>(10);
@@ -850,7 +862,8 @@ final class FileTermLog extends Latch implements TermLog {
                 synchronized (mWorker) {
                     mWorker.join(false);
                 }
-                mLogClosed = true;
+
+                cLogClosedHandle.setVolatile(this, true);
 
                 for (LKey<Segment> key : mSegments) {
                     Segment segment = (Segment) key;
@@ -1210,13 +1223,9 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     void uncaught(IOException e) {
-        if (!mLogClosed) {
-            acquireShared();
-            boolean closed = mLogClosed;
-            releaseShared();
-            if (closed) {
-                Utils.uncaught(e);
-            }
+        boolean closed = (boolean) cLogClosedHandle.getVolatile(this);
+        if (!closed) {
+            Utils.uncaught(e);
         }
     }
 
@@ -1840,7 +1849,8 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (io == null) {
                 if (mSegmentClosed) {
-                    if (mLogClosed) {
+                    boolean closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
+                    if (closed) {
                         throw new IOException("Closed");
                     }
                     return null;
