@@ -293,10 +293,16 @@ final class LockManager {
             // Optimistically find the lock.
             int stamp = mStamp;
             if (stamp >= 0) {
-                Lock lock = lockFor(indexId, key, hash);
-                if (lock != null) {
-                    return lock.isAvailable(locker);
+                Lock[] entries = mEntries;
+                int index = hash & (entries.length - 1);
+                for (Lock e = entries[index]; e != null; ) {
+                    VarHandle.loadLoadFence();
+                    if (e.matches(indexId, key, hash)) {
+                        return e.isAvailable(locker);
+                    }
+                    e = e.mLockManagerNext;
                 }
+                // Not found.
                 if (stamp == mStamp) {
                     return true;
                 }
