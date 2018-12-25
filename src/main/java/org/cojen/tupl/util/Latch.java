@@ -802,7 +802,7 @@ public class Latch {
                     }
                     // Acquired, so no need to reference the waiter anymore.
                     if (!mFair) {
-                        cWaiterHandle.setRelease(this, null);
+                        cWaiterHandle.setOpaque(this, null);
                     } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
                     }
