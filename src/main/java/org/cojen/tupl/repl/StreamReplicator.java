@@ -116,7 +116,8 @@ public interface StreamReplicator extends DirectReplicator {
                                new File(base.getPath() + ".group"), 
                                config.mSocketFactory,
                                localAddress, listenAddress, config.mLocalRole,
-                               seeds, localSocket);
+                               seeds, localSocket,
+                               config.mProxyWrites);
     }
 
     /**

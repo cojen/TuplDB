@@ -88,6 +88,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private final LatchCondition mSyncCommitCondition;
 
+    private final boolean mProxyWrites;
+
     private GroupFile mGroupFile;
 
     // Local role as desired, which might not initially match what the GroupFile says.
@@ -135,17 +137,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                            StateLog log, long groupToken, File groupFile,
                            SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
-                           Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
+                           Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket,
+                           boolean proxyWrites)
         throws IOException
     {
         GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, seeds.isEmpty());
-        Controller con = new Controller(eventListener, log, groupToken, gf, factory);
+        Controller con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
         con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         return con;
     }
 
     private Controller(BiConsumer<Level, String> eventListener,
-                       StateLog log, long groupToken, GroupFile gf, SocketFactory factory)
+                       StateLog log, long groupToken, GroupFile gf, SocketFactory factory,
+                       boolean proxyWrites)
         throws IOException
     {
         mEventListener = eventListener;
@@ -155,6 +159,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             (factory, mScheduler, groupToken, gf == null ? 0 : gf.groupId());
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
+        mProxyWrites = proxyWrites;
     }
 
     private void init(File groupFile,
@@ -374,7 +379,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return null;
             }
             ReplWriter writer = new ReplWriter
-                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0);
+                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0, mProxyWrites);
             mLeaderReplWriter = writer;
             return writer;
         } finally {
@@ -682,14 +687,25 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     final class ReplWriter implements Writer {
+        // Limit the amount of bytes written by a proxy before selecting another one. A small
+        // amount causes too many holes to appear in the replication log, which is inefficient
+        // and can cause spurious hole filling requests. On saturated 10GBit network, a limit
+        // of 10MBytes causes a round-robin proxy selection every 10ms. At lower transmission
+        // rates, the selection rate is lower, but it's less necessary because the network
+        // isn't saturated. The primary goal of using a proxy is to limit load on the leader.
+        private static final long PROXY_LIMIT = 10_000_000;
+
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;
         private boolean mSelfCommit;
+        private int mProxy;
+        private long mWriteAmount;
 
-        ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
+        ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit, boolean proxy) {
             mWriter = writer;
             mPeerChannels = peerChannels;
             mSelfCommit = selfCommit;
+            mProxy = proxy ? 0 : -1;
         }
 
         @Override
@@ -723,53 +739,95 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         {
             Channel[] peerChannels;
             long prevTerm, term, index, commitIndex;
-            int amt;
+            int proxy;
 
-            synchronized (this) {
-                peerChannels = mPeerChannels;
+            w0: {
+                synchronized (this) {
+                    peerChannels = mPeerChannels;
 
-                if (peerChannels == null) {
-                    // Deactivated.
-                    return -1;
-                }
-
-                LogWriter writer = mWriter;
-
-                // Must capture the previous term before the write potentially changes it.
-                prevTerm = writer.prevTerm();
-                term = writer.term();
-                index = writer.index();
-
-                amt = writer.write(data, offset, length, highestIndex);
-
-                if (amt <= 0) {
-                    if (length > 0) {
-                        mPeerChannels = null;
+                    if (peerChannels == null) {
+                        // Deactivated.
+                        return -1;
                     }
-                    return amt;
+
+                    LogWriter writer = mWriter;
+
+                    // Must capture the previous term before the write potentially changes it.
+                    prevTerm = writer.prevTerm();
+                    term = writer.term();
+                    index = writer.index();
+
+                    int amt = writer.write(data, offset, length, highestIndex);
+
+                    if (amt <= 0) {
+                        if (length > 0) {
+                            mPeerChannels = null;
+                        }
+                        return amt;
+                    }
+
+                    length = amt;
+
+                    mStateLog.captureHighest(writer);
+                    highestIndex = writer.mHighestIndex;
+
+                    if (mSelfCommit) {
+                        // Only a consensus group of one, so commit changes immediately.
+                        mStateLog.commit(highestIndex);
+                    }
+
+                    if (peerChannels.length == 0) {
+                        return length;
+                    }
+
+                    commitIndex = writer.mCommitIndex;
+
+                    proxy = mProxy;
+
+                    if (proxy >= 0) {
+                        long writeAmount = mWriteAmount + length;
+                        if (writeAmount < PROXY_LIMIT) {
+                            mWriteAmount = writeAmount;
+                        } else {
+                            // Select a different proxy to balance the load.
+                            proxy = (proxy + 1) % peerChannels.length;
+                            mProxy = proxy;
+                            mWriteAmount = 0;
+                        }
+                        break w0;
+                    }
                 }
 
-                mStateLog.captureHighest(writer);
-                highestIndex = writer.mHighestIndex;
+                // Write directly to all the peers.
 
-                if (mSelfCommit) {
-                    // Only a consensus group of one, so commit changes immediately.
-                    mStateLog.commit(highestIndex);
+                for (Channel peerChan : peerChannels) {
+                    peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
+                                       data, offset, length);
                 }
 
-                if (peerChannels.length == 0) {
-                    return amt;
-                }
-
-                commitIndex = writer.mCommitIndex;
+                return length;
             }
 
-            for (Channel peerChan : peerChannels) {
-                peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
-                                   data, offset, length);
+            // Proxy the write through a selected peer.
+
+            for (int i = peerChannels.length; --i >= 0; ) {
+                Channel peerChan = peerChannels[proxy];
+
+                if (peerChan.writeDataAndProxy
+                    (null, prevTerm, term, index, highestIndex, commitIndex, data, offset, length))
+                    {
+                        // Success.
+                        break;
+                    }
+
+                synchronized (this) {
+                    // Select the next peer and try again.
+                    proxy = (proxy + 1) % peerChannels.length;
+                    mProxy = proxy;
+                }
             }
 
-            return amt;
+            return length;
         }
 
         @Override
@@ -1729,7 +1787,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                                   long prevTerm, long term, long index,
                                   byte[] data, int off, int len)
     {
-        if (currentTerm != 0 && !validateLeaderTerm(from, currentTerm)) {
+        if (currentTerm != 0 && validateLeaderTerm(from, currentTerm) == this) {
             return false;
         }
 
@@ -1755,12 +1813,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     /**
      * Called from a remote group member.
+     *
+     * @param from pass null if called from writeDataViaProxy
      */
     @Override // Channel
     public boolean writeData(Channel from, long prevTerm, long term, long index,
                              long highestIndex, long commitIndex, byte[] data, int off, int len)
     {
-        if (!validateLeaderTerm(from, term)) {
+        from = validateLeaderTerm(from, term);
+        if (from == this) {
             return false;
         }
 
@@ -1804,9 +1865,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
-        // TODO: Can skip reply if successful and highest didn't change.
-        // TODO: Can skip reply if local role is OBSERVER.
-        from.writeDataReply(null, term, highestIndex);
+        if (from != null) {
+            // TODO: Can skip reply if successful and highest didn't change.
+            // TODO: Can skip reply if local role is OBSERVER.
+            from.writeDataReply(null, term, highestIndex);
+        }
 
         return true;
     }
@@ -1814,25 +1877,39 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     /**
      * Called when receiving data from the leader.
      *
-     * @return false if not validated, and received data should be discarded
+     * @param from pass null if called from writeDataViaProxy
+     * @return this if validation failed, or else leader reply channel, possibly null
      */
-    private boolean validateLeaderTerm(Channel from, long term) {
+    private Channel validateLeaderTerm(Channel from, long term) {
         acquireShared();
+
+        if (from == null) {
+            from = mLeaderReplyChannel;
+        }
+
         long originalTerm = mCurrentTerm;
 
         vadidate: {
             if (term == originalTerm) {
-                if (mElectionValidated > 0) {
-                    // Already validated.
+                if (mElectionValidated > 0 || from == null) {
+                    // Already validated, or cannot fully complete validation without a reply
+                    // channel. A message directly from the leader is required.
                     releaseShared();
-                    return true;
+                    return from; // validation success
                 }
                 if (tryUpgrade()) {
                     break vadidate;
                 }
             } else if (term < originalTerm) {
                 releaseShared();
-                return false;
+                return this; // validation failed
+            }
+
+            if (from == null) {
+                // Cannot fully complete validation without a reply channel. A message directly
+                // from the leader is required.
+                releaseShared();
+                return from;
             }
 
             if (!tryUpgrade()) {
@@ -1841,7 +1918,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 originalTerm = mCurrentTerm;
                 if (term < originalTerm) {
                     releaseExclusive();
-                    return false;
+                    return this; // validation failed
                 }
             }
 
@@ -1853,11 +1930,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     } catch (IOException e) {
                         uncaught(e);
                         releaseExclusive();
-                        return false;
+                        return this; // validation failed
                     }
                     if (mCurrentTerm <= originalTerm) {
                         releaseExclusive();
-                        return true;
+                        return from; // validation success
                     }
                     toFollower(null);
                 } catch (Throwable e) {
@@ -1867,8 +1944,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        mLeaderReplyChannel = from;
+        if (from == null) {
+            // Cannot fully complete validation without a reply channel. A message directly
+            // from the leader is required.
+            releaseExclusive();
+            return from; // validation success (mostly)
+        }
+
         mElectionValidated = 1;
+        mLeaderReplyChannel = from;
 
         boolean first = false;
         if (term != mValidatedTerm) {
@@ -1885,7 +1969,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                   ", term=" + term);
         }
 
-        return true;
+        return from; // validation success
     }
 
     /**
@@ -1938,6 +2022,49 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         mStateLog.commit(commitIndex);
         return true;
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
+                                     long highestIndex, long commitIndex,
+                                     byte[] data, int off, int len)
+    {
+        if (!writeData(from, prevTerm, term, index, highestIndex, commitIndex, data, off, len)) {
+            return false;
+        }
+
+        Peer fromPeer = from.peer();
+
+        Channel[] peerChannels;
+        acquireShared();
+        peerChannels = mAllChannels;
+        releaseShared();
+
+        if (peerChannels != null) {
+            for (Channel peerChan : peerChannels) {
+                if (!fromPeer.equals(peerChan.peer())) {
+                    peerChan.writeDataViaProxy(null, prevTerm, term,
+                                               index, highestIndex, commitIndex, data, off, len);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
+                                     long highestIndex, long commitIndex,
+                                     byte[] data, int off, int len)
+    {
+        // From is null to prevent proxy channel from being selected as the leader channel.
+        return writeData(null, prevTerm, term, index, highestIndex, commitIndex, data, off, len);
     }
 
     /**

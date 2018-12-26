@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -292,12 +292,20 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </tr>
 <tr id="i14" class="altColor">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#proxyWrites(boolean)">proxyWrites</a></span>&#8203;(boolean&nbsp;proxy)</code></th>
+<td class="colLast">
+<div class="block">Pass true to proxy writes from the leader, reducing load on the leader, but increasing
+ commit latency a bit.</div>
+</td>
+</tr>
+<tr id="i15" class="rowColor">
+<td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#serverSocketFactory(javax.net.ServerSocketFactory)">serverSocketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</code></th>
 <td class="colLast">
 <div class="block">Set a factory for creating new server-side sockets.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr id="i16" class="altColor">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketFactory(javax.net.SocketFactory)">socketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</code></th>
 <td class="colLast">
@@ -529,6 +537,17 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
 </dl>
+</li>
+</ul>
+<a id="proxyWrites(boolean)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>proxyWrites</h4>
+<pre class="methodSignature">public&nbsp;<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;proxyWrites&#8203;(boolean&nbsp;proxy)</pre>
+<div class="block">Pass true to proxy writes from the leader, reducing load on the leader, but increasing
+ commit latency a bit. Default is false.</div>
 </li>
 </ul>
 <a id="eventListener(java.util.function.BiConsumer)">

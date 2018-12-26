@@ -57,6 +57,7 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     ServerSocket mLocalSocket;
     Role mLocalRole;
     Set<SocketAddress> mSeeds;
+    boolean mProxyWrites;
     transient BiConsumer<Level, String> mEventListener;
     transient SocketFactory mSocketFactory;
     transient ServerSocketFactory mServerSocketFactory;
@@ -243,6 +244,15 @@ public class ReplicatorConfig implements Cloneable, Serializable {
             mSeeds = new HashSet<>();
         }
         mSeeds.add(addr);
+        return this;
+    }
+
+    /**
+     * Pass true to proxy writes from the leader, reducing load on the leader, but increasing
+     * commit latency a bit. Default is false.
+     */
+    public ReplicatorConfig proxyWrites(boolean proxy) {
+        mProxyWrites = proxy;
         return this;
     }
 

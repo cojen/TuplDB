@@ -90,18 +90,20 @@ final class ChannelManager {
     private static final int INIT_HEADER_SIZE = 40;
 
     private static final int
-        OP_NOP            = 0,  //OP_NOP_REPLY = 1,
-        OP_REQUEST_VOTE   = 2,  OP_REQUEST_VOTE_REPLY   = 3,
-        OP_QUERY_TERMS    = 4,  OP_QUERY_TERMS_REPLY    = 5,
-        OP_QUERY_DATA     = 6,  OP_QUERY_DATA_REPLY     = 7,
-        OP_WRITE_DATA     = 8,  OP_WRITE_DATA_REPLY     = 9,
-        OP_SYNC_COMMIT    = 10, OP_SYNC_COMMIT_REPLY    = 11,
-        OP_COMPACT        = 12, //OP_COMPACT_REPLY = 13,
-        OP_SNAPSHOT_SCORE = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
-        OP_UPDATE_ROLE    = 16, OP_UPDATE_ROLE_REPLY    = 17,
-        OP_GROUP_VERSION  = 18, OP_GROUP_VERSION_REPLY  = 19,
-        OP_GROUP_FILE     = 20, OP_GROUP_FILE_REPLY     = 21,
-        OP_LEADER_CHECK   = 22, OP_LEADER_CHECK_REPLY   = 23;
+        OP_NOP             = 0,  //OP_NOP_REPLY = 1
+        OP_REQUEST_VOTE    = 2,  OP_REQUEST_VOTE_REPLY   = 3,
+        OP_QUERY_TERMS     = 4,  OP_QUERY_TERMS_REPLY    = 5,
+        OP_QUERY_DATA      = 6,  OP_QUERY_DATA_REPLY     = 7,
+        OP_WRITE_DATA      = 8,  OP_WRITE_DATA_REPLY     = 9,
+        OP_SYNC_COMMIT     = 10, OP_SYNC_COMMIT_REPLY    = 11,
+        OP_COMPACT         = 12, //OP_COMPACT_REPLY = 13
+        OP_SNAPSHOT_SCORE  = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
+        OP_UPDATE_ROLE     = 16, OP_UPDATE_ROLE_REPLY    = 17,
+        OP_GROUP_VERSION   = 18, OP_GROUP_VERSION_REPLY  = 19,
+        OP_GROUP_FILE      = 20, OP_GROUP_FILE_REPLY     = 21,
+        OP_LEADER_CHECK    = 22, OP_LEADER_CHECK_REPLY   = 23,
+        OP_WRITE_AND_PROXY = 24, //OP_WRITE_AND_PROXY_REPLY = 25
+        OP_WRITE_VIA_PROXY = 26; //OP_WRITE_VIA_PROXY_REPLY = 27
 
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
@@ -884,6 +886,34 @@ final class ChannelManager {
                         localServer.writeDataReply(this, in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 2);
                         break;
+                    case OP_WRITE_AND_PROXY:
+                        prevTerm = in.readLongLE();
+                        term = in.readLongLE();
+                        index = in.readLongLE();
+                        highestIndex = in.readLongLE();
+                        commitIndex = in.readLongLE();
+                        commandLength -= (8 * 5);
+                        in.readFully(commandLength);
+                        localServer.writeDataAndProxy(this, prevTerm, term, index,
+                                                      highestIndex, commitIndex,
+                                                      in.mBuffer, in.mPos, commandLength);
+                        in.mPos += commandLength;
+                        commandLength = 0;
+                        break;
+                    case OP_WRITE_VIA_PROXY:
+                        prevTerm = in.readLongLE();
+                        term = in.readLongLE();
+                        index = in.readLongLE();
+                        highestIndex = in.readLongLE();
+                        commitIndex = in.readLongLE();
+                        commandLength -= (8 * 5);
+                        in.readFully(commandLength);
+                        localServer.writeDataViaProxy(this, prevTerm, term, index,
+                                                      highestIndex, commitIndex,
+                                                      in.mBuffer, in.mPos, commandLength);
+                        in.mPos += commandLength;
+                        commandLength = 0;
+                        break;
                     case OP_SYNC_COMMIT:
                         localServer.syncCommit(this, in.readLongLE(),
                                                in.readLongLE(), in.readLongLE());
@@ -1066,6 +1096,14 @@ final class ChannelManager {
         public boolean writeData(Channel from, long prevTerm, long term, long index,
                                  long highestIndex, long commitIndex, byte[] data, int off, int len)
         {
+            return writeData(OP_WRITE_DATA,
+                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+        }
+
+        private boolean writeData(int op, long prevTerm, long term, long index,
+                                  long highestIndex, long commitIndex,
+                                  byte[] data, int off, int len)
+        {
             if (len > ((1 << 24) - (8 * 5))) {
                 // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
@@ -1079,7 +1117,7 @@ final class ChannelManager {
                 }
                 final int commandLength = (8 + 8 * 5) + len;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, OP_WRITE_DATA, 0, commandLength - 8);
+                prepareCommand(out, command, op, 0, commandLength - 8);
                 encodeLongLE(command, 8, prevTerm);
                 encodeLongLE(command, 16, term);
                 encodeLongLE(command, 24, index);
@@ -1095,6 +1133,24 @@ final class ChannelManager {
         @Override
         public boolean writeDataReply(Channel from, long term, long highestIndex) {
             return writeCommand(OP_WRITE_DATA_REPLY, term, highestIndex);
+        }
+
+        @Override
+        public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
+                                         long highestIndex, long commitIndex,
+                                         byte[] data, int off, int len)
+        {
+            return writeData(OP_WRITE_AND_PROXY,
+                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+        }
+
+        @Override
+        public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
+                                         long highestIndex, long commitIndex,
+                                         byte[] data, int off, int len)
+        {
+            return writeData(OP_WRITE_VIA_PROXY,
+                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
         }
 
         @Override

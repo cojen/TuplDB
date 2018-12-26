@@ -111,6 +111,7 @@ interface Channel {
                            byte[] data, int off, int len);
 
     /**
+     * @param from the leader channel
      * @param prevTerm expected term at previous index
      * @param term term at given index
      * @param index any index in the term to write to
@@ -128,6 +129,24 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean writeDataReply(Channel from, long term, long highestIndex);
+
+    /**
+     * Same as writeData except peer is expected to proxy the write to the remaining peers.
+     *
+     * @param from the leader channel
+     */
+    boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
+                              long highestIndex, long commitIndex,
+                              byte[] data, int off, int len);
+
+    /**
+     * Same as writeData except this is called from a peer which acted as a proxy.
+     *
+     * @param from the proxy channel
+     */
+    boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
+                              long highestIndex, long commitIndex,
+                              byte[] data, int off, int len);
 
     /**
      * @param prevTerm expected term at previous index
