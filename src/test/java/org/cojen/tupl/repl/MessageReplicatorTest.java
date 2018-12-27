@@ -69,13 +69,14 @@ public class MessageReplicatorTest {
      * @return first is the leader
      */
     private MessageReplicator[] startGroup(int members) throws Exception {
-        return startGroup(members, Role.OBSERVER, true);
+        return startGroup(members, Role.OBSERVER, true, false);
     }
 
     /**
      * @return first is the leader
      */
-    private MessageReplicator[] startGroup(int members, Role replicaRole, boolean waitToJoin)
+    private MessageReplicator[] startGroup(int members, Role replicaRole, boolean waitToJoin,
+                                           boolean proxy)
         throws Exception
     {
         if (members < 1) {
@@ -100,7 +101,8 @@ public class MessageReplicatorTest {
             mConfigs[i] = new ReplicatorConfig()
                 .baseFile(mReplBaseFiles[i])
                 .groupToken(1)
-                .localSocket(sockets[i]);
+                .localSocket(sockets[i])
+                .proxyWrites(proxy);
 
             if (i > 0) {
                 mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
@@ -319,9 +321,18 @@ public class MessageReplicatorTest {
 
     @Test
     public void largeGroupNoWaitToJoin() throws Exception {
+        largeGroupNoWaitToJoin(false);
+    }
+
+    @Test
+    public void largeGroupNoWaitToJoinProxyWrites() throws Exception {
+        largeGroupNoWaitToJoin(true);
+    }
+
+    private void largeGroupNoWaitToJoin(boolean proxy) throws Exception {
         final int count = 10;
 
-        MessageReplicator[] repls = startGroup(count, Role.STANDBY, false);
+        MessageReplicator[] repls = startGroup(count, Role.STANDBY, false, proxy);
 
         Writer writer = repls[0].newWriter();
 
