@@ -60,6 +60,9 @@ final class FileTermLog extends Latch implements TermLog {
     private static final int WAIT_TERM_END = EOF;
     private static final int WAIT_TIMEOUT = -2;
 
+    // For sizing LCache instances.
+    private static final int MIN_CACHE_SIZE = 10;
+
     private static final ThreadLocal<DelayedWaiter> cLocalDelayed = new ThreadLocal<>();
 
     private final Worker mWorker;
@@ -113,9 +116,9 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     static class Caches {
-        final LCache<Segment, FileTermLog> mSegments = new LCache<>(10);
-        final LCache<SegmentWriter, FileTermLog> mWriters = new LCache<>(10);
-        final LCache<SegmentReader, FileTermLog> mReaders = new LCache<>(10);
+        final LCache<Segment, FileTermLog> mSegments = new LCache<>(MIN_CACHE_SIZE);
+        final LCache<SegmentWriter, FileTermLog> mWriters = new LCache<>(MIN_CACHE_SIZE);
+        final LCache<SegmentReader, FileTermLog> mReaders = new LCache<>(MIN_CACHE_SIZE);
     }
 
     /**
@@ -772,6 +775,10 @@ final class FileTermLog extends Latch implements TermLog {
 
         if (startIndex > mLogContigIndex && startIndex < mLogEndIndex) {
             mNonContigWriters.add(writer);
+            // Boost the cache size to track all the non-contiguous writers. Note that the
+            // cache size isn't reduced when removing non-contiguous writers, although it could
+            // be. The call here effectively reduces the cache size instead.
+            mCaches.mWriters.maxSize(Math.max(MIN_CACHE_SIZE, mNonContigWriters.size()));
         }
     }
 

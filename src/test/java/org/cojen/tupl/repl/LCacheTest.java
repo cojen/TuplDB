@@ -127,6 +127,101 @@ public class LCacheTest {
         assertTrue(e1 == cache.remove(1, this));
     }
 
+    @Test
+    public void growMax() {
+        growMax(4);
+    }
+
+    @Test
+    public void growMaxRehash() {
+        growMax(100);
+    }
+
+    private void growMax(int newMax) {
+        LCache<TestEntry, Object> cache = new LCache<>(3);
+
+        TestEntry e1 = new TestEntry(1, 1);
+        TestEntry e2 = new TestEntry(2, 2);
+        TestEntry e3 = new TestEntry(3, 3);
+        TestEntry e4 = new TestEntry(4, 4);
+
+        assertNull(cache.add(e1));
+        assertNull(cache.add(e2));
+        assertNull(cache.add(e3));
+        assertTrue(e1 == cache.add(e4));
+        assertEquals(3, cache.size());
+
+        assertNull(cache.maxSize(newMax));
+
+        assertNull(cache.add(e1));
+        assertEquals(4, cache.size());
+
+        assertTrue(e1 == cache.remove(1, this));
+        assertTrue(e2 == cache.remove(2, this));
+        assertTrue(e3 == cache.remove(3, this));
+        assertTrue(e4 == cache.remove(4, this));
+        assertEquals(0, cache.size());
+
+        for (int i=1; i<=newMax; i++) {
+            assertNull(cache.add(new TestEntry(i, i)));
+        }
+        assertEquals(newMax, cache.size());
+
+        TestEntry e = cache.add(new TestEntry(1000, 1000));
+        assertNotNull(e);
+        assertTrue(e.mKey == 1);
+        assertEquals(newMax, cache.size());
+    }
+
+    @Test
+    public void reduceMax() {
+        reduceMax(999);
+    }
+
+    @Test
+    public void reduceMaxRehash() {
+        reduceMax(3);
+    }
+
+    private void reduceMax(int newMax) {
+        LCache<TestEntry, Object> cache = new LCache<>(1000);
+
+        for (int i=1; i<=1000; i++) {
+            assertNull(cache.add(new TestEntry(i, i)));
+        }
+
+        assertEquals(1000, cache.size());
+
+        int expect = 1;
+
+        TestEntry e = cache.maxSize(newMax);
+
+        assertNotNull(e);
+        assertTrue(e.mKey == expect);
+        expect++;
+        assertEquals(999, cache.size());
+
+        while (true) {
+            e = cache.maxSize(newMax);
+            if (e == null) {
+                break;
+            }
+            assertTrue(e.mKey == expect);
+            expect++;
+        }
+
+        assertEquals(newMax, cache.size());
+
+        for (int i=0; i<newMax; i++) {
+            e = cache.remove(expect, this);
+            assertNotNull(e);
+            assertTrue(e.mKey == expect);
+            expect++;
+        }
+
+        assertEquals(0, cache.size());
+    }
+
     static class TestEntry implements LCache.Entry<TestEntry, Object> {
         final long mKey;
         final Object mData;
