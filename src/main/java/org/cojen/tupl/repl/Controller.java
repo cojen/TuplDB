@@ -842,8 +842,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         @Override
         public void close() {
-            mWriter.release();
-            writerClosed(this);
+            if (deactivate()) {
+                mWriter.release();
+                writerClosed(this);
+            }
         }
 
         synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
@@ -853,9 +855,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        synchronized void deactivate() {
+        synchronized boolean deactivate() {
+            if (mPeerChannels == null) {
+                return false;
+            }
             mPeerChannels = null;
             mSelfCommit = false;
+            return true;
         }
     }
 
