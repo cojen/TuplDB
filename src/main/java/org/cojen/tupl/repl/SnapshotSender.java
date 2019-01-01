@@ -51,10 +51,10 @@ public interface SnapshotSender extends Closeable {
      * Begin writing the snapshot to the receiver.
      *
      * @param length expected length of snapshot (in bytes) or -1 if unknown
-     * @param index log reading begins at this index; expected to be the highest exclusive
-     * index applied by the snapshot
+     * @param position log reading begins at this position; expected to be the highest exclusive
+     * position applied by the snapshot
      * @param options granted to the receiver; can pass null if none
      * @return a stream to write the snapshot into; close the stream or this sender when done
      */
-    OutputStream begin(long length, long index, Map<String, String> options) throws IOException;
+    OutputStream begin(long length, long position, Map<String, String> options) throws IOException;
 }

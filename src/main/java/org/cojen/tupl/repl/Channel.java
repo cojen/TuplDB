@@ -61,7 +61,7 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean requestVote(Channel from, long term, long candidateId,
-                        long highestTerm, long highestIndex);
+                        long highestTerm, long highestPosition);
 
     /**
      * @param term highest bit is set if vote was granted
@@ -72,71 +72,71 @@ interface Channel {
     /**
      * Query for all the terms which are defined over the given range.
      *
-     * @param startIndex inclusive log start index
-     * @param endIndex exclusive log end index
+     * @param startPosition inclusive log start position
+     * @param endPosition exclusive log end position
      * @return false if not sent or processed
      */
-    boolean queryTerms(Channel from, long startIndex, long endIndex);
+    boolean queryTerms(Channel from, long startPosition, long endPosition);
 
     /**
      * One reply is sent for each defined term over the queried range.
      *
      * @param prevTerm previous term
      * @param term term number
-     * @param startIndex index at start of term
+     * @param startPosition position at start of term
      * @return false if not sent or processed
      */
-    boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex);
+    boolean queryTermsReply(Channel from, long prevTerm, long term, long startPosition);
 
     /**
      * Query for missing data over the given range.
      *
-     * @param startIndex inclusive log start index
-     * @param endIndex exclusive log end index
+     * @param startPosition inclusive log start position
+     * @param endPosition exclusive log end position
      * @return false if not sent or processed
      */
-    boolean queryData(Channel from, long startIndex, long endIndex);
+    boolean queryData(Channel from, long startPosition, long endPosition);
 
     /**
      * @param currentTerm current term of leader which replied; is 0 if data is committed
-     * @param prevTerm expected term at previous index
-     * @param term term at given index
-     * @param index any index in the term to write to
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param position any position in the term to write to
      * @param off data offset
      * @param len data length
      * @return false if not sent or processed
      */
     boolean queryDataReply(Channel from, long currentTerm,
-                           long prevTerm, long term, long index,
+                           long prevTerm, long term, long position,
                            byte[] data, int off, int len);
 
     /**
      * @param from the leader channel
-     * @param prevTerm expected term at previous index
-     * @param term term at given index
-     * @param index any index in the term to write to
-     * @param highestIndex highest index (exclusive) which can become the commit index
-     * @param commitIndex current commit index (exclusive)
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param position any position in the term to write to
+     * @param highestPosition highest position (exclusive) which can become the commit position
+     * @param commitPosition current commit position (exclusive)
      * @param off data offset
      * @param len data length
      * @return false if not sent or processed
      */
-    boolean writeData(Channel from, long prevTerm, long term, long index,
-                      long highestIndex, long commitIndex,
+    boolean writeData(Channel from, long prevTerm, long term, long position,
+                      long highestPosition, long commitPosition,
                       byte[] data, int off, int len);
 
     /**
      * @return false if not sent or processed
      */
-    boolean writeDataReply(Channel from, long term, long highestIndex);
+    boolean writeDataReply(Channel from, long term, long highestPosition);
 
     /**
      * Same as writeData except peer is expected to proxy the write to the remaining peers.
      *
      * @param from the leader channel
      */
-    boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
-                              long highestIndex, long commitIndex,
+    boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
+                              long highestPosition, long commitPosition,
                               byte[] data, int off, int len);
 
     /**
@@ -144,29 +144,29 @@ interface Channel {
      *
      * @param from the proxy channel
      */
-    boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
-                              long highestIndex, long commitIndex,
+    boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
+                              long highestPosition, long commitPosition,
                               byte[] data, int off, int len);
 
     /**
-     * @param prevTerm expected term at previous index
-     * @param term term at given index
-     * @param index minimum highest commit index to persist
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param position minimum highest commit position to persist
      * @return false if not sent or processed
      */
-    boolean syncCommit(Channel from, long prevTerm, long term, long index);
+    boolean syncCommit(Channel from, long prevTerm, long term, long position);
 
     /**
-     * @param index highest sync'd index
+     * @param position highest sync'd position
      * @return false if not sent or processed
      */
-    boolean syncCommitReply(Channel from, long groupVersion, long term, long index);
+    boolean syncCommitReply(Channel from, long groupVersion, long term, long position);
 
     /**
-     * @param index lowest index which must be retained
+     * @param position lowest position which must be retained
      * @return false if not sent or processed
      */
-    boolean compact(Channel from, long index);
+    boolean compact(Channel from, long position);
 
     /**
      * @return false if not sent or processed

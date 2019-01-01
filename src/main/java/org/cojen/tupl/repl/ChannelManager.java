@@ -860,10 +860,10 @@ final class ChannelManager {
                         long currentTerm = in.readLongLE();
                         long prevTerm = in.readLongLE();
                         long term = in.readLongLE();
-                        long index = in.readLongLE();
+                        long position = in.readLongLE();
                         commandLength -= (8 * 4);
                         in.readFully(commandLength);
-                        localServer.queryDataReply(this, currentTerm, prevTerm, term, index,
+                        localServer.queryDataReply(this, currentTerm, prevTerm, term, position,
                                                    in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
@@ -871,13 +871,13 @@ final class ChannelManager {
                     case OP_WRITE_DATA:
                         prevTerm = in.readLongLE();
                         term = in.readLongLE();
-                        index = in.readLongLE();
-                        long highestIndex = in.readLongLE();
-                        long commitIndex = in.readLongLE();
+                        position = in.readLongLE();
+                        long highestPosition = in.readLongLE();
+                        long commitPosition = in.readLongLE();
                         commandLength -= (8 * 5);
                         in.readFully(commandLength);
-                        localServer.writeData(this, prevTerm, term, index,
-                                              highestIndex, commitIndex,
+                        localServer.writeData(this, prevTerm, term, position,
+                                              highestPosition, commitPosition,
                                               in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
@@ -889,13 +889,13 @@ final class ChannelManager {
                     case OP_WRITE_AND_PROXY:
                         prevTerm = in.readLongLE();
                         term = in.readLongLE();
-                        index = in.readLongLE();
-                        highestIndex = in.readLongLE();
-                        commitIndex = in.readLongLE();
+                        position = in.readLongLE();
+                        highestPosition = in.readLongLE();
+                        commitPosition = in.readLongLE();
                         commandLength -= (8 * 5);
                         in.readFully(commandLength);
-                        localServer.writeDataAndProxy(this, prevTerm, term, index,
-                                                      highestIndex, commitIndex,
+                        localServer.writeDataAndProxy(this, prevTerm, term, position,
+                                                      highestPosition, commitPosition,
                                                       in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
@@ -903,13 +903,13 @@ final class ChannelManager {
                     case OP_WRITE_VIA_PROXY:
                         prevTerm = in.readLongLE();
                         term = in.readLongLE();
-                        index = in.readLongLE();
-                        highestIndex = in.readLongLE();
-                        commitIndex = in.readLongLE();
+                        position = in.readLongLE();
+                        highestPosition = in.readLongLE();
+                        commitPosition = in.readLongLE();
                         commandLength -= (8 * 5);
                         in.readFully(commandLength);
-                        localServer.writeDataViaProxy(this, prevTerm, term, index,
-                                                      highestIndex, commitIndex,
+                        localServer.writeDataViaProxy(this, prevTerm, term, position,
+                                                      highestPosition, commitPosition,
                                                       in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
@@ -1037,9 +1037,9 @@ final class ChannelManager {
 
         @Override
         public boolean requestVote(Channel from, long term, long candidateId,
-                                   long highestTerm, long highestIndex)
+                                   long highestTerm, long highestPosition)
         {
-            return writeCommand(OP_REQUEST_VOTE, term, candidateId, highestTerm, highestIndex);
+            return writeCommand(OP_REQUEST_VOTE, term, candidateId, highestTerm, highestPosition);
         }
 
         @Override
@@ -1048,23 +1048,23 @@ final class ChannelManager {
         }
 
         @Override
-        public boolean queryTerms(Channel from, long startIndex, long endIndex) {
-            return writeCommand(OP_QUERY_TERMS, startIndex, endIndex);
+        public boolean queryTerms(Channel from, long startPosition, long endPosition) {
+            return writeCommand(OP_QUERY_TERMS, startPosition, endPosition);
         }
 
         @Override
-        public boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex) {
-            return writeCommand(OP_QUERY_TERMS_REPLY, prevTerm, term, startIndex);
+        public boolean queryTermsReply(Channel from, long prevTerm, long term, long startPosition) {
+            return writeCommand(OP_QUERY_TERMS_REPLY, prevTerm, term, startPosition);
         }
 
         @Override
-        public boolean queryData(Channel from, long startIndex, long endIndex) {
-            return writeCommand(OP_QUERY_DATA, startIndex, endIndex);
+        public boolean queryData(Channel from, long startPosition, long endPosition) {
+            return writeCommand(OP_QUERY_DATA, startPosition, endPosition);
         }
 
         @Override
         public boolean queryDataReply(Channel from, long currentTerm,
-                                      long prevTerm, long term, long index,
+                                      long prevTerm, long term, long position,
                                       byte[] data, int off, int len)
         {
             if (len > ((1 << 24) - (8 * 3))) {
@@ -1084,7 +1084,7 @@ final class ChannelManager {
                 encodeLongLE(command, 8, currentTerm);
                 encodeLongLE(command, 16, prevTerm);
                 encodeLongLE(command, 24, term);
-                encodeLongLE(command, 32, index);
+                encodeLongLE(command, 32, position);
                 System.arraycopy(data, off, command, 40, len);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
@@ -1093,15 +1093,15 @@ final class ChannelManager {
         }
 
         @Override
-        public boolean writeData(Channel from, long prevTerm, long term, long index,
-                                 long highestIndex, long commitIndex, byte[] data, int off, int len)
+        public boolean writeData(Channel from, long prevTerm, long term, long position,
+                                 long highestPos, long commitPos, byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_DATA,
-                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos, data, off, len);
         }
 
-        private boolean writeData(int op, long prevTerm, long term, long index,
-                                  long highestIndex, long commitIndex,
+        private boolean writeData(int op, long prevTerm, long term, long position,
+                                  long highestPosition, long commitPosition,
                                   byte[] data, int off, int len)
         {
             if (len > ((1 << 24) - (8 * 5))) {
@@ -1120,9 +1120,9 @@ final class ChannelManager {
                 prepareCommand(out, command, op, 0, commandLength - 8);
                 encodeLongLE(command, 8, prevTerm);
                 encodeLongLE(command, 16, term);
-                encodeLongLE(command, 24, index);
-                encodeLongLE(command, 32, highestIndex);
-                encodeLongLE(command, 40, commitIndex);
+                encodeLongLE(command, 24, position);
+                encodeLongLE(command, 32, highestPosition);
+                encodeLongLE(command, 40, commitPosition);
                 System.arraycopy(data, off, command, 48, len);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
@@ -1131,41 +1131,41 @@ final class ChannelManager {
         }
 
         @Override
-        public boolean writeDataReply(Channel from, long term, long highestIndex) {
-            return writeCommand(OP_WRITE_DATA_REPLY, term, highestIndex);
+        public boolean writeDataReply(Channel from, long term, long highestPosition) {
+            return writeCommand(OP_WRITE_DATA_REPLY, term, highestPosition);
         }
 
         @Override
-        public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
-                                         long highestIndex, long commitIndex,
+        public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
+                                         long highestPos, long commitPos,
                                          byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_AND_PROXY,
-                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos, data, off, len);
         }
 
         @Override
-        public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
-                                         long highestIndex, long commitIndex,
+        public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
+                                         long highestPos, long commitPos,
                                          byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_VIA_PROXY,
-                             prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos, data, off, len);
         }
 
         @Override
-        public boolean syncCommit(Channel from, long prevTerm, long term, long index) {
-            return writeCommand(OP_SYNC_COMMIT, prevTerm, term, index);
+        public boolean syncCommit(Channel from, long prevTerm, long term, long position) {
+            return writeCommand(OP_SYNC_COMMIT, prevTerm, term, position);
         }
 
         @Override
-        public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
-            return writeCommand(OP_SYNC_COMMIT_REPLY, groupVersion, term, index);
+        public boolean syncCommitReply(Channel from, long groupVersion, long term, long position) {
+            return writeCommand(OP_SYNC_COMMIT_REPLY, groupVersion, term, position);
         }
 
         @Override
-        public boolean compact(Channel from, long index) {
-            return writeCommand(OP_COMPACT, index);
+        public boolean compact(Channel from, long position) {
+            return writeCommand(OP_COMPACT, position);
         }
 
         @Override

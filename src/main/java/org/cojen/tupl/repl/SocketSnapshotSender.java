@@ -89,7 +89,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
     }
 
     @Override
-    public final OutputStream begin(long length, long index, Map<String, String> options)
+    public final OutputStream begin(long length, long position, Map<String, String> options)
         throws IOException
     {
         if (!cSendingHandle.compareAndSet(this, 0, 1)) {
@@ -97,22 +97,22 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         }
 
         try {
-            TermLog termLog = termLogAt(index);
+            TermLog termLog = termLogAt(position);
             if (termLog == null) {
-                throw new IllegalStateException("Unknown term at index: " + index);
+                throw new IllegalStateException("Unknown term at position: " + position);
             }
 
             OptionsEncoder enc = new OptionsEncoder();
             enc.encodeIntLE(0); // encoding format
             enc.encodeLongLE(length);
-            enc.encodeLongLE(termLog.prevTermAt(index));
+            enc.encodeLongLE(termLog.prevTermAt(position));
             enc.encodeLongLE(termLog.term());
-            enc.encodeLongLE(index);
+            enc.encodeLongLE(position);
             enc.encodeMap(options == null ? Collections.emptyMap() : options);
             enc.writeTo(this);
 
             // Write the current group file, which should be up-to-date, for the given log
-            // index. The receiver accepts the group file if it's newer than what it already
+            // position. The receiver accepts the group file if it's newer than what it already
             // has, bypassing the normal sequence of control messages. This is fine because a
             // new leader isn't expected to generate new data (and perform consensus checks)
             // until all outstanding control messages have been applied.
@@ -145,5 +145,5 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
         mSocket.close();
     }
 
-    abstract TermLog termLogAt(long index) throws IOException;
+    abstract TermLog termLogAt(long position) throws IOException;
 }

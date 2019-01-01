@@ -563,18 +563,19 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Commits and exits all transaction scopes.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#commitIndex()">commitIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
-<dd>
-<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#commitLock()">commitLock()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Returns the checkpoint commit lock, which can be held to prevent checkpoints from
  capturing a safe commit point.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#commitPosition()">commitPosition()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the current term commit position, which might be lower than the start
+ position.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#compact(long)">compact(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
-<div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>
+<div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
 </dd>
 <dt><a href="org/cojen/tupl/tools/Compact.html" title="class in org.cojen.tupl.tools"><span class="typeNameLink">Compact</span></a> - Class in <a href="org/cojen/tupl/tools/package-summary.html">org.cojen.tupl.tools</a></dt>
 <dd>
@@ -1640,14 +1641,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Index currently being verified.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#index()">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
-<dd>
-<div class="block">Returns the next log index which will be accessed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#index()">index()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
-<dd>
-<div class="block">Returns the log index to start reading from.</div>
-</dd>
 <dt><a href="org/cojen/tupl/Index.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Index</span></a> - Interface in <a href="org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
@@ -2298,15 +2291,15 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#newReader(long,boolean)">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
-<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+<div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#newReader(long,boolean)">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
 <dd>
-<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+<div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#newReader(long,boolean)">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
-<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+<div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/View.html#newScanner(org.cojen.tupl.Transaction)">newScanner(Transaction)</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -2526,11 +2519,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.html#open(org.cojen.tupl.repl.ReplicatorConfig)">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></dt>
 <dd>
-<div class="block">Open a replicator instance, creating it if necessary.</div>
+<div class="block">Open a MessageReplicator instance, creating it if necessary.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.html#open(org.cojen.tupl.repl.ReplicatorConfig)">open(ReplicatorConfig)</a></span> - Static method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
-<div class="block">Open a replicator instance, creating it if necessary.</div>
+<div class="block">Open a StreamReplicator instance, creating it if necessary.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#openIndex(byte%5B%5D)">openIndex(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2638,6 +2631,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the next position a leader will write to.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dd>
+<div class="block">Returns the next log position which will be accessed.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/SnapshotReceiver.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
+<dd>
+<div class="block">Returns the log position to start reading from.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Snapshot.html#position()">position()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Returns the <a href="org/cojen/tupl/ext/ReplicationManager.html#start(long)"><code>position</code></a> that the snapshot applies to.</div>
@@ -2728,7 +2729,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read(byte%5B%5D)">read(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
-<div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
+<div class="block">Blocks until log messages are available, never reading past a commit position or
+ term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#read(byte%5B%5D,int,int)">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
@@ -2736,7 +2738,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#read(byte%5B%5D,int,int)">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
-<div class="block">Blocks until log messages are available, never reading past a commit index or term.</div>
+<div class="block">Blocks until log messages are available, never reading past a commit position or
+ term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#read(long,byte%5B%5D,int,int)">read(long, byte[], int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
@@ -2764,7 +2767,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#readFully(byte%5B%5D,int,int)">readFully(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
- index or term.</div>
+ position or term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/Utils.html#readFully(java.io.InputStream,byte%5B%5D,int,int)">readFully(InputStream, byte[], int, int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
@@ -2773,7 +2776,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage()">readMessage()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Reader</a></dt>
 <dd>
-<div class="block">Blocks until a log message is available, never reading past a commit index or term.</div>
+<div class="block">Blocks until a log message is available, never reading past a commit position or term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/MessageReplicator.Reader.html#readMessage(byte%5B%5D,int,int)">readMessage(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/MessageReplicator.Reader.html" title="interface in org.cojen.tupl.repl">MessageReplicator.Reader</a></dt>
 <dd>
@@ -3314,7 +3317,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/Replicator.html#sync()">sync()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
-<div class="block">Durably persist all data up to the highest index.</div>
+<div class="block">Durably persist all data up to the highest position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#sync(boolean)">sync(boolean)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>
@@ -3341,8 +3344,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.html#syncCommit(long,long)">syncCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
-<div class="block">Returns immediately if all data up to the given committed index is durable, or else
- durably persists all data up to the highest index.</div>
+<div class="block">Returns immediately if all data up to the given committed position is durable, or else
+ durably persists all data up to the highest position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.html#syncConfirm(long)">syncConfirm(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
 <dd>
@@ -3379,13 +3382,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the fixed term being accessed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndIndex()">termEndIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termEndPosition()">termEndPosition()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
-<div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
+<div class="block">Returns the current term end position, which is Long.MAX_VALUE if unbounded.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartIndex()">termStartIndex()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#termStartPosition()">termStartPosition()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
-<div class="block">Returns the index at the start of the term.</div>
+<div class="block">Returns the position at the start of the term.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/LockResult.html#TIMED_OUT_LOCK">TIMED_OUT_LOCK</a></span> - org.cojen.tupl.<a href="org/cojen/tupl/LockResult.html" title="enum in org.cojen.tupl">LockResult</a></dt>
 <dd>
@@ -3679,11 +3682,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
-<div class="block">Invokes the given task when the commit index reaches the requested index.</div>
+<div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
-<div class="block">Invokes the given task when the commit index reaches the end of the term.</div>
+<div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </dd>
 <dt><a href="org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">Utils</span></a> - Class in <a href="org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
@@ -3946,11 +3949,11 @@ the order they are declared.</div>
 <dl>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForCommit(long,long)">waitForCommit(long, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
-<div class="block">Blocks until the commit index reaches the given index.</div>
+<div class="block">Blocks until the commit position reaches the given position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#waitForEndCommit(long)">waitForEndCommit(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
 <dd>
-<div class="block">Blocks until the commit index reaches the end of the term.</div>
+<div class="block">Blocks until the commit position reaches the end of the term.</div>
 </dd>
 <dt><a href="org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Worker</span></a> - Class in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
@@ -4100,7 +4103,7 @@ the order they are declared.</div>
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

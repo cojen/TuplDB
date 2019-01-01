@@ -288,7 +288,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
     /**
      * Wait until local member becomes the leader or until the current term has reached a
-     * known commit index.
+     * known commit position.
      *
      * @return true if switched to leader
      */
@@ -301,7 +301,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                 return true;
             }
 
-            long commitIndex = reader.commitIndex();
+            long commitPosition = reader.commitPosition();
             long delayMillis = 1;
 
             while (true) {
@@ -312,7 +312,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
                     break;
                 }
 
-                if (reader.index() >= commitIndex) {
+                if (reader.position() >= commitPosition) {
                     return false;
                 }
 
@@ -384,11 +384,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     public long readPosition() {
         StreamReplicator.Reader reader = mStreamReader;
         if (reader != null) {
-            return reader.index();
+            return reader.position();
         } else {
             // Might start off as the leader, so return it's start position. Nothing is
             // actually readable, however.
-            return mDbWriter.mWriter.termStartIndex();
+            return mDbWriter.mWriter.termStartPosition();
         }
     }
 
@@ -409,8 +409,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             // Term ended.
 
             StreamReplicator.Reader nextReader;
-            while ((nextReader = mRepl.newReader(reader.index(), false)) == null) {
-                StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.index());
+            while ((nextReader = mRepl.newReader(reader.position(), false)) == null) {
+                StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.position());
                 if (nextWriter != null) {
                     // Switch to leader mode.
                     mDbWriter = new DbWriter(nextWriter);
@@ -465,7 +465,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         ((Controller) mRepl).partitioned(enable);
     }
 
-    void toReplica(DbWriter expect, long index) {
+    void toReplica(DbWriter expect, long position) {
         if (mDbWriter != expect) {
             throw new IllegalStateException("Mismatched writer: " + mDbWriter + " != " + expect);
         }
@@ -473,8 +473,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         mDbWriter.mWriter.close();
         mDbWriter = null;
 
-        while ((mStreamReader = mRepl.newReader(index, false)) == null) {
-            StreamReplicator.Writer nextWriter = mRepl.newWriter(index);
+        while ((mStreamReader = mRepl.newReader(position, false)) == null) {
+            StreamReplicator.Writer nextWriter = mRepl.newWriter(position);
             if (nextWriter != null) {
                 // Actually the leader now.
                 mDbWriter = new DbWriter(nextWriter);
@@ -494,17 +494,17 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
         @Override
         public long position() {
-            return mWriter.index();
+            return mWriter.position();
         }
 
         @Override
         public long confirmedPosition() {
-            return mWriter.commitIndex();
+            return mWriter.commitPosition();
         }
 
         @Override
         public boolean leaderNotify(Runnable callback) {
-            mWriter.uponCommit(Long.MAX_VALUE, index -> new Thread(callback).start());
+            mWriter.uponCommit(Long.MAX_VALUE, position -> new Thread(callback).start());
             return true;
         }
 

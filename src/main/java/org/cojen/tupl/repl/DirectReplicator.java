@@ -76,23 +76,23 @@ public interface DirectReplicator extends Replicator {
     void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
 
     /**
-     * Returns a new reader which accesses data starting from the given index. The reader
+     * Returns a new reader which accesses data starting from the given position. The reader
      * returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
      * new writer to determine if the local member has become the leader.
      *
      * <p>When passing true for the follow parameter, a reader is always provided at the
-     * requested index. When passing false for the follow parameter, null is returned if the
-     * current member is the leader for the given index.
+     * requested position. When passing false for the follow parameter, null is returned if the
+     * current member is the leader for the given position.
      *
      * <p><b>Note: Reader instances are not expected to be thread-safe.</b>
      *
-     * @param index index to start reading from, known to have been committed
+     * @param position position to start reading from, known to have been committed
      * @param follow pass true to obtain an active reader, even if local member is the leader
      * @return reader or possibly null when follow is false
-     * @throws IllegalStateException if index is lower than the start index, or if replicator
-     * is closed
+     * @throws IllegalStateException if position is lower than the start position, or if
+     * replicator is closed
      */
-    Reader newReader(long index, boolean follow);
+    Reader newReader(long position, boolean follow);
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local
@@ -113,31 +113,31 @@ public interface DirectReplicator extends Replicator {
      *
      * <p><b>Note: Writer instances are not expected to be thread-safe.</b>
      *
-     * @param index expected index to start writing from as leader; method returns null if
-     * index doesn't match
+     * @param position expected position to start writing from as leader; method returns null if
+     * position doesn't match
      * @return writer or null if not the leader
-     * @throws IllegalArgumentException if given index is negative
+     * @throws IllegalArgumentException if given position is negative
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
-    Writer newWriter(long index);
+    Writer newWriter(long position);
 
     /**
-     * Returns immediately if all data up to the given committed index is durable, or else
-     * durably persists all data up to the highest index.
+     * Returns immediately if all data up to the given committed position is durable, or else
+     * durably persists all data up to the highest position.
      *
-     * @param index committed index required to be durable
+     * @param position committed position required to be durable
      * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
      * @return false if timed out
-     * @throws IllegalStateException if index is too high
+     * @throws IllegalStateException if position is too high
      */
-    boolean syncCommit(long index, long nanosTimeout) throws IOException;
+    boolean syncCommit(long position, long nanosTimeout) throws IOException;
 
     /**
-     * Permit all data lower than the given index to be deleted, freeing up space in the log.
+     * Permit all data lower than the given position to be deleted, freeing up space in the log.
      *
-     * @param index lowest index which must be retained
+     * @param position lowest position which must be retained
      */
-    void compact(long index) throws IOException;
+    void compact(long position) throws IOException;
 
     /**
      * Direct interface for accessing replication data, for a given term.
@@ -149,25 +149,26 @@ public interface DirectReplicator extends Replicator {
         long term();
 
         /**
-         * Returns the index at the start of the term.
+         * Returns the position at the start of the term.
          */
-        long termStartIndex();
+        long termStartPosition();
 
         /**
-         * Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
-         * index is always permitted to retreat, but never lower than the commit index.
+         * Returns the current term end position, which is Long.MAX_VALUE if unbounded. The end
+         * position is always permitted to retreat, but never lower than the commit position.
          */
-        long termEndIndex();
+        long termEndPosition();
 
         /**
-         * Returns the next log index which will be accessed.
+         * Returns the next log position which will be accessed.
          */
-        long index();
+        long position();
 
         /**
-         * Returns the current term commit index, which might be lower than the start index.
+         * Returns the current term commit position, which might be lower than the start
+         * position.
          */
-        long commitIndex();
+        long commitPosition();
 
         @Override
         void close();
@@ -185,40 +186,40 @@ public interface DirectReplicator extends Replicator {
      */
     public static interface Writer extends Accessor {
         /**
-         * Blocks until the commit index reaches the given index.
+         * Blocks until the commit position reaches the given position.
          *
          * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
-         * @return current commit index, or -1 if deactivated before the index could be
+         * @return current commit position, or -1 if deactivated before the position could be
          * reached, or -2 if timed out
          */
-        long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
+        long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException;
 
         /**
-         * Blocks until the commit index reaches the end of the term.
+         * Blocks until the commit position reaches the end of the term.
          *
          * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
-         * @return current commit index, or -1 if closed before the index could be
+         * @return current commit position, or -1 if closed before the position could be
          * reached, or -2 if timed out
          */
         default long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
             long endNanos = nanosTimeout > 0 ? (System.nanoTime() + nanosTimeout) : 0;
 
-            long endIndex = termEndIndex();
+            long endPosition = termEndPosition();
 
             while (true) {
-                long index = waitForCommit(endIndex, nanosTimeout);
-                if (index == -2) {
+                long position = waitForCommit(endPosition, nanosTimeout);
+                if (position == -2) {
                     // Timed out.
                     return -2;
                 }
-                endIndex = termEndIndex();
-                if (endIndex == Long.MAX_VALUE) {
+                endPosition = termEndPosition();
+                if (endPosition == Long.MAX_VALUE) {
                     // Assume closed.
                     return -1;
                 }
-                if (index == endIndex) {
+                if (position == endPosition) {
                     // End reached.
-                    return index;
+                    return position;
                 }
                 // Term ended even lower, so try again.
                 if (nanosTimeout > 0) {
@@ -228,27 +229,27 @@ public interface DirectReplicator extends Replicator {
         }
 
         /**
-         * Invokes the given task when the commit index reaches the requested index. The
-         * current commit index is passed to the task, or -1 if the term ended before the index
-         * could be reached. If the task can be run when this method is called, then the
-         * current thread invokes it immediately.
+         * Invokes the given task when the commit position reaches the requested position. The
+         * current commit position is passed to the task, or -1 if the term ended before the
+         * position could be reached. If the task can be run when this method is called, then
+         * the current thread invokes it immediately.
          */
-        void uponCommit(long index, LongConsumer task);
+        void uponCommit(long position, LongConsumer task);
 
         /**
-         * Invokes the given task when the commit index reaches the end of the term. The
-         * current commit index is passed to the task, or -1 if if closed. If the task can be
-         * run when this method is called, then the current thread invokes it immediately.
+         * Invokes the given task when the commit position reaches the end of the term. The
+         * current commit position is passed to the task, or -1 if if closed. If the task can
+         * be run when this method is called, then the current thread invokes it immediately.
          */
         default void uponEndCommit(LongConsumer task) {
-            uponCommit(termEndIndex(), index -> {
-                long endIndex = termEndIndex();
-                if (endIndex == Long.MAX_VALUE) {
+            uponCommit(termEndPosition(), position -> {
+                long endPosition = termEndPosition();
+                if (endPosition == Long.MAX_VALUE) {
                     // Assume closed.
                     task.accept(-1);
-                } else if (index == endIndex) {
+                } else if (position == endPosition) {
                     // End reached.
-                    task.accept(index);
+                    task.accept(position);
                 } else {
                     // Term ended even lower, so try again.                        
                     uponEndCommit(task);

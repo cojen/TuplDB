@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
- * Peers are ordered by match index, for determining the commit index.
+ * Peers are ordered by match position, for determining the commit position.
  *
  * @author Brian S O'Neill
  */
@@ -55,11 +55,11 @@ final class Peer implements Comparable<Peer> {
 
     Role mRole;
 
-    long mMatchIndex;
+    long mMatchPosition;
 
-    long mSyncMatchIndex;
+    long mSyncMatchPosition;
 
-    volatile long mCompactIndex;
+    volatile long mCompactPosition;
 
     volatile long mGroupVersion;
 
@@ -148,7 +148,7 @@ final class Peer implements Comparable<Peer> {
 
     @Override
     public int compareTo(Peer other) {
-        return Long.compare(mMatchIndex, other.mMatchIndex);
+        return Long.compare(mMatchPosition, other.mMatchPosition);
     }
 
     @Override

@@ -160,7 +160,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <tr id="i0" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#begin(long,long,java.util.Map)">begin</a></span>&#8203;(long&nbsp;length,
-     long&nbsp;index,
+     long&nbsp;position,
      <a href="https://docs.oracle.com/javase/10/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
 <div class="block">Begin writing the snapshot to the receiver.</div>
@@ -235,15 +235,15 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <li class="blockList">
 <h4>begin</h4>
 <pre class="methodSignature"><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;begin&#8203;(long&nbsp;length,
-                   long&nbsp;index,
+                   long&nbsp;position,
                    <a href="https://docs.oracle.com/javase/10/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)
             throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Begin writing the snapshot to the receiver.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>length</code> - expected length of snapshot (in bytes) or -1 if unknown</dd>
-<dd><code>index</code> - log reading begins at this index; expected to be the highest exclusive
- index applied by the snapshot</dd>
+<dd><code>position</code> - log reading begins at this position; expected to be the highest exclusive
+ position applied by the snapshot</dd>
 <dd><code>options</code> - granted to the receiver; can pass null if none</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a stream to write the snapshot into; close the stream or this sender when done</dd>
@@ -320,7 +320,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

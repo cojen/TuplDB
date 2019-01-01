@@ -165,16 +165,17 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitIndex()">commitIndex</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitPosition()">commitPosition</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+<div class="block">Returns the current term commit position, which might be lower than the start
+ position.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#index()">index</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#position()">position</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns the next log index which will be accessed.</div>
+<div class="block">Returns the next log position which will be accessed.</div>
 </td>
 </tr>
 <tr id="i3" class="rowColor">
@@ -186,16 +187,16 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </tr>
 <tr id="i4" class="altColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termEndIndex()">termEndIndex</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termEndPosition()">termEndPosition</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded.</div>
+<div class="block">Returns the current term end position, which is Long.MAX_VALUE if unbounded.</div>
 </td>
 </tr>
 <tr id="i5" class="rowColor">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termStartIndex()">termStartIndex</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termStartPosition()">termStartPosition</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns the index at the start of the term.</div>
+<div class="block">Returns the position at the start of the term.</div>
 </td>
 </tr>
 </table>
@@ -225,45 +226,46 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <div class="block">Returns the fixed term being accessed.</div>
 </li>
 </ul>
-<a id="termStartIndex()">
+<a id="termStartPosition()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>termStartIndex</h4>
-<pre class="methodSignature">long&nbsp;termStartIndex()</pre>
-<div class="block">Returns the index at the start of the term.</div>
+<h4>termStartPosition</h4>
+<pre class="methodSignature">long&nbsp;termStartPosition()</pre>
+<div class="block">Returns the position at the start of the term.</div>
 </li>
 </ul>
-<a id="termEndIndex()">
+<a id="termEndPosition()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>termEndIndex</h4>
-<pre class="methodSignature">long&nbsp;termEndIndex()</pre>
-<div class="block">Returns the current term end index, which is Long.MAX_VALUE if unbounded. The end
- index is always permitted to retreat, but never lower than the commit index.</div>
+<h4>termEndPosition</h4>
+<pre class="methodSignature">long&nbsp;termEndPosition()</pre>
+<div class="block">Returns the current term end position, which is Long.MAX_VALUE if unbounded. The end
+ position is always permitted to retreat, but never lower than the commit position.</div>
 </li>
 </ul>
-<a id="index()">
+<a id="position()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>index</h4>
-<pre class="methodSignature">long&nbsp;index()</pre>
-<div class="block">Returns the next log index which will be accessed.</div>
+<h4>position</h4>
+<pre class="methodSignature">long&nbsp;position()</pre>
+<div class="block">Returns the next log position which will be accessed.</div>
 </li>
 </ul>
-<a id="commitIndex()">
+<a id="commitPosition()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>commitIndex</h4>
-<pre class="methodSignature">long&nbsp;commitIndex()</pre>
-<div class="block">Returns the current term commit index, which might be lower than the start index.</div>
+<h4>commitPosition</h4>
+<pre class="methodSignature">long&nbsp;commitPosition()</pre>
+<div class="block">Returns the current term commit position, which might be lower than the start
+ position.</div>
 </li>
 </ul>
 <a id="close()">
@@ -349,7 +351,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

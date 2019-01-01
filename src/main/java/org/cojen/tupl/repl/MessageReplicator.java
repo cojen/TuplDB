@@ -30,7 +30,7 @@ import java.io.IOException;
  */
 public interface MessageReplicator extends DirectReplicator {
     /**
-     * Open a replicator instance, creating it if necessary.
+     * Open a MessageReplicator instance, creating it if necessary.
      *
      * @throws IllegalArgumentException if misconfigured
      */
@@ -40,10 +40,10 @@ public interface MessageReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
-     * @throws IllegalStateException if index is lower than the start index
+     * @throws IllegalStateException if position is lower than the start position
      */
     @Override
-    Reader newReader(long index, boolean follow);
+    Reader newReader(long position, boolean follow);
 
     /**
      * {@inheritDoc}
@@ -57,23 +57,23 @@ public interface MessageReplicator extends DirectReplicator {
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
-    Writer newWriter(long index);
+    Writer newWriter(long position);
 
     /**
      * Interface called by any group member for reading committed messages. Readers don't track
      * which messages are applied &mdash; applications are responsible for tracking the highest
-     * applied index. When an application restarts, it must open the reader at an appropriate
-     * index.
+     * applied position. When an application restarts, it must open the reader at an appropriate
+     * position.
      *
      * @see MessageReplicator#newReader newReader
      */
     public static interface Reader extends DirectReplicator.Reader {
         /**
-         * Blocks until a log message is available, never reading past a commit index or term.
+         * Blocks until a log message is available, never reading past a commit position or term.
          *
          * @return complete message or null if the term end has been reached
          * @throws IllegalStateException if a partially read message remains
-         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws IllegalStateException if log was deleted (position is too low)
          */
         byte[] readMessage() throws IOException;
 
@@ -88,7 +88,7 @@ public interface MessageReplicator extends DirectReplicator {
          *
          * @return message length if positive, or the amount of bytes remaining in the message
          * (ones' complement), or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws IllegalStateException if log was deleted (position is too low)
          */
         int readMessage(byte[] buf, int offset, int length) throws IOException;
     }

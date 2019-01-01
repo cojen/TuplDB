@@ -190,7 +190,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Durably persist all data up to the highest index.</div>
+<div class="block">Durably persist all data up to the highest position.</div>
 </td>
 </tr>
 </table>
@@ -287,9 +287,9 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <h4>sync</h4>
 <pre class="methodSignature">void&nbsp;sync()
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Durably persist all data up to the highest index. The highest term, the highest index,
- and the commit index are all recovered when reopening the replicator. Incomplete data
- beyond this is discarded.</div>
+<div class="block">Durably persist all data up to the highest position. The highest term, the highest
+ position, and the commit position are all recovered when reopening the
+ replicator. Incomplete data beyond this is discarded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -364,7 +364,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

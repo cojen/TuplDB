@@ -29,11 +29,11 @@ import java.io.IOException;
 interface TermLog extends LKey<TermLog>, Closeable {
     @Override
     default long key() {
-        return startIndex();
+        return startPosition();
     }
 
     /**
-     * Returns the previous term of this log, relative to the start index.
+     * Returns the previous term of this log, relative to the start position.
      */
     long prevTerm();
 
@@ -43,114 +43,116 @@ interface TermLog extends LKey<TermLog>, Closeable {
     long term();
 
     /**
-     * Returns the index at the start of the term.
+     * Returns the position at the start of the term.
      */
-    long startIndex();
+    long startPosition();
 
-    long prevTermAt(long index);
+    long prevTermAt(long position);
 
     /**
-     * Attempt to increase the term start index, assumed to be a valid commit index, and
-     * truncate as much data as possible lower than it. The effective start index applied might
+     * Attempt to increase the term start position, assumed to be a valid commit position, and
+     * truncate as much data as possible lower than it. The effective start position applied might
      * be lower than what was requested, dependent on how much data could be truncated. As a
      * side-effect of calling this method, the previous term might be updated.
      *
      * @return true if compaction attempt was full and all segments were deleted
      */
-    boolean compact(long startIndex) throws IOException;
+    boolean compact(long startPosition) throws IOException;
 
     /**
-     * Returns the potential index, which isn't appliable until the highest index reaches it.
+     * Returns the potential position, which isn't appliable until the highest position reaches it.
      */
-    long potentialCommitIndex();
+    long potentialCommitPosition();
 
     /**
-     * @return true if the potential commit index is higher than the start index
+     * @return true if the potential commit position is higher than the start position
      */
     default boolean hasCommit() {
-        return hasCommit(startIndex());
+        return hasCommit(startPosition());
     }
 
     /**
-     * @return true if the potential commit index is higher than the given index
+     * @return true if the potential commit position is higher than the given position
      */
-    default boolean hasCommit(long index) {
-        return potentialCommitIndex() > index;
+    default boolean hasCommit(long position) {
+        return potentialCommitPosition() > position;
     }
 
     /**
-     * Returns the index at the end of the term (exclusive), which is Long.MAX_VALUE if undefined.
+     * Returns the position at the end of the term (exclusive), which is Long.MAX_VALUE if
+     * undefined.
      */
-    long endIndex();
+    long endPosition();
 
     /**
-     * Copies into all relevant fields of the given info object, for the highest index. The
-     * commit index provided is appliable.
+     * Copies into all relevant fields of the given info object, for the highest position. The
+     * commit position provided is appliable.
      */
     void captureHighest(LogInfo info);
 
     /**
-     * Returns true if the highest commit index is greater than or equal to the end index.
+     * Returns true if the highest commit position is greater than or equal to the end position.
      */
     boolean isFinished();
 
     /**
-     * Permit the commit index to advance. If the highest index (over a contiguous range)
-     * is less than the given commit index, the actual commit index doesn't advance until
-     * the highest index catches up.
+     * Permit the commit position to advance. If the highest position (over a contiguous range)
+     * is less than the given commit position, the actual commit position doesn't advance until
+     * the highest position catches up.
      */
-    void commit(long commitIndex);
+    void commit(long commitPosition);
 
     /**
-     * Blocks until the commit index reaches the given index.
+     * Blocks until the commit position reaches the given position.
      *
      * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
-     * @return current commit index, or -1 if term finished before the index could be reached,
-     * or -2 if timed out
+     * @return current commit position, or -1 if term finished before the position could be
+     * reached, or -2 if timed out
      */
-    long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException;
+    long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException;
 
     /**
-     * Invokes the given task when the commit index reaches the requested index. The current
-     * commit index is passed to the task, or -1 if the term ended before the index could be
+     * Invokes the given task when the commit position reaches the requested position. The current
+     * commit position is passed to the task, or -1 if the term ended before the position could be
      * reached. If the task can be run when this method is called, then the current thread
      * invokes it.
      */
     void uponCommit(Delayed task);
 
     /**
-     * Set the end index for this term instance, truncating all higher data. The highest index
-     * will also be set, if the given index is within the contiguous region of data.
+     * Set the end position for this term instance, truncating all higher data. The highest
+     * position will also be set, if the given position is within the contiguous region of
+     * data.
      *
-     * @throws IllegalStateException if the given index is lower than the commit index
+     * @throws IllegalStateException if the given position is lower than the commit position
      */
-    void finishTerm(long endIndex);
+    void finishTerm(long endPosition);
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest
-     * contiguous index (exclusive), as returned by the previous invocation of this method, or
+     * contiguous position (exclusive), as returned by the previous invocation of this method, or
      * pass Long.MAX_VALUE if unknown. The given callback receives all the missing ranges, and
-     * an updated contiguous index is returned. As long as the contiguous range is changing, no
+     * an updated contiguous position is returned. As long as the contiguous range is changing, no
      * missing ranges are reported.
      */
-    long checkForMissingData(long contigIndex, IndexRange results);
+    long checkForMissingData(long contigPosition, PositionRange results);
 
     /**
      * Returns a new or existing writer which can write data to the log, starting from the
-     * given index.
+     * given position.
      *
-     * @param index any index in the term
+     * @param position any position in the term
      */
-    LogWriter openWriter(long index);
+    LogWriter openWriter(long position);
 
     /**
-     * Returns a new or existing reader which accesses data starting from the given index. The
+     * Returns a new or existing reader which accesses data starting from the given position. The
      * reader returns EOF whenever the end of this term is reached.
      */
-    LogReader openReader(long index);
+    LogReader openReader(long position);
 
     /**
-     * Durably persist all data up to the highest index.
+     * Durably persist all data up to the highest position.
      */
     void sync() throws IOException;
 }

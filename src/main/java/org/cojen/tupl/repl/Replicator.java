@@ -61,9 +61,9 @@ public interface Replicator extends Closeable {
     void socketAcceptor(Consumer<Socket> acceptor);
 
     /**
-     * Durably persist all data up to the highest index. The highest term, the highest index,
-     * and the commit index are all recovered when reopening the replicator. Incomplete data
-     * beyond this is discarded.
+     * Durably persist all data up to the highest position. The highest term, the highest
+     * position, and the commit position are all recovered when reopening the
+     * replicator. Incomplete data beyond this is discarded.
      */
     void sync() throws IOException;
 }

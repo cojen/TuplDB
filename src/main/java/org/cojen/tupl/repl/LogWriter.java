@@ -29,13 +29,13 @@ import java.util.function.LongConsumer;
  */
 abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
     /**
-     * Returns the term at the previous writer index.
+     * Returns the term at the previous writer position.
      */
     abstract long prevTerm();
 
     @Override
-    public void uponCommit(long index, LongConsumer task) {
-        uponCommit(new Delayed(index) {
+    public void uponCommit(long position, LongConsumer task) {
+        uponCommit(new Delayed(position) {
             @Override
             protected void doRun(long counter) {
                 task.accept(counter);
@@ -44,10 +44,10 @@ abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
     }
 
     /**
-     * Invokes the given task when the commit index reaches the requested index. The current
-     * commit index is passed to the task, or -1 if the term ended before the index could be
-     * reached. If the task can be run when this method is called, then the current thread
-     * invokes it.
+     * Invokes the given task when the commit position reaches the requested position. The
+     * current commit position is passed to the task, or -1 if the term ended before the
+     * position could be reached. If the task can be run when this method is called, then the
+     * current thread invokes it.
      */
     abstract void uponCommit(Delayed task);
 

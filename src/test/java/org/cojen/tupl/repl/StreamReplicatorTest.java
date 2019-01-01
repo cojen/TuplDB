@@ -102,9 +102,9 @@ public class StreamReplicatorTest {
                 Writer writer = repl.newWriter();
                 try {
                     writer.write(wrapped);
-                    long index = writer.index();
-                    writer.waitForCommit(index, -1);
-                    repl.controlMessageReceived(index, message);
+                    long position = writer.position();
+                    writer.waitForCommit(position, -1);
+                    repl.controlMessageReceived(position, message);
                 } catch (IOException e) {
                     Utils.rethrow(e);
                 } finally {
@@ -162,11 +162,11 @@ public class StreamReplicatorTest {
         assertEquals(1, term);
         assertEquals(term, reader.term());
 
-        assertEquals(0, writer.termStartIndex());
-        assertEquals(0, reader.termStartIndex());
+        assertEquals(0, writer.termStartPosition());
+        assertEquals(0, reader.termStartPosition());
 
-        assertEquals(Long.MAX_VALUE, writer.termEndIndex());
-        assertEquals(Long.MAX_VALUE, reader.termEndIndex());
+        assertEquals(Long.MAX_VALUE, writer.termEndPosition());
+        assertEquals(Long.MAX_VALUE, reader.termEndPosition());
 
         byte[] message = "hello".getBytes();
         byte[] wrapped = wrapMessage(message);
@@ -202,19 +202,19 @@ public class StreamReplicatorTest {
         assertEquals(term, reader.term());
         assertEquals(term, replica.term());
 
-        assertEquals(0, writer.termStartIndex());
-        assertEquals(0, reader.termStartIndex());
-        assertEquals(0, replica.termStartIndex());
+        assertEquals(0, writer.termStartPosition());
+        assertEquals(0, reader.termStartPosition());
+        assertEquals(0, replica.termStartPosition());
 
-        assertEquals(Long.MAX_VALUE, writer.termEndIndex());
-        assertEquals(Long.MAX_VALUE, reader.termEndIndex());
-        assertEquals(Long.MAX_VALUE, replica.termEndIndex());
+        assertEquals(Long.MAX_VALUE, writer.termEndPosition());
+        assertEquals(Long.MAX_VALUE, reader.termEndPosition());
+        assertEquals(Long.MAX_VALUE, replica.termEndPosition());
 
         byte[] message = "hello".getBytes();
         byte[] wrapped = wrapMessage(message);
         assertEquals(wrapped.length, writer.write(wrapped));
-        long highIndex = writer.index();
-        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+        long highPosition = writer.position();
+        assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         byte[] buf = new byte[message.length];
         readFully(reader, buf);
@@ -226,8 +226,8 @@ public class StreamReplicatorTest {
         message = "world!".getBytes();
         wrapped = wrapMessage(message);
         assertEquals(wrapped.length, writer.write(wrapped));
-        highIndex = writer.index();
-        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+        highPosition = writer.position();
+        assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         buf = new byte[message.length];
         readFully(reader, buf);
@@ -275,23 +275,23 @@ public class StreamReplicatorTest {
         }
 
         @Override
-        public long termStartIndex() {
-            return mSource.termStartIndex();
+        public long termStartPosition() {
+            return mSource.termStartPosition();
         }
 
         @Override
-        public long termEndIndex() {
-            return mSource.termEndIndex();
+        public long termEndPosition() {
+            return mSource.termEndPosition();
         }
 
         @Override
-        public long index() {
-            return mSource.index();
+        public long position() {
+            return mSource.position();
         }
 
         @Override
-        public long commitIndex() {
-            return mSource.commitIndex();
+        public long commitPosition() {
+            return mSource.commitPosition();
         }
 
         @Override
@@ -326,7 +326,7 @@ public class StreamReplicatorTest {
                     }
 
                     // Control message.
-                    mRepl.controlMessageReceived(mSource.index(), b);
+                    mRepl.controlMessageReceived(mSource.position(), b);
                 }
             }
 

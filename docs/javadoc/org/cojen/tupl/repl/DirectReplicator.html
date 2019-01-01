@@ -196,17 +196,17 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 </tr>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compact(long)">compact</a></span>&#8203;(long&nbsp;index)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compact(long)">compact</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
-<div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>
+<div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
 </td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code><a href="DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;position,
          boolean&nbsp;follow)</code></th>
 <td class="colLast">
-<div class="block">Returns a new reader which accesses data starting from the given index.</div>
+<div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </td>
 </tr>
 <tr id="i2" class="altColor">
@@ -219,7 +219,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 </tr>
 <tr id="i3" class="rowColor">
 <td class="colFirst"><code><a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;index)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader.</div>
@@ -256,11 +256,11 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 </tr>
 <tr id="i8" class="altColor">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncCommit(long,long)">syncCommit</a></span>&#8203;(long&nbsp;index,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncCommit(long,long)">syncCommit</a></span>&#8203;(long&nbsp;position,
           long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Returns immediately if all data up to the given committed index is durable, or else
- durably persists all data up to the highest index.</div>
+<div class="block">Returns immediately if all data up to the given committed position is durable, or else
+ durably persists all data up to the highest position.</div>
 </td>
 </tr>
 </table>
@@ -378,26 +378,26 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <ul class="blockList">
 <li class="blockList">
 <h4>newReader</h4>
-<pre class="methodSignature"><a href="DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a>&nbsp;newReader&#8203;(long&nbsp;index,
+<pre class="methodSignature"><a href="DirectReplicator.Reader.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Reader</a>&nbsp;newReader&#8203;(long&nbsp;position,
                                   boolean&nbsp;follow)</pre>
-<div class="block">Returns a new reader which accesses data starting from the given index. The reader
+<div class="block">Returns a new reader which accesses data starting from the given position. The reader
  returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
  new writer to determine if the local member has become the leader.
 
  <p>When passing true for the follow parameter, a reader is always provided at the
- requested index. When passing false for the follow parameter, null is returned if the
- current member is the leader for the given index.
+ requested position. When passing false for the follow parameter, null is returned if the
+ current member is the leader for the given position.
 
  <p><b>Note: Reader instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - index to start reading from, known to have been committed</dd>
+<dd><code>position</code> - position to start reading from, known to have been committed</dd>
 <dd><code>follow</code> - pass true to obtain an active reader, even if local member is the leader</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>reader or possibly null when follow is false</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index is lower than the start index, or if replicator
- is closed</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if position is lower than the start position, or if
+ replicator is closed</dd>
 </dl>
 </li>
 </ul>
@@ -427,7 +427,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <ul class="blockList">
 <li class="blockList">
 <h4>newWriter</h4>
-<pre class="methodSignature"><a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a>&nbsp;newWriter&#8203;(long&nbsp;index)</pre>
+<pre class="methodSignature"><a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a>&nbsp;newWriter&#8203;(long&nbsp;position)</pre>
 <div class="block">Returns a new writer for the leader to write into, or else returns null if the local
  member isn't the leader. The writer stops accepting messages when the term has ended,
  and possibly another leader has been elected.
@@ -435,12 +435,12 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - expected index to start writing from as leader; method returns null if
- index doesn't match</dd>
+<dd><code>position</code> - expected position to start writing from as leader; method returns null if
+ position doesn't match</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if given index is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if given position is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>
@@ -451,19 +451,19 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <ul class="blockList">
 <li class="blockList">
 <h4>syncCommit</h4>
-<pre class="methodSignature">boolean&nbsp;syncCommit&#8203;(long&nbsp;index,
+<pre class="methodSignature">boolean&nbsp;syncCommit&#8203;(long&nbsp;position,
                    long&nbsp;nanosTimeout)
             throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Returns immediately if all data up to the given committed index is durable, or else
- durably persists all data up to the highest index.</div>
+<div class="block">Returns immediately if all data up to the given committed position is durable, or else
+ durably persists all data up to the highest position.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - committed index required to be durable</dd>
+<dd><code>position</code> - committed position required to be durable</dd>
 <dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index is too high</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if position is too high</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
@@ -474,12 +474,12 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <ul class="blockListLast">
 <li class="blockList">
 <h4>compact</h4>
-<pre class="methodSignature">void&nbsp;compact&#8203;(long&nbsp;index)
+<pre class="methodSignature">void&nbsp;compact&#8203;(long&nbsp;position)
       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Permit all data lower than the given index to be deleted, freeing up space in the log.</div>
+<div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - lowest index which must be retained</dd>
+<dd><code>position</code> - lowest position which must be retained</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -553,7 +553,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

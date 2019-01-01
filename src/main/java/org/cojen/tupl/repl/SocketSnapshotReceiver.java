@@ -39,7 +39,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     private final long mLength;
     private final long mPrevTerm;
     private final long mTerm;
-    private final long mIndex;
+    private final long mPosition;
     private final Map<String, String> mOptions;
 
     SocketSnapshotReceiver(GroupFile groupFile, Socket socket, Map<String, String> requestOptions)
@@ -68,7 +68,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
         mLength = dec.decodeLongLE(); 
         mPrevTerm = dec.decodeLongLE(); 
         mTerm = dec.decodeLongLE();
-        mIndex = dec.decodeLongLE();
+        mPosition = dec.decodeLongLE();
         mOptions = dec.decodeMap();
 
         groupFile.readFrom(socket.getInputStream());
@@ -98,8 +98,8 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     }
 
     @Override
-    public long index() {
-        return mIndex;
+    public long position() {
+        return mPosition;
     }
 
     @Override
@@ -115,6 +115,6 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     @Override
     public String toString() {
         return "SnapshotReceiver: {sender=" + senderAddress() + ", length=" + length() +
-            ", prevTerm=" + prevTerm() + ", term=" + term() + ", index=" + index() + '}';
+            ", prevTerm=" + prevTerm() + ", term=" + term() + ", position=" + position() + '}';
     }
 }

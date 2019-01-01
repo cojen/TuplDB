@@ -91,7 +91,7 @@ public class FileTermLogTest {
     }
 
     private void basic(final long seed, boolean reopen) throws Exception {
-        assertEquals(Long.MAX_VALUE, mLog.endIndex());
+        /**  */        assertEquals(Long.MAX_VALUE, mLog.endPosition());
 
         // Write a bunch of data and read it back.
 
@@ -101,19 +101,19 @@ public class FileTermLogTest {
         LogWriter writer = mLog.openWriter(0);
         assertEquals(0, writer.prevTerm());
         assertEquals(1, writer.term());
-        long index = 0;
+        long position = 0;
 
         for (int i=0; i<100000; i++) {
-            assertEquals(index, writer.index());
+            assertEquals(position, writer.position());
             int len = rnd.nextInt(buf.length);
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertEquals(len, writer.write(buf, 0, len, index + len));
-            index += len;
+            assertEquals(len, writer.write(buf, 0, len, position + len));
+            position += len;
             LogInfo info = new LogInfo();
             mLog.captureHighest(info);
-            assertEquals(index, info.mHighestIndex);
+            assertEquals(position, info.mHighestPosition);
         }
 
         writer.release();
@@ -124,7 +124,7 @@ public class FileTermLogTest {
             mLog.sync();
             mLog.close();
             mLog = FileTermLog.openTerm
-                (mCaches, mWorker, mBase, 0, 1, 0, 0, info.mHighestIndex, null);
+                (mCaches, mWorker, mBase, 0, 1, 0, 0, info.mHighestPosition, null);
         }
 
         rnd = new Random(seed);
@@ -132,11 +132,11 @@ public class FileTermLogTest {
         LogReader reader = mLog.openReader(0);
         assertEquals(0, reader.prevTerm());
         assertEquals(1, reader.term());
-        long total = index;
-        index = 0;
+        long total = position;
+        position = 0;
 
         while (true) {
-            assertEquals(index, reader.index());
+            assertEquals(position, reader.position());
             int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 assertTrue(amt == 0);
@@ -145,21 +145,21 @@ public class FileTermLogTest {
             for (int j=0; j<amt; j++) {
                 assertEquals((byte) rnd2.nextInt(), buf[j]);
             }
-            index += amt;
+            position += amt;
         }
 
         reader.release();
-        assertEquals(total, index);
+        assertEquals(total, position);
 
-        mLog.finishTerm(index);
-        assertEquals(index, mLog.endIndex());
+        mLog.finishTerm(position);
+        assertEquals(position, mLog.endPosition());
 
-        mLog.finishTerm(index);
-        assertEquals(index, mLog.endIndex());
+        mLog.finishTerm(position);
+        assertEquals(position, mLog.endPosition());
 
         /* Extending the term is allowed, because conflicting empty terms can be removed.
         try {
-            mLog.finishTerm(index + 1);
+            mLog.finishTerm(position + 1);
             fail();
         } catch (IllegalStateException e) {
             // Expected.
@@ -174,27 +174,27 @@ public class FileTermLogTest {
             } catch (IOException e) {
                 // Closed.
             }
-            writer = mLog.openWriter(writer.index());
+            writer = mLog.openWriter(writer.position());
         }
         assertEquals(0, writer.write(buf, 0, 1, 9_999_999_999L));
         writer.release();
 
-        assertEquals(index, mLog.endIndex());
+        assertEquals(position, mLog.endPosition());
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(index, info.mHighestIndex);
+        assertEquals(position, info.mHighestPosition);
 
         // Permit partial write up to the end.
-        writer = mLog.openWriter(index - 1);
+        writer = mLog.openWriter(position - 1);
         assertEquals(1, writer.write(buf, 0, 2, 9_999_999_999L));
         writer.release();
         
-        assertEquals(index, mLog.endIndex());
+        assertEquals(position, mLog.endPosition());
 
         info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(index, info.mHighestIndex);
+        assertEquals(position, info.mHighestPosition);
     }
 
     @Test
@@ -211,23 +211,23 @@ public class FileTermLogTest {
         mLog.close();
         final long prevTerm = 0;
         final long term = 1;
-        final long startIndex = 1000;
-        mLog = FileTermLog.openTerm
-            (mCaches, mWorker, mBase, prevTerm, term, startIndex, startIndex, startIndex, null);
+        final long startPosition = 1000;
+        mLog = FileTermLog.openTerm(mCaches, mWorker, mBase, prevTerm, term,
+                                    startPosition, startPosition, startPosition, null);
 
         final byte[] buf = new byte[1000];
         Random rnd = new Random(62723);
         Random rnd2 = new Random(8675309);
-        LogWriter writer = mLog.openWriter(startIndex);
-        long index = startIndex;
+        LogWriter writer = mLog.openWriter(startPosition);
+        long position = startPosition;
 
         for (int i=0; i<10_000; i++) {
             int len = rnd.nextInt(buf.length);
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertEquals(len, writer.write(buf, 0, len, index + len));
-            index += len;
+            assertEquals(len, writer.write(buf, 0, len, position + len));
+            position += len;
         }
 
         writer.release();
@@ -272,11 +272,11 @@ public class FileTermLogTest {
 
         final long startWith;
         if (!discoverStart) {
-            startWith = startIndex;
+            startWith = startPosition;
         } else {
             try {
-                FileTermLog.openTerm
-                    (mCaches, mWorker, mBase, -1, term, -1, startIndex, info.mHighestIndex, null);
+                FileTermLog.openTerm(mCaches, mWorker, mBase, -1, term, -1,
+                                     startPosition, info.mHighestPosition, null);
                 fail();
             } catch (Exception e) {
                 assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
@@ -290,15 +290,15 @@ public class FileTermLogTest {
 
         try {
             mLog = FileTermLog.openTerm
-                (mCaches, mWorker, mBase, 12, term, startWith, startIndex,
-                 info.mHighestIndex, null);
+                (mCaches, mWorker, mBase, 12, term, startWith, startPosition,
+                 info.mHighestPosition, null);
             fail();
         } catch (IllegalStateException e) {
             // Mismatched previous term.
         }
 
-        mLog = FileTermLog.openTerm
-            (mCaches, mWorker, mBase, -1, term, startWith, startIndex, info.mHighestIndex, null);
+        mLog = FileTermLog.openTerm(mCaches, mWorker, mBase, -1, term, startWith,
+                                    startPosition, info.mHighestPosition, null);
 
         if (low != null) {
             assertTrue(!low.exists());
@@ -309,14 +309,14 @@ public class FileTermLogTest {
         // Verify the data.
 
         rnd2 = new Random(8675309);
-        LogReader reader = mLog.openReader(startIndex);
+        LogReader reader = mLog.openReader(startPosition);
         assertEquals(0, reader.prevTerm());
         assertEquals(1, reader.term());
-        long total = index;
-        index = startIndex;
+        long total = position;
+        position = startPosition;
 
         while (true) {
-            assertEquals(index, reader.index());
+            assertEquals(position, reader.position());
             int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
                 assertTrue(amt == 0);
@@ -325,11 +325,11 @@ public class FileTermLogTest {
             for (int j=0; j<amt; j++) {
                 assertEquals((byte) rnd2.nextInt(), buf[j]);
             }
-            index += amt;
+            position += amt;
         }
 
         reader.release();
-        assertEquals(total, index);
+        assertEquals(total, position);
 
         // Reopen with missing segments.
         mLog.close();
@@ -342,8 +342,8 @@ public class FileTermLogTest {
 
         try {
             FileTermLog.openTerm
-                (mCaches, mWorker, mBase, prevTerm, term, startWith, startIndex,
-                 info.mHighestIndex, null);
+                (mCaches, mWorker, mBase, prevTerm, term, startWith, startPosition,
+                 info.mHighestPosition, null);
             fail();
         } catch (Exception e) {
             String msg = e.getMessage();
@@ -393,11 +393,11 @@ public class FileTermLogTest {
                             assertEquals((byte) rnd2.nextInt(), buf[j]);
                         }
                         if (compact) {
-                            mLog.compact(reader.index());
+                            mLog.compact(reader.position());
                         }
                     }
 
-                    mTotal = reader.index();
+                    mTotal = reader.position();
                 } catch (Throwable e) {
                     mEx = e;
                 }
@@ -413,36 +413,36 @@ public class FileTermLogTest {
         LogWriter writer = mLog.openWriter(0);
         assertEquals(0, writer.prevTerm());
         assertEquals(1, writer.term());
-        long index = 0;
+        long position = 0;
 
         for (int i=0; i<100000; i++) {
-            assertEquals(index, writer.index());
+            assertEquals(position, writer.position());
             int len = rnd.nextInt(buf.length);
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertEquals(len, writer.write(buf, 0, len, index + len));
-            index += len;
+            assertEquals(len, writer.write(buf, 0, len, position + len));
+            position += len;
             LogInfo info = new LogInfo();
             mLog.captureHighest(info);
-            assertEquals(index, info.mHighestIndex);
+            assertEquals(position, info.mHighestPosition);
 
-            long commitIndex = index + (rnd.nextInt(1000) - 500);
-            if (commitIndex >= 0 && i < (100000 - 1)) {
-                mLog.commit(commitIndex);
+            long commitPosition = position + (rnd.nextInt(1000) - 500);
+            if (commitPosition >= 0 && i < (100000 - 1)) {
+                mLog.commit(commitPosition);
             }
         }
 
         writer.release();
-        mLog.commit(index);
+        mLog.commit(position);
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(index, info.mHighestIndex);
-        assertEquals(index, info.mCommitIndex);
+        assertEquals(position, info.mHighestPosition);
+        assertEquals(position, info.mCommitPosition);
 
-        mLog.finishTerm(index);
-        assertEquals(index, mLog.endIndex());
+        mLog.finishTerm(position);
+        assertEquals(position, mLog.endPosition());
         r.join();
 
         Throwable ex = r.mEx;
@@ -450,7 +450,7 @@ public class FileTermLogTest {
             throw ex;
         }
 
-        assertEquals(index, r.mTotal);
+        assertEquals(position, r.mTotal);
     }
 
     @Test
@@ -536,11 +536,11 @@ public class FileTermLogTest {
         }
 
         // ------
-        long index = 0;
+        long position = 0;
         byte[] msg1 = "hello".getBytes();
 
         // Wait for the full message.
-        Waiter waiter = new Waiter(index + msg1.length, upon);
+        Waiter waiter = new Waiter(position + msg1.length, upon);
         waiter.begin();
 
         LogWriter writer = mLog.openWriter(0);
@@ -550,18 +550,18 @@ public class FileTermLogTest {
         assertEquals(-1, waiter.waitForResult(500));
 
         // Commit too little.
-        mLog.commit(index += 2);
+        mLog.commit(position += 2);
         assertEquals(-1, waiter.waitForResult(500));
 
         // Commit the rest.
-        mLog.commit(index += 3);
-        assertEquals(index, waiter.waitForResult(-1));
+        mLog.commit(position += 3);
+        assertEquals(position, waiter.waitForResult(-1));
 
         // ------
         byte[] msg2 = "world!!!".getBytes();
 
         // Wait for a partial message.
-        waiter = new Waiter(index + 5, upon);
+        waiter = new Waiter(position + 5, upon);
         waiter.begin();
 
         write(writer, msg2);
@@ -570,58 +570,58 @@ public class FileTermLogTest {
         assertEquals(-1, waiter.waitForResult(500));
 
         // Commit too little.
-        mLog.commit(index += 2);
+        mLog.commit(position += 2);
         assertEquals(-1, waiter.waitForResult(500));
 
         // Commit the rest, observing more than what was requested.
-        mLog.commit(index += 6);
-        assertEquals(index, waiter.waitForResult(-1));
+        mLog.commit(position += 6);
+        assertEquals(position, waiter.waitForResult(-1));
 
         // ------
         byte[] msg3 = "stuff".getBytes();
 
         // Wait for the full message.
-        waiter = new Waiter(index + msg3.length, upon);
+        waiter = new Waiter(position + msg3.length, upon);
         waiter.begin();
 
         // Commit ahead.
-        mLog.commit(index + 100);
+        mLog.commit(position + 100);
 
         // Timed out waiting, because nothing has been written yet.
         assertEquals(-1, waiter.waitForResult(500));
 
         write(writer, msg3);
-        index += msg3.length;
-        assertEquals(index, waiter.waitForResult(-1));
+        position += msg3.length;
+        assertEquals(position, waiter.waitForResult(-1));
 
         writer.release();
 
         // ------
         // No wait.
-        waiter = new Waiter(index, upon);
+        waiter = new Waiter(position, upon);
         waiter.begin();
-        assertEquals(index, waiter.waitForResult(-1));
+        assertEquals(position, waiter.waitForResult(-1));
 
         // ------
         // Unblock after term is finished.
-        long findex = index;
+        long fposition = position;
         TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
             TestUtils.sleep(1000);
             try {
-                LogWriter w = mLog.openWriter(findex);
+                LogWriter w = mLog.openWriter(fposition);
                 int rem = 100 - msg3.length;
-                byte[] b = new byte[(int) (findex + rem)]; 
+                byte[] b = new byte[(int) (fposition + rem)]; 
                 for (int i=0; i<b.length; i++) {
                     b[i] = (byte) (i + 1);
                 }
                 write(w, b);
-                mLog.finishTerm(findex + rem);
+                mLog.finishTerm(fposition + rem);
             } catch (IOException e) {
                 Utils.uncaught(e);
             }
         }));
 
-        waiter = new Waiter(index + 101, upon);
+        waiter = new Waiter(position + 101, upon);
         waiter.begin();
         assertEquals(-1, waiter.waitForResult(-1));
 
@@ -660,19 +660,19 @@ public class FileTermLogTest {
         final int sliceLength = 10_000;
         Range[] ranges = new Range[sliceLength * threadCount];
 
-        long index = 0;
+        long position = 0;
         for (int i=0; i<ranges.length; i++) {
             Range range = new Range();
-            range.mStart = index;
+            range.mStart = position;
             int len = rnd.nextInt(1000);
-            index += len;
-            range.mEnd = index;
+            position += len;
+            range.mEnd = position;
             ranges[i] = range;
         }
 
         // Commit and finish in advance.
-        mLog.commit(index);
-        mLog.finishTerm(index);
+        mLog.commit(position);
+        mLog.finishTerm(position);
 
         Collections.shuffle(Arrays.asList(ranges), rnd);
 
@@ -760,7 +760,7 @@ public class FileTermLogTest {
             }
         }
 
-        assertEquals(index, reader.index());
+        assertEquals(position, reader.position());
 
         reader.release();
 
@@ -861,7 +861,7 @@ public class FileTermLogTest {
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(250, info.mHighestIndex);
+        assertEquals(250, info.mHighestPosition);
 
         writer = mLog.openWriter(250);
         write(writer, new byte[50]);
@@ -875,7 +875,7 @@ public class FileTermLogTest {
 
         info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(1000, info.mHighestIndex);
+        assertEquals(1000, info.mHighestPosition);
     }
 
     @Test
@@ -915,7 +915,7 @@ public class FileTermLogTest {
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(0, info.mHighestIndex);
+        assertEquals(0, info.mHighestPosition);
 
         writer = mLog.openWriter(0);
         write(writer, new byte[100]);
@@ -923,7 +923,7 @@ public class FileTermLogTest {
 
         info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(150, info.mHighestIndex);
+        assertEquals(150, info.mHighestPosition);
 
         result = new RangeResult();
         assertEquals(150, mLog.checkForMissingData(0, result));
@@ -954,14 +954,14 @@ public class FileTermLogTest {
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(200, info.mHighestIndex);
+        assertEquals(200, info.mHighestPosition);
 
         mLog.finishTerm(170);
 
         info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(170, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(170, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
 
         result = new RangeResult();
         assertEquals(170, mLog.checkForMissingData(200, result));
@@ -971,8 +971,8 @@ public class FileTermLogTest {
 
         info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(170, info.mHighestIndex);
-        assertEquals(170, info.mCommitIndex);
+        assertEquals(170, info.mHighestPosition);
+        assertEquals(170, info.mCommitPosition);
 
         try {
             mLog.finishTerm(100);
@@ -984,22 +984,22 @@ public class FileTermLogTest {
 
     @Test
     public void clampHighest() throws Exception {
-        // Verify that the highest index cannot be set higher than the contiguous index.
+        // Verify that the highest position cannot be set higher than the contiguous position.
 
         LogWriter writer = mLog.openWriter(0);
         write(writer, new byte[100]);
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mHighestPosition);
 
         write(writer, new byte[100], 250);
         mLog.captureHighest(info);
-        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mHighestPosition);
 
         write(writer, new byte[100], 250);
         mLog.captureHighest(info);
-        assertEquals(250, info.mHighestIndex);
+        assertEquals(250, info.mHighestPosition);
     }
 
     @Test
@@ -1014,9 +1014,9 @@ public class FileTermLogTest {
         }
         writer.release();
 
-        long commitIndex = 1_500_000;
-        mLog.commit(commitIndex);
-        mLog.compact(commitIndex);
+        long commitPosition = 1_500_000;
+        mLog.commit(commitPosition);
+        mLog.compact(commitPosition);
 
         LogReader reader = mLog.openReader(0);
         try {
@@ -1042,20 +1042,20 @@ public class FileTermLogTest {
 
         // Try again with writers that reference deleted segements.
 
-        writer = mLog.openWriter(commitIndex);
+        writer = mLog.openWriter(commitPosition);
         for (int i=0; i<1000; i++) {
             write(writer, b);
         }
         writer.release();
 
-        // Re-open at the start index.
-        writer = mLog.openWriter(commitIndex);
+        // Re-open at the start position.
+        writer = mLog.openWriter(commitPosition);
         // Force segement to be referenced.
         writer.write(b);
 
-        long commitIndex2 = 4_000_000;
-        mLog.commit(commitIndex2);
-        mLog.compact(commitIndex2);
+        long commitPosition2 = 4_000_000;
+        mLog.commit(commitPosition2);
+        mLog.compact(commitPosition2);
 
         assertEquals(0, writer.write(b));
         writer.release();
@@ -1063,9 +1063,9 @@ public class FileTermLogTest {
 
     @Test
     public void commitBoostHighest() throws Exception {
-        // Commit should advance the highest index in some cases, because not all writes are
-        // expected to provide a highest index. Replies for missing data don't provide a
-        // highest index, and then the term might end before the leader writes again.
+        // Commit should advance the highest position in some cases, because not all writes are
+        // expected to provide a highest position. Replies for missing data don't provide a
+        // highest position, and then the term might end before the leader writes again.
 
         LogWriter writer = mLog.openWriter(0);
         write(writer, new byte[100], 0);
@@ -1119,7 +1119,7 @@ public class FileTermLogTest {
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
-        assertEquals(50, info.mHighestIndex);
+        assertEquals(50, info.mHighestPosition);
 
         LogReader reader = mLog.openReader(0);
         byte[] buf = new byte[1000];
@@ -1136,7 +1136,7 @@ public class FileTermLogTest {
         write(writer, data3);
 
         mLog.captureHighest(info);
-        assertEquals(200, info.mHighestIndex);
+        assertEquals(200, info.mHighestPosition);
 
         assertEquals(150, reader.tryReadAny(buf, 50, buf.length - 50));
         for (int i=50; i<100; i++) {
@@ -1184,7 +1184,7 @@ public class FileTermLogTest {
         for (int i = 0; i < (1024 + 2048 + 1000); i++) {
             write(writer, data2);
         }
-        mLog.commit(writer.index());
+        mLog.commit(writer.position());
         writer.release();
 
         for (int i = 100; i < 2000; i++) {
@@ -1205,14 +1205,14 @@ public class FileTermLogTest {
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {
-        int amt = writer.write(data, 0, data.length, writer.index() + data.length);
+        int amt = writer.write(data, 0, data.length, writer.position() + data.length);
         assertEquals(data.length, amt);
     }
 
-    private static void write(LogWriter writer, byte[] data, long highestIndex)
+    private static void write(LogWriter writer, byte[] data, long highestPosition)
         throws IOException
     {
-        int amt = writer.write(data, 0, data.length, highestIndex);
+        int amt = writer.write(data, 0, data.length, highestPosition);
         assertEquals(data.length, amt);
     }
 
@@ -1258,7 +1258,7 @@ public class FileTermLogTest {
         }
     }
 
-    static class RangeResult implements IndexRange {
+    static class RangeResult implements PositionRange {
         List<Range> mRanges = new ArrayList<>();
 
         @Override

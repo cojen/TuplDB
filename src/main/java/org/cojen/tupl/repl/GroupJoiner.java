@@ -68,10 +68,10 @@ class GroupJoiner {
     GroupFile mGroupFile;
     boolean mReplySuccess;
 
-    // Log index and term to start receiving from.
+    // Log position and term to start receiving from.
     long mPrevTerm;
     long mTerm;
-    long mIndex;
+    long mPosition;
 
     /**
      * @param groupFile file to store GroupFile contents
@@ -159,7 +159,7 @@ class GroupJoiner {
 
         // Asynchronously connect to all the seeds and wait for a response. All responses must
         // have a valid connect header. Non-leaders further respond with the leader address (if
-        // available), and the leader responds with the term, index, and GroupFile.
+        // available), and the leader responds with the term, position, and GroupFile.
 
         EncodingOutputStream out = new EncodingOutputStream();
         out.write(ChannelManager.newConnectHeader(mGroupToken, 0, 0, ChannelManager.TYPE_JOIN));
@@ -313,7 +313,7 @@ class GroupJoiner {
             } else if (op == OP_JOINED) {
                 mPrevTerm = cin.readLongLE();
                 mTerm = cin.readLongLE();
-                mIndex = cin.readLongLE();
+                mPosition = cin.readLongLE();
                 try (FileOutputStream out = new FileOutputStream(mFile)) {
                     cin.drainTo(out);
                 }

@@ -23,11 +23,11 @@ package org.cojen.tupl.repl;
  * @author Brian S O'Neill
  */
 class LogInfo {
-    long mTerm, mHighestIndex, mCommitIndex;
+    long mTerm, mHighestPosition, mCommitPosition;
 
     @Override
     public String toString() {
-        return "LogInfo: {term=" + mTerm + ", highestIndex=" +
-            mHighestIndex + ", commitIndex=" + mCommitIndex + '}';
+        return "LogInfo: {term=" + mTerm + ", highestPosition=" +
+            mHighestPosition + ", commitPosition=" + mCommitPosition + '}';
     }
 }

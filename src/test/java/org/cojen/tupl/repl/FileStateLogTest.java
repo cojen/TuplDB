@@ -99,15 +99,15 @@ public class FileStateLogTest {
         LogWriter writer = mLog.openWriter(11, 15, 3000);
         writer.write(new byte[1]);
         writer.release();
-        mLog.commit(writer.index());
+        mLog.commit(writer.position());
 
         // Previous term conflict.
         assertFalse(mLog.defineTerm(10, 16, 4000));
 
-        // Index in the middle of an existing term.
+        // Position in the middle of an existing term.
         assertTrue(mLog.defineTerm(15, 15, 4000));
 
-        // Index in the middle of an existing term, but index is out of bounds.
+        // Position in the middle of an existing term, but position is out of bounds.
         assertFalse(mLog.defineTerm(11, 11, 1000));
         assertFalse(mLog.defineTerm(11, 11, 1500));
         assertFalse(mLog.defineTerm(11, 11, 2000));
@@ -115,14 +115,14 @@ public class FileStateLogTest {
         assertFalse(mLog.defineTerm(11, 11, 5000));
         assertTrue(mLog.defineTerm(11, 11, 2500)); // actually in bounds
 
-        // Mustn't define a term if index as the highest, although it's not usable.
+        // Mustn't define a term if position as the highest, although it's not usable.
         term = mLog.defineTermLog(15, 15, 10000);
         assertTrue(term != null);
         assertTrue(term == mLog.defineTermLog(15, 15, Long.MAX_VALUE));
 
         int[] countRef = {0};
 
-        mLog.queryTerms(0, 20000, (prevTerm, trm, startIndex) -> {
+        mLog.queryTerms(0, 20000, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
             switch ((int) trm) {
             default:
@@ -130,55 +130,55 @@ public class FileStateLogTest {
                 break;
             case 10:
                 assertEquals(0, prevTerm);
-                assertEquals(1000, startIndex);
+                assertEquals(1000, startPosition);
                 break;
             case 11:
                 assertEquals(10, prevTerm);
-                assertEquals(2000, startIndex);
+                assertEquals(2000, startPosition);
                 break;
             case 15:
                 assertEquals(11, prevTerm);
-                assertEquals(3000, startIndex);
+                assertEquals(3000, startPosition);
                 break;
             }
         });
 
         assertEquals(3, countRef[0]);
 
-        // Find terms when the index range doesn't touch a boundary.
+        // Find terms when the position range doesn't touch a boundary.
 
         countRef[0] = 0;
-        mLog.queryTerms(1100, 1200, (prevTerm, trm, startIndex) -> {
+        mLog.queryTerms(1100, 1200, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
             assertEquals(0, prevTerm);
             assertEquals(10, trm);
-            assertEquals(1000, startIndex);
+            assertEquals(1000, startPosition);
         });
 
         assertEquals(1, countRef[0]);
 
         countRef[0] = 0;
-        mLog.queryTerms(1100, 2000, (prevTerm, trm, startIndex) -> {
+        mLog.queryTerms(1100, 2000, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
             assertEquals(0, prevTerm);
             assertEquals(10, trm);
-            assertEquals(1000, startIndex);
+            assertEquals(1000, startPosition);
         });
 
         assertEquals(1, countRef[0]);
 
         countRef[0] = 0;
-        mLog.queryTerms(2000, 2100, (prevTerm, trm, startIndex) -> {
+        mLog.queryTerms(2000, 2100, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
             assertEquals(10, prevTerm);
             assertEquals(11, trm);
-            assertEquals(2000, startIndex);
+            assertEquals(2000, startPosition);
         });
 
         assertEquals(1, countRef[0]);
 
         countRef[0] = 0;
-        mLog.queryTerms(2100, 2100, (prevTerm, trm, startIndex) -> {
+        mLog.queryTerms(2100, 2100, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
         });
 
@@ -289,9 +289,9 @@ public class FileStateLogTest {
 
     @Test
     public void missingRangesHighStart() throws Exception {
-        // Verify missing ranges when log starts higher than index zero.
+        // Verify missing ranges when log starts higher than position zero.
 
-        // Start at index 1000.
+        // Start at position 1000.
         mLog.truncateAll(0, 0, 1000);
         mLog.defineTerm(0, 10, 1000);
 
@@ -364,22 +364,22 @@ public class FileStateLogTest {
     }
 
     @Test
-    public void highestIndex() throws Exception {
-        // Verify highest index and commit index behavior.
+    public void highestPosition() throws Exception {
+        // Verify highest position and commit position behavior.
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(0, info.mTerm);
-        assertEquals(0, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(0, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
 
         mLog.commit(0);
 
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(0, info.mTerm);
-        assertEquals(0, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(0, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
 
         LogWriter writer = mLog.openWriter(0, 1, 0);
         write(writer, new byte[100]);
@@ -388,16 +388,16 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(1, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(100, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
 
         mLog.commit(50);
         
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(1, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
-        assertEquals(50, info.mCommitIndex);
+        assertEquals(100, info.mHighestPosition);
+        assertEquals(50, info.mCommitPosition);
 
         writer = mLog.openWriter(1, 2, 500);
         write(writer, new byte[100]);
@@ -406,16 +406,16 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(1, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
-        assertEquals(50, info.mCommitIndex);
+        assertEquals(100, info.mHighestPosition);
+        assertEquals(50, info.mCommitPosition);
 
         mLog.commit(800);
 
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(1, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
-        assertEquals(100, info.mCommitIndex);
+        assertEquals(100, info.mHighestPosition);
+        assertEquals(100, info.mCommitPosition);
 
         writer = mLog.openWriter(1, 1, 100);
         write(writer, new byte[300]);
@@ -424,8 +424,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(1, info.mTerm);
-        assertEquals(400, info.mHighestIndex);
-        assertEquals(400, info.mCommitIndex);
+        assertEquals(400, info.mHighestPosition);
+        assertEquals(400, info.mCommitPosition);
 
         writer = mLog.openWriter(1, 1, 400);
         write(writer, new byte[100]);
@@ -434,8 +434,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(2, info.mTerm);
-        assertEquals(600, info.mHighestIndex);
-        assertEquals(600, info.mCommitIndex);
+        assertEquals(600, info.mHighestPosition);
+        assertEquals(600, info.mCommitPosition);
 
         writer = mLog.openWriter(2, 2, 600);
         write(writer, new byte[100]);
@@ -444,8 +444,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(2, info.mTerm);
-        assertEquals(700, info.mHighestIndex);
-        assertEquals(700, info.mCommitIndex);
+        assertEquals(700, info.mHighestPosition);
+        assertEquals(700, info.mCommitPosition);
 
         writer = mLog.openWriter(2, 2, 700);
         write(writer, new byte[200]);
@@ -454,8 +454,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(2, info.mTerm);
-        assertEquals(900, info.mHighestIndex);
-        assertEquals(800, info.mCommitIndex);
+        assertEquals(900, info.mHighestPosition);
+        assertEquals(800, info.mCommitPosition);
 
         writer = mLog.openWriter(2, 2, 900);
         write(writer, new byte[50]);
@@ -465,8 +465,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(2, info.mTerm);
-        assertEquals(950, info.mHighestIndex);
-        assertEquals(950, info.mCommitIndex);
+        assertEquals(950, info.mHighestPosition);
+        assertEquals(950, info.mCommitPosition);
 
         writer = mLog.openWriter(2, 2, 950);
         write(writer, new byte[50]);
@@ -476,8 +476,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(2, info.mTerm);
-        assertEquals(1000, info.mHighestIndex);
-        assertEquals(1000, info.mCommitIndex);
+        assertEquals(1000, info.mHighestPosition);
+        assertEquals(1000, info.mCommitPosition);
     }
 
     @Test
@@ -537,8 +537,8 @@ public class FileStateLogTest {
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(term, info.mTerm);
-        assertEquals(1000, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(1000, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
         assertFalse(mLog.checkCandidate(1)); // doesn't match 123
         assertTrue(mLog.checkCandidate(123));
 
@@ -560,8 +560,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(term, info.mTerm);
-        assertEquals(4500, info.mHighestIndex);
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(4500, info.mHighestPosition);
+        assertEquals(0, info.mCommitPosition);
 
         // Partially commit and reopen.
         mLog.commit(4000);
@@ -573,8 +573,8 @@ public class FileStateLogTest {
         info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(term, info.mTerm);
-        assertEquals(4500, info.mHighestIndex);
-        assertEquals(4000, info.mCommitIndex);
+        assertEquals(4500, info.mHighestPosition);
+        assertEquals(4000, info.mCommitPosition);
 
         // Verify data.
         verifyLog(mLog, 0, msg1, -1); // end of term
@@ -590,22 +590,22 @@ public class FileStateLogTest {
     }
 
     class Reader extends Thread {
-        final long mStartIndex;
+        final long mStartPosition;
         volatile long mTotal;
 
         Reader(long start) {
-            mStartIndex = start;
+            mStartPosition = start;
         }
 
         @Override
         public void run() {
             try {
-                LogReader reader = mLog.openReader(mStartIndex);
+                LogReader reader = mLog.openReader(mStartPosition);
                 byte[] buf = new byte[1000];
                 while (true) {
                     int amt = reader.read(buf, 0, buf.length);
                     if (amt < 0) {
-                        reader = mLog.openReader(reader.index());
+                        reader = mLog.openReader(reader.position());
                     } else {
                         mTotal += amt;
                     }
@@ -638,7 +638,7 @@ public class FileStateLogTest {
 
         prevTerm = mLog.checkCurrentTerm(0);
         term = mLog.incrementCurrentTerm(1, 0);
-        writer = mLog.openWriter(prevTerm, term, writer.index());
+        writer = mLog.openWriter(prevTerm, term, writer.position());
 
         for (int i=0; i<5_000; i++) {
             rnd.nextBytes(buf);
@@ -646,9 +646,9 @@ public class FileStateLogTest {
         }
         writer.release();
 
-        final long highestIndex = writer.index();
+        final long highestPosition = writer.position();
 
-        mLog.commit(highestIndex);
+        mLog.commit(highestPosition);
         mLog.sync();
 
         // Generate data over more terms, none of which will be committed.
@@ -656,10 +656,10 @@ public class FileStateLogTest {
         for (int x=0; x<2; x++) {
             prevTerm = mLog.checkCurrentTerm(0);
             term = mLog.incrementCurrentTerm(1, 0);
-            writer = mLog.openWriter(prevTerm, term, writer.index());
+            writer = mLog.openWriter(prevTerm, term, writer.position());
             for (int i=0; i<5_000; i++) {
                 rnd.nextBytes(buf);
-                writer.write(buf, 0, buf.length, 0); // don't advance highest index
+                writer.write(buf, 0, buf.length, 0); // don't advance highest position
             }
             writer.release();
         }
@@ -670,11 +670,11 @@ public class FileStateLogTest {
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(prevTerm, info.mTerm);
-        assertEquals(highestIndex, info.mHighestIndex);
+        assertEquals(highestPosition, info.mHighestPosition);
         // Didn't call syncCommit.
-        assertEquals(0, info.mCommitIndex);
+        assertEquals(0, info.mCommitPosition);
 
-        mLog.commit(highestIndex);
+        mLog.commit(highestPosition);
 
         // Verify data.
 
@@ -690,7 +690,7 @@ public class FileStateLogTest {
 
         assertEquals(-1, r.read(buf2, 0, 1)); // end of term
 
-        r = mLog.openReader(r.index());
+        r = mLog.openReader(r.position());
         for (int i=0; i<5_000; i++) {
             rnd.nextBytes(buf);
             readFully(r, buf2);
@@ -699,7 +699,7 @@ public class FileStateLogTest {
 
         assertEquals(-1, r.read(buf2, 0, 1)); // end of term
 
-        Reader reader = TestUtils.startAndWaitUntilBlocked(new Reader(r.index()));
+        Reader reader = TestUtils.startAndWaitUntilBlocked(new Reader(r.position()));
         assertEquals(0, reader.mTotal);
 
         reader.interrupt();
@@ -708,7 +708,7 @@ public class FileStateLogTest {
 
     @Test
     public void recoverState3() throws Exception {
-        // Test recovery of the start index and term, after truncating the log.
+        // Test recovery of the start position and term, after truncating the log.
 
         Random rnd = new Random(64926492);
 
@@ -728,17 +728,17 @@ public class FileStateLogTest {
         write(writer, msg2);
         writer.release();
 
-        mLog.commit(writer.index());
+        mLog.commit(writer.position());
         mLog.sync();
-        mLog.commitDurable(writer.index());
+        mLog.commitDurable(writer.position());
         mLog.compact(1_500_000);
 
         mLog.close();
         mLog = new FileStateLog(mBase);
 
         TermLog termLog = mLog.termLogAt(1_500_000);
-        assertEquals(1000 + 1024 * 1024, termLog.startIndex());
-        assertEquals(2, termLog.prevTermAt(termLog.startIndex()));
+        assertEquals(1000 + 1024 * 1024, termLog.startPosition());
+        assertEquals(2, termLog.prevTermAt(termLog.startPosition()));
         assertEquals(2, termLog.term());
     }
 
@@ -750,18 +750,18 @@ public class FileStateLogTest {
         for (int i=0; i<1024; i++) {
             writer.write(b);
         }
-        long commitIndex = writer.index();
-        mLog.commit(commitIndex);
+        long commitPosition = writer.position();
+        mLog.commit(commitPosition);
         writer.release();
 
         File expect = new File(mBase.getPath() + ".1.0.0");
         assertTrue(expect.exists());
-        assertEquals(commitIndex, expect.length());
+        assertEquals(commitPosition, expect.length());
 
         mLog.sync();
-        mLog.commitDurable(commitIndex);
+        mLog.commitDurable(commitPosition);
 
-        mLog.compact(commitIndex);
+        mLog.compact(commitPosition);
 
         assertFalse(expect.exists());
 
@@ -770,11 +770,11 @@ public class FileStateLogTest {
         mLog = new FileStateLog(mBase);
 
         // Continue writing the same term.
-        writer = mLog.openWriter(term, term, commitIndex);
+        writer = mLog.openWriter(term, term, commitPosition);
         writer.write(new byte[100]);
         writer.release();
 
-        expect = new File(mBase.getPath() + ".1." + commitIndex);
+        expect = new File(mBase.getPath() + ".1." + commitPosition);
         assertTrue(expect.exists());
         assertEquals(1024 * 1024, expect.length());
     }
@@ -813,8 +813,8 @@ public class FileStateLogTest {
 
         LogInfo info = mLog.captureHighest();
         assertEquals(3, info.mTerm);
-        assertEquals(300, info.mHighestIndex);
-        assertEquals(300, info.mCommitIndex);
+        assertEquals(300, info.mHighestPosition);
+        assertEquals(300, info.mCommitPosition);
 
         // Now create multiple empty terms.
         assertTrue(mLog.defineTerm(3, 4, 400));
@@ -834,8 +834,8 @@ public class FileStateLogTest {
 
         info = mLog.captureHighest();
         assertEquals(6, info.mTerm);
-        assertEquals(700, info.mHighestIndex);
-        assertEquals(700, info.mCommitIndex);
+        assertEquals(700, info.mHighestPosition);
+        assertEquals(700, info.mCommitPosition);
     }
 
     @Test
@@ -854,11 +854,11 @@ public class FileStateLogTest {
 
         LogInfo info = mLog.captureHighest();
         assertEquals(2, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mHighestPosition);
 
         RangeResult result = new RangeResult();
-        long contigIndex = mLog.checkForMissingData(Long.MAX_VALUE, result);
-        assertEquals(100, contigIndex);
+        long contigPosition = mLog.checkForMissingData(Long.MAX_VALUE, result);
+        assertEquals(100, contigPosition);
         assertEquals(0, result.mRanges.size());
 
         // Term 3 starts at 150, and forces term 1 to extend.
@@ -868,11 +868,11 @@ public class FileStateLogTest {
 
         info = mLog.captureHighest();
         assertEquals(1, info.mTerm);
-        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mHighestPosition);
 
         result = new RangeResult();
-        contigIndex = mLog.checkForMissingData(contigIndex, result);
-        assertEquals(100, contigIndex);
+        contigPosition = mLog.checkForMissingData(contigPosition, result);
+        assertEquals(100, contigPosition);
         assertEquals(1, result.mRanges.size());
         assertEquals(new Range(100, 150), result.mRanges.get(0));
     }
@@ -898,7 +898,7 @@ public class FileStateLogTest {
 
         LogInfo info = mLog.captureHighest();
         assertEquals(3, info.mTerm);
-        assertEquals(300, info.mHighestIndex);
+        assertEquals(300, info.mHighestPosition);
 
         // Term 4 replaces term 2 and 3, and it also extends term 1.
         LogWriter w4 = mLog.openWriter(1, 4, 200);
@@ -907,15 +907,15 @@ public class FileStateLogTest {
 
         info = mLog.captureHighest();
         assertEquals(4, info.mTerm);
-        assertEquals(300, info.mHighestIndex);
+        assertEquals(300, info.mHighestPosition);
 
         // Commit term 4, and now it cannot be replaced.
         mLog.commit(250);
 
         info = mLog.captureHighest();
         assertEquals(4, info.mTerm);
-        assertEquals(300, info.mHighestIndex);
-        assertEquals(250, info.mCommitIndex);
+        assertEquals(300, info.mHighestPosition);
+        assertEquals(250, info.mCommitPosition);
 
         assertNull(mLog.openWriter(1, 5, 200));
         assertNull(mLog.openWriter(1, 5, 250));
@@ -923,7 +923,7 @@ public class FileStateLogTest {
 
     @Test
     public void rollbackHighest() throws Exception {
-        // When a conflicting term rolls back the highest index, this should be reflected in
+        // When a conflicting term rolls back the highest position, this should be reflected in
         // the metadata as well.
 
         // Term 1 starts at 0.
@@ -938,8 +938,8 @@ public class FileStateLogTest {
         assertEquals(100, w2.write(new byte[100]));
         w2.release();
 
-        // Sync the highest index.
-        assertEquals(200, mLog.captureHighest().mHighestIndex);
+        // Sync the highest position.
+        assertEquals(200, mLog.captureHighest().mHighestPosition);
         mLog.sync();
 
         // Term 3 replaces term 2 and extends term 1.
@@ -953,7 +953,7 @@ public class FileStateLogTest {
 
         LogInfo info = mLog.captureHighest();
         assertEquals(w1.term(), info.mTerm);
-        assertEquals(100, info.mHighestIndex);
+        assertEquals(100, info.mHighestPosition);
     }
 
     @Test
@@ -1026,25 +1026,25 @@ public class FileStateLogTest {
         verifyLog(logF, 0, "11144556668".getBytes(), 0);
     }
 
-    private static void replicate(StateLog from, long index, StateLog to) throws IOException {
+    private static void replicate(StateLog from, long position, StateLog to) throws IOException {
         LogInfo info = new LogInfo();
         to.captureHighest(info);
 
-        if (info.mHighestIndex < index) {
-            index = info.mHighestIndex;
+        if (info.mHighestPosition < position) {
+            position = info.mHighestPosition;
         }
 
         LogReader reader;
         LogWriter writer;
 
         while (true) {
-            reader = from.openReader(index);
-            writer = to.openWriter(reader.prevTerm(), reader.term(), index);
+            reader = from.openReader(position);
+            writer = to.openWriter(reader.prevTerm(), reader.term(), position);
             if (writer != null) {
                 break;
             }
             reader.release();
-            index--;
+            position--;
         }
 
         byte[] buf = new byte[100];
@@ -1057,19 +1057,19 @@ public class FileStateLogTest {
                 if (amt == 0) {
                     break;
                 }
-                reader = from.openReader(index);
-                writer = to.openWriter(reader.prevTerm(), reader.term(), index);
+                reader = from.openReader(position);
+                writer = to.openWriter(reader.prevTerm(), reader.term(), position);
             } else {
                 write(writer, buf, 0, amt);
-                index += amt;
+                position += amt;
             }
         }
     }
 
-    private static void verifyLog(StateLog log, int index, byte[] expect, int finalAmt)
+    private static void verifyLog(StateLog log, int position, byte[] expect, int finalAmt)
         throws IOException
     {
-        LogReader reader = log.openReader(index);
+        LogReader reader = log.openReader(position);
 
         byte[] buf = new byte[expect.length];
         int offset = 0;
@@ -1081,9 +1081,9 @@ public class FileStateLogTest {
                 if (amt == 0) {
                     fail("nothing read");
                 }
-                reader = log.openReader(index);
+                reader = log.openReader(position);
             } else {
-                index += amt;
+                position += amt;
                 offset += amt;
             }
         }
@@ -1094,12 +1094,12 @@ public class FileStateLogTest {
         reader.release();
     }
 
-    private static void writeTerm(StateLog log, int prevTerm, int term, int index, int len)
+    private static void writeTerm(StateLog log, int prevTerm, int term, int position, int len)
         throws IOException
     {
         byte[] data = new byte[len];
         Arrays.fill(data, (byte) term);
-        LogWriter writer = log.openWriter(prevTerm, term, index);
+        LogWriter writer = log.openWriter(prevTerm, term, position);
         write(writer, data);
         writer.release();
     }
@@ -1109,7 +1109,7 @@ public class FileStateLogTest {
     }
 
     private static void write(LogWriter writer, byte[] data, int off, int len) throws IOException {
-        int amt = writer.write(data, off, len, writer.index() + len);
+        int amt = writer.write(data, off, len, writer.position() + len);
         assertEquals(len, amt);
     }
 

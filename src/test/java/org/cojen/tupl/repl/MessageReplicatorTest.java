@@ -163,15 +163,15 @@ public class MessageReplicatorTest {
         assertEquals(1, term);
         assertEquals(term, reader.term());
 
-        assertEquals(0, writer.termStartIndex());
-        assertEquals(0, reader.termStartIndex());
+        assertEquals(0, writer.termStartPosition());
+        assertEquals(0, reader.termStartPosition());
 
-        assertEquals(Long.MAX_VALUE, writer.termEndIndex());
-        assertEquals(Long.MAX_VALUE, reader.termEndIndex());
+        assertEquals(Long.MAX_VALUE, writer.termEndPosition());
+        assertEquals(Long.MAX_VALUE, reader.termEndPosition());
 
         byte[] message = "hello".getBytes();
         assertTrue(writer.writeMessage(message));
-        assertEquals(writer.index(), writer.waitForCommit(writer.index(), 0));
+        assertEquals(writer.position(), writer.waitForCommit(writer.position(), 0));
 
         TestUtils.fastAssertArrayEquals(message, reader.readMessage());
     }
@@ -200,26 +200,26 @@ public class MessageReplicatorTest {
         assertEquals(term, reader.term());
         assertEquals(term, replica.term());
 
-        assertEquals(0, writer.termStartIndex());
-        assertEquals(0, reader.termStartIndex());
-        assertEquals(0, replica.termStartIndex());
+        assertEquals(0, writer.termStartPosition());
+        assertEquals(0, reader.termStartPosition());
+        assertEquals(0, replica.termStartPosition());
 
-        assertEquals(Long.MAX_VALUE, writer.termEndIndex());
-        assertEquals(Long.MAX_VALUE, reader.termEndIndex());
-        assertEquals(Long.MAX_VALUE, replica.termEndIndex());
+        assertEquals(Long.MAX_VALUE, writer.termEndPosition());
+        assertEquals(Long.MAX_VALUE, reader.termEndPosition());
+        assertEquals(Long.MAX_VALUE, replica.termEndPosition());
 
         byte[] message = "hello".getBytes();
         assertTrue(writer.writeMessage(message));
-        long highIndex = writer.index();
-        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+        long highPosition = writer.position();
+        assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         TestUtils.fastAssertArrayEquals(message, reader.readMessage());
         TestUtils.fastAssertArrayEquals(message, replica.readMessage());
 
         message = "world!".getBytes();
         assertTrue(writer.writeMessage(message));
-        highIndex = writer.index();
-        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+        highPosition = writer.position();
+        assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         TestUtils.fastAssertArrayEquals(message, reader.readMessage());
         TestUtils.fastAssertArrayEquals(message, replica.readMessage());
@@ -239,8 +239,8 @@ public class MessageReplicatorTest {
 
         for (byte[] message : messages) {
             assertTrue(writer.writeMessage(message));
-            long highIndex = writer.index();
-            assertTrue(highIndex <= writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+            long highPosition = writer.position();
+            assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
             TestUtils.fastAssertArrayEquals(message, r0.readMessage());
             TestUtils.fastAssertArrayEquals(message, r1.readMessage());
@@ -277,8 +277,8 @@ public class MessageReplicatorTest {
             assertTrue(writer.writeMessage(message));
         }
 
-        long highIndex = writer.index();
-        assertEquals(highIndex, writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS));
+        long highPosition = writer.position();
+        assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         byte[] buf = new byte[1001];
 
@@ -345,13 +345,13 @@ public class MessageReplicatorTest {
             byte[] message = ("hello-" + q).getBytes();
 
             assertTrue(writer.writeMessage(message));
-            long highIndex = writer.index();
+            long highPosition = writer.position();
 
-            // Note: Actual commit index might be higher, because of control messages which
+            // Note: Actual commit position might be higher, because of control messages which
             // were sent by the replication system for membership changes.
-            long commitIndex = writer.waitForCommit(highIndex, COMMIT_TIMEOUT_NANOS);
-            assertTrue("highIndex: " + highIndex + ", commitIndex: " + commitIndex,
-                       commitIndex >= highIndex);
+            long commitPosition = writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS);
+            assertTrue("highPosition: " + highPosition + ", commitPosition: " + commitPosition,
+                       commitPosition >= highPosition);
 
             for (int j=0; j<readers.length; j++) {
                 Reader reader = readers[j];
@@ -360,7 +360,7 @@ public class MessageReplicatorTest {
                 while ((actual = reader.readMessage()) == null) {
                     // Reader was created at false term of 0. Move to the correct one.
                     reader.close();
-                    reader = repls[j].newReader(reader.index(), true);
+                    reader = repls[j].newReader(reader.position(), true);
                     readers[j] = reader;
                 }
 

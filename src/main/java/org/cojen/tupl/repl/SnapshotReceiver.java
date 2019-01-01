@@ -53,10 +53,10 @@ public interface SnapshotReceiver extends Closeable {
     long length();
 
     /**
-     * Returns the log index to start reading from. Is expected to be the highest exclusive
-     * index applied by the snapshot.
+     * Returns the log position to start reading from. Is expected to be the highest exclusive
+     * position applied by the snapshot.
      */
-    long index();
+    long position();
 
     /**
      * Returns a stream to read the snapshot from. Close the stream or this receiver when done.

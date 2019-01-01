@@ -54,7 +54,7 @@ import java.util.function.Consumer;
  */
 public interface StreamReplicator extends DirectReplicator {
     /**
-     * Open a replicator instance, creating it if necessary.
+     * Open a StreamReplicator instance, creating it if necessary.
      *
      * @throws IllegalArgumentException if misconfigured
      */
@@ -122,10 +122,10 @@ public interface StreamReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
-     * @throws IllegalStateException if index is lower than the start index
+     * @throws IllegalStateException if position is lower than the start position
      */
     @Override
-    Reader newReader(long index, boolean follow);
+    Reader newReader(long position, boolean follow);
 
     /**
      * {@inheritDoc}
@@ -139,7 +139,7 @@ public interface StreamReplicator extends DirectReplicator {
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
     @Override
-    Writer newWriter(long index);
+    Writer newWriter(long position);
 
     /**
      * Called to pass along a control message, which was originally provided through an {@link
@@ -147,9 +147,9 @@ public interface StreamReplicator extends DirectReplicator {
      * order in which they were created. A control message cannot be treated as applied until
      * after this method returns.
      *
-     * @param index log index just after the message
+     * @param position log position just after the message
      */
-    void controlMessageReceived(long index, byte[] message) throws IOException;
+    void controlMessageReceived(long position, byte[] message) throws IOException;
 
     /**
      * Install a callback to be invoked when the replicator needs to send control messages,
@@ -171,35 +171,37 @@ public interface StreamReplicator extends DirectReplicator {
     /**
      * Interface called by any group member for reading committed messages. Readers don't track
      * which messages are applied &mdash; applications are responsible for tracking the highest
-     * applied index. When an application restarts, it must open the reader at an appropriate
-     * index.
+     * applied position. When an application restarts, it must open the reader at an appropriate
+     * position.
      *
      * @see StreamReplicator#newReader newReader
      */
     public static interface Reader extends DirectReplicator.Reader {
         /**
-         * Blocks until log messages are available, never reading past a commit index or term.
+         * Blocks until log messages are available, never reading past a commit position or
+         * term.
          *
          * @return amount of bytes read, or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws IllegalStateException if log was deleted (position is too low)
          */
         default int read(byte[] buf) throws IOException {
             return read(buf, 0, buf.length);
         }
 
         /**
-         * Blocks until log messages are available, never reading past a commit index or term.
+         * Blocks until log messages are available, never reading past a commit position or
+         * term.
          *
          * @return amount of bytes read, or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws IllegalStateException if log was deleted (position is too low)
          */
         int read(byte[] buf, int offset, int length) throws IOException;
 
         /**
          * Blocks until the buffer is fully read with messages, never reading past a commit
-         * index or term.
+         * position or term.
          *
-         * @throws IllegalStateException if log was deleted (index is too low)
+         * @throws IllegalStateException if log was deleted (position is too low)
          * @throws EOFException if the term end has been reached too soon
          */
         default void readFully(byte[] buf, int offset, int length) throws IOException {
@@ -225,7 +227,7 @@ public interface StreamReplicator extends DirectReplicator {
     public static interface Writer extends DirectReplicator.Writer {
         /**
          * Write complete messages to the log. Equivalent to: {@code write(messages, 0,
-         * messages.length, }{@link #index index() + }{@code messages.length)}
+         * messages.length, }{@link #position position() + }{@code messages.length)}
          *
          * @return amount of bytes written, which is less than the message length only if the
          * writer is deactivated
@@ -236,29 +238,32 @@ public interface StreamReplicator extends DirectReplicator {
 
         /**
          * Write complete messages to the log. Equivalent to: {@code write(messages, offset,
-         * length, }{@link #index index() + }{@code length)}
+         * length, }{@link #position position() + }{@code length)}
          *
          * @return amount of bytes written, which is less than the given length only if the
          * writer is deactivated
          */
         default int write(byte[] messages, int offset, int length) throws IOException {
-            return write(messages, offset, length, index() + length);
+            return write(messages, offset, length, position() + length);
         }
 
         /**
-         * Write complete or partial messages to the log. The {@code highestIndex} parameter
-         * defines the new absolute log index which can become the commit index. The provided
-         * highest index is permitted to exceed the current log size, in anticpation of future
-         * writes which will fill in the gap. Until the gap is filled in, the highest index
-         * won't be applied. In addition, the highest index can only ever advance. Passing in a
-         * smaller value for the highest index won't actually change it. If all of the provided
-         * messages are partial, simply pass zero as the highest index. To update the highest
-         * index without actually writing anything, pass a length of zero.
+         * Write complete or partial messages to the log. The {@code highestPosition} parameter
+         * defines the new absolute log position which can become the commit position. The
+         * provided highest position is permitted to exceed the current log size, in
+         * anticpation of future writes which will fill in the gap. Until the gap is filled in,
+         * the highest position won't be applied. In addition, the highest position can only
+         * ever advance. Passing in a smaller value for the highest position won't actually
+         * change it. If all of the provided messages are partial, simply pass zero as the
+         * highest position. To update the highest position without actually writing anything,
+         * pass a length of zero.
          *
-         * @param highestIndex highest index (exclusive) which can become the commit index
+         * @param highestPosition highest position (exclusive) which can become the commit
+         * position
          * @return amount of bytes written, which is less than the given length only if the
          * writer is deactivated
          */
-        int write(byte[] messages, int offset, int length, long highestIndex) throws IOException;
+         int write(byte[] messages, int offset, int length, long highestPosition)
+            throws IOException;
     }
 }

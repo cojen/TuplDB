@@ -111,13 +111,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mGrantsRemaining;
     private int mElectionValidated;
     private long mValidatedTerm;
-    private long mLeaderCommitIndex;
+    private long mLeaderCommitPosition;
 
     private LogWriter mLeaderLogWriter;
     private ReplWriter mLeaderReplWriter;
 
-    // Index used to check for missing data.
-    private long mMissingContigIndex = Long.MAX_VALUE; // unknown initially
+    // Position used to check for missing data.
+    private long mMissingContigPosition = Long.MAX_VALUE; // unknown initially
     private boolean mSkipMissingDataTask;
     private volatile boolean mReceivingMissingData;
 
@@ -300,7 +300,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void start(SocketSnapshotReceiver receiver) throws IOException {
         if (!mChanMan.isStarted()) {
             if (receiver != null) {
-                mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.index());
+                mStateLog.truncateAll(receiver.prevTerm(), receiver.term(), receiver.position());
             }
 
             mChanMan.start(this);
@@ -334,21 +334,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Reader newReader(long index, boolean follow) {
+    public Reader newReader(long position, boolean follow) {
         if (follow) {
-            return mStateLog.openReader(index);
+            return mStateLog.openReader(position);
         }
 
         acquireShared();
         try {
             Reader reader;
             if (mLeaderLogWriter != null
-                && index >= mLeaderLogWriter.termStartIndex()
-                && index < mLeaderLogWriter.termEndIndex())
+                && position >= mLeaderLogWriter.termStartPosition()
+                && position < mLeaderLogWriter.termEndPosition())
             {
                 reader = null;
             } else {
-                reader = mStateLog.openReader(index);
+                reader = mStateLog.openReader(position);
             }
             return reader;
         } finally {
@@ -362,20 +362,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Writer newWriter(long index) {
-        if (index < 0) {
+    public Writer newWriter(long position) {
+        if (position < 0) {
             throw new IllegalArgumentException();
         }
-        return createWriter(index);
+        return createWriter(position);
     }
 
-    private Writer createWriter(long index) {
+    private Writer createWriter(long position) {
         acquireExclusive();
         try {
             if (mLeaderReplWriter != null) {
                 throw new IllegalStateException("Writer already exists");
             }
-            if (mLeaderLogWriter == null || (index >= 0 && index != mLeaderLogWriter.index())) {
+            if (mLeaderLogWriter == null
+                || (position >= 0 && position != mLeaderLogWriter.position()))
+            {
                 return null;
             }
             ReplWriter writer = new ReplWriter
@@ -401,11 +403,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public boolean syncCommit(long index, long nanosTimeout) throws IOException {
+    public boolean syncCommit(long position, long nanosTimeout) throws IOException {
         long nanosEnd = nanosTimeout <= 0 ? 0 : System.nanoTime() + nanosTimeout;
 
         while (true) {
-            if (mStateLog.isDurable(index)) {
+            if (mStateLog.isDurable(position)) {
                 break;
             }
 
@@ -413,19 +415,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return false;
             }
 
-            TermLog termLog = mStateLog.termLogAt(index);
-            long prevTerm = termLog.prevTermAt(index);
+            TermLog termLog = mStateLog.termLogAt(position);
+            long prevTerm = termLog.prevTermAt(position);
             long term = termLog.term();
 
             // Sync locally before remotely, avoiding race conditions when the peers reply back
             // quickly. The syncCommitReply method would end up calling commitDurable too soon.
-            long commitIndex = mStateLog.syncCommit(prevTerm, term, index);
+            long commitPosition = mStateLog.syncCommit(prevTerm, term, position);
 
-            if (index > commitIndex) {
+            if (position > commitPosition) {
                 // If syncCommit returns -1, assume that the leadership changed and try again.
-                if (commitIndex >= 0) {
+                if (commitPosition >= 0) {
                     throw new IllegalStateException
-                        ("Invalid commit index: " + index + " > " + commitIndex);
+                        ("Invalid commit position: " + position + " > " + commitPosition);
                 }
             } else {
                 acquireShared();
@@ -434,12 +436,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 if (channels.length == 0) {
                     // Already have consensus.
-                    mStateLog.commitDurable(index);
+                    mStateLog.commitDurable(position);
                     break;
                 }
 
                 for (Channel channel : channels) {
-                    channel.syncCommit(this, prevTerm, term, index);
+                    channel.syncCommit(this, prevTerm, term, position);
                 }
 
                 // Don't wait on the condition for too long. The remote calls to the peers
@@ -450,7 +452,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
 
                 acquireExclusive();
-                if (mStateLog.isDurable(index)) {
+                if (mStateLog.isDurable(position)) {
                     releaseExclusive();
                     break;
                 }
@@ -474,26 +476,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         releaseShared();
 
         for (Channel channel : channels) {
-            channel.compact(this, index);
+            channel.compact(this, position);
         }
 
         return true;
     }
 
     @Override
-    public void compact(long index) throws IOException {
-        long lowestIndex = index;
+    public void compact(long position) throws IOException {
+        long lowestPosition = position;
 
         acquireShared();
         try {
             for (Channel channel : mAllChannels) {
-                lowestIndex = Math.min(lowestIndex, channel.peer().mCompactIndex);
+                lowestPosition = Math.min(lowestPosition, channel.peer().mCompactPosition);
             }
         } finally {
             releaseShared();
         }
 
-        mStateLog.compact(lowestIndex);
+        mStateLog.compact(lowestPosition);
     }
 
     @Override
@@ -528,7 +530,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public void controlMessageReceived(long index, byte[] message) throws IOException {
+    public void controlMessageReceived(long position, byte[] message) throws IOException {
         boolean quickCommit = false;
 
         acquireExclusive();
@@ -540,7 +542,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Unknown message type.
                 return;
             case CONTROL_OP_JOIN:
-                refresh = mGroupFile.applyJoin(index, message) != null;
+                refresh = mGroupFile.applyJoin(position, message) != null;
                 break;
             case CONTROL_OP_UPDATE_ROLE:
                 refresh = mGroupFile.applyUpdateRole(message);
@@ -558,7 +560,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 refreshPeerSet();
 
                 if (mLocalMode == MODE_LEADER) {
-                    // Ensure that all replicas see the commit index, allowing them to receive
+                    // Ensure that all replicas see the commit position, allowing them to receive
                     // and process the control message as soon as possible.
                     // TODO: Not required when quick commit reply is implemented for everything.
                     quickCommit = true;
@@ -668,8 +670,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        TermLog termLogAt(long index) {
-            return mStateLog.termLogAt(index);
+        TermLog termLogAt(long position) {
+            return mStateLog.termLogAt(position);
         }
     }
 
@@ -714,31 +716,31 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public long termStartIndex() {
-            return mWriter.termStartIndex();
+        public long termStartPosition() {
+            return mWriter.termStartPosition();
         }
 
         @Override
-        public long termEndIndex() {
-            return mWriter.termEndIndex();
+        public long termEndPosition() {
+            return mWriter.termEndPosition();
         }
 
         @Override
-        public long index() {
-            return mWriter.index();
+        public long position() {
+            return mWriter.position();
         }
 
         @Override
-        public long commitIndex() {
-            return mWriter.commitIndex();
+        public long commitPosition() {
+            return mWriter.commitPosition();
         }
 
         @Override
-        public int write(byte[] data, int offset, int length, long highestIndex)
+        public int write(byte[] data, int offset, int length, long highestPosition)
             throws IOException
         {
             Channel[] peerChannels;
-            long prevTerm, term, index, commitIndex;
+            long prevTerm, term, position, commitPosition;
             int proxy;
 
             w0: {
@@ -755,9 +757,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     // Must capture the previous term before the write potentially changes it.
                     prevTerm = writer.prevTerm();
                     term = writer.term();
-                    index = writer.index();
+                    position = writer.position();
 
-                    int amt = writer.write(data, offset, length, highestIndex);
+                    int amt = writer.write(data, offset, length, highestPosition);
 
                     if (amt <= 0) {
                         if (length > 0) {
@@ -769,18 +771,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     length = amt;
 
                     mStateLog.captureHighest(writer);
-                    highestIndex = writer.mHighestIndex;
+                    highestPosition = writer.mHighestPosition;
 
                     if (mSelfCommit) {
                         // Only a consensus group of one, so commit changes immediately.
-                        mStateLog.commit(highestIndex);
+                        mStateLog.commit(highestPosition);
                     }
 
                     if (peerChannels.length == 0) {
                         return length;
                     }
 
-                    commitIndex = writer.mCommitIndex;
+                    commitPosition = writer.mCommitPosition;
 
                     proxy = mProxy;
 
@@ -801,7 +803,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Write directly to all the peers.
 
                 for (Channel peerChan : peerChannels) {
-                    peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
+                    peerChan.writeData(null, prevTerm, term,
+                                       position, highestPosition, commitPosition,
                                        data, offset, length);
                 }
 
@@ -814,11 +817,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Channel peerChan = peerChannels[proxy];
 
                 if (peerChan.writeDataAndProxy
-                    (null, prevTerm, term, index, highestIndex, commitIndex, data, offset, length))
-                    {
-                        // Success.
-                        break;
-                    }
+                    (null, prevTerm, term, position, highestPosition, commitPosition,
+                     data, offset, length))
+                {
+                    // Success.
+                    return length;
+                }
 
                 synchronized (this) {
                     // Select the next peer and try again.
@@ -831,13 +835,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
-            return mWriter.waitForCommit(index, nanosTimeout);
+        public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
+            return mWriter.waitForCommit(position, nanosTimeout);
         }
 
         @Override
-        public void uponCommit(long index, LongConsumer task) {
-            mWriter.uponCommit(index, task);
+        public void uponCommit(long position, LongConsumer task) {
+            mWriter.uponCommit(position, task);
         }
 
         @Override
@@ -899,31 +903,31 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void scheduleSyncTask() {
-        // Runs a task which checks if the durable index is advancing, and if not, forces it to
-        // advance by calling syncCommit. This allows peers to compact their logs even if the
-        // application isn't calling syncCommit very often.
+        // Runs a task which checks if the durable position is advancing, and if not, forces it
+        // to advance by calling syncCommit. This allows peers to compact their logs even if
+        // the application isn't calling syncCommit very often.
 
         new Delayed(0) {
             {
                 schedule();
             }
 
-            private long mTargetDurableIndex;
+            private long mTargetDurablePosition;
 
             @Override
             protected void doRun(long counter) {
                 StateLog log = mStateLog;
-                long commitIndex = log.captureHighest().mCommitIndex;
+                long commitPosition = log.captureHighest().mCommitPosition;
 
-                if (!log.isDurable(mTargetDurableIndex)) {
+                if (!log.isDurable(mTargetDurablePosition)) {
                     try {
-                        syncCommit(mTargetDurableIndex, -1);
+                        syncCommit(mTargetDurablePosition, -1);
                     } catch (IOException e) {
                         // Ignore.
                     }
                 }
 
-                mTargetDurableIndex = commitIndex;
+                mTargetDurablePosition = commitPosition;
 
                 schedule();
             }
@@ -947,7 +951,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (tryAcquireShared()) {
             if (mLocalMode == MODE_LEADER) {
                 // Leader doesn't need to check for missing data.
-                mMissingContigIndex = Long.MAX_VALUE; // reset to unknown
+                mMissingContigPosition = Long.MAX_VALUE; // reset to unknown
                 mSkipMissingDataTask = true;
                 releaseShared();
                 return;
@@ -955,19 +959,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseShared();
         }
 
-        class Collector implements IndexRange {
+        class Collector implements PositionRange {
             long[] mRanges;
             int mSize;
 
             @Override
-            public void range(long startIndex, long endIndex) {
+            public void range(long startPosition, long endPosition) {
                 if (mRanges == null) {
                     mRanges = new long[16];
                 } else if (mSize >= mRanges.length) {
                     mRanges = Arrays.copyOf(mRanges, mRanges.length << 1);
                 }
-                mRanges[mSize++] = startIndex;
-                mRanges[mSize++] = endIndex;
+                mRanges[mSize++] = startPosition;
+                mRanges[mSize++] = endPosition;
             }
         };
 
@@ -976,27 +980,28 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mReceivingMissingData = false;
         } else {
             Collector collector = new Collector();
-            mMissingContigIndex = mStateLog.checkForMissingData(mMissingContigIndex, collector);
+            mMissingContigPosition = mStateLog.checkForMissingData
+                (mMissingContigPosition, collector);
 
             for (int i=0; i<collector.mSize; ) {
-                long startIndex = collector.mRanges[i++];
-                long endIndex = collector.mRanges[i++];
-                requestMissingData(startIndex, endIndex);
+                long startPosition = collector.mRanges[i++];
+                long endPosition = collector.mRanges[i++];
+                requestMissingData(startPosition, endPosition);
             }
         }
 
         scheduleMissingDataTask();
     }
 
-    private void requestMissingData(final long startIndex, final long endIndex) {
+    private void requestMissingData(final long startPosition, final long endPosition) {
         event(Level.FINE, () ->
               String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
-                            endIndex - startIndex, startIndex, endIndex));
+                            endPosition - startPosition, startPosition, endPosition));
 
         // TODO: Need a way to abort outstanding requests.
 
-        long remaining = endIndex - startIndex;
-        long index = startIndex;
+        long remaining = endPosition - startPosition;
+        long position = startPosition;
 
         // Distribute the request among the channels at random.
 
@@ -1017,7 +1022,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             while (true) {
                 Channel channel = channels[selected];
 
-                if (channel.queryData(this, index, index + amt)) {
+                if (channel.queryData(this, position, position + amt)) {
                     break;
                 }
 
@@ -1034,7 +1039,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            index += amt;
+            position += amt;
             remaining -= amt;
         }
     }
@@ -1151,15 +1156,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (mGrantsRemaining == 0) {
             // Only a group of one, so become leader immediately.
-            toLeader(term, info.mHighestIndex);
+            toLeader(term, info.mHighestPosition);
         } else {
             releaseExclusive();
 
             event(Level.INFO, "Local member is a candidate: term=" + term + ", highestTerm=" +
-                  info.mTerm + ", highestIndex=" + info.mHighestIndex);
+                  info.mTerm + ", highestPosition=" + info.mHighestPosition);
 
             for (Channel peerChan : peerChannels) {
-                peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestIndex);
+                peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestPosition);
             }
         }
     }
@@ -1172,7 +1177,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void doAffirmLeadership() {
         LogWriter writer;
-        long highestIndex, commitIndex;
+        long highestPosition, commitPosition;
 
         try {
             writer = mLeaderLogWriter;
@@ -1183,17 +1188,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             mStateLog.captureHighest(writer);
-            highestIndex = writer.mHighestIndex;
-            commitIndex = writer.mCommitIndex;
+            highestPosition = writer.mHighestPosition;
+            commitPosition = writer.mCommitPosition;
 
-            if (commitIndex >= highestIndex || commitIndex > mLeaderCommitIndex) {
+            if (commitPosition >= highestPosition || commitPosition > mLeaderCommitPosition) {
                 // Smallest validation value is 1, but boost it to avoiding stalling too soon.
                 mElectionValidated = 5;
-                mLeaderCommitIndex = commitIndex;
+                mLeaderCommitPosition = commitPosition;
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
             } else {
-                toFollower("commit index is stalled");
+                toFollower("commit position is stalled");
                 return;
             }
         } finally {
@@ -1204,10 +1209,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         long prevTerm = writer.prevTerm();
         long term = writer.term();
-        long index = writer.index();
+        long position = writer.position();
 
         for (Channel peerChan : peerChannels) {
-            peerChan.writeData(null, prevTerm, term, index, highestIndex, commitIndex,
+            peerChan.writeData(null, prevTerm, term, position, highestPosition, commitPosition,
                                EMPTY_DATA, 0, 0);
         }
     }
@@ -1330,9 +1335,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         switch (op) {
         case GroupJoiner.OP_ADDRESS:
-            message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, index) -> {
-                // Join is accepted, so reply with the log index info and the group file. The
-                // index is immediately after the control message.
+            message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, position) -> {
+                // Join is accepted, so reply with the log position info and the group
+                // file. The position is immediately after the control message.
 
                 try {
                     if (gfIn == null) {
@@ -1345,14 +1350,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         return;
                     }
 
-                    TermLog termLog = mStateLog.termLogAt(index);
+                    TermLog termLog = mStateLog.termLogAt(position);
 
                     byte[] buf = new byte[1000];
                     int off = 0;
                     buf[off++] = GroupJoiner.OP_JOINED;
-                    encodeLongLE(buf, off, termLog.prevTermAt(index)); off += 8;
+                    encodeLongLE(buf, off, termLog.prevTermAt(position)); off += 8;
                     encodeLongLE(buf, off, termLog.term()); off += 8;
-                    encodeLongLE(buf, off, index); off += 8;
+                    encodeLongLE(buf, off, position); off += 8;
 
                     while (true) {
                         int amt;
@@ -1543,7 +1548,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean requestVote(Channel from, long term, long candidateId,
-                               long highestTerm, long highestIndex)
+                               long highestTerm, long highestPosition)
     {
         long currentTerm;
         acquireExclusive();
@@ -1556,7 +1561,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower(null);
             }
 
-            if (currentTerm >= originalTerm && !isBehind(highestTerm, highestIndex)) {
+            if (currentTerm >= originalTerm && !isBehind(highestTerm, highestPosition)) {
                 if (mStateLog.checkCandidate(candidateId)) {
                     // Set voteGranted result bit to true.
                     currentTerm |= 1L << 63;
@@ -1575,9 +1580,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    private boolean isBehind(long term, long index) {
+    private boolean isBehind(long term, long position) {
         LogInfo info = mStateLog.captureHighest();
-        return term < info.mTerm || (term == info.mTerm && index < info.mHighestIndex);
+        return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition);
     }
 
     /**
@@ -1599,7 +1604,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             LogInfo info = mStateLog.captureHighest();
-            toLeader(term, info.mHighestIndex);
+            toLeader(term, info.mHighestPosition);
             return true;
         }
 
@@ -1625,25 +1630,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     // Caller must acquire exclusive latch, which is released by this method.
-    private void toLeader(long term, long index) {
+    private void toLeader(long term, long position) {
         try {
-            event(Level.INFO, "Local member is the leader: term=" + term + ", index=" + index);
+            event(Level.INFO, "Local member is the leader: term=" + term +
+                  ", position=" + position);
 
             mLeaderReplyChannel = null;
             mLeaderRequestChannel = null;
 
-            long prevTerm = mStateLog.termLogAt(index).prevTermAt(index);
+            long prevTerm = mStateLog.termLogAt(position).prevTermAt(position);
 
-            mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, index);
+            mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, position);
             mLocalMode = MODE_LEADER;
             for (Channel channel : mAllChannels) {
-                channel.peer().mMatchIndex = 0;
+                channel.peer().mMatchPosition = 0;
             }
 
             if (mConsensusPeers.length == 0) {
                 // Only a consensus group of one, so commit changes immediately.
                 mStateLog.captureHighest(mLeaderLogWriter);
-                mStateLog.commit(mLeaderLogWriter.mHighestIndex);
+                mStateLog.commit(mLeaderLogWriter.mHighestPosition);
             }
         } catch (Throwable e) {
             releaseExclusive();
@@ -1658,9 +1664,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean queryTerms(Channel from, long startIndex, long endIndex) {
-        mStateLog.queryTerms(startIndex, endIndex, (prevTerm, term, index) -> {
-            from.queryTermsReply(null, prevTerm, term, index);
+    public boolean queryTerms(Channel from, long startPosition, long endPosition) {
+        mStateLog.queryTerms(startPosition, endPosition, (prevTerm, term, position) -> {
+            from.queryTermsReply(null, prevTerm, term, position);
         });
 
         return true;
@@ -1670,11 +1676,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean queryTermsReply(Channel from, long prevTerm, long term, long startIndex) {
+    public boolean queryTermsReply(Channel from, long prevTerm, long term, long startPosition) {
         try {
             queryReplyTermCheck(term);
 
-            mStateLog.defineTerm(prevTerm, term, startIndex);
+            mStateLog.defineTerm(prevTerm, term, startPosition);
         } catch (IOException e) {
             uncaught(e);
         }
@@ -1717,32 +1723,36 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean queryData(Channel from, long startIndex, long endIndex) {
-        if (endIndex <= startIndex) {
-            return true;
+    public boolean queryData(Channel from, long startPosition, long endPosition) {
+        if (endPosition > startPosition) {
+            mScheduler.execute(() -> doQueryData(from, startPosition, endPosition));
         }
+        return true;
+    }
 
+    private void doQueryData(Channel from, long startPosition, long endPosition) {
         // TODO: Gracefully handle stale data requests, received after log compaction.
 
         try {
-            LogReader reader = mStateLog.openReader(startIndex);
+            LogReader reader = mStateLog.openReader(startPosition);
 
             try {
-                long remaining = endIndex - startIndex;
+                long remaining = endPosition - startPosition;
                 byte[] buf = new byte[(int) Math.min(9000, remaining)];
 
                 while (true) {
                     long currentTerm = 0;
 
                     long prevTerm = reader.prevTerm();
-                    long index = reader.index();
+                    long position = reader.position();
                     long term = reader.term();
 
                     int require = (int) Math.min(buf.length, remaining);
                     int amt = reader.tryRead(buf, 0, require);
 
                     if (amt == 0) {
-                        // If the leader, read past the commit index, up to the highest index.
+                        // If the leader, read past the commit position, up to the highest
+                        // position.
                         acquireShared();
                         try {
                             if (mLocalMode == MODE_LEADER) {
@@ -1761,14 +1771,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         if (amt < 0) {
                             // Move to next term.
                             reader.release();
-                            reader = mStateLog.openReader(startIndex);
+                            reader = mStateLog.openReader(startPosition);
                         }
                         break;
                     }
 
-                    from.queryDataReply(null, currentTerm, prevTerm, term, index, buf, 0, amt);
+                    from.queryDataReply(null, currentTerm, prevTerm, term, position, buf, 0, amt);
 
-                    startIndex += amt;
+                    startPosition += amt;
                     remaining -= amt;
 
                     if (remaining <= 0) {
@@ -1781,8 +1791,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } catch (IOException e) {
             uncaught(e);
         }
-
-        return true;
     }
 
     /**
@@ -1790,7 +1798,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean queryDataReply(Channel from, long currentTerm,
-                                  long prevTerm, long term, long index,
+                                  long prevTerm, long term, long position,
                                   byte[] data, int off, int len)
     {
         if (currentTerm != 0 && validateLeaderTerm(from, currentTerm) == this) {
@@ -1802,7 +1810,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             queryReplyTermCheck(term);
 
-            LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
+            LogWriter writer = mStateLog.openWriter(prevTerm, term, position);
             if (writer != null) {
                 try {
                     writer.write(data, off, len, 0);
@@ -1823,8 +1831,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * @param from pass null if called from writeDataViaProxy
      */
     @Override // Channel
-    public boolean writeData(Channel from, long prevTerm, long term, long index,
-                             long highestIndex, long commitIndex, byte[] data, int off, int len)
+    public boolean writeData(Channel from, long prevTerm, long term, long position,
+                             long highestPosition, long commitPosition,
+                             byte[] data, int off, int len)
     {
         from = validateLeaderTerm(from, term);
         if (from == this) {
@@ -1832,7 +1841,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         try {
-            LogWriter writer = mStateLog.openWriter(prevTerm, term, index);
+            LogWriter writer = mStateLog.openWriter(prevTerm, term, position);
 
             if (writer == null) {
                 // TODO: stash the write for later (unless it's a stale write)
@@ -1840,10 +1849,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 long now = System.currentTimeMillis();
                 if (now >= mNextQueryTermTime) {
                     LogInfo info = mStateLog.captureHighest();
-                    if (highestIndex > info.mCommitIndex && index > info.mCommitIndex) {
+                    if (highestPosition > info.mCommitPosition && position > info.mCommitPosition) {
                         Channel requestChannel = leaderRequestChannel();
                         if (requestChannel != null && requestChannel != this) {
-                            requestChannel.queryTerms(this, info.mCommitIndex, index);
+                            requestChannel.queryTerms(this, info.mCommitPosition, position);
                         }
                     }
                     mNextQueryTermTime = now + QUERY_TERMS_RATE_MILLIS;
@@ -1853,8 +1862,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             try {
-                writer.write(data, off, len, highestIndex);
-                mStateLog.commit(commitIndex);
+                writer.write(data, off, len, highestPosition);
+                mStateLog.commit(commitPosition);
                 mStateLog.captureHighest(writer);
                 long highestTerm = writer.mTerm;
                 if (highestTerm < term) {
@@ -1863,7 +1872,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     return true;
                 }
                 term = highestTerm;
-                highestIndex = writer.mHighestIndex;
+                highestPosition = writer.mHighestPosition;
             } finally {
                 writer.release();
             }
@@ -1874,7 +1883,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (from != null) {
             // TODO: Can skip reply if successful and highest didn't change.
             // TODO: Can skip reply if local role is OBSERVER.
-            from.writeDataReply(null, term, highestIndex);
+            from.writeDataReply(null, term, highestPosition);
         }
 
         return true;
@@ -1982,8 +1991,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean writeDataReply(Channel from, long term, long highestIndex) {
-        long commitIndex;
+    public boolean writeDataReply(Channel from, long term, long highestPosition) {
+        long commitPosition;
 
         acquireExclusive();
         try {
@@ -2010,23 +2019,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             Peer peer = from.peer();
-            long matchIndex = peer.mMatchIndex;
+            long matchPosition = peer.mMatchPosition;
 
-            if (highestIndex <= matchIndex || mConsensusPeers.length == 0) {
+            if (highestPosition <= matchPosition || mConsensusPeers.length == 0) {
                 return true;
             }
 
-            // Updating and sorting the peers by match index is simple, but for large groups
+            // Updating and sorting the peers by match position is simple, but for large groups
             // (>10?), a tree data structure should be used instead.
-            peer.mMatchIndex = highestIndex;
+            peer.mMatchPosition = highestPosition;
             Arrays.sort(mConsensusPeers);
 
-            commitIndex = mConsensusPeers[mConsensusPeers.length >> 1].mMatchIndex;
+            commitPosition = mConsensusPeers[mConsensusPeers.length >> 1].mMatchPosition;
         } finally {
             releaseExclusive();
         }
 
-        mStateLog.commit(commitIndex);
+        mStateLog.commit(commitPosition);
         return true;
     }
 
@@ -2034,11 +2043,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long index,
-                                     long highestIndex, long commitIndex,
+    public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
+                                     long highestPosition, long commitPosition,
                                      byte[] data, int off, int len)
     {
-        if (!writeData(from, prevTerm, term, index, highestIndex, commitIndex, data, off, len)) {
+        if (!writeData(from, prevTerm, term, position, highestPosition, commitPosition,
+                       data, off, len))
+        {
             return false;
         }
 
@@ -2053,7 +2064,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             for (Channel peerChan : peerChannels) {
                 if (!fromPeer.equals(peerChan.peer())) {
                     peerChan.writeDataViaProxy(null, prevTerm, term,
-                                               index, highestIndex, commitIndex, data, off, len);
+                                               position, highestPosition, commitPosition,
+                                               data, off, len);
                 }
             }
         }
@@ -2065,22 +2077,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long index,
-                                     long highestIndex, long commitIndex,
+    public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
+                                     long highestPosition, long commitPosition,
                                      byte[] data, int off, int len)
     {
         // From is null to prevent proxy channel from being selected as the leader channel.
-        return writeData(null, prevTerm, term, index, highestIndex, commitIndex, data, off, len);
+        return writeData(null, prevTerm, term, position, highestPosition, commitPosition,
+                         data, off, len);
     }
 
     /**
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean syncCommit(Channel from, long prevTerm, long term, long index) {
+    public boolean syncCommit(Channel from, long prevTerm, long term, long position) {
         try {
-            if (mStateLog.syncCommit(prevTerm, term, index) >= index) {
-                from.syncCommitReply(null, mGroupFile.version(), term, index);
+            if (mStateLog.syncCommit(prevTerm, term, position) >= position) {
+                from.syncCommitReply(null, mGroupFile.version(), term, position);
             }
             return true;
         } catch (IOException e) {
@@ -2093,40 +2106,40 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean syncCommitReply(Channel from, long groupVersion, long term, long index) {
+    public boolean syncCommitReply(Channel from, long groupVersion, long term, long position) {
         checkGroupVersion(groupVersion);
 
-        long durableIndex;
+        long durablePosition;
 
         acquireExclusive();
         try {
             TermLog termLog;
             if (mConsensusPeers.length == 0
-                || (termLog = mStateLog.termLogAt(index)) == null || term != termLog.term())
+                || (termLog = mStateLog.termLogAt(position)) == null || term != termLog.term())
             {
                 // Received a stale reply.
                 return true;
             }
 
             Peer peer = from.peer();
-            long syncMatchIndex = peer.mSyncMatchIndex;
+            long syncMatchPosition = peer.mSyncMatchPosition;
 
-            if (index > syncMatchIndex) {
-                peer.mSyncMatchIndex = index;
+            if (position > syncMatchPosition) {
+                peer.mSyncMatchPosition = position;
             }
 
-            // Updating and sorting the peers by match index is simple, but for large groups
+            // Updating and sorting the peers by match position is simple, but for large groups
             // (>10?), a tree data structure should be used instead.
             Arrays.sort(mConsensusPeers, (a, b) ->
-                        Long.compare(a.mSyncMatchIndex, b.mSyncMatchIndex));
+                        Long.compare(a.mSyncMatchPosition, b.mSyncMatchPosition));
             
-            durableIndex = mConsensusPeers[mConsensusPeers.length >> 1].mSyncMatchIndex;
+            durablePosition = mConsensusPeers[mConsensusPeers.length >> 1].mSyncMatchPosition;
         } finally {
             releaseExclusive();
         }
 
         try {
-            if (mStateLog.commitDurable(durableIndex)) {
+            if (mStateLog.commitDurable(durablePosition)) {
                 acquireExclusive();
                 try {
                     mSyncCommitCondition.signalAll();
@@ -2145,8 +2158,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean compact(Channel from, long index) {
-        from.peer().mCompactIndex = index;
+    public boolean compact(Channel from, long position) {
+        from.peer().mCompactPosition = position;
         return true;
     }
 

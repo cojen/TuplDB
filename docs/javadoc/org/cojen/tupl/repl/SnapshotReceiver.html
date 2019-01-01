@@ -158,31 +158,31 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <th class="colLast" scope="col">Description</th>
 </tr>
 <tr id="i0" class="altColor">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#index()">index</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the log index to start reading from.</div>
-</td>
-</tr>
-<tr id="i1" class="rowColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#inputStream()">inputStream</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a stream to read the snapshot from.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr id="i1" class="rowColor">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#length()">length</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr id="i2" class="altColor">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#options()">options</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Options granted by the sender.</div>
+</td>
+</tr>
+<tr id="i3" class="rowColor">
+<td class="colFirst"><code>long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#position()">position</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the log position to start reading from.</div>
 </td>
 </tr>
 <tr id="i4" class="altColor">
@@ -250,15 +250,15 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
 </li>
 </ul>
-<a id="index()">
+<a id="position()">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>index</h4>
-<pre class="methodSignature">long&nbsp;index()</pre>
-<div class="block">Returns the log index to start reading from. Is expected to be the highest exclusive
- index applied by the snapshot.</div>
+<h4>position</h4>
+<pre class="methodSignature">long&nbsp;position()</pre>
+<div class="block">Returns the log position to start reading from. Is expected to be the highest exclusive
+ position applied by the snapshot.</div>
 </li>
 </ul>
 <a id="inputStream()">
@@ -344,7 +344,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

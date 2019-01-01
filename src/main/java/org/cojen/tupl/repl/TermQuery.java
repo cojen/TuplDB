@@ -27,7 +27,7 @@ interface TermQuery {
     /**
      * @param prevTerm previous term
      * @param term term number
-     * @param startIndex index at start of term
+     * @param startPosition position at start of term
      */
-    void term(long prevTerm, long term, long startIndex);
+    void term(long prevTerm, long term, long startPosition);
 }

@@ -28,7 +28,7 @@ import java.io.IOException;
 interface StateLog extends Closeable {
     /**
      * Copies into all relevant fields of the returned info object, for the highest term over a
-     * contiguous range (by highest index).
+     * contiguous range (by highest position).
      */
     default LogInfo captureHighest() {
         LogInfo info = new LogInfo();
@@ -38,18 +38,18 @@ interface StateLog extends Closeable {
 
     /**
      * Copies into all relevant fields of the given info object, for the highest term over a
-     * contiguous range (by highest index).
+     * contiguous range (by highest position).
      *
      * @return the highest term, or null if none
      */
     TermLog captureHighest(LogInfo info);
 
     /**
-     * Permit the commit index to advance. If the highest index (over a contiguous range)
-     * is less than the given commit index, the actual commit index doesn't advance until
-     * the highest index catches up.
+     * Permit the commit position to advance. If the highest position (over a contiguous range)
+     * is less than the given commit position, the actual commit position doesn't advance until
+     * the highest position catches up.
      */
-    void commit(long commitIndex);
+    void commit(long commitPosition);
 
     /**
      * Increment the current term by the amount given.
@@ -75,102 +75,102 @@ interface StateLog extends Closeable {
     boolean checkCandidate(long candidateId) throws IOException;
 
     /**
-     * Set the log start index higher, assumed to be a valid commit index, and potentially
-     * truncate any lower data. Method does nothing if given start index is lower than the
+     * Set the log start position higher, assumed to be a valid commit position, and potentially
+     * truncate any lower data. Method does nothing if given start position is lower than the
      * current start.
      */
-    void compact(long index) throws IOException;
+    void compact(long position) throws IOException;
 
     /**
      * Truncate the entire log, and create a primordial term.
      */
-    void truncateAll(long prevTerm, long term, long index) throws IOException;
+    void truncateAll(long prevTerm, long term, long position) throws IOException;
 
     /**
-     * Ensures that a term is defined at the given index.
+     * Ensures that a term is defined at the given position.
      *
-     * @param prevTerm expected term at previous index
+     * @param prevTerm expected term at previous position
      * @param term term to define
-     * @param index any index in the term
+     * @param position any position in the term
      * @return false if not defined due to term mismatch
      */
-    boolean defineTerm(long prevTerm, long term, long index) throws IOException;
+    boolean defineTerm(long prevTerm, long term, long position) throws IOException;
 
     /**
-     * Return the term for the given index, or null if unknown.
+     * Return the term for the given position, or null if unknown.
      */
-    TermLog termLogAt(long index);
+    TermLog termLogAt(long position);
 
     /**
      * Query for all the terms which are defined over the given range.
      *
-     * @param startIndex inclusive log start index
-     * @param endIndex exclusive log end index
+     * @param startPosition inclusive log start position
+     * @param endPosition exclusive log end position
      */
-    void queryTerms(long startIndex, long endIndex, TermQuery results);
+    void queryTerms(long startPosition, long endPosition, TermQuery results);
 
     /**
      * Check for missing data by examination of the contiguous range. Pass in the highest
-     * contiguous index (exclusive), as returned by the previous invocation of this method, or
+     * contiguous position (exclusive), as returned by the previous invocation of this method, or
      * pass Long.MAX_VALUE if unknown. The given callback receives all the missing ranges, and
-     * an updated contiguous index is returned. As long as the contiguous range is changing, no
+     * an updated contiguous position is returned. As long as the contiguous range is changing, no
      * missing ranges are reported.
      */
-    long checkForMissingData(long contigIndex, IndexRange results);
+    long checkForMissingData(long contigPosition, PositionRange results);
 
     /**
      * Returns a new or existing writer which can write data to the log, starting from the
-     * given index.
+     * given position.
      *
-     * @param prevTerm expected term at previous index; pass 0 to not check
+     * @param prevTerm expected term at previous position; pass 0 to not check
      * @param term existing or higher term to apply
-     * @param index any index in the term
+     * @param position any position in the term
      * @return null due to term mismatch
      */
-    LogWriter openWriter(long prevTerm, long term, long index) throws IOException;
+    LogWriter openWriter(long prevTerm, long term, long position) throws IOException;
 
     /**
-     * Returns a new or existing reader which accesses data starting from the given index. The
+     * Returns a new or existing reader which accesses data starting from the given position. The
      * reader returns EOF whenever the end of a term is reached.
      *
      * @return reader or null if timed out
-     * @throws IllegalStateException if index is lower than the start index, or if replicator
+     * @throws IllegalStateException if position is lower than the start position, or if replicator
      * is closed
      */
-    LogReader openReader(long index);
+    LogReader openReader(long position);
 
     /**
-     * Durably persist all data up to the highest index. The highest term, the highest index,
-     * and the durable commit index are all recovered when reopening the state log. Incomplete
+     * Durably persist all data up to the highest position. The highest term, the highest position,
+     * and the durable commit position are all recovered when reopening the state log. Incomplete
      * data beyond this is discarded.
      */
     void sync() throws IOException;
 
     /**
-     * Durably persist all data up to the given committed index. The highest term, the highest
-     * index, and the durable commit index are all recovered when reopening the state log.
+     * Durably persist all data up to the given committed position. The highest term, the highest
+     * position, and the durable commit position are all recovered when reopening the state log.
      * Incomplete data beyond this is discarded.
      *
-     * <p>If the given index is greater than the highest index, then no sync is actually
+     * <p>If the given position is greater than the highest position, then no sync is actually
      * performed and -1 is returned. This case occurs when this method is called by a remote
      * member which is at a higher position in the log.
      *
-     * @return current commit index, or -1 due to term mismatch or if index is too high
+     * @return current commit position, or -1 due to term mismatch or if position is too high
      */
-    long syncCommit(long prevTerm, long term, long index) throws IOException;
+    long syncCommit(long prevTerm, long term, long position) throws IOException;
 
     /**
-     * @return true if given index is less than or equal to current durable commit index
+     * @return true if given position is less than or equal to current durable commit position
      */
-    boolean isDurable(long index);
+    boolean isDurable(long position);
 
     /**
-     * Durably persist the commit index, as agreed by consensus. Only metadata is persisted by
+     * Durably persist the commit position, as agreed by consensus. Only metadata is persisted by
      * this method -- sync or syncCommit must have been called earlier, ensuring that all data
-     * up to the given index is durable.
+     * up to the given position is durable.
      *
-     * @return false if given index is already durable
-     * @throws IllegalStateException if index is too high
+     * @return false if given position is already durable
+     * @throws IllegalStateException if position is too high
      */
-    boolean commitDurable(long index) throws IOException;
+    boolean commitDurable(long position) throws IOException;
 }

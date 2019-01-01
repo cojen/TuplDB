@@ -23,10 +23,10 @@ package org.cojen.tupl.repl;
  * @author Brian S O'Neill
  */
 @FunctionalInterface
-interface IndexRange {
+interface PositionRange {
     /**
-     * @param startIndex inclusive
-     * @param endIndex exclusive
+     * @param startPosition inclusive
+     * @param endPosition exclusive
      */
-    void range(long startIndex, long endIndex);
+    void range(long startPosition, long endPosition);
 }

@@ -87,13 +87,13 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
-    public boolean syncCommit(long index, long nanosTimeout) throws IOException {
-        return mRepl.syncCommit(index, nanosTimeout);
+    public boolean syncCommit(long position, long nanosTimeout) throws IOException {
+        return mRepl.syncCommit(position, nanosTimeout);
     }
 
     @Override
-    public void compact(long index) throws IOException {
-        mRepl.compact(index);
+    public void compact(long position) throws IOException {
+        mRepl.compact(position);
     }
 
     @Override
@@ -130,8 +130,8 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
-    public Reader newReader(long index, boolean follow) {
-        StreamReplicator.Reader source = mRepl.newReader(index, follow);
+    public Reader newReader(long position, boolean follow) {
+        StreamReplicator.Reader source = mRepl.newReader(position, follow);
         if (source == null) {
             return null;
         }
@@ -149,27 +149,27 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
-    public Writer newWriter(long index) {
-        if (index < 0) {
+    public Writer newWriter(long position) {
+        if (position < 0) {
             throw new IllegalArgumentException();
         }
-        return createWriter(index);
+        return createWriter(position);
     }
 
-    private synchronized Writer createWriter(long index) {
+    private synchronized Writer createWriter(long position) {
         if (mWriter != null) {
             if (mWriterExists) {
                 throw new IllegalStateException("Writer already exists");
             }
-            if (index >= 0 && index != mWriter.index()) {
+            if (position >= 0 && position != mWriter.position()) {
                 return null;
             }
         } else {
             StreamReplicator.Writer source;
-            if (index < 0) {
+            if (position < 0) {
                 source = mRepl.newWriter();
             } else {
-                source = mRepl.newWriter(index);
+                source = mRepl.newWriter(position);
             }
             if (source == null) {
                 return null;
@@ -206,30 +206,30 @@ final class MessageStreamReplicator implements MessageReplicator {
             }
         }
 
-        long index;
+        long position;
         try {
-            index = writer.writeControl(message);
+            position = writer.writeControl(message);
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
 
-        if (index < 0) {
+        if (position < 0) {
             return;
         }
 
-        long commitIndex;
+        long commitPosition;
         try {
-            commitIndex = writer.waitForCommit(index, 1_000_000_000L); // 1 second timeout
+            commitPosition = writer.waitForCommit(position, 1_000_000_000L); // 1 second timeout
         } catch (InterruptedIOException e) {
             return;
         }
 
-        if (commitIndex >= 0) {
+        if (commitPosition >= 0) {
             // If the application is also reading, then the message might be observed
             // twice. This is harmless because control messages are versioned (by the
             // GroupFile class), and are therefore idempotent.
             try {
-                mRepl.controlMessageReceived(index, message);
+                mRepl.controlMessageReceived(position, message);
             } catch (Throwable e) {
                 Utils.closeQuietly(this);
                 Utils.uncaught(e);
@@ -263,23 +263,23 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public long termStartIndex() {
-            return mSource.termStartIndex();
+        public long termStartPosition() {
+            return mSource.termStartPosition();
         }
 
         @Override
-        public long termEndIndex() {
-            return mSource.termEndIndex();
+        public long termEndPosition() {
+            return mSource.termEndPosition();
         }
 
         @Override
-        public long index() {
-            return mSource.index();
+        public long position() {
+            return mSource.position();
         }
 
         @Override
-        public long commitIndex() {
-            return mSource.commitIndex();
+        public long commitPosition() {
+            return mSource.commitPosition();
         }
 
         @Override
@@ -313,7 +313,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                         return message;
                     }
 
-                    mRepl.controlMessageReceived(index() - (mEnd - mPos), message);
+                    mRepl.controlMessageReceived(position() - (mEnd - mPos), message);
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);
@@ -369,7 +369,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                         }
                         byte[] message = new byte[rem & ~(1 << 31)];
                         decodeMessage(message);
-                        mRepl.controlMessageReceived(index() - (mEnd - mPos), message);
+                        mRepl.controlMessageReceived(position() - (mEnd - mPos), message);
                     }
                 }
 
@@ -487,23 +487,23 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public long termStartIndex() {
-            return mSource.termStartIndex();
+        public long termStartPosition() {
+            return mSource.termStartPosition();
         }
 
         @Override
-        public long termEndIndex() {
-            return mSource.termEndIndex();
+        public long termEndPosition() {
+            return mSource.termEndPosition();
         }
 
         @Override
-        public long index() {
-            return mSource.index();
+        public long position() {
+            return mSource.position();
         }
 
         @Override
-        public long commitIndex() {
-            return mSource.commitIndex();
+        public long commitPosition() {
+            return mSource.commitPosition();
         }
 
         @Override
@@ -513,13 +513,13 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public long waitForCommit(long index, long nanosTimeout) throws InterruptedIOException {
-            return mSource.waitForCommit(index, nanosTimeout);
+        public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
+            return mSource.waitForCommit(position, nanosTimeout);
         }
 
         @Override
-        public void uponCommit(long index, LongConsumer task) {
-            mSource.uponCommit(index, task);
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
         }
 
         @Override
@@ -549,7 +549,7 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         /**
-         * @return index after message or -1 if not the leader
+         * @return position after message or -1 if not the leader
          */
         synchronized long writeControl(byte[] message) throws IOException {
             byte[] buffer = mBuffer;
@@ -560,7 +560,7 @@ final class MessageStreamReplicator implements MessageReplicator {
             if (!doWriteMessage(pos, message, 0, message.length)) {
                 return -1;
             } else {
-                return mSource.index();
+                return mSource.position();
             }
         }
 
@@ -575,14 +575,14 @@ final class MessageStreamReplicator implements MessageReplicator {
                 if (length <= avail) {
                     System.arraycopy(message, offset, buffer, pos, length);
                     pos += length;
-                    return mSource.write(buffer, 0, pos, mFinished ? (index() + pos) : 0) >= pos;
+                    return mSource.write(buffer, 0, pos, mFinished ? (position() + pos) : 0) >= pos;
                 } else {
                     System.arraycopy(message, offset, buffer, pos, avail);
                     offset += avail;
                     length -= avail;
                     mSource.write(buffer, 0, buffer.length, 0);
                     return mSource.write(message, offset, length,
-                                         mFinished ? (index() + length) : 0) >= length;
+                                         mFinished ? (position() + length) : 0) >= length;
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);

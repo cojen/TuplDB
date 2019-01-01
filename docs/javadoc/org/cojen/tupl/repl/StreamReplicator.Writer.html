@@ -180,7 +180,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;messages,
      int&nbsp;offset,
      int&nbsp;length,
-     long&nbsp;highestIndex)</code></th>
+     long&nbsp;highestPosition)</code></th>
 <td class="colLast">
 <div class="block">Write complete or partial messages to the log.</div>
 </td>
@@ -191,7 +191,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <!--   -->
 </a>
 <h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></h3>
-<code><a href="DirectReplicator.Accessor.html#close()">close</a>, <a href="DirectReplicator.Accessor.html#commitIndex()">commitIndex</a>, <a href="DirectReplicator.Accessor.html#index()">index</a>, <a href="DirectReplicator.Accessor.html#term()">term</a>, <a href="DirectReplicator.Accessor.html#termEndIndex()">termEndIndex</a>, <a href="DirectReplicator.Accessor.html#termStartIndex()">termStartIndex</a></code></li>
+<code><a href="DirectReplicator.Accessor.html#close()">close</a>, <a href="DirectReplicator.Accessor.html#commitPosition()">commitPosition</a>, <a href="DirectReplicator.Accessor.html#position()">position</a>, <a href="DirectReplicator.Accessor.html#term()">term</a>, <a href="DirectReplicator.Accessor.html#termEndPosition()">termEndPosition</a>, <a href="DirectReplicator.Accessor.html#termStartPosition()">termStartPosition</a></code></li>
 </ul>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Writer">
@@ -225,7 +225,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <pre class="methodSignature">default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages)
            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, 0,
- messages.length, </code><a href="DirectReplicator.Accessor.html#index()"><code>index() + </code></a><code>messages.length)</code></div>
+ messages.length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>messages.length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the message length only if the
@@ -246,7 +246,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
                   int&nbsp;length)
            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, offset,
- length, </code><a href="DirectReplicator.Accessor.html#index()"><code>index() + </code></a><code>length)</code></div>
+ length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the given length only if the
@@ -265,19 +265,21 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <pre class="methodSignature">int&nbsp;write&#8203;(byte[]&nbsp;messages,
           int&nbsp;offset,
           int&nbsp;length,
-          long&nbsp;highestIndex)
+          long&nbsp;highestPosition)
    throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Write complete or partial messages to the log. The <code>highestIndex</code> parameter
- defines the new absolute log index which can become the commit index. The provided
- highest index is permitted to exceed the current log size, in anticpation of future
- writes which will fill in the gap. Until the gap is filled in, the highest index
- won't be applied. In addition, the highest index can only ever advance. Passing in a
- smaller value for the highest index won't actually change it. If all of the provided
- messages are partial, simply pass zero as the highest index. To update the highest
- index without actually writing anything, pass a length of zero.</div>
+<div class="block">Write complete or partial messages to the log. The <code>highestPosition</code> parameter
+ defines the new absolute log position which can become the commit position. The
+ provided highest position is permitted to exceed the current log size, in
+ anticpation of future writes which will fill in the gap. Until the gap is filled in,
+ the highest position won't be applied. In addition, the highest position can only
+ ever advance. Passing in a smaller value for the highest position won't actually
+ change it. If all of the provided messages are partial, simply pass zero as the
+ highest position. To update the highest position without actually writing anything,
+ pass a length of zero.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>highestIndex</code> - highest index (exclusive) which can become the commit index</dd>
+<dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
+ position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>amount of bytes written, which is less than the given length only if the
  writer is deactivated</dd>
@@ -354,7 +356,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 </a></div>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2018 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </body>
 </html>

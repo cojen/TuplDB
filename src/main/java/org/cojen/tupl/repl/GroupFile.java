@@ -638,11 +638,11 @@ final class GroupFile extends Latch {
      * changes to the group until the callback returns. The stream is also closed automatically
      * when it returns.
      *
-     * @param index log index just after the message
+     * @param position log position just after the message
      * @param message exact message as returned by proposeJoin
      * @return peer if joined, else null
      */
-    public Peer applyJoin(long index, byte[] message) throws IOException {
+    public Peer applyJoin(long position, byte[] message) throws IOException {
         ObjLongConsumer<InputStream> consumer;
         Peer peer = null;
 
@@ -686,7 +686,7 @@ final class GroupFile extends Latch {
             downgrade();
             try {
                 try (InputStream in = new FileInputStream(mFile)) {
-                    consumer.accept(in, index);
+                    consumer.accept(in, position);
                 } catch (Throwable e) {
                     Utils.uncaught(e);
                 }
