@@ -188,10 +188,12 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
+     * Note: Caller must hold mDecodeLatch exclusively.
+     *
      * @param interrupt pass true to cause worker threads to exit when done
      * @return remaining 2PC transactions, or null if none
      */
-    protected LHashTable.Obj<_LocalTransaction> doReset(boolean interrupt) throws IOException {
+    private LHashTable.Obj<_LocalTransaction> doReset(boolean interrupt) throws IOException {
         // Reset and discard all non-2PC transactions.
 
         final LHashTable.Obj<_LocalTransaction> remaining;
@@ -244,8 +246,28 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return remaining;
     }
 
-    protected int remainingTransactions() {
-        return mTransactions.size();
+    /**
+     * Reset and interrupt all worker threads. Intended to be used by _RedoLogApplier subclass.
+     *
+     * @return remaining 2PC transactions, or null if none
+     */
+    public LHashTable.Obj<_LocalTransaction> finish() throws IOException {
+        mDecodeLatch.acquireExclusive();
+        try {
+            EventListener listener = mDatabase.eventListener();
+
+            if (listener != null) {
+                int amt = mTransactions.size();
+                if (amt != 0) {
+                    listener.notify(EventType.RECOVERY_PROCESS_REMAINING,
+                                    "Processing remaining transactions: %1$d", amt);
+                }
+            }
+
+            return doReset(true);
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
     }
 
     @Override
@@ -1309,20 +1331,19 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
             // End of stream reached, and so local instance is now the leader.
 
-            // Wait for work to complete.
-            if (mWorkerGroup != null) {
-                mDecodeLatch.acquireExclusive();
-                try {
+            mDecodeLatch.acquireExclusive();
+            try {
+                // Wait for work to complete.
+                if (mWorkerGroup != null) {
                     // Can only call mWorkerGroup when mDecodeLatch is held. Otherwise, call
                     // isn't thread-safe.
                     mWorkerGroup.join(false);
-                } finally {
-                    mDecodeLatch.releaseExclusive();
                 }
+                // Rollback any lingering non-2PC transactions.
+                remaining = doReset(false);
+            } finally {
+                mDecodeLatch.releaseExclusive();
             }
-
-            // Rollback any lingering non-2PC transactions.
-            remaining = doReset(false);
         } catch (Throwable e) {
             fail(e);
             return;

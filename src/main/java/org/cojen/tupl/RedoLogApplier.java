@@ -47,22 +47,6 @@ final class RedoLogApplier extends ReplRedoEngine implements ReplicationManager 
     }
 
     /**
-     * @return remaining 2PC transactions, or null if none
-     */
-    public LHashTable.Obj<LocalTransaction> finish() throws IOException {
-        EventListener listener = mDatabase.eventListener();
-        if (listener != null) {
-            int amt = remainingTransactions();
-            if (amt != 0) {
-                listener.notify(EventType.RECOVERY_PROCESS_REMAINING,
-                                "Processing remaining transactions: %1$d", amt);
-            }
-        }
-
-        return super.doReset(true);
-    }
-
-    /**
      * Return the highest observed transaction id.
      *
      * @param txnId transaction id recovered from the database header
