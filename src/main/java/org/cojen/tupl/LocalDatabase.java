@@ -202,8 +202,8 @@ final class LocalDatabase extends AbstractDatabase {
     private final ReferenceQueue<Tree> mOpenTreesRefQueue;
 
     // Map of all loaded nodes.
-    private final Node[] mNodeMapTable;
-    private final Latch[] mNodeMapLatches;
+    private Node[] mNodeMapTable;
+    private Latch[] mNodeMapLatches;
 
     final int mMaxKeySize;
     final int mMaxEntrySize;
@@ -3839,6 +3839,10 @@ final class LocalDatabase extends AbstractDatabase {
                     latch.releaseExclusive();
                 }
             }
+
+            // Free up more memory in case something refers to this object for a long time.
+            mNodeMapTable = null;
+            mNodeMapLatches = null;
 
             return;
         }
