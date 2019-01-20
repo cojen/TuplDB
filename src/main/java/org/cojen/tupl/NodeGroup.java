@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.util.Clutch;
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.Node.*;
 import static org.cojen.tupl.PageOps.*;
@@ -76,6 +77,9 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
     // Iterator over dirty nodes.
     private Node mFlushNext;
 
+    private final Latch mSparePageLatch;
+    private /*P*/ byte[] mSparePage;
+
     /**
      * @param usedRate must be power of 2 minus 1, and it determines the likelihood that
      * calling the used method actually moves the node in the usage list. The higher the used
@@ -92,9 +96,19 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         mDatabase = db;
         mPageSize = db.pageSize();
         mUsedRate = usedRate;
+
         acquireExclusive();
         mMaxSize = maxSize;
         releaseExclusive();
+
+        mSparePageLatch = new Latch();
+        mSparePageLatch.acquireExclusive();
+        try {
+            // If directPageSize is negative, then aligned allocation is requested.
+            mSparePage = PageOps.p_callocPage(db.mPageDb.directPageSize());
+        } finally {
+            mSparePageLatch.releaseExclusive();
+        }
     }
 
     int pageSize() {
@@ -603,6 +617,16 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
         return mDirtyCount;
     }
 
+    /*P*/ byte[] acquireSparePage() {
+        mSparePageLatch.acquireExclusive();
+        return mSparePage;
+    }
+
+    void releaseSparePage(/*P*/ byte[] page) {
+        mSparePage = page;
+        mSparePageLatch.releaseExclusive();
+    }
+
     /**
      * Must be called when object is no longer referenced. All nodes tracked by this group are
      * removed and deleted.
@@ -643,6 +667,14 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
                 node.mNextDirty = null;
                 node = next;
             }
+        }
+
+        mSparePageLatch.acquireExclusive();
+        try {
+            PageOps.p_delete(mSparePage);
+            mSparePage = PageOps.p_null();
+        } finally {
+            mSparePageLatch.releaseExclusive();
         }
     }
 }

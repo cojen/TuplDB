@@ -152,8 +152,6 @@ final class _LocalDatabase extends AbstractDatabase {
     final _PageDb mPageDb;
     final int mPageSize;
 
-    private final _PagePool mSparePagePool;
-
     private final Object mArena;
     private final _NodeGroup[] mNodeGroups;
 
@@ -623,8 +621,6 @@ final class _LocalDatabase extends AbstractDatabase {
             for (int i=0; i<mTxnContexts.length; i++) {
                 mTxnContexts[i] = new _TransactionContext(mTxnContexts.length, 4096);
             };
-
-            mSparePagePool = new _PagePool(mPageDb.directPageSize(), procCount);
 
             mCommitLock.acquireExclusive();
             try {
@@ -2638,9 +2634,6 @@ final class _LocalDatabase extends AbstractDatabase {
         } finally {
             if (mPageDb != null) {
                 mPageDb.delete();
-            }
-            if (mSparePagePool != null) {
-                mSparePagePool.delete();
             }
             deleteCommitHeader();
             p_arenaDelete(mArena);
@@ -5150,14 +5143,6 @@ final class _LocalDatabase extends AbstractDatabase {
         } finally {
             mOpenTreesLatch.releaseExclusive();
         }
-    }
-
-    long removeSparePage() {
-        return mSparePagePool.remove();
-    }
-
-    void addSparePage(long page) {
-        mSparePagePool.add(page);
     }
 
     /**

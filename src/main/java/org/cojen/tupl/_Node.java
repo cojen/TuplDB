@@ -4503,8 +4503,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        _LocalDatabase db = getDatabase();
-        long dest = db.removeSparePage();
+        long dest = mGroup.acquireSparePage();
 
         /*P*/ // [|
         p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
@@ -4528,18 +4527,18 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         /*P*/ // [
         // // Recycle old page buffer and swap in compacted page.
-        // db.addSparePage(page);
+        // mGroup.releaseSparePage(page);
         // mPage = dest;
         // garbage(0);
         /*P*/ // |
-        if (db.mFullyMapped) {
+        if (getDatabase().mFullyMapped) {
             // Copy compacted entries to original page and recycle spare page buffer.
             p_copy(dest, 0, page, 0, pageSize(page));
-            db.addSparePage(dest);
+            mGroup.releaseSparePage(dest);
             dest = page;
         } else {
             // Recycle old page buffer and swap in compacted page.
-            db.addSparePage(page);
+            mGroup.releaseSparePage(page);
             mPage = dest;
         }
         /*P*/ // ]
@@ -5543,8 +5542,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        _LocalDatabase db = getDatabase();
-        long dest = db.removeSparePage();
+        long dest = mGroup.acquireSparePage();
 
         /*P*/ // [|
         p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
@@ -5588,18 +5586,18 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         /*P*/ // [
         // // Recycle old page buffer and swap in compacted page.
-        // db.addSparePage(page);
+        // mGroup.releaseSparePage(page);
         // mPage = dest;
         // garbage(0);
         /*P*/ // |
-        if (db.mFullyMapped) {
+        if (getDatabase().mFullyMapped) {
             // Copy compacted entries to original page and recycle spare page buffer.
             p_copy(dest, 0, page, 0, pageSize(page));
-            db.addSparePage(dest);
+            mGroup.releaseSparePage(dest);
             dest = page;
         } else {
             // Recycle old page buffer and swap in compacted page.
-            db.addSparePage(page);
+            mGroup.releaseSparePage(page);
             mPage = dest;
         }
         /*P*/ // ]
