@@ -216,6 +216,15 @@ public interface StreamReplicator extends DirectReplicator {
                 offset += amt;
             }
         }
+
+        /**
+         * Reads whatever log data is available, never higher than a commit position, never
+         * higher than a term, and never blocking.
+         *
+         * @return amount of bytes read, or EOF (-1) if the term end has been reached
+         * @throws IllegalStateException if log data was deleted (position is too low)
+         */
+        int tryRead(byte[] buf, int offset, int length) throws IOException;
     }
 
     /**

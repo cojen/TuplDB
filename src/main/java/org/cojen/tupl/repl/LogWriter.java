@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import java.io.IOException;
-
 import java.util.function.LongConsumer;
 
 /**
@@ -27,33 +25,6 @@ import java.util.function.LongConsumer;
  *
  * @author Brian S O'Neill
  */
-abstract class LogWriter extends LogInfo implements StreamReplicator.Writer {
-    /**
-     * Returns the term at the previous writer position.
-     */
-    abstract long prevTerm();
-
-    @Override
-    public void uponCommit(long position, LongConsumer task) {
-        uponCommit(new Delayed(position) {
-            @Override
-            protected void doRun(long counter) {
-                task.accept(counter);
-            }
-        });
-    }
-
-    /**
-     * Invokes the given task when the commit position reaches the requested position. The
-     * current commit position is passed to the task, or -1 if the term ended before the
-     * position could be reached. If the task can be run when this method is called, then the
-     * current thread invokes it.
-     */
-    abstract void uponCommit(Delayed task);
-
-    /**
-     * Indicate that the writer isn't intended to be used again, allowing file handles to be
-     * closed. Writing again will reopen them.
-     */
-    abstract void release();
+abstract class LogWriter extends LogInfo implements LogAccessor, StreamReplicator.Writer {
+    // No additional methods to define.
 }

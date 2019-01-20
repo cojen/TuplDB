@@ -24,33 +24,13 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface LogReader extends StreamReplicator.Reader {
+interface LogReader extends LogAccessor, StreamReplicator.Reader {
     /**
-     * Returns the term at the previous reader position.
-     */
-    long prevTerm();
-
-    /**
-     * Reads whatever log data is available, never higher than a commit position, never higher
+     * Reads whatever log data is available, possibly higher than a commit index, never higher
      * than a term, and never blocking.
      *
      * @return amount of bytes read, or EOF (-1) if the term end has been reached
-     * @throws IllegalStateException if log data was deleted (position is too low)
-     */
-    int tryRead(byte[] buf, int offset, int length) throws IOException;
-
-    /**
-     * Reads whatever log data is available, possibly higher than a commit position, never
-     * higher than a term, and never blocking.
-     *
-     * @return amount of bytes read, or EOF (-1) if the term end has been reached
-     * @throws IllegalStateException if log data was deleted (position is too low)
+     * @throws IllegalStateException if log data was deleted (index is too low)
      */
     int tryReadAny(byte[] buf, int offset, int length) throws IOException;
-
-    /**
-     * Indicate that the reader isn't intended to be used again, allowing file handles to be
-     * closed. Reading again will reopen them.
-     */
-    void release();
 }

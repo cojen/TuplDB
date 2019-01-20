@@ -1286,7 +1286,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        long prevTerm() {
+        public long prevTerm() {
             return mWriterPrevTerm;
         }
 
@@ -1369,12 +1369,12 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        void uponCommit(Delayed task) {
+        public void uponCommit(Delayed task) {
             FileTermLog.this.uponCommit(task);
         }
 
         @Override
-        void release() {
+        public void release() {
             FileTermLog.this.release(this, true);
         }
 
@@ -1607,6 +1607,11 @@ final class FileTermLog extends Latch implements TermLog {
                 throw new IOException("Closed");
             }
             return FileTermLog.this.segmentForReading(position);
+        }
+
+        @Override
+        public void uponCommit(Delayed task) {
+            FileTermLog.this.uponCommit(task);
         }
 
         @Override

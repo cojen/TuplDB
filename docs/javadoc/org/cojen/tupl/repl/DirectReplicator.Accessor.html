@@ -27,8 +27,8 @@
     catch(err) {
     }
 //-->
-var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6};
-var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
+var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":18};
+var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
@@ -152,7 +152,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </a>
 <h3>Method Summary</h3>
 <table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
@@ -197,6 +197,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termStartPosition()">termStartPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the position at the start of the term.</div>
+</td>
+</tr>
+<tr id="i6" class="altColor">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a></span>&#8203;(long&nbsp;position,
+          <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
+<td class="colLast">
+<div class="block">Invokes the given task when the commit position reaches the requested position.</div>
+</td>
+</tr>
+<tr id="i7" class="rowColor">
+<td class="colFirst"><code>default void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
+<td class="colLast">
+<div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </td>
 </tr>
 </table>
@@ -266,6 +281,32 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <pre class="methodSignature">long&nbsp;commitPosition()</pre>
 <div class="block">Returns the current term commit position, which might be lower than the start
  position.</div>
+</li>
+</ul>
+<a id="uponCommit(long,java.util.function.LongConsumer)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>uponCommit</h4>
+<pre class="methodSignature">void&nbsp;uponCommit&#8203;(long&nbsp;position,
+                <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</pre>
+<div class="block">Invokes the given task when the commit position reaches the requested position. The
+ current commit position is passed to the task, or -1 if the term ended before the
+ position could be reached. If the task can be run when this method is called, then
+ the current thread invokes it immediately.</div>
+</li>
+</ul>
+<a id="uponEndCommit(java.util.function.LongConsumer)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>uponEndCommit</h4>
+<pre class="methodSignature">default&nbsp;void&nbsp;uponEndCommit&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</pre>
+<div class="block">Invokes the given task when the commit position reaches the end of the term. The
+ current commit position is passed to the task, or -1 if if closed. If the task can be
+ run when this method is called, then the current thread invokes it immediately.</div>
 </li>
 </ul>
 <a id="close()">

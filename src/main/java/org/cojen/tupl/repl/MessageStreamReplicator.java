@@ -288,6 +288,11 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
+        }
+
+        @Override
         public byte[] readMessage() throws IOException {
             if (mRemaining != 0) {
                 throw new IllegalStateException("Partial message remains: " + mRemaining);

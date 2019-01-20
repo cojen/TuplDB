@@ -295,6 +295,11 @@ public class StreamReplicatorTest {
         }
 
         @Override
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
+        }
+
+        @Override
         public void close() {
             mSource.close();
         }
@@ -341,6 +346,11 @@ public class StreamReplicatorTest {
                 mMessagePos += length;
                 return length;
             }
+        }
+
+        @Override
+        public int tryRead(byte[] buf, int offset, int length) throws IOException {
+            throw new UnsupportedOperationException();
         }
     }
 }

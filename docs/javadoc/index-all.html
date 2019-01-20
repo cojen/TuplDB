@@ -3540,6 +3540,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/io/UnsafeAccess.html#tryObtain()">tryObtain()</a></span> - Static method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/StreamReplicator.Reader.html#tryRead(byte%5B%5D,int,int)">tryRead(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
+<dd>
+<div class="block">Reads whatever log data is available, never higher than a commit position, never
+ higher than a term, and never blocking.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryUpgrade()">tryUpgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryUpgrade()">tryUpgrade()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -3680,11 +3685,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Exclusive lock granted as an upgrade from an owned upgradable lock.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Writer.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></dt>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </dd>
