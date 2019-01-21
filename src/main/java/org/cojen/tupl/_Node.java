@@ -1266,7 +1266,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
     int binarySearch(byte[] key) throws IOException {
         final long page = mPage;
         final int keyLen = key.length;
-        int lowPos = searchVecStart();
+        final int startPos = searchVecStart();
+        int lowPos = startPos;
         int highPos = searchVecEnd();
 
         int lowMatch = 0;
@@ -1337,11 +1338,11 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 highPos = midPos - 2;
                 highMatch = i;
             } else {
-                return midPos - searchVecStart();
+                return midPos - startPos;
             }
         }
 
-        return ~(lowPos - searchVecStart());
+        return ~(lowPos - startPos);
     }
 
     /**
@@ -1349,7 +1350,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return 2-based insertion pos, which is negative if key not found
      */
     int binarySearch(byte[] key, int midPos) throws IOException {
-        int lowPos = searchVecStart();
+        final int startPos = searchVecStart();
+        int lowPos = startPos;
         int highPos = searchVecEnd();
         if (lowPos > highPos) {
             return -1;
@@ -1429,7 +1431,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     highPos = midPos - 2;
                     highMatch = i;
                 } else {
-                    return midPos - searchVecStart();
+                    return midPos - startPos;
                 }
             }
 
@@ -1440,7 +1442,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             midPos = ((lowPos + highPos) >> 1) & ~1;
         }
 
-        return ~(lowPos - searchVecStart());
+        return ~(lowPos - startPos);
     }
 
     /**
@@ -2360,11 +2362,12 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
             // Compute remaining space surrounding search vector after insert completes.
             int remaining = leftSpace + rightSpace - encodedLen - 2;
+            int garbage = garbage();
 
-            if (garbage() > remaining) {
+            if (garbage > remaining) {
                 // Do full compaction and free up the garbage, or else node must be split.
 
-                if (garbage() + remaining >= 0) {
+                if (garbage + remaining >= 0) {
                     return compactLeaf(encodedLen, pos, true);
                 }
 
@@ -2381,7 +2384,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 }
 
                 // Return the total available space.
-                return ~(garbage() + leftSpace + rightSpace);
+                return ~(garbage + leftSpace + rightSpace);
             }
 
             int vecLen = searchVecEnd - searchVecStart + 2;
@@ -3012,12 +3015,13 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
             // Compute remaining space surrounding search vector after insert completes.
             int remaining = leftSpace + rightSpace - encodedLen - 10;
+            int garbage = garbage();
 
-            if (garbage() > remaining) {
+            if (garbage > remaining) {
                 compact: {
                     // Do full compaction and free up the garbage, or else node must be split.
 
-                    if ((garbage() + remaining) < 0) {
+                    if ((garbage + remaining) < 0) {
                         // _Node compaction won't make enough room, but attempt to rebalance
                         // before splitting.
 
