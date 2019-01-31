@@ -480,8 +480,8 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,byte%5B%5D)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
       byte[]&nbsp;highKey)</code></th>
 <td class="colLast">
-<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from
- a uniform distribution.</div>
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution.</div>
 </td>
 </tr>
 <tr id="i36" class="altColor">
@@ -1309,7 +1309,8 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <h4>find</h4>
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;find&#8203;(byte[]&nbsp;key)
                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the given key.
+<div class="block">Moves the Cursor to find the given key. If no such key exists, the cursor is still
+ positioned at the key, but the value is null.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1332,7 +1333,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGe&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the closest available entry greater than or equal to the given
- key. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#ceilingEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.ceilingEntry</code></a>.
+ key. If no such key exists, the cursor is unpositioned. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#ceilingEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.ceilingEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1354,8 +1355,8 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <h4>findGt</h4>
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findGt&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the closest available entry greater than the given key.
- Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#higherEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.higherEntry</code></a>.
+<div class="block">Moves the Cursor to find the closest available entry greater than the given key. If no
+ such key exists, the cursor is unpositioned. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#higherEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.higherEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1378,7 +1379,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLe&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to find the closest available entry less than or equal to the given
- key. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#floorEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.floorEntry</code></a>.
+ key. If no such key exists, the cursor is unpositioned. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#floorEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.floorEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1400,8 +1401,8 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <h4>findLt</h4>
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;findLt&#8203;(byte[]&nbsp;key)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to find the closest available entry less than the given key. Logically
- equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#lowerEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.lowerEntry</code></a>.
+<div class="block">Moves the Cursor to find the closest available entry less than the given key. If no such
+ key exists, the cursor is unpositioned. Logically equivalent to <a href="https://docs.oracle.com/javase/10/docs/api/java/util/NavigableMap.html?is-external=true#lowerEntry(K)" title="class or interface in java.util" class="externalLink"><code>NavigableMap.lowerEntry</code></a>.
 
  <p>Ownership of the key instance transfers to the Cursor, and it must
  not be modified after calling this method.</div>
@@ -1544,9 +1545,9 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
                          byte[]&nbsp;highKey)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from
- a uniform distribution. Cursor key and value are set to null if no
- entries exist, and position will be undefined.</div>
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution. If no entries exists, or if random searches aren't supported, the cursor
+ is unpositioned.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="Cursor.html#random(byte%5B%5D,byte%5B%5D)">random</a></code>&nbsp;in interface&nbsp;<code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
