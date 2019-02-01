@@ -155,6 +155,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#cacheSize(long)">cacheSize</a></span>&#8203;(long&nbsp;size)</code></th>
+<td class="colLast">
+<div class="block">Convenience method which sets the minimum and maximum cache size, overriding the default.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointDelayThreshold(long,java.util.concurrent.TimeUnit)">checkpointDelayThreshold</a></span>&#8203;(long&nbsp;delay,
                         <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
@@ -162,7 +169,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  performed, regardless of the redo log size threshold.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate</a></span>&#8203;(long&nbsp;rate,
               <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
@@ -171,19 +178,19 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  automatically performed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointSizeThreshold(long)">checkpointSizeThreshold</a></span>&#8203;(long&nbsp;bytes)</code></th>
 <td class="colLast">
 <div class="block">Set the minimum redo log size required for an automatic <a href="../Database.html#checkpoint()"><code>checkpoint</code></a> to actually be performed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#clone()">clone</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#createFilePath(boolean)">createFilePath</a></span>&#8203;(boolean&nbsp;mkdirs)</code></th>
 <td class="colLast">
@@ -191,14 +198,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  already exist.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)">customTransactionHandler</a></span>&#8203;(<a href="../ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a>&nbsp;handler)</code></th>
 <td class="colLast">
 <div class="block">Provide a handler for custom transactional operations.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#dataFile(java.io.File)">dataFile</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file)</code></th>
 <td class="colLast">
@@ -206,7 +213,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  directory as the base file.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#dataFiles(java.io.File...)">dataFiles</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>...&nbsp;files)</code></th>
 <td class="colLast">
@@ -214,14 +221,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  separate devices.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#dataPageArray(org.cojen.tupl.io.PageArray)">dataPageArray</a></span>&#8203;(<a href="../io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</code></th>
 <td class="colLast">
 <div class="block">Use a custom storage layer instead of the default data file.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#directPageAccess(boolean)">directPageAccess</a></span>&#8203;(boolean&nbsp;direct)</code></th>
 <td class="colLast">
@@ -229,14 +236,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  reduced garbage collection activity.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">durabilityMode</a></span>&#8203;(<a href="../DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="colLast">
 <div class="block">Set the default transaction durability mode, which is <a href="../DurabilityMode.html#SYNC"><code>SYNC</code></a> if not overridden.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#encrypt(org.cojen.tupl.Crypto)">encrypt</a></span>&#8203;(<a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a>&nbsp;crypto)</code></th>
 <td class="colLast">
@@ -244,7 +251,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  sets.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#eventListener(org.cojen.tupl.EventListener)">eventListener</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></th>
 <td class="colLast">
@@ -252,7 +259,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  database.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#fileFactory(org.cojen.tupl.io.FileFactory)">fileFactory</a></span>&#8203;(<a href="../io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a>&nbsp;factory)</code></th>
 <td class="colLast">
@@ -260,7 +267,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  database.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
            <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
@@ -269,7 +276,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  overridden.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#lockUpgradeRule(org.cojen.tupl.LockUpgradeRule)">lockUpgradeRule</a></span>&#8203;(<a href="../LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></th>
 <td class="colLast">
@@ -277,28 +284,28 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  overridden.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#mapDataFiles(boolean)">mapDataFiles</a></span>&#8203;(boolean&nbsp;mapped)</code></th>
 <td class="colLast">
 <div class="block">Enable memory mapping of the data files.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#maxCacheSize(long)">maxCacheSize</a></span>&#8203;(long&nbsp;maxBytes)</code></th>
 <td class="colLast">
 <div class="block">Set the maximum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#maxCheckpointThreads(int)">maxCheckpointThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="colLast">
 <div class="block">Specify the maximum number of threads for performing checkpointing, to speed it up.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#maxReplicaThreads(int)">maxReplicaThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="colLast">
@@ -306,21 +313,21 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  changes.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#minCacheSize(long)">minCacheSize</a></span>&#8203;(long&nbsp;minBytes)</code></th>
 <td class="colLast">
 <div class="block">Set the minimum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#pageSize(int)">pageSize</a></span>&#8203;(int&nbsp;size)</code></th>
 <td class="colLast">
 <div class="block">Set the page size, which is 4096 bytes by default.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#recoveryHandler(org.cojen.tupl.ext.RecoveryHandler)">recoveryHandler</a></span>&#8203;(<a href="../ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a>&nbsp;handler)</code></th>
 <td class="colLast">
@@ -328,28 +335,28 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  were <a href="../Transaction.html#prepare()"><code>prepared</code></a> for two-phase commit.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#replicate(org.cojen.tupl.ext.ReplicationManager)">replicate</a></span>&#8203;(<a href="../ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a>&nbsp;manager)</code></th>
 <td class="colLast">
 <div class="block">Enable replication with an explicit <a href="../ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#replicate(org.cojen.tupl.repl.ReplicatorConfig)">replicate</a></span>&#8203;(<a href="../repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="colLast">
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#secondaryCacheSize(long)">secondaryCacheSize</a></span>&#8203;(long&nbsp;size)</code></th>
 <td class="colLast">
 <div class="block">Set the size of the secondary off-heap cache, which is empty by default.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#syncWrites(boolean)">syncWrites</a></span>&#8203;(boolean&nbsp;fileSync)</code></th>
 <td class="colLast">

@@ -217,6 +217,17 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
+     * Convenience method which sets the minimum and maximum cache size, overriding the default.
+     *
+     * @param size cache size, in bytes
+     */
+    public DatabaseConfig cacheSize(long size) {
+        minCacheSize(size);
+        maxCacheSize(size);
+        return this;
+    }
+
+    /**
      * Set the size of the secondary off-heap cache, which is empty by default. A secondary
      * cache is slower than a primary cache, but a very large primary cache can cause high
      * garbage collection overhead. The {@code -XX:MaxDirectMemorySize} Java option might be
