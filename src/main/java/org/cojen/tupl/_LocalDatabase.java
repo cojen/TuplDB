@@ -4043,9 +4043,16 @@ final class _LocalDatabase extends AbstractDatabase {
             cleanupUnreferencedTrees();
         }
 
-        if (fail == null && mPageDb.isDurable()) {
-            throw new CacheExhaustedException();
-        } else if (fail instanceof DatabaseFullException) {
+        if (fail == null) {
+            String stats = stats().toString();
+            if (mPageDb.isDurable()) {
+                throw new CacheExhaustedException(stats);
+            } else {
+                throw new DatabaseFullException(stats);
+            }
+        }
+
+        if (fail instanceof DatabaseFullException) {
             throw fail;
         } else {
             throw new DatabaseFullException(fail);
