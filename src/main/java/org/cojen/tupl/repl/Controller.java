@@ -874,7 +874,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mChanMan.stop();
         mScheduler.shutdown();
         mStateLog.close();
-        mSyncCommitCondition.signalAll();
+        acquireExclusive();
+        try {
+            mSyncCommitCondition.signalAll();
+        } finally {
+            releaseExclusive();
+        }
     }
 
     void uncaught(Throwable e) {
