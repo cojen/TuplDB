@@ -183,31 +183,22 @@ public class LatchCondition {
         Node head = mHead;
         if (head != null) {
             head.signal();
+            head.unpark();
         }
     }
 
     /**
-     * If a first waiter exists, it's removed, the held exclusive latch is released, and then
-     * the waiter is signaled.
+     * If a first waiter exists, the held exclusive latch is released, and then the waiter is
+     * signaled.
      *
      * @return false if no waiter and latch wasn't released
      */
     public final boolean signalRelease(Latch latch) {
         Node head = mHead;
         if (head != null) {
-            if (head == mTail) {
-                // Don't permit the queue to go completely empty. The Lock class depends on the
-                // queue having at least one waiter in it until the waiter acquires the latch
-                // again. Without this, the Lock object can be removed from the LockManager too
-                // soon and the Lock is orphaned. This behavior can change if direct latch
-                // ownership transfer is supported.
-                head.signal();
-                latch.releaseExclusive();
-            } else {
-                head.remove(this);
-                latch.releaseExclusive();
-                LockSupport.unpark(head.mWaiter);
-            }
+            head.signal();
+            latch.releaseExclusive();
+            head.unpark();
             return true;
         } else {
             return false;
@@ -225,6 +216,7 @@ public class LatchCondition {
             return false;
         }
         head.signal();
+        head.unpark();
         return true;
     }
 
@@ -233,9 +225,16 @@ public class LatchCondition {
      */
     public final void signalAll() {
         Node node = mHead;
-        while (node != null) {
-            node.signal();
-            node = node.mNext;
+        if (node != null) {
+            do {
+                node.signal();
+                node = node.mNext;
+            } while (node != null);
+            node = mHead;
+            do {
+                node.unpark();
+                node = node.mNext;
+            } while (node != null);
         }
     }
 
@@ -247,27 +246,22 @@ public class LatchCondition {
         Node head = mHead;
         if (head != null && head.mWaitState == Node.WAITING_SHARED) {
             head.signal();
+            head.unpark();
         }
     }
 
     /**
-     * If a first shared waiter exists, it's removed, the held exclusive latch is released, and
-     * then the waiter is signaled.
+     * If a first shared waiter exists, the held exclusive latch is released, and then the
+     * waiter is signaled.
      *
      * @return false if no shared waiter and latch wasn't released
      */
     public final boolean signalSharedRelease(Latch latch) {
         Node head = mHead;
         if (head != null && head.mWaitState == Node.WAITING_SHARED) {
-            if (head == mTail) {
-                // See comments in signalRelease method.
-                head.signal();
-                latch.releaseExclusive();
-            } else {
-                head.remove(this);
-                latch.releaseExclusive();
-                LockSupport.unpark(head.mWaiter);
-            }
+            head.signal();
+            latch.releaseExclusive();
+            head.unpark();
             return true;
         } else {
             return false;
@@ -287,6 +281,7 @@ public class LatchCondition {
         }
         if (head.mWaitState == Node.WAITING_SHARED) {
             head.signal();
+            head.unpark();
         }
         return true;
     }
@@ -312,7 +307,7 @@ public class LatchCondition {
     static class Node {
         final Thread mWaiter;
 
-        static final int REMOVED = 0, SIGNALED = 1, WAITING = 2, WAITING_SHARED = 3;
+        static final int SIGNALED = 1, WAITING = 2, WAITING_SHARED = 3;
         int mWaitState;
 
         Node mPrev;
@@ -330,9 +325,7 @@ public class LatchCondition {
          */
         final int resumed(LatchCondition queue) {
             if (mWaitState < WAITING) {
-                if (mWaitState != REMOVED) {
-                    remove(queue);
-                }
+                remove(queue);
                 return 1;
             }
 
@@ -347,6 +340,9 @@ public class LatchCondition {
 
         final void signal() {
             mWaitState = SIGNALED;
+        }
+
+        final void unpark() {
             LockSupport.unpark(mWaiter);
         }
 
@@ -368,8 +364,6 @@ public class LatchCondition {
                 mPrev = null;
             }
             mNext = null;
-
-            mWaitState = REMOVED;
         }
     }
 }
