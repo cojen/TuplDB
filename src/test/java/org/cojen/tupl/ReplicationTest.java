@@ -192,6 +192,97 @@ public class ReplicationTest {
     }
 
     @Test
+    public void deleteLock() throws Exception {
+        // Verifies that an unconditional delete of a non-existent record replicates a lock.
+
+        final byte[] key = "hello".getBytes();
+        final Index lix = mLeader.openIndex("test");
+        fence();
+        final Index rix = mReplica.openIndex("test");
+
+        // With a cursor.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            Cursor c = lix.newCursor(ltxn);
+            c.find(key);
+            c.store(null);
+            mustLock(ltxn, rix, key);
+        }
+
+        // With a direct store.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            lix.store(ltxn, key, null);
+            mustLock(ltxn, rix, key);
+        }
+
+        // With an insert.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            assertTrue(lix.insert(ltxn, key, null));
+            mustLock(ltxn, rix, key);
+        }
+
+        // Remaining operations must not replicate a lock, because the condition failed.
+
+        // With an update.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            assertFalse(lix.update(ltxn, key, key, null));
+            mustNotLock(ltxn, rix, key);
+        }
+
+        // With a delete.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            assertFalse(lix.delete(ltxn, key));
+            mustNotLock(ltxn, rix, key);
+        }
+
+        // With a remove.
+        {
+            Transaction ltxn = mLeader.newTransaction();
+            assertFalse(lix.remove(ltxn, key, key));
+            mustNotLock(ltxn, rix, key);
+        }
+    }
+
+    // Used by deleteLock test.
+    private void mustLock(Transaction ltxn, Index rix, byte[] key)
+        throws IOException, InterruptedException
+    {
+        assertEquals(LockResult.OWNED_EXCLUSIVE, ltxn.lockCheck(rix.getId(), key));
+
+        ltxn.flush();
+        fence();
+
+        try {
+            rix.load(null, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        // Rollback and release the lock.
+        ltxn.exit();
+        assertNull(rix.load(null, key));
+    }
+
+    // Used by deleteLock test.
+    private void mustNotLock(Transaction ltxn, Index rix, byte[] key)
+        throws IOException, InterruptedException
+    {
+        assertEquals(LockResult.OWNED_UPGRADABLE, ltxn.lockCheck(rix.getId(), key));
+
+        ltxn.flush();
+        fence();
+
+        assertNull(rix.load(null, key));
+
+        ltxn.exit();
+    }
+
+    @Test
     public void readUncommitted() throws Exception {
         // Verifies that a replica can read an uncommitted change.
 

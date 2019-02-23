@@ -3032,50 +3032,24 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
         CursorFrame leaf = mFrame;
+        CommitLock.Shared shared = prepareStoreUpgrade(leaf, value);
+        byte[] originalValue = null;
+        int pos = leaf.mNodePos;
 
-        CommitLock.Shared shared;
-        byte[] originalValue;
+        if (pos >= 0 && !mKeyOnly) {
+            Node node = leaf.mNode;
+            try {
+                originalValue = node.retrieveLeafValue(pos);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                shared.release();
+                throw e;
+            }
+        }
 
         if (value == null) {
-            shared = prepareDeleteUpgrade(leaf);
-
-            if (shared == null) {
-                // Entry doesn't exist, so nothing to do.
-                return null;
-            }
-
-            originalValue = null;
-
-            if (!mKeyOnly) {
-                Node node = leaf.mNode;
-                int pos = leaf.mNodePos;
-                try {
-                    originalValue = node.retrieveLeafValue(pos);
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-                    shared.release();
-                    throw e;
-                }
-            }
-
             deleteNoRedo(txn, leaf);
         } else {
-            shared = prepareStoreUpgrade(leaf);
-
-            originalValue = null;
-            int pos = leaf.mNodePos;
-
-            if (pos >= 0 && !mKeyOnly) {
-                Node node = leaf.mNode;
-                try {
-                    originalValue = node.retrieveLeafValue(pos);
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-                    shared.release();
-                    throw e;
-                }
-            }
-
             storeNoRedo(txn, leaf, value);
         }
 
@@ -3212,6 +3186,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * method.
      *
      * @param key non-null to find the key, which should already be locked exclusively
+     * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else actual old value
      */
     private boolean doFindAndModify(LocalTransaction txn,
                                     byte[] key, byte[] oldValue, byte[] newValue)
@@ -3220,62 +3195,30 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         CursorFrame leaf;
         CommitLock.Shared shared;
 
-        check: {
-            if (key == null) {
-                // Assume that cursor is already positioned.
-
-                shared = mTree.mDatabase.commitLock().acquireShared();
-                leaf = mFrame;
-                leaf.acquireExclusive();
-
+        if (key == null) {
+            // Assume that cursor is already positioned.
+            shared = mTree.mDatabase.commitLock().acquireShared();
+            leaf = mFrame;
+            leaf.acquireExclusive();
+            // Only dirty the node if delete will actually do something.
+            if (newValue != null || leaf.mNodePos >= 0) {
                 try {
-                    if (newValue != null) {
-                        // Releases leaf latch if an exception is thrown.
-                        notSplitDirty(leaf);
-                        break check;
-                    }
-                    if (leaf.mNodePos >= 0) {
-                        // Releases leaf latch if an exception is thrown.
-                        notSplitDirty(leaf);
-
-                        // The notSplitDirty method might have released and re-acquired the
-                        // node latch, so double check the position.
-                        if (leaf.mNodePos >= 0) {
-                            // Entry still exists, so proceed with the delete.
-                            break check;
-                        }
-                    }
+                    // Releases leaf latch if an exception is thrown.
+                    notSplitDirty(leaf);
                 } catch (Throwable e) {
                     shared.release();
                     throw e;
                 }
-
-                // Entry doesn't exist, so nothing to do.
-                leaf.mNode.releaseExclusive();
-                shared.release();
-            } else {
-                // Find with no lock because caller must already acquire exclusive lock.
-                find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
-
-                leaf = mFrame;
-
-                if (newValue != null) {
-                    shared = prepareStoreUpgrade(leaf);
-                    break check;
-                }
-
-                shared = prepareDeleteUpgrade(leaf);
-                if (shared != null) {
-                    break check;
-                }
             }
-
-            // Reached if newValue is null and entry doesn't exist.
-            return oldValue == null || oldValue == MODIFY_INSERT;
+        } else {
+            // Find with no lock because caller must already acquire exclusive lock.
+            find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
+            leaf = mFrame;
+            shared = prepareStoreUpgrade(leaf, newValue);
         }
 
-        // Note: Must obtain reference to node after calling prepareStore or prepareDelete,
-        // because it might have released and reacquired the latch.
+        // Note: Must obtain reference to node after calling prepareStoreUpgrade, because it
+        // might have released and reacquired the latch.
         Node node = leaf.mNode;
         int pos = leaf.mNodePos;
 
@@ -3293,64 +3236,46 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             }
         }
 
-        doStore: {
-            check: {
-                if (oldValue == MODIFY_INSERT) {
-                    if (originalValue == null) {
-                        // Insert allowed.
-                        break check;
-                    }
-                } else if (oldValue == MODIFY_REPLACE) {
-                    if (originalValue != null) {
-                        // Replace allowed.
-                        break check;
-                    }
-                } else if (oldValue == MODIFY_UPDATE) {
-                    if (!Arrays.equals(originalValue, newValue)) {
-                        // Update allowed.
-                        break check;
-                    }
-                } else {
-                    if (originalValue != null) {
-                        if (Arrays.equals(oldValue, originalValue)) {
-                            // Update allowed.
-                            break check;
-                        }
-                    } else if (oldValue == null) {
-                        if (newValue == null) {
-                            // Update allowed, but nothing changed.
-                            node.releaseExclusive();
-                            break doStore;
-                        } else {
-                            // Update allowed.
-                            break check;
-                        }
-                    }
+        check: {
+            if (oldValue == MODIFY_INSERT) {
+                if (originalValue == null) {
+                    // Insert allowed.
+                    break check;
                 }
-
-                node.releaseExclusive();
-                shared.release();
-                return false;
-            }
-
-            if (newValue == null) {
-                if (pos < 0) {
-                    // Entry doesn't exist, so nothing to do.
-                    node.releaseExclusive();
-                    break doStore;
+            } else if (oldValue == MODIFY_REPLACE) {
+                if (originalValue != null) {
+                    // Replace allowed.
+                    break check;
                 }
-                deleteNoRedo(txn, leaf);
+            } else if (oldValue == MODIFY_UPDATE) {
+                if (!Arrays.equals(originalValue, newValue)) {
+                    // Update allowed.
+                    break check;
+                }
             } else {
-                storeNoRedo(txn, leaf, newValue);
+                // Provided an ordinary oldValue.
+                if (Arrays.equals(oldValue, originalValue)) {
+                    // Update allowed.
+                    break check;
+                }
             }
 
-            if (storeMode() <= 1) {
-                redoStore(txn, shared, newValue);
-                return true;
-            }
+            node.releaseExclusive();
+            shared.release();
+            return false;
         }
 
-        shared.release();
+        if (newValue == null) {
+            deleteNoRedo(txn, leaf);
+        } else {
+            storeNoRedo(txn, leaf, newValue);
+        }
+
+        if (storeMode() <= 1) {
+            redoStore(txn, shared, newValue);
+        } else {
+            shared.release();
+        }
 
         return true;
     }
@@ -3369,24 +3294,24 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 CursorFrame leaf = mFrame;
-                CommitLock.Shared shared = prepareDeleteUpgrade(leaf);
+                CommitLock.Shared shared = prepareStoreUpgrade(leaf, null);
 
-                if (shared != null) {
-                    Node node = leaf.mNode;
-                    if (node.mPage == p_closedTreePage()) {
-                        node.releaseExclusive();
-                        shared.release();
-                        return false;
-                    }
-                    if (node.hasLeafValue(leaf.mNodePos) == null) {
-                        deleteNoRedo(LocalTransaction.BOGUS, leaf);
-                    } else {
-                        // Non-ghost value exists.
-                        node.releaseExclusive();
-                    }
+                Node node = leaf.mNode;
+                if (node.mPage == p_closedTreePage()) {
+                    node.releaseExclusive();
                     shared.release();
+                    return false;
                 }
 
+                int pos = leaf.mNodePos;
+                if (pos >= 0 && node.hasLeafValue(pos) == null) {
+                    deleteNoRedo(LocalTransaction.BOGUS, leaf);
+                } else {
+                    // Non-ghost value exists.
+                    node.releaseExclusive();
+                }
+
+                shared.release();
                 return true;
             } finally {
                 reset();
@@ -3404,19 +3329,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeNoRedo(LocalTransaction txn, byte[] value) throws IOException {
-        if (value == null) {
-            CommitLock.Shared shared = prepareDelete();
-            if (shared != null) {
-                deleteNoRedo(txn, mFrame);
-                shared.release();
-            }
-        } else {
-            CommitLock.Shared shared = prepareStore();
-            storeNoRedo(txn, mFrame, value);
-            shared.release();
-        }
-
-        mValue = value;
+        doStoreNoRedo(txn, value).release();
     }
 
     /**
@@ -3428,14 +3341,30 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param value pass null to delete
      */
     final void storeAndRedo(LocalTransaction txn, byte[] value) throws IOException {
+        redoStore(txn, doStoreNoRedo(txn, value), value);
+    }
+
+    private CommitLock.Shared doStoreNoRedo(LocalTransaction txn, byte[] value) throws IOException {
         CommitLock.Shared shared;
 
         if (value == null) {
-            shared = prepareDelete();
-            if (shared == null) {
-                mValue = null;
-                return;
+            // Note: Similar to prepareStore, except it might skip the node dirty step.
+            {
+                shared = mTree.mDatabase.commitLock().acquireShared();
+                CursorFrame leaf = frameExclusive();
+
+                // Only dirty the node if delete will actually do something.
+                if (leaf.mNodePos >= 0) {
+                    try {
+                        // Releases leaf latch if an exception is thrown.
+                        notSplitDirty(leaf);
+                    } catch (Throwable e) {
+                        shared.release();
+                        throw e;
+                    }
+                }
             }
+
             deleteNoRedo(txn, mFrame);
         } else {
             shared = prepareStore();
@@ -3443,12 +3372,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         }
 
         mValue = value;
-
-        redoStore(txn, shared, value);
+        return shared;
     }
 
     /**
-     * Called after delete or store, to write to redo log and possibly wait for a commit.
+     * Called after delete or store, to write to redo log and possibly wait for a commit. If
+     * transaction is NO_REDO, then nothing is written to the redo log.
      *
      * @param txn can be null
      * @param shared held commit lock, which is always released by this method
@@ -3488,98 +3417,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * Acquires the shared commit lock, acquires exclusive frame latch, and prepares the frame
-     * for a delete operation (not split, dirty).
-     *
-     * @return held commitLock, or null if nothing needs to be deleted
-     */
-    private CommitLock.Shared prepareDelete() throws IOException {
-        CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireShared();
-        CursorFrame leaf = frameExclusive();
-
-        if (leaf.mNodePos >= 0) {
-            try {
-                // Releases leaf latch if an exception is thrown.
-                notSplitDirty(leaf);
-            } catch (Throwable e) {
-                shared.release();
-                throw e;
-            }
-
-            // The notSplitDirty method might have released and re-acquired the node latch, so
-            // double check the position.
-            if (leaf.mNodePos >= 0) {
-                return shared;
-            }
-        }
-
-        // Entry doesn't exist, so nothing to do.
-        leaf.mNode.releaseExclusive();
-        shared.release();
-        return null;
-    }
-
-    /**
-     * With leaf frame held shared, acquires the shared commit lock, upgrades the frame to
-     * exclusive, and prepares the frame for a delete operation (not split, dirty). Leaf latch
-     * might be released and re-acquired by this method.
-     *
-     * @param leaf non-null leaf frame, held shared, released if an exception is thrown
-     * @return held commitLock, or null if nothing needs to be deleted, and latch is released
-     */
-    private CommitLock.Shared prepareDeleteUpgrade(CursorFrame leaf) throws IOException {
-        if (leaf.mNodePos < 0) {
-            // Entry doesn't exist, so nothing to do.
-            leaf.mNode.releaseShared();
-            return null;
-        }
-
-        CommitLock commitLock = mTree.mDatabase.commitLock();
-        CommitLock.Shared shared = commitLock.tryAcquireShared();
-
-        lockIt: {
-            if (shared != null) {
-                if (leaf.mNode.tryUpgrade()) {
-                    break lockIt;
-                }
-                leaf.mNode.releaseShared();
-            } else {
-                leaf.mNode.releaseShared();
-                shared = commitLock.acquireShared();
-            }
-
-            leaf.acquireExclusive();
-
-            // Need to check if exists again.
-            if (leaf.mNodePos < 0) {
-                leaf.mNode.releaseExclusive();
-                shared.release();
-                return null;
-            }
-        }
-
-        try {
-            // Releases leaf latch if an exception is thrown.
-            notSplitDirty(leaf);
-        } catch (Throwable e) {
-            shared.release();
-            throw e;
-        }
-
-        // The notSplitDirty method might have released and re-acquired the node latch, so
-        // double check the position.
-        if (leaf.mNodePos < 0) {
-            leaf.mNode.releaseExclusive();
-            shared.release();
-            return null;
-        }
-
-        return shared;
-    }
-
-    /**
-     * Must call prepareDelete before calling this method, which ensures that the node is
-     * dirtied and not split, and that the leaf position isn't negative.
+     * Must call prepareStore before calling this method, which ensures that the node is
+     * dirtied and not split. If the delete won't actually do anything, then the node doesn't
+     * need to be dirtied.
      *
      * Caller must have acquired the shared commit lock, which is released by this method if an
      * exception is thrown.
@@ -3590,27 +3430,30 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         try {
             Node node = leaf.mNode;
             int pos = leaf.mNodePos;
-            byte[] key = mKey;
 
-            try {
-                if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
-                    node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
-                } else {
-                    node.deleteLeafEntry(pos);
-                    // Fix all bound cursors, including this one.
-                    node.postDelete(pos, key);
+            if (pos >= 0) {
+                byte[] key = mKey;
+                try {
+                    if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
+                        node.txnDeleteLeafEntry(txn, mTree, key, keyHash(), pos);
+                    } else {
+                        node.deleteLeafEntry(pos);
+                        // Fix all bound cursors, including this one.
+                        node.postDelete(pos, key);
+                    }
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
                 }
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                throw e;
+
+                if (node.shouldLeafMerge()) {
+                    // Releases node as a side-effect.
+                    mergeLeaf(leaf, node);
+                    return;
+                }
             }
 
-            if (node.shouldLeafMerge()) {
-                // Releases node as a side-effect.
-                mergeLeaf(leaf, node);
-            } else {
-                node.releaseExclusive();
-            }
+            node.releaseExclusive();
         } catch (Throwable e) {
             // Release the shared lock.
             mTree.mDatabase.commitLock().unlock();
@@ -3646,13 +3489,16 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
     /**
      * With leaf frame held shared, acquires the shared commit lock, upgrades the frame to
-     * exclusive, and prepares the frame for a store operation (not split, dirty). Leaf latch
-     * might be released and re-acquired by this method.
+     * exclusive, and prepares the frame for a store operation (not split, dirty). If value is
+     * null and nothing needs to actually be deleted, node isn't dirtied. Leaf latch might be
+     * released and re-acquired by this method.
      *
      * @param leaf non-null leaf frame, held shared, released if an exception is thrown
      * @return held commitLock
      */
-    private CommitLock.Shared prepareStoreUpgrade(CursorFrame leaf) throws IOException {
+    private CommitLock.Shared prepareStoreUpgrade(CursorFrame leaf, byte[] value)
+        throws IOException
+    {
         CommitLock commitLock = mTree.mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.tryAcquireShared();
 
@@ -3670,12 +3516,15 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             leaf.acquireExclusive();
         }
 
-        try {
-            // Releases leaf latch if an exception is thrown.
-            notSplitDirty(leaf);
-        } catch (Throwable e) {
-            shared.release();
-            throw e;
+        // Dirty the node if a value is provided, or if delete will actually do something.
+        if (value != null || leaf.mNodePos >= 0) {
+            try {
+                // Releases leaf latch if an exception is thrown.
+                notSplitDirty(leaf);
+            } catch (Throwable e) {
+                shared.release();
+                throw e;
+            }
         }
 
         return shared;
@@ -4786,7 +4635,9 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                             if (result > 0) {
                                 node = null; // don't release in the finally block
 
-                                CommitLock.Shared shared = prepareStoreUpgrade(frame);
+                                // Can pass null and still force the node to be dirtied because
+                                // the node position isn't negative.
+                                CommitLock.Shared shared = prepareStoreUpgrade(frame, null);
 
                                 try {
                                     TreeValue.action(null, this, frame, TreeValue.OP_WRITE,
