@@ -143,7 +143,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     {
         GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, seeds.isEmpty());
         Controller con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
-        con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
+        try {
+            con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
+        } catch (Throwable e) {
+            // Cleanup the mess after the init method has released the exclusive latch, to
+            // prevent deadlock when calling close.
+            closeQuietly(localSocket);
+            closeQuietly(con);
+            throw e;
+        }
         return con;
     }
 
@@ -164,7 +172,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void init(File groupFile,
                       SocketAddress localAddress, SocketAddress listenAddress,
-                      Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket)
+                      Role localRole, Set<SocketAddress> seeds, final ServerSocket localSocket)
         throws IOException
     {
         acquireExclusive();
@@ -206,10 +214,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mChanMan.setLocalMemberId(localMemberId, localSocket);
 
             refreshPeerSet();
-        } catch (Throwable e) {
-            closeQuietly(localSocket);
-            closeQuietly(this);
-            throw e;
         } finally {
             releaseExclusive();
         }
