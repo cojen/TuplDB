@@ -377,7 +377,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
         try {
             if (mLeaderReplWriter != null) {
-                throw new IllegalStateException("Writer already exists");
+                throw new IllegalStateException("Writer already exists: term=" + mLeaderReplWriter.term());
             }
             if (mLeaderLogWriter == null
                 || (position >= 0 && position != mLeaderLogWriter.position()))
@@ -767,7 +767,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                     if (amt <= 0) {
                         if (length > 0) {
-                            mPeerChannels = null;
+                            deactivate();
                         }
                         return amt;
                     }
@@ -850,10 +850,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         @Override
         public void close() {
-            if (deactivate()) {
-                mWriter.release();
-                writerClosed(this);
-            }
+            deactivate();
+            writerClosed(this);
         }
 
         synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
@@ -863,13 +861,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        synchronized boolean deactivate() {
-            if (mPeerChannels == null) {
-                return false;
+        void deactivate() {
+            synchronized (this) {
+                if (mPeerChannels == null) {
+                    return;
+                }
+                mPeerChannels = null;
+                mSelfCommit = false;
             }
-            mPeerChannels = null;
-            mSelfCommit = false;
-            return true;
+            mWriter.release();
         }
     }
 
