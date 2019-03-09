@@ -682,6 +682,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             _TreeCursor tc = (_TreeCursor) ix.newCursor(Transaction.BOGUS);
             tc.mKeyOnly = true;
             tc.mCursorId = cursorId;
+            register(tc);
             synchronized (mCursors) {
                 mCursors.insert(scrambledCursorId).mCursor = tc;
             }
@@ -728,11 +729,10 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
-        _TreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
-        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+        _Lock lock = txn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -740,9 +740,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                _TreeCursor tc = ce.mCursor;
-                tc.mTxn = txn;
-                tc.findNearby(key);
+                _TreeCursor tc = findAndRegister(ce, txn, key);
 
                 do {
                     try {
@@ -768,20 +766,17 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
-        _TreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
-        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, key);
+        _Lock lock = txn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
                 if (lock != null) {
                     txn.push(lock);
                 }
-                _TreeCursor tc = ce.mCursor;
-                tc.mTxn = txn;
-                tc.findNearby(key);
+                findAndRegister(ce, txn, key);
             }
         });
 
@@ -1251,6 +1246,26 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return openIndex(indexId);
     }
 
+    private void register(_TreeCursor tc) throws IOException {
+        _Tree cursorRegistry = mDatabase.openCursorRegistry();
+        CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            mDatabase.registerCursor(cursorRegistry, tc);
+        } finally {
+            shared.release();
+        }
+    }
+
+    private _TreeCursor findAndRegister(CursorEntry ce, _LocalTransaction txn, byte[] key)
+        throws IOException
+    {
+        _TreeCursor tc = ce.mCursor;
+        tc.mTxn = txn;
+        tc.findNearby(key);
+        register(tc);
+        return tc;
+    }
+
     /**
      * @return CursorEntry via scrambled cursor id
      */
@@ -1423,10 +1438,16 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
-    static void reset(_TreeCursor cursor) {
+    private void reset(_TreeCursor cursor) {
         // Clear cursor id first, to prevent reset from writing a redo log entry.
+        long cursorId = cursor.mCursorId;
         cursor.mCursorId = 0;
+
         cursor.reset();
+
+        if (cursorId != 0) {
+            mDatabase.unregisterCursor(cursorId);
+        }
     }
 
     static final class CursorEntry extends LHashTable.Entry<CursorEntry> {
