@@ -12,6 +12,11 @@ v1.4.5
   valid to the replica, when a term is truncated and extended.
 * Fix recovery and cleanup of registered cursors.
 * Fix handling of snapshot/restore with custom data page array.
+* Fix replication segments which are fully truncated. They must be untruncated when term is later
+  extended.
+* Fix potential race condition with latch condition signal.
+* Fix for lost exclusive lock acquisitions caused by delete short-circuit.
+* Fix which caused replica cursor registration to be lost following a checkpoint and recovery.
 * Wait for replication recovery when starting up, and wait for the local member to become the
   leader if it's the only group member which can become the leader.
 * Speed up redo log recovery by using multiple threads.
@@ -34,6 +39,17 @@ v1.4.5
   ones, to prevent possible false address collisions.
 * Reduce object allocations and copies within the replication subsystem.
 * Provide public access to the commit lock.
+* Free up more memory when closing the database in case something refers to the instance for a
+  long time. Usually this is caused by a thread local reference somewhere.
+* Remove spare page pool and keep a spare page within each node group instead. This eliminates
+  some contention when many threads are simultaneously compacting pages.
+* Added support for proxying writes from the replication leader via a peer. Experimental for now.
+* Boost the size of the replication writer cache when creating non-contiguous writers, to
+  ensure that they don't get lost. When they're lost, additional hole filling requests are
+  performed.
+* Add non-blocking replication read support.
+* Include database stats when throwing a cache exhausted exception.
+* Added a convenience method to set the cache size.
 
 v1.4.4 (2018-06-30)
 ------
