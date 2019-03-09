@@ -702,7 +702,20 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  <p>The cursor is automatically <a href="#unregister()"><code>unregistered</code></a> when <a href="#reset()"><code>reset</code></a>, or when moved to an undefined position, or when moving the cursor
  non-incrementally. Methods whose name starts with "next", "previous", "skip", or
  "findNearby" are considered to move the cursor incrementally. The use of these methods
- generally indicates that registering the cursor might be beneficial.</div>
+ generally indicates that registering the cursor might be beneficial.
+
+ <p>To be effective, cursor registration must be performed <i>after</i> the cursor is
+ initially positioned:
+
+ <pre>
+ Cursor c = ...
+ c.findGe(startKey);
+ c.register(); // register after initial positioning
+ while (more updates to perform) {
+     c.store(...);
+     c.next(); // incremental move
+ }
+ </pre></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>

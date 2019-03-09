@@ -150,6 +150,19 @@ public interface Cursor extends ValueAccessor, Closeable {
      * non-incrementally. Methods whose name starts with "next", "previous", "skip", or
      * "findNearby" are considered to move the cursor incrementally. The use of these methods
      * generally indicates that registering the cursor might be beneficial.
+     *
+     * <p>To be effective, cursor registration must be performed <i>after</i> the cursor is
+     * initially positioned:
+     *
+     * <pre>
+     * Cursor c = ...
+     * c.findGe(startKey);
+     * c.register(); // register after initial positioning
+     * while (more updates to perform) {
+     *     c.store(...);
+     *     c.next(); // incremental move
+     * }
+     * </pre>
      */
     public default boolean register() throws IOException {
         return false;

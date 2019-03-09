@@ -1051,7 +1051,20 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  <p>The cursor is automatically <a href="Cursor.html#unregister()"><code>unregistered</code></a> when <a href="Cursor.html#reset()"><code>reset</code></a>, or when moved to an undefined position, or when moving the cursor
  non-incrementally. Methods whose name starts with "next", "previous", "skip", or
  "findNearby" are considered to move the cursor incrementally. The use of these methods
- generally indicates that registering the cursor might be beneficial.</div>
+ generally indicates that registering the cursor might be beneficial.
+
+ <p>To be effective, cursor registration must be performed <i>after</i> the cursor is
+ initially positioned:
+
+ <pre>
+ Cursor c = ...
+ c.findGe(startKey);
+ c.register(); // register after initial positioning
+ while (more updates to perform) {
+     c.store(...);
+     c.next(); // incremental move
+ }
+ </pre></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="Cursor.html#register()">register</a></code>&nbsp;in interface&nbsp;<code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
