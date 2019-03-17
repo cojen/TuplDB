@@ -2888,23 +2888,15 @@ final class Node extends Clutch implements DatabaseAccess {
             childFrame = childFrame.mPrevCousin;
         }
 
-        InResult result;
-        try {
-            result = new InResult();
-        } catch (Throwable e) {
-            splitChild.releaseExclusive();
-            newChild.releaseExclusive();
-            releaseExclusive();
-            throw e;
-        }
-
         // Note: Invocation of createInternalEntry may cause splitInternal to be called,
         // which in turn might throw a recoverable exception. State changes can be undone
         // by decrementing the incremented frame positions, and then by undoing the
         // rebindSplitFrames call. However, this would create an orphaned child node.
         // Panicking the database is the safest option.
 
+        InResult result;
         try {
+            result = new InResult();
             createInternalEntry(frame, result, tree, keyPos, split.splitKeyEncodedLength(),
                                 newChildPos << 3, true);
         } catch (Throwable e) {
