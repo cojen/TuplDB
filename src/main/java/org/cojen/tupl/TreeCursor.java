@@ -4208,8 +4208,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * Caller must hold shared commit lock.
-     *
      * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
@@ -4270,7 +4268,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             Node node = leaf.mNode;
 
             if (op == TreeValue.OP_SET_LENGTH && node.shouldLeafMerge()) {
-                // Method always release the node latch, even if an exception is thrown.
+                // Method always releases the node latch, even if an exception is thrown.
                 mergeLeaf(leaf, node);
             } else {
                 node.releaseExclusive();

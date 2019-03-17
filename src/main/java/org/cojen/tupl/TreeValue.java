@@ -1741,9 +1741,10 @@ final class TreeValue {
         node.garbage(node.garbage() + shrinkage);
 
         if (node.shouldLeafMerge()) {
-            // Method always release the node latch, even if an exception is thrown.
+            // Method always releases the node latch, even if an exception is thrown.
             cursor.mergeLeaf(frame, node);
             frame.acquireExclusive();
+            cursor.notSplitDirty(frame);
         }
     }
 
