@@ -177,10 +177,12 @@ final class _TreeValue {
                     return 0;
                 }
 
-                if (txn != null) {
+                if (txn != null) try {
                     txn.pushUncreate(cursor.mTree.mId, cursor.mKey);
                     // No more undo operations to push.
                     txn = null;
+                } catch (Throwable e) {
+                    throw releaseExclusive(node, e);
                 }
 
                 // Method releases latch if an exception is thrown.
@@ -264,8 +266,10 @@ final class _TreeValue {
                     if (pos < vLen) {
                         int iLoc = (int) (loc + pos);
                         int iLen = (int) Math.min(bLen, vLen - pos);
-                        if (txn != null) {
+                        if (txn != null) try {
                             txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                        } catch (Throwable e) {
+                            throw releaseExclusive(node, e);
                         }
                         p_clear(page, iLoc, iLoc + iLen);
                     }
@@ -283,9 +287,11 @@ final class _TreeValue {
                         int oldLen = vLen;
                         int garbageAccum = oldLen - newLen;
 
-                        if (txn != null) {
+                        if (txn != null) try {
                             txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                             pos, page, loc + newLen, garbageAccum);
+                        } catch (Throwable e) {
+                            throw releaseExclusive(node, e);
                         }
 
                         shift: {
@@ -329,9 +335,11 @@ final class _TreeValue {
                             // Writing within existing value region.
                             int iLoc = (int) (loc + pos);
                             int iLen = (int) bLen;
-                            if (txn != null) {
+                            if (txn != null) try {
                                 txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                 pos, page, iLoc, iLen);
+                            } catch (Throwable e) {
+                                throw releaseExclusive(node, e);
                             }
                             p_copyFromArray(b, bOff, page, iLoc, iLen);
                             return 0;
@@ -346,8 +354,7 @@ final class _TreeValue {
                                 }
                                 node.updateLeafValue(frame, tree, nodePos, 0, b);
                             } catch (Throwable e) {
-                                node.releaseExclusive();
-                                throw e;
+                                throw releaseExclusive(node, e);
                             }
                             if (node.mSplit != null) {
                                 // Releases latch if an exception is thrown.
@@ -358,9 +365,11 @@ final class _TreeValue {
                             // Write the overlapping region, and then append the rest.
                             int iLoc = (int) (loc + pos);
                             int iLen = (int) (vLen - pos);
-                            if (txn != null) {
+                            if (txn != null) try {
                                 txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                 pos, page, iLoc, iLen);
+                            } catch (Throwable e) {
+                                throw releaseExclusive(node, e);
                             }
                             p_copyFromArray(b, bOff, page, iLoc, iLen);
                             pos = vLen;
@@ -377,16 +386,22 @@ final class _TreeValue {
                 // kinds of optimizations that can be performed here, but keep things
                 // simple. Delete the old value, insert a blank value, and then update it.
 
-                if (txn != null) {
-                    txn.pushUnextend(cursor.mTree.mId, cursor.mKey, vLen);
-                    // No more undo operations to push.
-                    txn = null;
+                byte[] oldValue;
+                try {
+                    if (txn != null) {
+                        txn.pushUnextend(cursor.mTree.mId, cursor.mKey, vLen);
+                        // No more undo operations to push.
+                        txn = null;
+                    }
+
+                    oldValue = new byte[vLen];
+                    p_copyToArray(page, loc, oldValue, 0, oldValue.length);
+
+                    node.deleteLeafEntry(nodePos);
+                } catch (Throwable e) {
+                    throw releaseExclusive(node, e);
                 }
 
-                byte[] oldValue = new byte[vLen];
-                p_copyToArray(page, loc, oldValue, 0, oldValue.length);
-
-                node.deleteLeafEntry(nodePos);
                 // Fix all bound cursors, including the current one.
                 node.postDelete(nodePos, cursor.mKey);
 
@@ -549,9 +564,11 @@ final class _TreeValue {
                         if (bLen <= amt) {
                             // Only clearing inline content.
                             int iLen = (int) bLen;
-                            if (txn != null) {
+                            if (txn != null) try {
                                 txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                 pos, page, iLoc, iLen);
+                            } catch (Throwable e) {
+                                throw releaseExclusive(node, e);
                             }
                             p_clear(page, iLoc, iLoc + iLen);
                             if (op == OP_SET_LENGTH) {
@@ -658,8 +675,7 @@ final class _TreeValue {
                     updateLengthField(page, fHeaderLoc, finalLength);
                     return 0;
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
                 }
 
                 // Direct pointers.
@@ -737,8 +753,7 @@ final class _TreeValue {
                     pos += amt;
                     fNodeOff = 0;
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
                 }
             }
 
@@ -764,8 +779,10 @@ final class _TreeValue {
                         // Write just the inline region, and then never touch it again if
                         // continued to the outermost loop.
                         int iLen = (int) amt;
-                        if (txn != null) {
+                        if (txn != null) try {
                             txn.pushUnwrite(cursor.mTree.mId, cursor.mKey, pos, page, iLoc, iLen);
+                        } catch (Throwable e) {
+                            throw releaseExclusive(node, e);
                         }
                         p_copyFromArray(b, bOff, page, iLoc, iLen);
                         bLen -= amt;
@@ -800,8 +817,7 @@ final class _TreeValue {
 
                         return 0;
                     } catch (Throwable e) {
-                        node.releaseExclusive();
-                        throw e;
+                        throw releaseExclusive(node, e);
                     }
 
                     pageSize = pageSize(db, page);
@@ -892,8 +908,7 @@ final class _TreeValue {
 
                         return 0;
                     } catch (Throwable e) {
-                        node.releaseExclusive();
-                        throw e;
+                        throw releaseExclusive(node, e);
                     }
 
                     // Extend the value with direct pointers.
@@ -924,13 +939,15 @@ final class _TreeValue {
                         fHeaderLoc = newLoc;
                     }
 
-                    if (txn != null) {
+                    if (txn != null) try {
                         txn.pushUnextend(cursor.mTree.mId, cursor.mKey, fLen);
                         if (pos >= fLen) {
                             // Write is fully contained in the extended region, so no more
                             // undo is required.
                             txn = null;
                         }
+                    } catch (Throwable e) {
+                        throw releaseExclusive(node, e);
                     }
 
                     updateLengthField(page, fHeaderLoc, endPos);
@@ -1002,8 +1019,8 @@ final class _TreeValue {
                     loc += 6;
                     fNodeOff = 0;
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
+
                 }
             } // end switch(op)
         }
@@ -1109,8 +1126,7 @@ final class _TreeValue {
                     return inode;
                 }
             } catch (Throwable e) {
-                inode.releaseExclusive();
-                throw e;
+                throw releaseExclusive(inode, e);
             }
         }
 
@@ -1185,13 +1201,11 @@ final class _TreeValue {
                                         break setPtr;
                                     }
                                 } catch (Throwable e) {
-                                    childNode.releaseExclusive();
-                                    throw e;
+                                    throw releaseExclusive(childNode, e);
                                 }
                             }
                         } catch (Throwable e) {
-                            inode.releaseExclusive();
-                            throw e;
+                            throw releaseExclusive(inode, e);
                         }
 
                         p_int48PutLE(page, poffset, childNode.id());
@@ -1222,13 +1236,11 @@ final class _TreeValue {
                                         break setPtr;
                                     }
                                 } catch (Throwable e) {
-                                    childNode.releaseExclusive();
-                                    throw e;
+                                    throw releaseExclusive(childNode, e);
                                 }
                             }
                         } catch (Throwable e) {
-                            inode.releaseExclusive();
-                            throw e;
+                            throw releaseExclusive(inode, e);
                         }
 
                         p_int48PutLE(page, poffset, childNode.id());
@@ -1246,8 +1258,7 @@ final class _TreeValue {
                         writeMultilevelFragments
                             (txn, cursor, pos, ppos, level, childNode, b, bOff, len);
                     } catch (Throwable e) {
-                        inode.releaseExclusive();
-                        throw e;
+                        throw releaseExclusive(inode, e);
                     }
                 }
 
@@ -1475,8 +1486,7 @@ final class _TreeValue {
             // The fragmented bit is set again by this call.
             node.updateLeafValue(frame, tree, frame.mNodePos, _Node.ENTRY_FRAGMENTED, newValue);
         } catch (Throwable e) {
-            node.releaseExclusive();
-            throw e;
+            throw releaseExclusive(node, e);
         }
 
         if (node.mSplit != null) {
@@ -1551,8 +1561,7 @@ final class _TreeValue {
             // The fragmented bit is set again by this call.
             node.updateLeafValue(frame, tree, frame.mNodePos, _Node.ENTRY_FRAGMENTED, newValue);
         } catch (Throwable e) {
-            node.releaseExclusive();
-            throw e;
+            throw releaseExclusive(node, e);
         }
 
         if (node.mSplit != null) {
@@ -1633,16 +1642,14 @@ final class _TreeValue {
                     // Encode it this time without any inline content.
                     newValue = db.fragment(fullValue, fullValue.length, max, 0);
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
                 }
 
                 try {
                     node.updateLeafValue(frame, cursor.mTree, frame.mNodePos,
                                          _Node.ENTRY_FRAGMENTED, newValue);
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
                 }
 
                 if (node.mSplit != null) {
@@ -1703,8 +1710,7 @@ final class _TreeValue {
                 try {
                     inode = db.allocDirtyFragmentNode();
                 } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
+                    throw releaseExclusive(node, e);
                 }
 
                 long ipage = inode.mPage;
@@ -1878,5 +1884,13 @@ final class _TreeValue {
         /*P*/ // |
         return db.pageSize();
         /*P*/ // ]
+    }
+
+    /**
+     * Releases the exclusive latch and rethrows the exception.
+     */
+    private static RuntimeException releaseExclusive(_Node node, Throwable cause) {
+        node.releaseExclusive();
+        throw rethrow(cause);
     }
 }
