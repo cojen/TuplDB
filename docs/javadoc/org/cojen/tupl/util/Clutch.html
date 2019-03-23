@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -163,13 +146,15 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <!--   -->
 </a>
 <h3>Nested Class Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Class</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <td class="colFirst"><code>static class&nbsp;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></span></code></th>
@@ -177,7 +162,9 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <div class="block">Sharable object for supporting contended clutches.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -205,12 +192,14 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">Clutch</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
@@ -219,7 +208,9 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(int)">Clutch</a></span>&#8203;(int&nbsp;initialState)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -230,63 +221,66 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t1" class="tableTab"><span><a href="javascript:show(1);">Static Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t1" class="tableTab" onclick="show(1);">Static Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t4" class="tableTab" onclick="show(8);">Concrete Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireExclusive()">acquireExclusive</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireExclusiveInterruptibly()">acquireExclusiveInterruptibly</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireShared()">acquireShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedInterruptibly()">acquireSharedInterruptibly</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedUncontended()">acquireSharedUncontended</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Like tryAcquireShared, except blocks if an exclusive latch is held.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#acquireSharedUncontendedNanos(long)">acquireSharedUncontendedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#downgrade(boolean)">downgrade</a></span>&#8203;(boolean&nbsp;contended)</code></th>
 <td class="colLast">
 <div class="block">Downgrade the held exclusive latch with the option to try switching to contended mode.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>protected abstract <a href="Clutch.Pack.html" title="class in org.cojen.tupl.util">Clutch.Pack</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPack()">getPack</a></span>()</code></th>
 <td class="colLast">
@@ -294,14 +288,14 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
  overall memory footprint.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isContended()">isContended</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true if clutch is operating in contended mode.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>static <a href="Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#make()">make</a></span>()</code></th>
 <td class="colLast">
@@ -309,7 +303,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
  from this method.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>static <a href="Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#make(int)">make</a></span>&#8203;(int&nbsp;initialState)</code></th>
 <td class="colLast">
@@ -317,61 +311,64 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
  from this method.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#releaseExclusive(boolean)">releaseExclusive</a></span>&#8203;(boolean&nbsp;contended)</code></th>
 <td class="colLast">
 <div class="block">Release the held exclusive latch with the option to try switching to contended mode.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#releaseShared()">releaseShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Release a held shared latch.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i14" class="altColor">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireExclusive()">tryAcquireExclusive</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireExclusiveNanos(long)">tryAcquireExclusiveNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireShared()">tryAcquireShared</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Try to acquire a shared latch, barging ahead of any waiting threads if possible.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryAcquireSharedNanos(long)">tryAcquireSharedNanos</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryUpgrade()">tryUpgrade</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.org.cojen.tupl.util.Latch">
 <!--   -->
@@ -761,24 +758,6 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -794,9 +773,10 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>

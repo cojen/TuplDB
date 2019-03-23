@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -151,19 +134,22 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitPosition()">commitPosition</a></span>()</code></th>
 <td class="colLast">
@@ -171,35 +157,35 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
  position.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#position()">position</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the next log position which will be accessed.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#term()">term</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed term being accessed.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termEndPosition()">termEndPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current term end position, which is Long.MAX_VALUE if unbounded.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termStartPosition()">termStartPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the position at the start of the term.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a></span>&#8203;(long&nbsp;position,
           <a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
@@ -207,14 +193,17 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 </li>
 </ul>
 </section>
@@ -354,24 +343,6 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -387,9 +358,10 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>

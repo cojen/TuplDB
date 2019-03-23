@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -174,13 +157,15 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <!--   -->
 </a>
 <h3>Field Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Field</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <td class="colFirst"><code>static <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#BOGUS">BOGUS</a></span></code></th>
@@ -188,7 +173,9 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <div class="block">Transaction instance which isn't a transaction at all.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -199,49 +186,52 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#attach(java.lang.Object)">attach</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
 <td class="colLast">
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#attachment()">attachment</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns any attachment which was set earlier.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#check()">check</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Checks the validity of the transaction.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commit()">commit</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Commits all modifications made within the current transaction scope.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitAll()">commitAll</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Commits and exits all transaction scopes.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customRedo(byte%5B%5D,long,byte%5B%5D)">customRedo</a></span>&#8203;(byte[]&nbsp;message,
           long&nbsp;indexId,
@@ -250,35 +240,35 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <div class="block">Supply a message for a custom redo handler.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customUndo(byte%5B%5D)">customUndo</a></span>&#8203;(byte[]&nbsp;message)</code></th>
 <td class="colLast">
 <div class="block">Supply a message for a custom undo handler.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code><a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#durabilityMode()">durabilityMode</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the durability mode of this transaction.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#durabilityMode(org.cojen.tupl.DurabilityMode)">durabilityMode</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;mode)</code></th>
 <td class="colLast">
 <div class="block">Sets the durability mode for the entire transaction, not just the current scope.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#enter()">enter</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Enters a nested transaction scope.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#exit()">exit</a></span>()</code></th>
 <td class="colLast">
@@ -286,7 +276,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  modifications made within.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#flush()">flush</a></span>()</code></th>
 <td class="colLast">
@@ -294,7 +284,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  log.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getId()">getId</a></span>()</code></th>
 <td class="colLast">
@@ -302,28 +292,28 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  transaction cannot replicate.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isNested()">isNested</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true if the current transaction scope is nested.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lastLockedIndex()">lastLockedIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the index id of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lastLockedKey()">lastLockedKey</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the key of the last lock acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockCheck(long,byte%5B%5D)">lockCheck</a></span>&#8203;(long&nbsp;indexId,
          byte[]&nbsp;key)</code></th>
@@ -331,7 +321,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockExclusive(long,byte%5B%5D)">lockExclusive</a></span>&#8203;(long&nbsp;indexId,
              byte[]&nbsp;key)</code></th>
@@ -340,7 +330,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  additional locks.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockExclusive(long,byte%5B%5D,long)">lockExclusive</a></span>&#8203;(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -350,21 +340,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  additional locks.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code><a href="LockMode.html" title="enum in org.cojen.tupl">LockMode</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockMode()">lockMode</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current lock mode.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr class="altColor" id="i20">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockMode(org.cojen.tupl.LockMode)">lockMode</a></span>&#8203;(<a href="LockMode.html" title="enum in org.cojen.tupl">LockMode</a>&nbsp;mode)</code></th>
 <td class="colLast">
 <div class="block">Sets the lock mode for the current scope.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr class="rowColor" id="i21">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockShared(long,byte%5B%5D)">lockShared</a></span>&#8203;(long&nbsp;indexId,
           byte[]&nbsp;key)</code></th>
@@ -373,7 +363,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  locks.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr class="altColor" id="i22">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockShared(long,byte%5B%5D,long)">lockShared</a></span>&#8203;(long&nbsp;indexId,
           byte[]&nbsp;key,
@@ -383,7 +373,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  locks.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr class="rowColor" id="i23">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
            <a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
@@ -391,14 +381,14 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <div class="block">Sets the lock timeout for the current scope.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr class="altColor" id="i24">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockTimeout(java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockUpgradable(long,byte%5B%5D)">lockUpgradable</a></span>&#8203;(long&nbsp;indexId,
               byte[]&nbsp;key)</code></th>
@@ -407,7 +397,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockUpgradable(long,byte%5B%5D,long)">lockUpgradable</a></span>&#8203;(long&nbsp;indexId,
               byte[]&nbsp;key,
@@ -417,14 +407,14 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#nestingLevel()">nestingLevel</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Counts the current transaction scope nesting level.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepare()">prepare</a></span>()</code></th>
 <td class="colLast">
@@ -432,21 +422,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  committing the transaction.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr class="rowColor" id="i29">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset(java.lang.Throwable)">reset</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockExclusive(long,byte%5B%5D,long)">tryLockExclusive</a></span>&#8203;(long&nbsp;indexId,
                 byte[]&nbsp;key,
@@ -456,7 +446,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  additional locks.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockShared(long,byte%5B%5D,long)">tryLockShared</a></span>&#8203;(long&nbsp;indexId,
              byte[]&nbsp;key,
@@ -466,7 +456,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  locks.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockUpgradable(long,byte%5B%5D,long)">tryLockUpgradable</a></span>&#8203;(long&nbsp;indexId,
                  byte[]&nbsp;key,
@@ -476,21 +466,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlock()">unlock</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Fully releases the last lock or group acquired, within the current scope.</div>
 </td>
 </tr>
-<tr id="i35" class="rowColor">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlockCombine()">unlockCombine</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.</div>
 </td>
 </tr>
-<tr id="i36" class="altColor">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlockToShared()">unlockToShared</a></span>()</code></th>
 <td class="colLast">
@@ -498,7 +488,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  lock.</div>
 </td>
 </tr>
-<tr id="i37" class="rowColor">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlockToUpgradable()">unlockToUpgradable</a></span>()</code></th>
 <td class="colLast">
@@ -506,7 +496,10 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
  retaining an upgradable lock.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 </li>
 </ul>
 </section>
@@ -1331,24 +1324,6 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -1364,9 +1339,10 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Flushable.ht
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>

@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -147,14 +130,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t3" class="tableTab"><span><a href="javascript:show(4);">Abstract Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t5" class="tableTab"><span><a href="javascript:show(16);">Default Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#count(byte%5B%5D,byte%5B%5D)">count</a></span>&#8203;(byte[]&nbsp;lowKey,
      byte[]&nbsp;highKey)</code></th>
@@ -162,7 +148,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Non-transactionally counts the number of entries within the given range.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(org.cojen.tupl.Transaction,byte%5B%5D)">delete</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key)</code></th>
@@ -170,7 +156,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Unconditionally removes the entry associated with the given key.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>default byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">exchange</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
         byte[]&nbsp;key,
@@ -179,7 +165,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#exists(org.cojen.tupl.Transaction,byte%5B%5D)">exists</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key)</code></th>
@@ -187,21 +173,21 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Checks if an entry for the given key exists.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>default <a href="https://docs.oracle.com/javase/10/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getComparator()">getComparator</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOrdering()">getOrdering</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the key ordering for this view.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">insert</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -211,7 +197,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  exists.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isModifyAtomic()">isModifyAtomic</a></span>()</code></th>
 <td class="colLast">
@@ -219,14 +205,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  transactions.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isUnmodifiable()">isUnmodifiable</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true if any attempt to modify this view causes an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>UnmodifiableViewException</code></a> to be thrown.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>default byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#load(org.cojen.tupl.Transaction,byte%5B%5D)">load</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
     byte[]&nbsp;key)</code></th>
@@ -234,7 +220,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)">lockCheck</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
          byte[]&nbsp;key)</code></th>
@@ -242,7 +228,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)">lockExclusive</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key)</code></th>
@@ -251,7 +237,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  locks.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)">lockShared</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
           byte[]&nbsp;key)</code></th>
@@ -259,7 +245,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)">lockUpgradable</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
               byte[]&nbsp;key)</code></th>
@@ -268,7 +254,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>default <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)">newAccessor</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
            byte[]&nbsp;key)</code></th>
@@ -277,33 +263,33 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  permitting them to be larger than what can fit in main memory.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newCursor(org.cojen.tupl.Transaction)">newCursor</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i16" class="altColor">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>default <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newScanner(org.cojen.tupl.Transaction)">newScanner</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Returns a new scanner over this view.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="colLast">
 <div class="block">Returns a new transaction which is compatible with this view.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newUpdater(org.cojen.tupl.Transaction)">newUpdater</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Returns a new updater over this view.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#remove(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">remove</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -313,7 +299,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  matches.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr class="altColor" id="i20">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">replace</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
        byte[]&nbsp;key,
@@ -322,7 +308,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr class="rowColor" id="i21">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">store</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;key,
@@ -331,7 +317,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Unconditionally associates a value with the given key.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr class="altColor" id="i22">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#touch(org.cojen.tupl.Transaction,byte%5B%5D)">touch</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
      byte[]&nbsp;key)</code></th>
@@ -340,7 +326,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  necessary locks.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr class="rowColor" id="i23">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockExclusive(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockExclusive</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                 byte[]&nbsp;key,
@@ -350,7 +336,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  locks.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr class="altColor" id="i24">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockShared(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockShared</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
              byte[]&nbsp;key,
@@ -359,7 +345,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D,long)">tryLockUpgradable</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
                  byte[]&nbsp;key,
@@ -369,7 +355,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">update</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -379,7 +365,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  existing value.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)">update</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
       byte[]&nbsp;key,
@@ -390,7 +376,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  existing value.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewDifference(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewDifference</a></span>&#8203;(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
               <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -399,7 +385,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  difference</cite></a> of this view and a second one.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr class="rowColor" id="i29">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewGe(byte%5B%5D)">viewGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -407,7 +393,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  equal to the given key.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewGt(byte%5B%5D)">viewGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -415,7 +401,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewIntersection</a></span>&#8203;(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
                 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -424,14 +410,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  intersection</cite></a> of this view and a second one.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewKeys()">viewKeys</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, which only provides the keys.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewLe(byte%5B%5D)">viewLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -439,7 +425,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  equal to the given key.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewLt(byte%5B%5D)">viewLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -447,7 +433,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr id="i35" class="rowColor">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewPrefix(byte%5B%5D,int)">viewPrefix</a></span>&#8203;(byte[]&nbsp;prefix,
           int&nbsp;trim)</code></th>
@@ -455,14 +441,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </td>
 </tr>
-<tr id="i36" class="altColor">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewReverse()">viewReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
 </td>
 </tr>
-<tr id="i37" class="rowColor">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewTransformed(org.cojen.tupl.Transformer)">viewTransformed</a></span>&#8203;(<a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code></th>
 <td class="colLast">
@@ -470,7 +456,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  transformed.</div>
 </td>
 </tr>
-<tr id="i38" class="altColor">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewUnion</a></span>&#8203;(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
          <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -479,14 +465,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  this view and a second one.</div>
 </td>
 </tr>
-<tr id="i39" class="rowColor">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewUnmodifiable()">viewUnmodifiable</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, whose entries cannot be modified.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 </li>
 </ul>
 </section>
@@ -1458,24 +1447,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -1491,9 +1462,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>

@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -154,19 +137,23 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <!--   -->
 </a>
 <h3>Field Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Field</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <td class="colFirst"><code>protected <a href="WrappedCursor.html" title="type parameter in WrappedCursor">C</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#source">source</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+</tbody>
 </table>
+</div>
 <ul class="blockList">
 <li class="blockList"><a id="fields.inherited.from.class.org.cojen.tupl.Cursor">
 <!--   -->
@@ -184,19 +171,23 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier</th>
 <th class="colSecond" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <td class="colFirst"><code>protected </code></td>
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(C)">WrappedCursor</a></span>&#8203;(<a href="WrappedCursor.html" title="type parameter in WrappedCursor">C</a>&nbsp;source)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -207,49 +198,52 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t4" class="tableTab" onclick="show(8);">Concrete Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#autoload()">autoload</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current autoload mode.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#autoload(boolean)">autoload</a></span>&#8203;(boolean&nbsp;mode)</code></th>
 <td class="colLast">
 <div class="block">By default, values are loaded automatically, as they are seen.</div>
 </td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commit(byte%5B%5D)">commit</a></span>&#8203;(byte[]&nbsp;value)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compareKeyTo(byte%5B%5D)">compareKeyTo</a></span>&#8203;(byte[]&nbsp;rkey)</code></th>
 <td class="colLast">
 <div class="block">Compare the current key to the one given.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compareKeyTo(byte%5B%5D,int,int)">compareKeyTo</a></span>&#8203;(byte[]&nbsp;rkey,
             int&nbsp;offset,
@@ -258,14 +252,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Compare the current key to the one given.</div>
 </td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#find(byte%5B%5D)">find</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the given key.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findGe(byte%5B%5D)">findGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -273,14 +267,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  key.</div>
 </td>
 </tr>
-<tr id="i8" class="altColor">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findGt(byte%5B%5D)">findGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the closest available entry greater than the given key.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findLe(byte%5B%5D)">findLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -288,14 +282,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  key.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findLt(byte%5B%5D)">findLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the closest available entry less than the given key.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearby(byte%5B%5D)">findNearby</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -303,7 +297,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr id="i12" class="altColor">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyGe(byte%5B%5D)">findNearbyGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -311,7 +305,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyGt(byte%5B%5D)">findNearbyGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -319,7 +313,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr id="i14" class="altColor">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyLe(byte%5B%5D)">findNearbyLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -327,7 +321,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr id="i15" class="rowColor">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyLt(byte%5B%5D)">findNearbyLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -335,28 +329,28 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr id="i16" class="altColor">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#first()">first</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </td>
 </tr>
-<tr id="i17" class="rowColor">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getComparator()">getComparator</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </td>
 </tr>
-<tr id="i18" class="altColor">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOrdering()">getOrdering</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the key ordering for this cursor.</div>
 </td>
 </tr>
-<tr id="i19" class="rowColor">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#key()">key</a></span>()</code></th>
 <td class="colLast">
@@ -364,49 +358,49 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  unpositioned.</div>
 </td>
 </tr>
-<tr id="i20" class="altColor">
+<tr class="altColor" id="i20">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#last()">last</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the last available entry.</div>
 </td>
 </tr>
-<tr id="i21" class="rowColor">
+<tr class="rowColor" id="i21">
 <td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#link()">link</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </td>
 </tr>
-<tr id="i22" class="altColor">
+<tr class="altColor" id="i22">
 <td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#link(org.cojen.tupl.Transaction)">link</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </td>
 </tr>
-<tr id="i23" class="rowColor">
+<tr class="rowColor" id="i23">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#load()">load</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
 </td>
 </tr>
-<tr id="i24" class="altColor">
+<tr class="altColor" id="i24">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lock()">lock</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Locks the current entry, as if by calling load.</div>
 </td>
 </tr>
-<tr id="i25" class="rowColor">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueInputStream(long)">newValueInputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
 <td class="colLast">
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </td>
 </tr>
-<tr id="i26" class="altColor">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueInputStream(long,int)">newValueInputStream</a></span>&#8203;(long&nbsp;pos,
                    int&nbsp;bufferSize)</code></th>
@@ -414,14 +408,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Returns a new buffered InputStream instance, which reads from the value.</div>
 </td>
 </tr>
-<tr id="i27" class="rowColor">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueOutputStream(long)">newValueOutputStream</a></span>&#8203;(long&nbsp;pos)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i28" class="altColor">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newValueOutputStream(long,int)">newValueOutputStream</a></span>&#8203;(long&nbsp;pos,
                     int&nbsp;bufferSize)</code></th>
@@ -429,14 +423,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i29" class="rowColor">
+<tr class="rowColor" id="i29">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#next()">next</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the next available entry.</div>
 </td>
 </tr>
-<tr id="i30" class="altColor">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#nextLe(byte%5B%5D)">nextLe</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
@@ -444,7 +438,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  or equal to the given limit key.</div>
 </td>
 </tr>
-<tr id="i31" class="rowColor">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#nextLt(byte%5B%5D)">nextLt</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
@@ -452,14 +446,14 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  the given limit key.</div>
 </td>
 </tr>
-<tr id="i32" class="altColor">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#previous()">previous</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the previous available entry.</div>
 </td>
 </tr>
-<tr id="i33" class="rowColor">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#previousGe(byte%5B%5D)">previousGe</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
@@ -467,7 +461,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  greater than or equal to the given limit key.</div>
 </td>
 </tr>
-<tr id="i34" class="altColor">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#previousGt(byte%5B%5D)">previousGt</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
@@ -475,7 +469,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  greater than the given limit key.</div>
 </td>
 </tr>
-<tr id="i35" class="rowColor">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,byte%5B%5D)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
       byte[]&nbsp;highKey)</code></th>
@@ -484,7 +478,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  distribution.</div>
 </td>
 </tr>
-<tr id="i36" class="altColor">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#register()">register</a></span>()</code></th>
 <td class="colLast">
@@ -492,21 +486,21 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  replication performance when modifying a range of values.</div>
 </td>
 </tr>
-<tr id="i37" class="rowColor">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </td>
 </tr>
-<tr id="i38" class="altColor">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long)">skip</a></span>&#8203;(long&nbsp;amount)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </td>
 </tr>
-<tr id="i39" class="rowColor">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long,byte%5B%5D,boolean)">skip</a></span>&#8203;(long&nbsp;amount,
     byte[]&nbsp;limitKey,
@@ -516,28 +510,28 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  reached.</div>
 </td>
 </tr>
-<tr id="i40" class="altColor">
+<tr class="altColor" id="i40">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#store(byte%5B%5D)">store</a></span>&#8203;(byte[]&nbsp;value)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i41" class="rowColor">
+<tr class="rowColor" id="i41">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unregister()">unregister</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </td>
 </tr>
-<tr id="i42" class="altColor">
+<tr class="altColor" id="i42">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#value()">value</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </td>
 </tr>
-<tr id="i43" class="rowColor">
+<tr class="rowColor" id="i43">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueClear(long,long)">valueClear</a></span>&#8203;(long&nbsp;pos,
           long&nbsp;length)</code></th>
@@ -545,21 +539,21 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i44" class="altColor">
+<tr class="altColor" id="i44">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength()">valueLength</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
-<tr id="i45" class="rowColor">
+<tr class="rowColor" id="i45">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength(long)">valueLength</a></span>&#8203;(long&nbsp;length)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr id="i46" class="altColor">
+<tr class="altColor" id="i46">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueRead(long,byte%5B%5D,int,int)">valueRead</a></span>&#8203;(long&nbsp;pos,
          byte[]&nbsp;buf,
@@ -569,7 +563,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
-<tr id="i47" class="rowColor">
+<tr class="rowColor" id="i47">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueWrite(long,byte%5B%5D,int,int)">valueWrite</a></span>&#8203;(long&nbsp;pos,
           byte[]&nbsp;buf,
@@ -579,7 +573,10 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
@@ -1725,24 +1722,6 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -1758,9 +1737,10 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>

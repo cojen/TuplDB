@@ -61,30 +61,6 @@ loadScripts(document, 'script');</script>
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_top">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<ul class="navListSearch">
-<li><label for="search">SEARCH:</label>
-<input type="text" id="search" value="search" disabled="disabled">
-<input type="reset" id="reset" value="reset" disabled="disabled">
-</li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_top");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -100,9 +76,16 @@ loadScripts(document, 'script');</script>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+<ul class="navListSearch">
+<li><label for="search">SEARCH:</label>
+<input type="text" id="search" value="search" disabled="disabled">
+<input type="reset" id="reset" value="reset" disabled="disabled">
+</li>
+</ul>
+</div>
 <a id="skip.navbar.top">
 <!--   -->
-</a></div>
+</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
 </div>
 <div class="navPadding">&nbsp;</div>
@@ -160,13 +143,15 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <!--   -->
 </a>
 <h3>Field Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Field</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#entryCount">entryCount</a></span></code></th>
@@ -192,7 +177,9 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueBytes">valueBytes</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -203,12 +190,14 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <!--   -->
 </a>
 <h3>Constructor Summary</h3>
-<table class="memberSummary">
+<div class="memberSummary">
+<table>
 <caption><span>Constructors</span><span class="tabEnd">&nbsp;</span></caption>
 <tr>
 <th class="colFirst" scope="col">Constructor</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
+<tbody>
 <tr class="altColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(double,double,double,double,double)">Stats</a></span>&#8203;(double&nbsp;entryCount,
      double&nbsp;keyBytes,
@@ -217,7 +206,9 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
      double&nbsp;totalBytes)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+</tbody>
 </table>
+</div>
 </li>
 </ul>
 </section>
@@ -228,104 +219,110 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <!--   -->
 </a>
 <h3>Method Summary</h3>
-<table class="memberSummary">
-<caption><span id="t0" class="activeTableTab"><span>All Methods</span><span class="tabEnd">&nbsp;</span></span><span id="t2" class="tableTab"><span><a href="javascript:show(2);">Instance Methods</a></span><span class="tabEnd">&nbsp;</span></span><span id="t4" class="tableTab"><span><a href="javascript:show(8);">Concrete Methods</a></span><span class="tabEnd">&nbsp;</span></span></caption>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t4" class="tableTab" onclick="show(8);">Concrete Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
 <tr>
 <th class="colFirst" scope="col">Modifier and Type</th>
 <th class="colSecond" scope="col">Method</th>
 <th class="colLast" scope="col">Description</th>
 </tr>
-<tr id="i0" class="altColor">
+<tbody>
+<tr class="altColor" id="i0">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#add(org.cojen.tupl.Index.Stats)">add</a></span>&#8203;(<a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;augend)</code></th>
 <td class="colLast">
 <div class="block">Adds stats into a new object.</div>
 </td>
 </tr>
-<tr id="i1" class="rowColor">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#clone()">clone</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i2" class="altColor">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#divide(double)">divide</a></span>&#8203;(double&nbsp;scalar)</code></th>
 <td class="colLast">
 <div class="block">Divide the stats by a scalar into a new object.</div>
 </td>
 </tr>
-<tr id="i3" class="rowColor">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#divideAndRound(double)">divideAndRound</a></span>&#8203;(double&nbsp;scalar)</code></th>
 <td class="colLast">
 <div class="block">Divide the stats by a scalar and round to whole numbers into a new object.</div>
 </td>
 </tr>
-<tr id="i4" class="altColor">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#entryCount()">entryCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the estimated number of index entries.</div>
 </td>
 </tr>
-<tr id="i5" class="rowColor">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i6" class="altColor">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#freeBytes()">freeBytes</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the estimated amount of free bytes in the index.</div>
 </td>
 </tr>
-<tr id="i7" class="rowColor">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#hashCode()">hashCode</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i8" class="altColor">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#keyBytes()">keyBytes</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the estimated amount of bytes occupied by keys in the index.</div>
 </td>
 </tr>
-<tr id="i9" class="rowColor">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#round()">round</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Round the stats to whole numbers into a new object.</div>
 </td>
 </tr>
-<tr id="i10" class="altColor">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#subtract(org.cojen.tupl.Index.Stats)">subtract</a></span>&#8203;(<a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;subtrahend)</code></th>
 <td class="colLast">
 <div class="block">Subtract stats into a new object.</div>
 </td>
 </tr>
-<tr id="i11" class="rowColor">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr id="i12" class="altColor">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#totalBytes()">totalBytes</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the estimated total amount of bytes in the index.</div>
 </td>
 </tr>
-<tr id="i13" class="rowColor">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>double</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueBytes()">valueBytes</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the estimated amount of bytes occupied by values in the index.</div>
 </td>
 </tr>
+</tbody>
 </table>
+</div>
+</div>
 <ul class="blockList">
 <li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
@@ -609,24 +606,6 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 </ul>
 </div>
 <div class="subNav">
-<ul class="navList" id="allclasses_navbar_bottom">
-<li><a href="../../../allclasses.html">All&nbsp;Classes</a></li>
-</ul>
-<div>
-<script type="text/javascript"><!--
-  allClassesLink = document.getElementById("allclasses_navbar_bottom");
-  if(window==top) {
-    allClassesLink.style.display = "block";
-  }
-  else {
-    allClassesLink.style.display = "none";
-  }
-  //-->
-</script>
-<noscript>
-<div>JavaScript is disabled on your browser.</div>
-</noscript>
-</div>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
@@ -642,9 +621,10 @@ implements <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Cloneab
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
+</div>
 <a id="skip.navbar.bottom">
 <!--   -->
-</a></div>
+</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2019 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
