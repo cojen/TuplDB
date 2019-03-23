@@ -135,14 +135,14 @@ class NonReplicationManager implements ReplicationManager {
         }
 
         @Override
-        public synchronized boolean write(byte[] b, int off, int len, long commitPos) {
+        public synchronized int write(byte[] b, int off, int len, long commitPos) {
             if (mClosed) {
-                return false;
+                return -1;
             }
             mPosition += len;
             // Confirm method is called by checkpointer and main thread.
             notifyAll();
-            return true;
+            return 0;
         }
 
         @Override

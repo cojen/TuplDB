@@ -147,9 +147,8 @@ public interface ReplicationManager extends Closeable {
         boolean leaderNotify(Runnable callback);
 
         /**
-         * Fully writes the given data, returning a potential confirmation position. When the
-         * local instance loses leadership, all data rolls back to the highest confirmed
-         * position.
+         * Fully writes the given data, unless leadership is revoked. When the local instance
+         * loses leadership, all data rolls back to the highest confirmed position.
          *
          * <p>An optional commit parameter defines the highest log position which immediately
          * follows a transaction commit operation. If leadership is lost, the message stream is
@@ -161,10 +160,10 @@ public interface ReplicationManager extends Closeable {
          * @param off message buffer offset
          * @param len message length
          * @param commitPos highest transaction commit position; pass 0 if nothing changed
-         * @return false if not leader
+         * @return -1 if not the leader, or else the amount of metadata bytes written
          * @throws IllegalArgumentException if commitPos is negative
          */
-        boolean write(byte[] b, int off, int len, long commitPos) throws IOException;
+        int write(byte[] b, int off, int len, long commitPos) throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.

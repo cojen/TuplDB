@@ -580,14 +580,14 @@ final class MessageStreamReplicator implements MessageReplicator {
                 if (length <= avail) {
                     System.arraycopy(message, offset, buffer, pos, length);
                     pos += length;
-                    return mSource.write(buffer, 0, pos, mFinished ? (position() + pos) : 0) >= pos;
+                    return mSource.write(buffer, 0, pos, mFinished ? (position() + pos) : 0) >= 0;
                 } else {
                     System.arraycopy(message, offset, buffer, pos, avail);
                     offset += avail;
                     length -= avail;
                     mSource.write(buffer, 0, buffer.length, 0);
                     return mSource.write(message, offset, length,
-                                         mFinished ? (position() + length) : 0) >= length;
+                                         mFinished ? (position() + length) : 0) >= 0;
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);

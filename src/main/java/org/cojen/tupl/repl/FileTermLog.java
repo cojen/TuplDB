@@ -1326,17 +1326,17 @@ final class FileTermLog extends Latch implements TermLog {
             if (segment == null) {
                 segment = segmentForWriting(position);
                 if (segment == null) {
-                    return 0;
+                    return -1;
                 }
                 mWriterSegment = segment;
             }
 
-            int total = 0;
+            // No extra metadata is written at this layer.
+            int result = 0;
 
             while (true) {
                 int amt = segment.write(position, data, offset, length);
                 position += amt;
-                total += amt;
                 length -= amt;
                 if (length <= 0) {
                     break;
@@ -1346,6 +1346,7 @@ final class FileTermLog extends Latch implements TermLog {
                 unreferenced(segment);
                 segment = segmentForWriting(position);
                 if (segment == null) {
+                    result = -1;
                     break;
                 }
                 mWriterSegment = segment;
@@ -1353,7 +1354,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             writeFinished(this, position, highestPosition);
 
-            return total;
+            return result;
         }
 
         private Segment segmentForWriting(long position) throws IOException {

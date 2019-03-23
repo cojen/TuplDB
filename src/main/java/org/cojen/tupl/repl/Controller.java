@@ -745,7 +745,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         {
             Channel[] peerChannels;
             long prevTerm, term, position, commitPosition;
-            int proxy;
+            int result, proxy;
 
             w0: {
                 synchronized (this) {
@@ -763,16 +763,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     term = writer.term();
                     position = writer.position();
 
-                    int amt = writer.write(data, offset, length, highestPosition);
+                    result = writer.write(data, offset, length, highestPosition);
 
-                    if (amt <= 0) {
-                        if (length > 0) {
-                            deactivate();
-                        }
-                        return amt;
+                    if (result < 0) {
+                        deactivate();
+                        return -1;
                     }
-
-                    length = amt;
 
                     mStateLog.captureHighest(writer);
                     highestPosition = writer.mHighestPosition;
@@ -783,7 +779,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     }
 
                     if (peerChannels.length == 0) {
-                        return length;
+                        return result;
                     }
 
                     commitPosition = writer.mCommitPosition;
@@ -812,7 +808,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                                        data, offset, length);
                 }
 
-                return length;
+                return result;
             }
 
             // Proxy the write through a selected peer.
@@ -825,7 +821,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                      data, offset, length))
                 {
                     // Success.
-                    return length;
+                    return result;
                 }
 
                 synchronized (this) {
@@ -835,7 +831,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             }
 
-            return length;
+            return result;
         }
 
         @Override

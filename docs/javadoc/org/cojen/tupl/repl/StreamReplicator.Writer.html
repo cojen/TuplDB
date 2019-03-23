@@ -217,8 +217,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
  messages.length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>messages.length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>amount of bytes written, which is less than the message length only if the
- writer is deactivated</dd>
+<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -238,8 +237,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
  length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>amount of bytes written, which is less than the given length only if the
- writer is deactivated</dd>
+<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -270,8 +268,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>amount of bytes written, which is less than the given length only if the
- writer is deactivated</dd>
+<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>

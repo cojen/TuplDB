@@ -170,7 +170,7 @@ public class StreamReplicatorTest {
 
         byte[] message = "hello".getBytes();
         byte[] wrapped = wrapMessage(message);
-        assertEquals(wrapped.length, writer.write(wrapped));
+        assertEquals(0, writer.write(wrapped));
         assertEquals(wrapped.length, writer.waitForCommit(wrapped.length, 0));
 
         byte[] buf = new byte[message.length];
@@ -212,7 +212,7 @@ public class StreamReplicatorTest {
 
         byte[] message = "hello".getBytes();
         byte[] wrapped = wrapMessage(message);
-        assertEquals(wrapped.length, writer.write(wrapped));
+        assertEquals(0, writer.write(wrapped));
         long highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
@@ -225,7 +225,7 @@ public class StreamReplicatorTest {
 
         message = "world!".getBytes();
         wrapped = wrapMessage(message);
-        assertEquals(wrapped.length, writer.write(wrapped));
+        assertEquals(0, writer.write(wrapped));
         highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 

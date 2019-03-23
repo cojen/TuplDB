@@ -509,8 +509,8 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
         }
 
         @Override
-        public boolean write(byte[] b, int off, int len, long commitPos) throws IOException {
-            return mWriter.write(b, off, len, commitPos) >= len;
+        public int write(byte[] b, int off, int len, long commitPos) throws IOException {
+            return mWriter.write(b, off, len, commitPos);
         }
 
         @Override

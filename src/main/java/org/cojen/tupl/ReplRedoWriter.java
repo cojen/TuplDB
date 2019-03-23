@@ -453,21 +453,20 @@ class ReplRedoWriter extends RedoWriter {
         while (mConsumer != null) {
             int head = mBufferHead;
             int tail = mBufferTail;
-            long commitPos = mLastCommitPos;
 
             try {
                 if (head == tail) {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    if (!mReplWriter.write(buffer, head, buffer.length - head, commitPos)) {
+                    if (replWrite(buffer, head, buffer.length - head) < 0) {
                         break;
                     }
 
                     if (head > 0) {
                         // Write the tail section.
                         mBufferHead = 0;
-                        if (!mReplWriter.write(buffer, 0, tail, commitPos)) {
+                        if (replWrite(buffer, 0, tail) < 0) {
                             break;
                         }
                     }
@@ -481,14 +480,14 @@ class ReplRedoWriter extends RedoWriter {
                     try {
                         if (head < tail) {
                             // No circular wraparound.
-                            if (!mReplWriter.write(buffer, head, tail - head, commitPos)) {
+                            if (replWrite(buffer, head, tail - head) < 0) {
                                 break;
                             }
                             head = tail;
                         } else {
                             // Write only the head section.
                             int len = buffer.length - head;
-                            if (!mReplWriter.write(buffer, head, len, commitPos)) {
+                            if (replWrite(buffer, head, len) < 0) {
                                 break;
                             }
                             head = 0;
@@ -532,5 +531,18 @@ class ReplRedoWriter extends RedoWriter {
         mBufferLatch.releaseExclusive();
 
         mEngine.mController.switchToReplica(mReplWriter);
+    }
+
+    /**
+     * @return -1 if leadership is revoked
+     */
+    private int replWrite(byte[] buf, int off, int len) throws IOException {
+        int result = mReplWriter.write(buf, off, len, mLastCommitPos);
+        if (result > 0) {
+            // Adjust positions if more was written.
+            mWritePos += result;
+            mLastCommitPos += result;
+        }
+        return result;
     }
 }
