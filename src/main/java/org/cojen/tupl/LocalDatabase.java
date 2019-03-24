@@ -59,6 +59,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.locks.ReentrantLock;
 
+import java.util.function.LongConsumer;
+
 import static java.lang.System.arraycopy;
 
 import static java.util.Arrays.fill;
@@ -2371,10 +2373,8 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        // TODO: Verify free lists.
-        if (false) {
-            mPageDb.scanFreeList(id -> System.out.println(id));
-        }
+        FreeListScan fls = new FreeListScan();
+        new Thread(fls).start();
 
         if (observer == null) {
             observer = new VerificationObserver();
@@ -2394,7 +2394,55 @@ final class LocalDatabase extends AbstractDatabase {
             return keepGoing;
         });
 
+        // Throws an exception if it fails.
+        fls.waitFor();
+
         return passedRef[0];
+    }
+
+    private class FreeListScan implements Runnable, LongConsumer {
+        private Object mFinished;
+
+        @Override
+        public void run() {
+            // The free list is scanned with a shared commit lock held. Perform the scan
+            // without interference from a checkpoint, which would attempt to acquire the
+            // exclusive commit lock, causing any other shared lock requests to stall.
+            mCheckpointLock.lock();
+            Object finished;
+            try {
+                mPageDb.scanFreeList(this);
+                finished = this;
+            } catch (Throwable e) {
+                finished = e;
+            } finally {
+                mCheckpointLock.unlock();
+            }
+
+            synchronized (this) {
+                mFinished = finished;
+                notifyAll();
+            }
+        }
+
+        @Override
+        public void accept(long id) {
+            // TODO: check for duplicates
+        }
+
+        synchronized void waitFor() throws IOException {
+            try {
+                while (mFinished == null) {
+                    wait();
+                }
+            } catch (InterruptedException e) {
+                return;
+            }
+
+            if (mFinished instanceof Throwable) {
+                rethrow((Throwable) mFinished);
+            }
+        }
     }
 
     @FunctionalInterface
