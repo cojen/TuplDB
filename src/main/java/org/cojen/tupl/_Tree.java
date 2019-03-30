@@ -44,8 +44,7 @@ class _Tree implements View, Index {
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
         CURSOR_REGISTRY_ID = 2,
-        FRAGMENTED_TRASH_ID = 3,
-        MAX_RESERVED_ID = 0xff;
+        FRAGMENTED_TRASH_ID = 3;
 
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;
