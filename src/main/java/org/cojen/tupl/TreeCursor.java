@@ -3066,13 +3066,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
 
     /**
-     * Atomic modify operation. If a key is passed in to be found, cursor must already be in a
-     * reset state when this method is called, and the caller must reset the cursor afterwards.
+     * Atomic find and modify operation. Cursor must be in a reset state when this method is
+     * called, and the caller must reset the cursor afterwards.
      *
-     * @param key null to use existing key
+     * @param key must not be null
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else actual old value
      */
     final boolean findAndModify(byte[] key, byte[] oldValue, byte[] newValue) throws IOException {
+        mKey = key;
         LocalTransaction txn = mTxn;
 
         try {
@@ -3080,15 +3081,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             // would need to be performed with the node latch held, which is deadlock prone.
 
             if (txn == null) {
-                final int hash;
-                if (key == null) {
-                    key = mKey;
-                    ViewUtils.positionCheck(key);
-                    hash = keyHash();
-                } else {
-                    mKey = key;
-                    mKeyHash = hash = LockManager.hash(mTree.mId, key);
-                }
+                final int hash = LockManager.hash(mTree.mId, key);
+                mKeyHash = hash;
 
                 int mode = storeMode();
                 if (mode != 0) {
@@ -3124,25 +3118,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             LockMode mode = txn.lockMode();
             if (mode == LockMode.UNSAFE) {
-                if (key == null) {
-                    key = mKey;
-                    ViewUtils.positionCheck(key);
-                } else {
-                    mKey = key;
-                    mKeyHash = 0;
-                }
+                mKeyHash = 0;
                 // Indicate that no unlock should be performed.
                 result = LockResult.OWNED_EXCLUSIVE;
             } else {
                 final int hash;
-                if (key == null) {
-                    key = mKey;
-                    ViewUtils.positionCheck(key);
-                    hash = keyHash();
-                } else {
-                    mKey = key;
-                    mKeyHash = hash = LockManager.hash(mTree.mId, key);
-                }
+                mKeyHash = hash = LockManager.hash(mTree.mId, key);
                 result = txn.lockExclusive(mTree.mId, key, hash);
                 if (result == LockResult.ACQUIRED && mode.repeatable != 0) {
                     // Downgrade to upgradable when no modification is made, to
@@ -3185,37 +3166,18 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * Caller must have acquired the leaf node shared latch, which is always released by this
      * method.
      *
-     * @param key non-null to find the key, which should already be locked exclusively
+     * @param key non-null key, which should already be locked exclusively
      * @param oldValue MODIFY_INSERT, MODIFY_REPLACE, MODIFY_UPDATE, else actual old value
      */
     private boolean doFindAndModify(LocalTransaction txn,
                                     byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        CursorFrame leaf;
-        CommitLock.Shared shared;
+        // Find with no lock because caller must already acquire exclusive lock.
+        find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
-        if (key == null) {
-            // Assume that cursor is already positioned.
-            shared = mTree.mDatabase.commitLock().acquireShared();
-            leaf = mFrame;
-            leaf.acquireExclusive();
-            // Only dirty the node if delete will actually do something.
-            if (newValue != null || leaf.mNodePos >= 0) {
-                try {
-                    // Releases leaf latch if an exception is thrown.
-                    notSplitDirty(leaf);
-                } catch (Throwable e) {
-                    shared.release();
-                    throw e;
-                }
-            }
-        } else {
-            // Find with no lock because caller must already acquire exclusive lock.
-            find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
-            leaf = mFrame;
-            shared = prepareStoreUpgrade(leaf, newValue);
-        }
+        CursorFrame leaf = mFrame;
+        CommitLock.Shared shared = prepareStoreUpgrade(leaf, newValue);
 
         // Note: Must obtain reference to node after calling prepareStoreUpgrade, because it
         // might have released and reacquired the latch.
