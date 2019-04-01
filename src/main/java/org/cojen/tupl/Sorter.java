@@ -42,6 +42,7 @@ public interface Sorter {
      *
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
+     * @see Database#newTemporaryIndex
      */
     public Index finish() throws IOException;
 
