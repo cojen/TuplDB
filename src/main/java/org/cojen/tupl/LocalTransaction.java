@@ -324,9 +324,9 @@ final class LocalTransaction extends Locker implements Transaction {
     /**
      * Commit combined with a store operation.
      *
-     * @param requireUndo true if undo logging is required
+     * @param undoTxn pass this if undo logging is required, BOGUS otherwise
      */
-    final void storeCommit(boolean requireUndo, TreeCursor cursor, byte[] value)
+    final void storeCommit(LocalTransaction undoTxn, TreeCursor cursor, byte[] value)
         throws IOException
     {
         if (mRedo == null) {
@@ -359,7 +359,7 @@ final class LocalTransaction extends Locker implements Transaction {
             if (parentScope == null) {
                 long commitPos;
                 try {
-                    cursor.storeNoRedo(requireUndo ? this : LocalTransaction.BOGUS, value);
+                    cursor.storeNoRedo(undoTxn, value);
 
                     if ((hasState & HAS_SCOPE) == 0) {
                         mContext.redoEnter(mRedo, txnId);

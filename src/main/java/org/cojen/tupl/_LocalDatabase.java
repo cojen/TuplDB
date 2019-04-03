@@ -639,7 +639,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config.mReplManager != null) {
-                mRegistry = new _TxnTree(this, _Tree.REGISTRY_ID, null, rootNode);
+                mRegistry = new _Tree.Repl(this, _Tree.REGISTRY_ID, null, rootNode);
             } else {
                 mRegistry = new _Tree(this, _Tree.REGISTRY_ID, null, rootNode);
             }
@@ -939,7 +939,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
         if (mRedoWriter instanceof _ReplRedoWriter) {
             // Need to do this after mRedoWriter is assigned, ensuring that trees are opened as
-            // _TxnTree instances.
+            // _Tree.Repl instances.
             applyCachePrimer(config);
         }
 
@@ -1443,7 +1443,7 @@ final class _LocalDatabase extends AbstractDatabase {
      */
     Runnable deleteTree(_Tree tree, CommitLock.Shared shared) throws IOException {
         try {
-            if (!(tree instanceof _TempTree) && !moveToTrash(tree.mId, tree.mIdBytes)) {
+            if (!(tree instanceof _Tree.Temp) && !moveToTrash(tree.mId, tree.mIdBytes)) {
                 // Handle concurrent delete attempt.
                 throw new ClosedIndexException();
             }
@@ -1748,7 +1748,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             try {
-                _Tree tree = new _TempTree(this, treeId, treeIdBytes, root);
+                _Tree tree = new _Tree.Temp(this, treeId, treeIdBytes, root);
                 _TreeRef treeRef = new _TreeRef(tree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
@@ -3101,7 +3101,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             // Cannot call newTreeInstance because mRedoWriter isn't set yet.
             if (config != null && config.mReplManager != null) {
-                return new _TxnTree(this, treeId, treeIdBytes, root);
+                return new _Tree.Repl(this, treeId, treeIdBytes, root);
             }
 
             return newTreeInstance(treeId, treeIdBytes, null, root);
@@ -3330,7 +3330,7 @@ final class _LocalDatabase extends AbstractDatabase {
         if (mRedoWriter instanceof _ReplRedoWriter) {
             // Always need an explcit transaction when using auto-commit, to ensure that
             // rollback is possible.
-            tree = new _TxnTree(this, id, idBytes, root);
+            tree = new _Tree.Repl(this, id, idBytes, root);
         } else {
             tree = new _Tree(this, id, idBytes, root);
         }

@@ -81,6 +81,26 @@ class _Tree implements View, Index {
         mRoot = root;
     }
 
+    /**
+     * Unnamed tree which prohibits redo durabilty. The _TreeCursor class checks this with the
+     * allowRedo method.
+     */
+    static final class Temp extends _Tree {
+        Temp(_LocalDatabase db, long id, byte[] idBytes, _Node root) {
+            super(db, id, idBytes, root);
+        }
+    }
+
+    /**
+     * _Tree which requires an explicit transaction when none is specified, excluding loads. The
+     * _TreeCursor class checks this with the requireTransaction method.
+     */
+    static final class Repl extends _Tree {
+        Repl(_LocalDatabase db, long id, byte[] idBytes, _Node root) {
+            super(db, id, idBytes, root);
+        }
+    }
+
     final int pageSize() {
         return mDatabase.pageSize();
     }

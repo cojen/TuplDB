@@ -152,8 +152,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (mCursorId == 0) {
             LocalTransaction txn = mTxn;
             if (txn == null) {
-                if (storeMode() > 1) {
-                    // Never redo.
+                if (!allowRedo()) {
                     return false;
                 }
 
@@ -2855,10 +2854,18 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     }
 
     /**
-     * @return 0: default behavior, 1: always undo (unless unsafe), 2: never redo (temp cursor)
+     * Returns false if modifications to the tree cannot write to the redo log.
      */
-    protected int storeMode() {
-        return 0;
+    private boolean allowRedo() {
+        return !(mTree instanceof Tree.Temp);
+    }
+
+    /**
+     * Returns true if auto-commit transactions (null) require a transaction which always
+     * writes to the redo log.
+     */
+    private boolean requireTransaction() {
+        return mTree instanceof Tree.Repl;
     }
 
     @Override
@@ -2874,7 +2881,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 if (txn.lockMode() != LockMode.UNSAFE) {
                     txn.lockExclusive(mTree.mId, key, keyHash());
                 }
-                if (storeMode() <= 1) {
+                if (allowRedo()) {
                     storeAndRedo(txn, value);
                 } else {
                     storeNoRedo(txn, value);
@@ -2891,25 +2898,24 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
         try {
             final LocalTransaction txn;
-            int mode = storeMode();
-            if (mode == 0) {
+            if (!allowRedo()) {
+                // Never redo, but still acquire the lock.
+                txn = LocalTransaction.BOGUS;
+            } else if (!requireTransaction()) {
                 txn = null;
-            } else if (mode == 1) {
+            } else {
                 // Always undo (and redo).
                 LocalDatabase db = mTree.mDatabase;
                 txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
                 try {
                     txn.lockExclusive(mTree.mId, key, keyHash());
-                    txn.storeCommit(true, this, value);
+                    txn.storeCommit(txn, this, value);
                     return;
                 } catch (Throwable e) {
                     db.removeThreadLocalTransaction();
                     txn.reset();
                     throw e;
                 }
-            } else {
-                // Never redo, but still acquire the lock.
-                txn = LocalTransaction.BOGUS;
             }
 
             final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
@@ -2935,14 +2941,14 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 store: {
-                    int mode = storeMode();
-                    if (mode <= 1) storeRedo: {
+                    if (allowRedo()) storeRedo: {
                         if (txn.lockMode() != LockMode.UNSAFE) {
                             txn.lockExclusive(mTree.mId, key, keyHash());
                             if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
                                 break storeRedo;
                             }
-                            txn.storeCommit(mode != 0, this, value);
+                            txn.storeCommit(requireTransaction() ? txn : LocalTransaction.BOGUS,
+                                            this, value);
                             return;
                         }
                         storeAndRedo(txn, value);
@@ -2979,25 +2985,22 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (txn == null) {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
-                int mode = storeMode();
-                if (mode != 0) {
+                if (!allowRedo()) {
+                    // Never redo, but still acquire the lock.
+                    txn = LocalTransaction.BOGUS;
+                } else if (requireTransaction()) {
+                    // Always undo (and redo).
                     LocalDatabase db = mTree.mDatabase;
-                    if (mode == 1) {
-                        // Always undo (and redo).
-                        txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
-                        try {
-                            txn.lockExclusive(mTree.mId, key, hash);
-                            byte[] result = doFindAndStore(txn, key, value);
-                            txn.commit();
-                            return result;
-                        } catch (Throwable e) {
-                            db.removeThreadLocalTransaction();
-                            txn.reset();
-                            throw e;
-                        }
-                    } else {
-                        // Never redo, but still acquire the lock.
-                        txn = LocalTransaction.BOGUS;
+                    txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
+                    try {
+                        txn.lockExclusive(mTree.mId, key, hash);
+                        byte[] result = doFindAndStore(txn, key, value);
+                        txn.commit();
+                        return result;
+                    } catch (Throwable e) {
+                        db.removeThreadLocalTransaction();
+                        txn.reset();
+                        throw e;
                     }
                 }
 
@@ -3053,7 +3056,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             storeNoRedo(txn, leaf, value);
         }
 
-        if (storeMode() <= 1) {
+        if (allowRedo()) {
             redoStore(txn, shared, value);
         } else {
             shared.release();
@@ -3083,26 +3086,22 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (txn == null) {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
-
-                int mode = storeMode();
-                if (mode != 0) {
+                if (!allowRedo()) {
+                    // Never redo, but still acquire the lock.
+                    txn = LocalTransaction.BOGUS;
+                } else if (requireTransaction()) {
+                    // Always undo (and redo).
                     LocalDatabase db = mTree.mDatabase;
-                    if (mode == 1) {
-                        // Always undo (and redo).
-                        txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
-                        try {
-                            txn.lockExclusive(mTree.mId, key, hash);
-                            boolean result = doFindAndModify(txn, key, oldValue, newValue);
-                            txn.commit();
-                            return result;
-                        } catch (Throwable e) {
-                            db.removeThreadLocalTransaction();
-                            txn.reset();
-                            throw e;
-                        }
-                    } else {
-                        // Never redo, but still acquire the lock.
-                        txn = LocalTransaction.BOGUS;
+                    txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
+                    try {
+                        txn.lockExclusive(mTree.mId, key, hash);
+                        boolean result = doFindAndModify(txn, key, oldValue, newValue);
+                        txn.commit();
+                        return result;
+                    } catch (Throwable e) {
+                        db.removeThreadLocalTransaction();
+                        txn.reset();
+                        throw e;
                     }
                 }
 
@@ -3233,7 +3232,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             storeNoRedo(txn, leaf, newValue);
         }
 
-        if (storeMode() <= 1) {
+        if (allowRedo()) {
             redoStore(txn, shared, newValue);
         } else {
             shared.release();
@@ -4126,7 +4125,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
             if (length <= 0) {
                 store(length == 0 ? EMPTY_BYTES : null);
             } else {
-                doValueModify(storeMode(), TreeValue.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
+                doValueModify(TreeValue.OP_SET_LENGTH, length, EMPTY_BYTES, 0, 0);
             }
         } catch (IllegalStateException e) {
             valueCheckOpen();
@@ -4152,7 +4151,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     final void doValueWrite(long pos, byte[] buf, int off, int len) throws IOException {
         try {
-            doValueModify(storeMode(), TreeValue.OP_WRITE, pos, buf, off, len);
+            doValueModify(TreeValue.OP_WRITE, pos, buf, off, len);
         } catch (IllegalStateException e) {
             valueCheckOpen();
             throw e;
@@ -4162,7 +4161,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     final void doValueClear(long pos, long length) throws IOException {
         try {
-            doValueModify(storeMode(), TreeValue.OP_CLEAR, pos, EMPTY_BYTES, 0, length);
+            doValueModify(TreeValue.OP_CLEAR, pos, EMPTY_BYTES, 0, length);
         } catch (IllegalStateException e) {
             valueCheckOpen();
             throw e;
@@ -4173,7 +4172,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
-    private void doValueModify(int mode, int op, long pos, byte[] buf, int off, long len)
+    private void doValueModify(int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
         LocalTransaction txn = mTxn;
@@ -4181,11 +4180,11 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         if (txn == null) {
             LocalDatabase db = mTree.mDatabase;
 
-            if (mode > 1) {
+            if (!allowRedo()) {
                 txn = db.threadLocalTransaction(DurabilityMode.NO_REDO);
             } else {
                 DurabilityMode durabilityMode = db.mDurabilityMode;
-                if (mode != 0) {
+                if (requireTransaction()) {
                     txn = db.threadLocalTransaction(durabilityMode.alwaysRedo());
                 } else {
                     byte[] key = mKey;
@@ -4199,7 +4198,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             try {
                 mTxn = txn;
-                doValueModify(mode, op, pos, buf, off, len);
+                doValueModify(op, pos, buf, off, len);
                 txn.commit();
             } catch (Throwable e) {
                 db.removeThreadLocalTransaction();
@@ -4236,7 +4235,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 node.releaseExclusive();
             }
 
-            if (mode <= 1 && txn.durabilityMode() != DurabilityMode.NO_REDO) {
+            if (allowRedo() && txn.durabilityMode() != DurabilityMode.NO_REDO) {
                 txn.redoCursorValueModify(this, op, pos, buf, off, len);
             }
         } finally {
