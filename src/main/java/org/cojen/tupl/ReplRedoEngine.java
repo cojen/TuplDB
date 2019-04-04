@@ -645,7 +645,10 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 if (lock != null) {
                     txn.push(lock);
                 }
-                doStore(txn, indexId, key, value);
+                // Manually lock and store with a bogus transaction to avoid creating an
+                // unnecessary undo log entry.
+                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                doStore(Transaction.BOGUS, indexId, key, value);
                 txn.commitAll();
             }
         };
