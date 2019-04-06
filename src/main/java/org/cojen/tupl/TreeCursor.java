@@ -2882,7 +2882,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                     txn.lockExclusive(mTree.mId, key, keyHash());
                 }
                 if (allowRedo()) {
-                    storeAndRedo(txn, value);
+                    storeAndMaybeRedo(txn, value);
                 } else {
                     storeNoRedo(txn, value);
                 }
@@ -2920,7 +2920,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
 
             final Locker locker = mTree.lockExclusiveLocal(key, keyHash());
             try {
-                storeAndRedo(txn, value);
+                storeAndMaybeRedo(txn, value);
             } finally {
                 locker.unlock();
             }
@@ -2951,7 +2951,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                                             this, value);
                             return;
                         }
-                        storeAndRedo(txn, value);
+                        storeAndMaybeRedo(txn, value);
                         break store;
                     } else {
                         if (txn.lockMode() != LockMode.UNSAFE) {
@@ -3057,7 +3057,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         }
 
         if (allowRedo()) {
-            redoStore(txn, shared, value);
+            maybeRedoStore(txn, shared, value);
         } else {
             shared.release();
         }
@@ -3233,7 +3233,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         }
 
         if (allowRedo()) {
-            redoStore(txn, shared, newValue);
+            maybeRedoStore(txn, shared, newValue);
         } else {
             shared.release();
         }
@@ -3301,8 +3301,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param txn can be null
      * @param value pass null to delete
      */
-    final void storeAndRedo(LocalTransaction txn, byte[] value) throws IOException {
-        redoStore(txn, doStoreNoRedo(txn, value), value);
+    final void storeAndMaybeRedo(LocalTransaction txn, byte[] value) throws IOException {
+        maybeRedoStore(txn, doStoreNoRedo(txn, value), value);
     }
 
     private CommitLock.Shared doStoreNoRedo(LocalTransaction txn, byte[] value) throws IOException {
@@ -3344,7 +3344,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param shared held commit lock, which is always released by this method
      * @param value pass null to delete
      */
-    private void redoStore(LocalTransaction txn, CommitLock.Shared shared, byte[] value)
+    private void maybeRedoStore(LocalTransaction txn, CommitLock.Shared shared, byte[] value)
         throws IOException
     {
         long commitPos;
