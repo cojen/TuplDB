@@ -2941,22 +2941,16 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
             try {
                 store: {
-                    if (allowRedo()) storeRedo: {
-                        if (txn.lockMode() != LockMode.UNSAFE) {
-                            txn.lockExclusive(mTree.mId, key, keyHash());
-                            if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
-                                break storeRedo;
-                            }
+                    if (txn.lockMode() != LockMode.UNSAFE) {
+                        txn.lockExclusive(mTree.mId, key, keyHash());
+                        if (allowRedo() && txn.mDurabilityMode != DurabilityMode.NO_REDO) {
                             txn.storeCommit(requireTransaction() ? txn : _LocalTransaction.BOGUS,
                                             this, value);
                             return;
                         }
+                    } else if (allowRedo()) {
                         storeAndMaybeRedo(txn, value);
                         break store;
-                    } else {
-                        if (txn.lockMode() != LockMode.UNSAFE) {
-                            txn.lockExclusive(mTree.mId, key, keyHash());
-                        }
                     }
 
                     storeNoRedo(txn, value);
