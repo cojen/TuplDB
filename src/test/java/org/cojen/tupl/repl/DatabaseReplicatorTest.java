@@ -431,6 +431,8 @@ public class DatabaseReplicatorTest {
 
         TestUtils.fastAssertArrayEquals(expect, leaderIx.load(null, key));
         TestUtils.fastAssertArrayEquals(expect, replicaIx.load(null, key));
+
+        replicaDb.close();
     }
 
     /**
