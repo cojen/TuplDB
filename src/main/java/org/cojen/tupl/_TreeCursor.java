@@ -2870,25 +2870,30 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
     @Override
     public final void store(byte[] value) throws IOException {
-        final _LocalTransaction txn = mTxn;
-
-        if (txn == null) {
+        if (mTxn == null) {
             storeAutoCommit(value);
         } else {
-            byte[] key = mKey;
-            ViewUtils.positionCheck(key);
-            try {
-                if (txn.lockMode() != LockMode.UNSAFE) {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                }
-                if (allowRedo()) {
-                    storeAndMaybeRedo(txn, value);
-                } else {
-                    storeNoRedo(txn, value);
-                }
-            } catch (Throwable e) {
-                throw handleException(e, false);
+            txnStore(value);
+        }
+    }
+
+    /**
+     * Can only be called when cursor is linked to a transaction.
+     */
+    private void txnStore(byte[] value) throws IOException {
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
+        try {
+            if (mTxn.lockMode() != LockMode.UNSAFE) {
+                mTxn.lockExclusive(mTree.mId, key, keyHash());
             }
+            if (allowRedo()) {
+                storeAndMaybeRedo(mTxn, value);
+            } else {
+                storeNoRedo(mTxn, value);
+            }
+        } catch (Throwable e) {
+            throw handleException(e, false);
         }
     }
     
@@ -2931,35 +2936,40 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
     @Override
     public final void commit(byte[] value) throws IOException {
-        final _LocalTransaction txn = mTxn;
-
-        if (txn == null) {
+        if (mTxn == null) {
             storeAutoCommit(value);
         } else {
-            byte[] key = mKey;
-            ViewUtils.positionCheck(key);
+            txnCommit(value);
+        }
+    }
 
-            try {
-                store: {
-                    if (txn.lockMode() != LockMode.UNSAFE) {
-                        txn.lockExclusive(mTree.mId, key, keyHash());
-                        if (allowRedo() && txn.mDurabilityMode != DurabilityMode.NO_REDO) {
-                            txn.storeCommit(requireTransaction() ? txn : _LocalTransaction.BOGUS,
-                                            this, value);
-                            return;
-                        }
-                    } else if (allowRedo()) {
-                        storeAndMaybeRedo(txn, value);
-                        break store;
+    /**
+     * Can only be called when cursor is linked to a transaction.
+     */
+    private void txnCommit(byte[] value) throws IOException {
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
+
+        try {
+            store: {
+                if (mTxn.lockMode() != LockMode.UNSAFE) {
+                    mTxn.lockExclusive(mTree.mId, key, keyHash());
+                    if (allowRedo() && mTxn.mDurabilityMode != DurabilityMode.NO_REDO) {
+                        mTxn.storeCommit(requireTransaction() ? mTxn : _LocalTransaction.BOGUS,
+                                         this, value);
+                        return;
                     }
-
-                    storeNoRedo(txn, value);
+                } else if (allowRedo()) {
+                    storeAndMaybeRedo(mTxn, value);
+                    break store;
                 }
 
-                txn.commit();
-            } catch (Throwable e) {
-                throw handleException(e, false);
+                storeNoRedo(mTxn, value);
             }
+
+            mTxn.commit();
+        } catch (Throwable e) {
+            throw handleException(e, false);
         }
     }
 
@@ -2970,49 +2980,74 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
      * <p>If mKeyOnly is true (autoload is off), the returned original value is always null.
      *
      * @param key must not be null
+     * @return original value
      */
     final byte[] findAndStore(byte[] key, byte[] value) throws IOException {
-        mKey = key;
-        _LocalTransaction txn = mTxn;
+        if (mTxn == null) {
+            return findAndStoreAutoCommit(key, value);
+        } else {
+            return txnFindAndStore(key, value);
+        }
+    }
 
+    /**
+     * Can only be called when cursor is linked to a transaction.
+     *
+     * @return original value
+     */
+    private byte[] txnFindAndStore(byte[] key, byte[] value) throws IOException {
+        mKey = key;
         try {
-            if (txn == null) {
+            if (mTxn.lockMode() == LockMode.UNSAFE) {
+                mKeyHash = 0;
+            } else {
                 final int hash = _LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
-                if (!allowRedo()) {
-                    // Never redo, but still acquire the lock.
-                    txn = _LocalTransaction.BOGUS;
-                } else if (requireTransaction()) {
-                    // Always undo (and redo).
-                    _LocalDatabase db = mTree.mDatabase;
-                    txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
-                    try {
-                        txn.lockExclusive(mTree.mId, key, hash);
-                        byte[] result = doFindAndStore(txn, key, value);
-                        txn.commit();
-                        return result;
-                    } catch (Throwable e) {
-                        db.removeThreadLocalTransaction();
-                        txn.reset();
-                        throw e;
-                    }
-                }
+                mTxn.lockExclusive(mTree.mId, key, hash);
+            }
+            return doFindAndStore(mTxn, key, value);
+        } catch (Throwable e) {
+            throw handleException(e, false); // no reset on safe exception
+        }
+    }
 
-                final _Locker locker = mTree.lockExclusiveLocal(key, hash);
-                try {
-                    return doFindAndStore(txn, key, value);
-                } finally {
-                    locker.unlock();
-                }
+    /**
+     * @return original value
+     */
+    private byte[] findAndStoreAutoCommit(byte[] key, byte[] value) throws IOException {
+        mKey = key;
+
+        try {
+            final int hash = _LockManager.hash(mTree.mId, key);
+            mKeyHash = hash;
+
+            final _LocalTransaction txn;
+            if (!allowRedo()) {
+                // Never redo, but still acquire the lock.
+                txn = _LocalTransaction.BOGUS;
+            } else if (!requireTransaction()) {
+                txn = null;
             } else {
-                if (txn.lockMode() == LockMode.UNSAFE) {
-                    mKeyHash = 0;
-                } else {
-                    final int hash = _LockManager.hash(mTree.mId, key);
-                    mKeyHash = hash;
+                // Always undo (and redo).
+                _LocalDatabase db = mTree.mDatabase;
+                txn = db.threadLocalTransaction(db.mDurabilityMode.alwaysRedo());
+                try {
                     txn.lockExclusive(mTree.mId, key, hash);
+                    byte[] result = doFindAndStore(txn, key, value);
+                    txn.commit();
+                    return result;
+                } catch (Throwable e) {
+                    db.removeThreadLocalTransaction();
+                    txn.reset();
+                    throw e;
                 }
+            }
+
+            final _Locker locker = mTree.lockExclusiveLocal(key, hash);
+            try {
                 return doFindAndStore(txn, key, value);
+            } finally {
+                locker.unlock();
             }
         } catch (Throwable e) {
             throw handleException(e, false); // no reset on safe exception
@@ -3021,6 +3056,8 @@ class _TreeCursor extends AbstractValueAccessor implements CauseCloseable, Curso
 
     /**
      * If mKeyOnly is true (autoload is off), the returned original value is always null.
+     *
+     * @return original value
      */
     private byte[] doFindAndStore(_LocalTransaction txn, byte[] key, byte[] value)
         throws IOException
