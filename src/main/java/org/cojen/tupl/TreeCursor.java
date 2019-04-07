@@ -4206,50 +4206,27 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     private void doValueModify(int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
-        LocalTransaction txn = mTxn;
-
-        if (txn == null) {
-            LocalDatabase db = mTree.mDatabase;
-
-            if (!allowRedo()) {
-                txn = db.threadLocalTransaction(DurabilityMode.NO_REDO);
-            } else {
-                DurabilityMode durabilityMode = db.mDurabilityMode;
-                if (requireTransaction()) {
-                    txn = db.threadLocalTransaction(durabilityMode.alwaysRedo());
-                } else {
-                    byte[] key = mKey;
-                    ViewUtils.positionCheck(key);
-                    txn = db.threadLocalTransaction(durabilityMode);
-                    txn.mLockMode = LockMode.UNSAFE; // no undo
-                    // Manually lock the key.
-                    txn.lockExclusive(mTree.mId, key, keyHash());
-                }
-            }
-
-            try {
-                mTxn = txn;
-                doValueModify(op, pos, buf, off, len);
-                txn.commit();
-            } catch (Throwable e) {
-                db.removeThreadLocalTransaction();
-                txn.reset();
-                throw e;
-            } finally {
-                mTxn = null;
-            }
-
-            return;
+        if (mTxn == null) {
+            doValueModifyAutoCommit(op, pos, buf, off, len);
+        } else {
+            doTxnValueModify(op, pos, buf, off, len);
         }
+    }
 
+    /**
+     * Can only be called when cursor is linked to a transaction.
+     */
+    private void doTxnValueModify(int op, long pos, byte[] buf, int off, long len)
+        throws IOException
+    {
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
         LocalTransaction undoTxn = null;
 
-        if (txn.lockMode() != LockMode.UNSAFE) {
-            txn.lockExclusive(mTree.mId, key, keyHash());
-            undoTxn = txn;
+        if (mTxn.lockMode() != LockMode.UNSAFE) {
+            mTxn.lockExclusive(mTree.mId, key, keyHash());
+            undoTxn = mTxn;
         }
 
         final CommitLock.Shared shared = prepareStore();
@@ -4266,11 +4243,46 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 node.releaseExclusive();
             }
 
-            if (allowRedo() && txn.durabilityMode() != DurabilityMode.NO_REDO) {
-                txn.redoCursorValueModify(this, op, pos, buf, off, len);
+            if (allowRedo() && mTxn.durabilityMode() != DurabilityMode.NO_REDO) {
+                mTxn.redoCursorValueModify(this, op, pos, buf, off, len);
             }
         } finally {
             shared.release();
+        }
+    }
+
+    private void doValueModifyAutoCommit(int op, long pos, byte[] buf, int off, long len)
+        throws IOException
+    {
+        LocalDatabase db = mTree.mDatabase;
+
+        final LocalTransaction txn;
+        if (!allowRedo()) {
+            txn = db.threadLocalTransaction(DurabilityMode.NO_REDO);
+        } else {
+            DurabilityMode durabilityMode = db.mDurabilityMode;
+            if (requireTransaction()) {
+                txn = db.threadLocalTransaction(durabilityMode.alwaysRedo());
+            } else {
+                byte[] key = mKey;
+                ViewUtils.positionCheck(key);
+                txn = db.threadLocalTransaction(durabilityMode);
+                txn.mLockMode = LockMode.UNSAFE; // no undo
+                // Manually lock the key.
+                txn.lockExclusive(mTree.mId, key, keyHash());
+            }
+        }
+
+        try {
+            mTxn = txn;
+            doTxnValueModify(op, pos, buf, off, len);
+            txn.commit();
+        } catch (Throwable e) {
+            db.removeThreadLocalTransaction();
+            txn.reset();
+            throw e;
+        } finally {
+            mTxn = null;
         }
     }
 
