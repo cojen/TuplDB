@@ -62,18 +62,6 @@ class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * @return non-zero random number, suitable for Xorshift RNG or object hashcode
-     */
-    static int randomSeed() {
-        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-        int seed;
-        do {
-            seed = rnd.nextInt();
-        } while (seed == 0);
-        return seed;
-    }
-
-    /**
      * @param seed ideally not zero (zero will be returned if so)
      * @return next random number using Xorshift RNG by George Marsaglia (also next seed)
      */
@@ -330,6 +318,7 @@ class Utils extends org.cojen.tupl.io.Utils {
     /**
      * Decodes an integer as encoded by encodeUnsignedVarInt.
      */
+    /*
     public static int decodeUnsignedVarInt(byte[] b, int start, int end) throws EOFException {
         if (start >= end) {
             throw new EOFException();
@@ -374,6 +363,7 @@ class Utils extends org.cojen.tupl.io.Utils {
                    | (b[start + 1] & 0xff));
         }
     }
+    */
 
     /**
      * Decodes an integer as encoded by encodeSignedVarInt.
@@ -386,10 +376,12 @@ class Utils extends org.cojen.tupl.io.Utils {
     /**
      * Decodes an integer as encoded by encodeSignedVarLong.
      */
+    /* See DataIn.readSignedVarLong
     public static long decodeSignedVarLong(byte[] b, IntegerRef offsetRef) {
         long v = decodeUnsignedVarLong(b, offsetRef);
         return ((v & 1) != 0) ? ((~(v >> 1)) | (1L << 63)) : (v >>> 1);
     }
+    */
 
     /**
      * Decodes a long integer as encoded by encodeUnsignedVarLong.

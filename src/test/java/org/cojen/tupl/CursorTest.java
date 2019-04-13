@@ -112,6 +112,20 @@ public class CursorTest {
     }
 
     @Test
+    public void compareKey() throws Exception {
+        View ix = openIndex("test");
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+
+        c.find("bkey".getBytes());
+        assertEquals(0, c.compareKeyTo("bkey".getBytes()));
+        assertEquals(0, c.compareKeyTo("---bkey---".getBytes(), 3, 4));
+        assertEquals(1, c.compareKeyTo("akey".getBytes()));
+        assertEquals(1, c.compareKeyTo("--akey--".getBytes(), 2, 4));
+        assertEquals(-1, c.compareKeyTo("ckey".getBytes()));
+        assertEquals(-1, c.compareKeyTo("-ckey-".getBytes(), 1, 4));
+    }
+
+    @Test
     public void stubCursor() throws Exception {
         stubCursor(false);
     }
@@ -889,6 +903,25 @@ public class CursorTest {
     }
 
     @Test
+    public void bigSkipBoundedBigKeys() throws Exception {
+        View ix = openIndex("skippy");
+
+        for (int i=0; i<1000; i++) {
+            ix.store(Transaction.BOGUS, bigKey(i), value(1));
+        }
+
+        Cursor c = ix.newCursor(null);
+
+        c.first();
+        c.skip(100_000, bigKey(50_000), false);
+        assertNull(c.key());
+
+        c.last();
+        c.skip(-100_000, bigKey(999_999 - 50_000), false);
+        assertNull(c.key());
+    }
+
+    @Test
     public void randomLock() throws Exception {
         View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
@@ -1437,6 +1470,7 @@ public class CursorTest {
         ix.store(Transaction.BOGUS, key, value);
         Cursor c = ix.newCursor(null);
         c.autoload(false);
+        assertFalse(c.autoload());
         c.find(key);
         fastAssertArrayEquals(c.key(), key);
         Cursor copy = c.copy();
@@ -1446,6 +1480,73 @@ public class CursorTest {
         } else {
             fastAssertArrayEquals(c.value(), copy.value());
         }
+    }
+
+    @Test
+    public void nonImmediateLock() throws Exception {
+        View ix = openIndex("test");
+        byte[] key = key(2);
+        byte[] value = value(2);
+
+        // Store and retain lock.
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, key, value);
+
+        Cursor c = ix.newCursor(null);
+
+        // These attempts all fail to acquire the lock.
+        try {
+            c.first();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key, c.key());
+            assertEquals(Cursor.NOT_LOADED, c.value());
+        }
+        try {
+            c.last();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key, c.key());
+            assertEquals(Cursor.NOT_LOADED, c.value());
+        }
+        c.find(key(1));
+        try {
+            c.next();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key, c.key());
+            assertEquals(Cursor.NOT_LOADED, c.value());
+        }
+        c.find(key(3));
+        try {
+            c.previous();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key, c.key());
+            assertEquals(Cursor.NOT_LOADED, c.value());
+        }
+
+        // Now release the lock, allowing the first access to proceed. There's no point in
+        // checking the other cases at this point, since they all call lockAndCopyIfExists.
+
+        AtomicReference<Exception> ex = new AtomicReference<>();
+
+        Thread t = new Thread(() -> {
+            try {
+                c.first();
+            } catch (Exception e) {
+                ex.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(t);
+
+        txn.commit();
+        t.join();
+
+        assertNull(ex.get());
+        fastAssertArrayEquals(key, c.key());
+        fastAssertArrayEquals(value, c.value());
     }
 
     protected void verifyPositions(View ix, Cursor[] cursors) throws Exception {
@@ -1462,6 +1563,12 @@ public class CursorTest {
     private byte[] key(int i) {
         byte[] key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
+        return key;
+    }
+
+    private byte[] bigKey(int i) {
+        byte[] key = new byte[10000];
+        Utils.encodeIntBE(key, key.length - 4, i);
         return key;
     }
 

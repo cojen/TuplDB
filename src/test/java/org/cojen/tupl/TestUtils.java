@@ -102,14 +102,20 @@ public class TestUtils {
     public static Database reopenTempDatabase(Class context, Database db, DatabaseConfig config)
         throws IOException
     {
-        return reopenTempDatabase(context, db, config, false);
+        return tempFilesFor(context).reopenTempDatabase(db, config, false, false);
     }
 
     public static Database reopenTempDatabase(Class context, Database db,
                                               DatabaseConfig config, boolean deleteRedo)
         throws IOException
     {
-        return tempFilesFor(context).reopenTempDatabase(db, config, deleteRedo);
+        return tempFilesFor(context).reopenTempDatabase(db, config, deleteRedo, false);
+    }
+
+    public static Database destroyTempDatabase(Class context, Database db, DatabaseConfig config)
+        throws IOException
+    {
+        return tempFilesFor(context).reopenTempDatabase(db, config, false, true);
     }
 
     public static File newTempBaseFile(Class context) throws IOException {
@@ -432,7 +438,8 @@ public class TestUtils {
             return mTempDatabases.get(db);
         }
 
-        Database reopenTempDatabase(Database db, DatabaseConfig config, boolean deleteRedo)
+        Database reopenTempDatabase(Database db, DatabaseConfig config,
+                                    boolean deleteRedo, boolean destroy)
             throws IOException
         {
             File baseFile;
@@ -454,7 +461,12 @@ public class TestUtils {
                 }
             }
 
-            db = Database.open(config.baseFile(baseFile));
+            if (destroy) {
+                db = Database.destroy(config.baseFile(baseFile));
+            } else {
+                db = Database.open(config.baseFile(baseFile));
+            }
+
             synchronized (this) {
                 mTempDatabases.put(db, baseFile);
             }

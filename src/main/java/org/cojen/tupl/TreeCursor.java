@@ -150,12 +150,12 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
     @Override
     public final boolean register() throws IOException {
         if (mCursorId == 0) {
+            if (!allowRedo()) {
+                return false;
+            }
+
             LocalTransaction txn = mTxn;
             if (txn == null) {
-                if (!allowRedo()) {
-                    return false;
-                }
-
                 LocalDatabase db = mTree.mDatabase;
                 RedoWriter redo = db.txnRedoWriter();
 

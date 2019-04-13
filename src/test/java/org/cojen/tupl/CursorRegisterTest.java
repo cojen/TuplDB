@@ -50,6 +50,26 @@ public class CursorRegisterTest {
     }
 
     @Test
+    public void tempIndex() throws Exception {
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        Database db = newTempDatabase(getClass(), config);
+        Index ix = db.newTemporaryIndex();
+
+        Cursor c = ix.newCursor(null);
+        assertFalse(c.register());
+        c.close();
+
+        Transaction txn = db.newTransaction();
+        c = ix.newCursor(txn);
+        assertFalse(c.register());
+        c.close();
+        txn.reset();
+    }
+
+    @Test
     public void reopenRecover() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)
@@ -69,6 +89,10 @@ public class CursorRegisterTest {
         c.findNearby("hello!".getBytes());
         c.store("world!".getBytes());
 
+        c.findNearby("delete-me".getBytes());
+        c.store("junk".getBytes());
+        c.store(null); // delete
+
         txn.commit();
 
         db = reopenTempDatabase(getClass(), db, config);
@@ -76,6 +100,7 @@ public class CursorRegisterTest {
 
         fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
         fastAssertArrayEquals("world!".getBytes(), ix.load(null, "hello!".getBytes()));
+        assertNull(ix.load(null, "delete-me".getBytes()));
 
         // Register should still work, and without an explicit transaction.
         c = ix.newCursor(null);

@@ -93,15 +93,46 @@ public class ReplicationTest {
             // Expected.
         }
 
-        Index test = mLeader.openIndex("test");
+        final Index test = mLeader.openIndex("test");
         long id = test.getId();
         test.store(null, "hello".getBytes(), "world".getBytes());
 
         fence();
 
-        test = mReplica.openIndex("test");
-        assertEquals(id, test.getId());
-        fastAssertArrayEquals("world".getBytes(), test.load(null, "hello".getBytes()));
+        Index rtest = mReplica.openIndex("test");
+        assertEquals(id, rtest.getId());
+        fastAssertArrayEquals("world".getBytes(), rtest.load(null, "hello".getBytes()));
+
+        // Test various forms of delete. First, insert a few more records...
+        test.store(null, "hello1".getBytes(), "world1".getBytes());
+        test.store(null, "hello2".getBytes(), "world2".getBytes());
+        test.store(null, "hello3".getBytes(), "world3".getBytes());
+        fence();
+        fastAssertArrayEquals("world1".getBytes(), rtest.load(null, "hello1".getBytes()));
+        fastAssertArrayEquals("world2".getBytes(), rtest.load(null, "hello2".getBytes()));
+        fastAssertArrayEquals("world3".getBytes(), rtest.load(null, "hello3".getBytes()));
+
+        // ...now delete them.
+        test.store(null, "hello".getBytes(), null);
+        assertTrue(test.delete(null, "hello1".getBytes()));
+        Cursor c = test.newCursor(null);
+        c.find("hello2".getBytes());
+        c.store(null);
+        c.close();
+        Transaction txn = mLeader.newTransaction();
+        test.store(txn, "xxx".getBytes(), "xxx".getBytes());
+        c = test.newCursor(txn);
+        c.find("hello3".getBytes());
+        c.store(null);
+        txn.commit();
+        c.close();
+
+        fence();
+        assertNull(rtest.load(null, "hello".getBytes()));
+        assertNull(rtest.load(null, "hello1".getBytes()));
+        assertNull(rtest.load(null, "hello2".getBytes()));
+        assertNull(rtest.load(null, "hello3".getBytes()));
+        fastAssertArrayEquals("xxx".getBytes(), rtest.load(null, "xxx".getBytes()));
     }
 
     @Test
@@ -601,6 +632,24 @@ public class ReplicationTest {
 
         fastAssertArrayEquals("v1".getBytes(), rix.load(null, "k1".getBytes()));
         fastAssertArrayEquals("v2".getBytes(), rix.load(null, "k2".getBytes()));
+    }
+
+    @Test
+    public void autoCommitUpdate() throws Exception {
+        Index lix = mLeader.openIndex("test");
+
+        byte[] k1 = "k1".getBytes();
+        byte[] v1 = "v1".getBytes();
+        byte[] v2 = "v2".getBytes();
+
+        lix.store(null, k1, v1);
+        assertTrue(lix.update(null, k1, v2));
+        fence();
+
+        fastAssertArrayEquals(v2, lix.load(null, k1));
+
+        Index rix = mReplica.openIndex("test");
+        fastAssertArrayEquals(v2, rix.load(null, k1));
     }
 
     @Test

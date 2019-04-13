@@ -65,6 +65,19 @@ public class RecoverTest {
     protected Database mDb;
 
     @Test
+    public void destroy() throws Exception {
+        final byte[] key = "hello".getBytes();
+        final byte[] value = "world".getBytes();
+        Index ix = mDb.openIndex("test");
+        ix.store(null, key, value);
+        mDb.close();
+
+        mDb = destroyTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, key));
+    }
+
+    @Test
     public void interruptOnClose() throws Exception {
         final byte[] key = "hello".getBytes();
         final byte[] value = "world".getBytes();
