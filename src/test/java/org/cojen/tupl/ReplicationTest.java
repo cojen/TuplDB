@@ -136,6 +136,34 @@ public class ReplicationTest {
     }
 
     @Test
+    public void unsafe() throws Exception {
+        // Replication with unsafe locking is supported, but if the application hasn't
+        // performed it's own locking on the index entry, the outcome is undefined. Race
+        // conditions cannot be avoided.
+
+        final Index test = mLeader.openIndex("test");
+
+        Transaction txn = mLeader.newTransaction();
+        txn.lockMode(LockMode.UNSAFE);
+        test.store(txn, "hello".getBytes(), "world".getBytes());
+        txn.commit();
+
+        fence();
+
+        Index rtest = mReplica.openIndex("test");
+        fastAssertArrayEquals("world".getBytes(), rtest.load(null, "hello".getBytes()));
+
+        txn = mLeader.newTransaction();
+        txn.lockMode(LockMode.UNSAFE);
+        test.store(txn, "hello".getBytes(), null);
+        txn.commit();
+
+        fence();
+
+        assertNull(rtest.load(null, "hello".getBytes()));
+    }
+
+    @Test
     public void renameIndex() throws Exception {
         Index lix = mLeader.openIndex("test");
         lix.store(null, "hello".getBytes(), "world".getBytes());

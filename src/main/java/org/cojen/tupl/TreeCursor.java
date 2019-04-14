@@ -3379,32 +3379,48 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         throws IOException
     {
         long commitPos;
-        try {
-            if (txn == null) {
-                commitPos = mTree.redoStoreNullTxn(mKey, value);
-            } else if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
-                return;
-            } else if (txn.lockMode() != LockMode.UNSAFE) {
-                long cursorId = mCursorId;
-                if (cursorId == 0) {
-                    txn.redoStore(mTree.mId, mKey, value);
-                } else {
-                    // Always write the key, for simplicity. There's no good reason for an
-                    // application to update the same entry multiple times.
-                    txn.redoCursorStore(cursorId & ~(1L << 63), mKey, value);
-                    mCursorId = cursorId | (1L << 63);
-                }
-                return;
-            } else {
-                commitPos = mTree.redoStoreNoLock(mKey, value, txn.mDurabilityMode);
-            }
-        } finally {
-            shared.release();
-        }
 
-        if (commitPos != 0) {
-            // Wait for commit sync without holding commit lock and node latch.
-            mTree.txnCommitSync(txn, commitPos);
+        if (txn == null) {
+            try {
+                commitPos = mTree.redoStoreNullTxn(mKey, value);
+            } finally {
+                shared.release();
+            }
+
+            if (commitPos != 0) {
+                // Wait for commit sync without holding commit lock and node latch.
+                mTree.txnCommitSync(txn, commitPos);
+            }
+        } else {
+            try {
+                if (txn.mDurabilityMode == DurabilityMode.NO_REDO) {
+                    return;
+                } else if (txn.lockMode() != LockMode.UNSAFE) {
+                    long cursorId = mCursorId;
+                    if (cursorId == 0) {
+                        txn.redoStore(mTree.mId, mKey, value);
+                    } else {
+                        // Always write the key, for simplicity. There's no good reason for an
+                        // application to update the same entry multiple times.
+                        txn.redoCursorStore(cursorId & ~(1L << 63), mKey, value);
+                        mCursorId = cursorId | (1L << 63);
+                    }
+                    return;
+                } else {
+                    commitPos = txn.redoStoreNoLock(mTree.mId, mKey, value);
+                }
+            } finally {
+                shared.release();
+            }
+
+            if (commitPos != 0) {
+                // If the transaction supports redo, and the lock mode is unsafe, then the
+                // store is effectively auto-commit. The transaction isn't truly committed at
+                // this point, and the unsafe store committed is out-of-band. Combining safe
+                // and unsafe stores within a transaction breaks atomicity. If strong redo
+                // durability is requested, then wait for it without holding the commit lock.
+                txn.mRedo.txnCommitSync(txn, commitPos);
+            }
         }
     }
 

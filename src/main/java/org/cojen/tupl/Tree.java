@@ -1662,21 +1662,6 @@ class Tree implements View, Index {
             (redo.txnRedoWriter(), mId, key, value, mode);
     }
 
-    /**
-     * Writes to the redo log if defined.
-     *
-     * @param mode must not be NO_REDO
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    final long redoStoreNoLock(byte[] key, byte[] value, DurabilityMode mode) throws IOException {
-        RedoWriter redo = mDatabase.mRedoWriter;
-        if (redo == null) {
-            return 0;
-        }
-        return mDatabase.anyTransactionContext().redoStoreNoLockAutoCommit
-            (redo.txnRedoWriter(), mId, key, value, mode);
-    }
-
     final void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
         mDatabase.mRedoWriter.txnCommitSync(txn, commitPos);
     }

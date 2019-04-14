@@ -1011,6 +1011,24 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     /**
+     * Caller must hold commit lock.
+     *
+     * @param value pass null for redo delete
+     * @return non-zero position if caller should call txnCommitSync after releasing commit lock
+     */
+    final long redoStoreNoLock(long indexId, byte[] key, byte[] value) throws IOException {
+        check();
+
+        if (mRedo != null) try {
+            return mContext.redoStoreNoLockAutoCommit(mRedo, indexId, key, value, mDurabilityMode);
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
+        }
+
+        return 0;
+    }
+
+    /**
      * Transaction id must be assigned.
      */
     private void setScopeState(ParentScope scope) throws IOException {
