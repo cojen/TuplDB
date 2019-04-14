@@ -70,6 +70,21 @@ public class CursorRegisterTest {
     }
 
     @Test
+    public void noRedo() throws Exception {
+        // Register doesn't work if transaction doesn't redo.
+
+        Database db = Database.open(new DatabaseConfig());
+        Index ix = db.openIndex("test");
+
+        Transaction txn = db.newTransaction();
+        Cursor c = ix.newCursor(txn);
+        assertFalse(c.register());
+
+        c = ix.newCursor(null);
+        assertFalse(c.register());
+    }
+
+    @Test
     public void reopenRecover() throws Exception {
         DatabaseConfig config = new DatabaseConfig()
             .directPageAccess(false)

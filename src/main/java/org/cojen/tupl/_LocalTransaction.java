@@ -972,10 +972,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
     final void redoCursorStore(long cursorId, byte[] key, byte[] value) throws IOException {
         check();
 
-        if (mRedo == null) {
-            return;
-        }
-
         long txnId = mTxnId;
 
         if (txnId == 0) {

@@ -159,8 +159,8 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
                 LocalDatabase db = mTree.mDatabase;
                 RedoWriter redo = db.txnRedoWriter();
 
-                if (redo.adjustTransactionId(1) <= 0) {
-                    // Replica doesn't redo.
+                if (redo == null || redo.adjustTransactionId(1) <= 0) {
+                    // Non-durable and replica databases don't redo.
                     return false;
                 }
 
