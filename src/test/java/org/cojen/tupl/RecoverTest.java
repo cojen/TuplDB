@@ -1100,6 +1100,7 @@ public class RecoverTest {
 
         Transaction txn2 = db2.newTransaction();
         assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
+        assertTrue(ix2.tryLockUpgradable(txn2, "key1".getBytes(), 1).isHeld());
 
         db2.close();
     }

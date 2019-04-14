@@ -181,6 +181,86 @@ public class CrudTest {
     }
 
     @Test
+    public void testTouchWait() throws Exception {
+        // Test null transaction or READ_COMMITTED where it has to wait.
+        testTouchWait(false);
+        testTouchWait(true);
+    }
+
+    private void testTouchWait(boolean withTxn) throws Exception {
+        View ix = openIndex("test");
+        byte[] k1 = "k1".getBytes();
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Transaction txn = mDb.newTransaction();
+                try {
+                    ix.store(txn, k1, k1);
+                    Thread.sleep(60_000);
+                } finally {
+                    txn.exit();
+                }
+            } catch (InterruptedException e) {
+                // Expected.
+            } catch (Exception e) {
+                Utils.uncaught(e);
+            }
+        }));
+
+        final Transaction txn;
+        if (withTxn) {
+            txn = mDb.newTransaction();
+            txn.lockMode(LockMode.READ_COMMITTED);
+        } else {
+            txn = null;
+        }
+
+        try {
+            ix.touch(txn, k1);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+
+        // Can acquire and release when first transaction is finished.
+        class Waiter extends Thread {
+            private LockResult mResult;
+            private Exception mFailure;
+
+            @Override
+            public synchronized void run() {
+                try {
+                    mResult = ix.touch(txn, k1);
+                } catch (Exception e) {
+                    mFailure = e;
+                } finally {
+                    notifyAll();
+                }
+            }
+
+            public synchronized LockResult waitFor() throws Exception {
+                while (true) {
+                    if (mResult != null) {
+                        return mResult;
+                    }
+                    if (mFailure != null) {
+                        throw mFailure;
+                    }
+                    wait();
+                }
+            }
+        }
+
+        Waiter w = new Waiter();
+        startAndWaitUntilBlocked(w);
+
+        t.interrupt();
+        t.join();
+
+        assertEquals(LockResult.UNOWNED, w.waitFor());
+    }
+
+    @Test
     public void testStoreBasic() throws Exception {
         testStoreBasic(null);
         testStoreBasic(Transaction.BOGUS);
@@ -588,6 +668,7 @@ public class CrudTest {
             byte[] key = randomStr(rnd, 1, 100);
             byte[] value = randomStr(rnd, 1, 100);
             byte[] existing = ix.load(Transaction.BOGUS, key);
+            assertEquals(existing != null, ix.exists(Transaction.BOGUS, key));
             boolean result = ix.insert(Transaction.BOGUS, key, value);
             if (existing == null) {
                 assertTrue(result);
