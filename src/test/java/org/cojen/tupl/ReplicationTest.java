@@ -872,6 +872,33 @@ public class ReplicationTest {
         fastAssertArrayEquals(value, replica.load(null, key));
     }
 
+    @Test
+    public void valueSetLength() throws Exception {
+        Index test = mLeader.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = new byte[100_000];
+        new Random(2923578).nextBytes(value);
+
+        test.store(null, key, value);
+
+        fence();
+
+        Index replica = mReplica.openIndex("test");
+        fastAssertArrayEquals(value, replica.load(null, key));
+
+        Cursor c = test.newAccessor(null, key);
+        c.valueLength(5000);
+        c.load();
+        value = c.value();
+        c.close();
+        assertEquals(5000, value.length);
+
+        fence();
+
+        fastAssertArrayEquals(value, replica.load(null, key));
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

@@ -490,6 +490,115 @@ public class RecoverTest {
     }
 
     @Test
+    public void redoDeletes() throws Exception {
+        // Test recovey of varies forms of delete.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[][] keys = new byte[7][];
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = ("key-" + i).getBytes();
+            ix.store(null, keys[i], keys[i]);
+        }
+
+        // Verify all entries still exist.
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        for (int i=0; i<keys.length; i++) {
+            fastAssertArrayEquals(keys[i], ix.load(null, keys[i]));
+        }
+
+        // Auto-commit delete.
+        int i = 0;
+        ix.store(null, keys[i], null);
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // No-lock delete.
+        i++;
+        Transaction txn = mDb.newTransaction();
+        txn.lockMode(LockMode.UNSAFE);
+        ix.store(txn, keys[i], null);
+        txn.commit();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Enter transaction delete.
+        i++;
+        int x = 0;
+        txn = mDb.newTransaction();
+        ix.store(txn, keys[i], null);
+        ix.store(txn, ("x" + x).getBytes(), ("x" + x).getBytes());
+        txn.commit();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Mid transaction delete.
+        i++;
+        txn = mDb.newTransaction();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        ix.store(txn, keys[i], null);
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        txn.commit();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Commit transaction delete.
+        i++;
+        txn = mDb.newTransaction();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        Cursor c = ix.newCursor(txn);
+        c.find(keys[i]);
+        c.commit(null);
+        c.reset();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Nested commit transaction delete.
+        i++;
+        txn = mDb.newTransaction();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        txn.enter();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        c = ix.newCursor(txn);
+        c.find(keys[i]);
+        c.commit(null);
+        c.reset();
+        txn.exit();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        txn.commit();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Commit transaction delete against a registered cursor.
+        i++;
+        txn = mDb.newTransaction();
+        ix.store(txn, ("x" + ++x).getBytes(), ("x" + x).getBytes());
+        c = ix.newCursor(txn);
+        c.find(keys[i]);
+        c.register();
+        c.commit(null);
+        c.reset();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, keys[i]));
+
+        // Verify the other stores.
+        for (; x >= 0; x--) {
+            fastAssertArrayEquals(("x" + x).getBytes(), ix.load(null, ("x" + x).getBytes()));
+        }
+
+        // All cases handled.
+        assertEquals(keys.length, i + 1);
+    }
+
+    @Test
     public void lostRedo() throws Exception {
         Index ix1 = mDb.openIndex("test1");
         Index ix2 = mDb.openIndex("test2");
