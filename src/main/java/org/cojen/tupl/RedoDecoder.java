@@ -169,19 +169,6 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_ID_RESET:
-                long txnId;
-                try {
-                    txnId = in.readLongLE();
-                } catch (EOFException e) {
-                    return true;
-                }
-                mTxnId = txnId;
-                if (!verifyTerminator(in)) {
-                    return false;
-                }
-                break;
-
             case OP_CONTROL:
                 byte[] message;
                 try {
@@ -195,6 +182,7 @@ abstract class RedoDecoder {
                 break;
 
             case OP_TXN_PREPARE:
+                long txnId;
                 try {
                     txnId = readTxnId(in);
                 } catch (EOFException e) {

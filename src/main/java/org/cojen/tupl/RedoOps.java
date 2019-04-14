@@ -45,9 +45,6 @@ class RedoOps {
         /** random: long */
         OP_NOP_RANDOM = 6,
 
-        /** txnId: long */
-        OP_TXN_ID_RESET = 7,
-
         /** messageLength: varInt, message: bytes */
         OP_CONTROL = 8,
 
