@@ -1626,6 +1626,26 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void noRedo() throws Exception {
+        teardown();
+        DatabaseConfig config = decorate(new DatabaseConfig().directPageAccess(false));
+        Database db = Database.open(config);
+        Index ix = db.openIndex("test");
+        final byte[] key = "hello".getBytes();
+        final byte[] v1 = "world".getBytes();
+        ix.store(null, key, v1);
+
+        Transaction txn = db.newTransaction();
+        Cursor c = ix.newCursor(txn);
+        c.find(key);
+        c.valueLength(1);
+        c.close();
+        txn.commit();
+
+        fastAssertArrayEquals("w".getBytes(), ix.load(null, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
