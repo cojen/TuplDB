@@ -471,6 +471,8 @@ public interface View {
                     return lockShared(txn, key);
                 }
             }
+        } catch (LockFailureException e) {
+            throw e;
         } catch (IOException e) {
             // Suppress any failure to load or any ViewConstraintException.
         }

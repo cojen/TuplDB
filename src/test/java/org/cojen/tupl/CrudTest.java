@@ -191,32 +191,19 @@ public class CrudTest {
         View ix = openIndex("test");
         byte[] k1 = "k1".getBytes();
 
-        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
-            try {
-                Transaction txn = mDb.newTransaction();
-                try {
-                    ix.store(txn, k1, k1);
-                    Thread.sleep(60_000);
-                } finally {
-                    txn.exit();
-                }
-            } catch (InterruptedException e) {
-                // Expected.
-            } catch (Exception e) {
-                Utils.uncaught(e);
-            }
-        }));
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, k1, k1);
 
-        final Transaction txn;
+        final Transaction txn2;
         if (withTxn) {
-            txn = mDb.newTransaction();
-            txn.lockMode(LockMode.READ_COMMITTED);
+            txn2 = mDb.newTransaction();
+            txn2.lockMode(LockMode.READ_COMMITTED);
         } else {
-            txn = null;
+            txn2 = null;
         }
 
         try {
-            ix.touch(txn, k1);
+            ix.touch(txn2, k1);
             fail();
         } catch (LockTimeoutException e) {
             // Expected.
@@ -230,7 +217,7 @@ public class CrudTest {
             @Override
             public synchronized void run() {
                 try {
-                    mResult = ix.touch(txn, k1);
+                    mResult = ix.touch(txn2, k1);
                 } catch (Exception e) {
                     mFailure = e;
                 } finally {
@@ -254,8 +241,7 @@ public class CrudTest {
         Waiter w = new Waiter();
         startAndWaitUntilBlocked(w);
 
-        t.interrupt();
-        t.join();
+        txn.reset();
 
         assertEquals(LockResult.UNOWNED, w.waitFor());
     }
