@@ -64,10 +64,21 @@ public class CustomLogTest {
 
     @Test
     public void rollback() throws Exception {
+        rollback(mDb);
+    }
+
+    @Test
+    public void rollbackNoRedo() throws Exception {
+        teardown();
+        mConfig.baseFile(null);
+        rollback(Database.open(mConfig));
+    }
+
+    private void rollback(Database db) throws IOException {
         byte[] message1 = "hello".getBytes();
         byte[] message2 = "world".getBytes();
 
-        Transaction txn = mDb.newTransaction();
+        Transaction txn = db.newTransaction();
         txn.customUndo(message1);
         txn.customRedo(message1, 0, null);
         txn.customUndo(message2);

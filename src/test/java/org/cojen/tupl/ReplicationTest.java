@@ -472,6 +472,15 @@ public class ReplicationTest {
         fence();
 
         fastAssertArrayEquals("hello".getBytes(), mReplicaHandler.mMessage);
+
+        // Again with stronger durability.
+
+        ltxn = mLeader.newTransaction(DurabilityMode.SYNC);
+        ltxn.customRedo("hello!!!".getBytes(), 0, null);
+        ltxn.commit();
+        fence();
+
+        fastAssertArrayEquals("hello!!!".getBytes(), mReplicaHandler.mMessage);
     }
 
     @Test

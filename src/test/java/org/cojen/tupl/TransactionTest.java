@@ -402,6 +402,41 @@ public class TransactionTest {
 
             assertNull(ix.load(null, key));
         }
+
+        // Strong durability...
+
+        {
+            Transaction txn = mDb.newTransaction(DurabilityMode.SYNC);
+
+            Cursor c = ix.newCursor(txn);
+            c.find(key);
+            c.commit(value1);
+            c.reset();
+            txn.reset();
+
+            assertArrayEquals(value1, ix.load(null, key));
+        }
+    }
+
+    @Test
+    public void storeCommitWithTrash() throws Exception {
+        // Runs through the code that empties the fragmented value trash.
+
+        Index ix = mDb.openIndex("test");
+
+        byte[] key = "key".getBytes();
+        byte[] value = new byte[100_000];
+        ix.store(null, key, value);
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, key, null);
+        Cursor c = ix.newCursor(txn);
+        c.find("key2".getBytes());
+        c.commit("value2".getBytes());
+        txn.reset();
+
+        assertNull(ix.load(null, key));
+        fastAssertArrayEquals("value2".getBytes(), ix.load(null, "key2".getBytes()));
     }
 
     @Test
