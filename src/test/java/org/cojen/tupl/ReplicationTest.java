@@ -42,7 +42,7 @@ public class ReplicationTest {
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
-        config.directPageAccess(false);
+        config.directPageAccess(false).maxReplicaThreads(8);
         return config;
     }
 
@@ -805,6 +805,85 @@ public class ReplicationTest {
                 fastAssertArrayEquals((prefix + "value-" + i + "-updated").getBytes(), c.value());
             }
             c.reset();
+        }
+    }
+
+    @Test
+    public void cursorRegisterNoUse() throws Exception {
+        // Test a registered cursor which isn't actually used for anything.
+
+        Index leader = mLeader.openIndex("test");
+        fence();
+        Index replica = mReplica.openIndex("test");
+
+        Transaction txn = mLeader.newTransaction();
+        Cursor c = leader.newCursor(txn);
+        assertTrue(c.register());
+        c.reset();
+        leader.store(txn, "hello".getBytes(), "world".getBytes());
+        txn.flush();
+        txn.commit();
+
+        fence();
+
+        fastAssertArrayEquals("world".getBytes(), replica.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void cursorRegisterTxnSwitch() throws Exception {
+        // Test a registered cursor which switches transaction linkage. This can cause another
+        // worker to be assigned.
+
+        Index leader = mLeader.openIndex("test");
+        fence();
+        Index replica = mReplica.openIndex("test");
+
+        // Locks records on the replica side to ensure that the workers get stalled, causing
+        // tasks to be enqueued in all of them.
+        Transaction holder = mReplica.newTransaction();
+        holder.lockMode(LockMode.REPEATABLE_READ);
+        for (int i=0; i<1000; i++) {
+            replica.load(holder, ("key-" + i).getBytes());
+        }
+
+        Cursor c = leader.newCursor(null);
+        c.register();
+
+        Transaction[] txns = new Transaction[1000];
+        for (int i=0; i<txns.length; i++) {
+            txns[i] = mLeader.newTransaction();
+            leader.store(txns[i], ("key-" + i).getBytes(), ("value-" + i).getBytes());
+            c.link(txns[i]);
+            c.findNearby(("akey-" + i).getBytes());
+            c.store(("value-" + i).getBytes());
+        }
+
+        for (int i=0; i<txns.length; i++) {
+            txns[i].flush();
+        }
+
+        for (Transaction txn : txns) {
+            txn.commit();
+        }
+
+        // All worker threads should be stalled at this point. Wait to be sure, and then
+        // release the locks.
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+                holder.reset();
+            } catch (Exception e) {
+                // Ignore.
+            }
+        }).start();
+
+        fence();
+
+        for (int i=0; i<1000; i++) {
+            fastAssertArrayEquals(("value-" + i).getBytes(),
+                                  replica.load(null, ("key-" + i).getBytes()));
+            fastAssertArrayEquals(("value-" + i).getBytes(),
+                                  replica.load(null, ("akey-" + i).getBytes()));
         }
     }
 

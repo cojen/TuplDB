@@ -111,6 +111,8 @@ public class TestAll {
             DirectPageOpsTest.class,
             UnreplicatedTest.class,
             ReplicationTest.class,
+            ReplicationDirectTest.class,
+            ReplicationOneWorkerTest.class,
             TempIndexTest.class,
             WorkerTest.class,
             MergeViewTest.class,

@@ -110,6 +110,14 @@ public class SorterTest {
     }
 
     @Test
+    public void noSortTrees() throws Exception {
+        // Tests special cases where no sort trees need to be merged. Counts were determined
+        // experimentally.
+        sortMany(12232, 10_000_000, null); // numLevelTrees == 1
+        sortMany(23955, 10_000_000, null); // numLevelTrees == 2
+    }
+
+    @Test
     public void sortMany() throws Exception {
         // count = 1_000_000, range = 2_000_000
         sortMany(1_000_000, 2_000_000, null);

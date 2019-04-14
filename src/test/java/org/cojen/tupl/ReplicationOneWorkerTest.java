@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 Cojen.org
+ *  Copyright (C) 2019 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -22,13 +22,14 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class ReplicationDirectTest extends ReplicationTest {
+public class ReplicationOneWorkerTest  extends ReplicationTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(ReplicationDirectTest.class.getName());
+        org.junit.runner.JUnitCore.main(ReplicationOneWorkerTest.class.getName());
     }
 
     protected DatabaseConfig decorate(DatabaseConfig config) throws Exception {
-        config.directPageAccess(true).maxReplicaThreads(8);
+        config.directPageAccess(false);
+        config.maxReplicaThreads(1);
         return config;
     }
 }

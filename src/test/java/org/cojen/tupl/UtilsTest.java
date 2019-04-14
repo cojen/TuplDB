@@ -198,6 +198,44 @@ public class UtilsTest {
     }
 
     @Test
+    public void decrementReverseUnsigned() {
+        byte[] b = {-1}; // start at zero
+
+        IntegerRef.Value offsetRef = new IntegerRef.Value();
+
+        for (long i=0; i<100_000; i++) {
+            flip(b);
+            offsetRef.set(0);
+            assertEquals(i, decodeUnsignedVarLong(b, offsetRef));
+            flip(b);
+
+            b = decrementReverseUnsignedVar(b, 0);
+        }
+
+        // Test with max value and wraparound.
+
+        long v = Long.MAX_VALUE - 100;
+        b = new byte[9];
+        assertEquals(9, encodeUnsignedVarLong(b, 0, v));
+        flip(b);
+
+        for (int i=0; i<200; i++, v++) {
+            flip(b);
+            offsetRef.set(0);
+            assertEquals(v, decodeUnsignedVarLong(b, offsetRef));
+            flip(b);
+
+            b = decrementReverseUnsignedVar(b, 0);
+        }
+    }
+
+    private void flip(byte[] b) {
+        for (int i=0; i<b.length; i++) {
+            b[i] = (byte) ~b[i];
+        }
+    }
+
+    @Test
     public void shortBE() {
         byte[] b = new byte[2];
         encodeShortBE(b, 0, 0x8182);

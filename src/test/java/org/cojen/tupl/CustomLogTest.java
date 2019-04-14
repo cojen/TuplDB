@@ -63,6 +63,61 @@ public class CustomLogTest {
     protected Handler mHandler;
 
     @Test
+    public void exceptions() throws Exception {
+        Transaction txn = mDb.newTransaction();
+
+        try {
+            txn.customRedo(null, 0, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected when message is null.
+        }
+
+        try {
+            txn.customRedo(null, 123, null);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected when key is null.
+        }
+ 
+        byte[] key = new byte[1];
+        txn.lockExclusive(123, key);
+
+        try {
+            txn.customRedo(null, 123, key);
+            fail();
+        } catch (NullPointerException e) {
+            // Expected when message is null.
+        }
+
+        try {
+            txn.customRedo(null, 0, key);
+            fail();
+        } catch (IllegalArgumentException e) {
+            // Expected when index is zero and key isn't null.
+        }
+
+        txn.reset();
+
+        Database db = Database.open(new DatabaseConfig());
+        txn = db.newTransaction();
+
+        try {
+            txn.customRedo(null, 0, null);
+            fail();
+        } catch (IllegalStateException e) {
+            // Expected when no handler is installed.
+        }
+
+        try {
+            txn.customUndo(null);
+            fail();
+        } catch (IllegalStateException e) {
+            // Expected when no handler is installed.
+        }
+    }
+
+    @Test
     public void rollback() throws Exception {
         rollback(mDb);
     }
