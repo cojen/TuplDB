@@ -158,10 +158,6 @@ class Tree implements View, Index {
                 high = newCursor(Transaction.BOGUS);
                 high.mKeyOnly = true;
                 high.find(highKey);
-                if (high.mKey == null) {
-                    // Found nothing.
-                    return 0;
-                }
             }
             return cursor.count(lowKey, high);
         } finally {
