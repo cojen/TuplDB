@@ -232,6 +232,81 @@ public class CursorRegisterTest {
     }
 
     @Test
+    public void nestedStoreCommit() throws Exception {
+        // Test nested transaction commits against a registered cursor.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .checkpointRate(-1, null)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        Database db = newTempDatabase(getClass(), config);
+        Index ix = db.openIndex("test");
+
+        // Insert one inside the scope.
+        Transaction txn = db.newTransaction();
+        txn.enter();
+        Cursor c = ix.newCursor(txn);
+        c.find("k1".getBytes());
+        c.register();
+        c.commit("v1".getBytes());
+        c.close();
+        txn.commitAll();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+        fastAssertArrayEquals("v1".getBytes(), ix.load(null, "k1".getBytes()));
+
+        // Delete one inside the scope.
+        txn = db.newTransaction();
+        txn.enter();
+        c = ix.newCursor(txn);
+        c.find("k1".getBytes());
+        c.register();
+        c.commit(null);
+        c.close();
+        txn.commitAll();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+        assertNull(ix.load(null, "k1".getBytes()));
+
+        // Insert two inside the scope, only commit on the second.
+        txn = db.newTransaction();
+        txn.enter();
+        c = ix.newCursor(txn);
+        c.find("k2".getBytes());
+        c.register();
+        c.store("v2".getBytes());
+        c.findNearby("k3".getBytes());
+        c.commit("v3".getBytes());
+        c.close();
+        txn.commitAll();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+        fastAssertArrayEquals("v2".getBytes(), ix.load(null, "k2".getBytes()));
+        fastAssertArrayEquals("v3".getBytes(), ix.load(null, "k3".getBytes()));
+
+        // Delete two inside the scope, only commit on the second.
+        txn = db.newTransaction();
+        txn.enter();
+        c = ix.newCursor(txn);
+        c.find("k2".getBytes());
+        c.register();
+        c.store(null);
+        c.findNearby("k3".getBytes());
+        c.commit(null);
+        c.close();
+        txn.commitAll();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+        assertNull(ix.load(null, "k2".getBytes()));
+        assertNull(ix.load(null, "k3".getBytes()));
+    }
+
+    @Test
     public void replication() throws Exception {
         ServerSocket leaderSocket = new ServerSocket(0);
 
