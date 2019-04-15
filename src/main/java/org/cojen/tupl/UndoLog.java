@@ -243,10 +243,6 @@ final class UndoLog implements DatabaseAccess {
         /*P*/ // ]
     }
 
-    long txnId() {
-        return mTxnId;
-    }
-
     /**
      * Deletes just the top node, as part of database close sequence. Caller must hold
      * exclusive db commit lock.

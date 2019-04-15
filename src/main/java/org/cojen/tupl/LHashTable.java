@@ -214,9 +214,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         E[] entries = mEntries;
 
         int capacity = entries.length << 1;
-        if (capacity == 0) {
-            capacity = 1;
-        }
         E[] newEntries = (E[]) new Entry[capacity];
         int newMask = capacity - 1;
 
