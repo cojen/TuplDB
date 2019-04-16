@@ -28,6 +28,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -98,6 +100,7 @@ public class LockTest {
         if (mExecutor != null) {
             mExecutor.shutdown();
         }
+        mManager.close();
     }
 
     @Test
@@ -306,6 +309,7 @@ public class LockTest {
         }
 
         assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
+        assertEquals(OWNED_EXCLUSIVE, locker.tryLockShared(0, k1, 0));
 
         assertEquals(k1, locker.lastLockedKey());
         locker.unlockToUpgradable();
@@ -653,6 +657,90 @@ public class LockTest {
 
         locker.scopeExitAll();
         locker2.scopeExitAll();
+    }
+
+    @Test
+    public void blockedNoWait2() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.tryLockShared(0, k1, -1));
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Locker locker2 = new Locker(mManager);
+                locker2.tryLockExclusive(0, k1, -1);
+            } catch (Exception e) {
+                Utils.uncaught(e);
+            }
+        }));
+
+        Locker locker3 = new Locker(mManager);
+
+        assertEquals(TIMED_OUT_LOCK, locker3.tryLockShared(0, k1, 0));
+        assertEquals(TIMED_OUT_LOCK, locker3.tryLockUpgradable(0, k1, 0));
+        assertEquals(TIMED_OUT_LOCK, locker3.tryLockExclusive(0, k1, 0));
+    }
+
+    @Test
+    public void blockedNoWait3() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Locker locker2 = new Locker(mManager);
+                locker2.tryLockUpgradable(0, k1, -1);
+            } catch (Exception e) {
+                Utils.uncaught(e);
+            }
+        }));
+
+        Locker locker3 = new Locker(mManager);
+
+        assertEquals(TIMED_OUT_LOCK, locker3.tryLockUpgradable(0, k1, 0));
+        assertEquals(TIMED_OUT_LOCK, locker3.tryLockExclusive(0, k1, 0));
+    }
+
+    @Test
+    @SuppressWarnings("deprecation")
+    public void blockedOnQueuedSharedWaiters() throws Exception {
+        // This test requires that a queue of shared waiters exists, which then is slowly
+        // drained. The best way to ensure that this occurs is by suspending the first waiter
+        // in the queue (Lock.mQueueSX). Suspend is deprecated, but if it does nothing instead,
+        // this test should still pass. Test coverage might be reduced as a result.
+
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
+
+        Thread[] threads = new Thread[2];
+
+        for (int i=0; i<2; i++) {
+            threads[i] = startAndWaitUntilBlocked(new Thread(() -> {
+                try {
+                    Locker locker2 = new Locker(mManager);
+                    locker2.tryLockShared(0, k1, -1);
+                    locker2.unlock();
+                } catch (Exception e) {
+                    Utils.uncaught(e);
+                }
+            }));
+        }
+
+        threads[0].suspend();
+        try {
+            locker.unlock();
+            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 0));
+            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 1));
+            assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
+            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 0));
+            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 1));
+        } finally {
+            threads[0].resume();
+        }
+
+        assertEquals(UPGRADED, locker.tryLockExclusive(0, k1, -1));
     }
 
     @Test
@@ -1707,6 +1795,109 @@ public class LockTest {
             fail();
         } catch (IllegalStateException e) {
         }
+    }
+
+    @Test
+    public void illegalUnlock11() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        Lock lock = locker.lockSharedNoPush(0, k1);
+        locker.push(lock);
+        locker.scopeExitAll();
+
+        try {
+            mManager.unlock(locker, lock);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void illegalUnlock12() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        Lock lock = locker.lockSharedNoPush(0, k1);
+        locker.push(lock);
+        locker.scopeExitAll();
+
+        try {
+            mManager.unlockToShared(locker, lock);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void illegalUnlock13() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        Lock lock = locker.lockSharedNoPush(0, k1);
+        locker.push(lock);
+        locker.scopeExitAll();
+
+        try {
+            mManager.unlockToUpgradable(locker, lock);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void illegalUnlock14() throws Exception {
+        Locker locker1 = new Locker(mManager);
+        Locker locker2 = new Locker(mManager);
+        Locker locker3 = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker1.tryLockShared(0, k1, -1));
+        assertEquals(ACQUIRED, locker2.tryLockShared(0, k1, -1));
+
+        Lock lock = locker3.lockSharedNoPush(0, k1);
+        locker3.push(lock);
+        locker3.scopeExitAll();
+
+        try {
+            mManager.unlock(locker3, lock);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
+    public void closedLocker() throws Exception {
+        LocalDatabase db = LocalDatabase.open(new DatabaseConfig());
+        LockManager manager = new LockManager(db, null, -1);
+
+        Locker locker = new Locker(manager);
+
+        Lock lock = locker.lockSharedNoPush(0, k1);
+        locker.push(lock);
+        locker.scopeExitAll();
+        db.close();
+        manager.unlockToUpgradable(locker, lock);
+    }
+
+    @Test
+    public void closedLocker2() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        locker.lockShared(0, k1, -1);
+
+        AtomicReference<LockResult> resultRef = new AtomicReference<>();
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Locker locker2 = new Locker(mManager);
+                resultRef.set(locker2.tryLockExclusive(0, k1, -1));
+            } catch (Exception e) {
+                System.out.println(e);
+            }
+        }));
+
+        mManager.close();
+
+        t.join();
+
+        assertEquals(INTERRUPTED, resultRef.get());
     }
 
     @Test
