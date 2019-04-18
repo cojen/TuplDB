@@ -97,7 +97,7 @@ final class _Lock {
 
         LatchCondition queueSX = mQueueSX;
         if (queueSX != null) {
-            if (mLockCount != 0 && isSharedLockOwner(locker)) {
+            if (isSharedLockOwner(locker)) {
                 return OWNED_SHARED;
             }
             if (nanosTimeout == 0) {
@@ -737,6 +737,11 @@ final class _Lock {
         return null;
     }
 
+    /**
+     * Note: Caller can short-circuit this test by checking the lock count first. If non-zero,
+     * then this method should return false. If the caller has already determined that mQueueSX
+     * is non-null, then the short-circuit test is redundant and isn't useful.
+     */
     private boolean isSharedLockOwner(_LockOwner locker) {
         Object sharedObj = mSharedLockOwnersObj;
         if (sharedObj == locker) {
