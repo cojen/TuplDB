@@ -105,65 +105,56 @@ final class Lock {
                 return TIMED_OUT_LOCK;
             }
         } else {
-            LockResult r = tryLockShared(locker);
-            if (r != null) {
-                return r;
+            int count = mLockCount;
+            if (count == ~0) {
+                if (nanosTimeout == 0) {
+                    locker.mWaitingFor = this;
+                    return TIMED_OUT_LOCK;
+                }
+                mQueueSX = queueSX = new LatchCondition();
+            } else if (count != 0 && isSharedLockOwner(locker)) {
+                return OWNED_SHARED;
+            } else {
+                if ((count & 0x7fffffff) >= 0x7ffffffe) {
+                    throw new IllegalStateException("Too many shared locks held");
+                }
+                addSharedLockOwner(count, locker);
+                return ACQUIRED;
             }
-            if (nanosTimeout == 0) {
-                locker.mWaitingFor = this;
-                return TIMED_OUT_LOCK;
-            }
-            mQueueSX = queueSX = new LatchCondition();
         }
 
         locker.mWaitingFor = this;
         long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
-        while (true) {
-            // Await for shared lock.
-            int w = queueSX.awaitShared(latch, nanosTimeout, nanosEnd);
-            queueSX = mQueueSX;
+        // Await for shared lock.
+        int w = queueSX.awaitShared(latch, nanosTimeout, nanosEnd);
+        queueSX = mQueueSX;
 
-            if (queueSX == null) {
-                // Assume LockManager was closed.
-                locker.mWaitingFor = null;
-                return INTERRUPTED;
+        if (queueSX == null) {
+            // Assume LockManager was closed.
+            locker.mWaitingFor = null;
+            return INTERRUPTED;
+        }
+
+        // After consuming one signal, next shared waiter must be signaled, and so on.
+        if (!queueSX.signalNextShared()) {
+            // Indicate that last signal has been consumed, and also free memory.
+            mQueueSX = null;
+        }
+
+        if (w >= 1) {
+            int count = mLockCount;
+            if ((count & 0x7fffffff) >= 0x7ffffffe) {
+                throw new IllegalStateException("Too many shared locks held");
             }
-
-            // After consuming one signal, next shared waiter must be signaled, and so on.
-            if (!queueSX.signalNextShared()) {
-                // Indicate that last signal has been consumed, and also free memory.
-                mQueueSX = null;
-            }
-
-            if (w < 1) {
-                if (w == 0) {
-                    return TIMED_OUT_LOCK;
-                } else {
-                    locker.mWaitingFor = null;
-                    return INTERRUPTED;
-                }
-            }
-
-            // Because latch was released while waiting on condition, check
-            // everything again.
-
-            if (mOwner == locker) {
-                locker.mWaitingFor = null;
-                return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
-            }
-
-            LockResult r = tryLockShared(locker);
-            if (r != null) {
-                locker.mWaitingFor = null;
-                return r;
-            }
-
-            // Signal was bogus or lock was grabbed by another thread, so retry.
-
-            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                return TIMED_OUT_LOCK;
-            }
+            addSharedLockOwner(count, locker);
+            locker.mWaitingFor = null;
+            return ACQUIRED;
+        } else if (w == 0) {
+            return TIMED_OUT_LOCK;
+        } else {
+            locker.mWaitingFor = null;
+            return INTERRUPTED;
         }
     }
 
@@ -216,68 +207,31 @@ final class Lock {
         locker.mWaitingFor = this;
         long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
-        while (true) {
-            // Await for exclusive lock.
-            int w = queueU.await(latch, nanosTimeout, nanosEnd);
-            queueU = mQueueU;
+        // Await for upgradable lock.
+        int w = queueU.await(latch, nanosTimeout, nanosEnd);
+        queueU = mQueueU;
 
-            if (queueU == null) {
-                // Assume LockManager was closed.
-                locker.mWaitingFor = null;
-                return INTERRUPTED;
-            }
+        if (queueU == null) {
+            // Assume LockManager was closed.
+            locker.mWaitingFor = null;
+            return INTERRUPTED;
+        }
 
-            if (queueU.isEmpty()) {
-                // Indicate that last signal has been consumed, and also free memory.
-                mQueueU = null;
-            }
+        if (queueU.isEmpty()) {
+            // Indicate that last signal has been consumed, and also free memory.
+            mQueueU = null;
+        }
 
-            if (w < 1) {
-                if (w == 0) {
-                    return TIMED_OUT_LOCK;
-                } else {
-                    locker.mWaitingFor = null;
-                    return INTERRUPTED;
-                }
-            }
-
-            // Because latch was released while waiting on condition, check
-            // everything again.
-
-            if (mOwner == locker) {
-                locker.mWaitingFor = null;
-                return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
-            }
-
-            count = mLockCount;
-            if (count != 0 && isSharedLockOwner(locker)) {
-                if (!locker.canAttemptUpgrade(count)) {
-                    // Signal that another waiter can get the lock instead.
-                    queueU.signal();
-                    locker.mWaitingFor = null;
-                    return ILLEGAL;
-                }
-                if (count > 0) {
-                    // Give the impression that lock was always held upgradable. This prevents
-                    // pushing the lock into the locker twice.
-                    mLockCount = (count - 1) | 0x80000000;
-                    mOwner = locker;
-                    return OWNED_UPGRADABLE;
-                }
-            }
-
-            if (count >= 0) {
-                mLockCount = count | 0x80000000;
-                mOwner = locker;
-                locker.mWaitingFor = null;
-                return ACQUIRED;
-            }
-
-            // Signal was bogus or lock was grabbed by another thread, so retry.
-
-            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                return TIMED_OUT_LOCK;
-            }
+        if (w >= 1) {
+            mLockCount |= 0x80000000;
+            mOwner = locker;
+            locker.mWaitingFor = null;
+            return ACQUIRED;
+        } else if (w == 0) {
+            return TIMED_OUT_LOCK;
+        } else {
+            locker.mWaitingFor = null;
+            return INTERRUPTED;
         }
     }
 
@@ -322,52 +276,34 @@ final class Lock {
         locker.mWaitingFor = this;
         long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
-        while (true) {
-            // Await for exclusive lock.
-            int w = queueSX.await(latch, nanosTimeout, nanosEnd);
-            queueSX = mQueueSX;
+        // Await for exclusive lock.
+        int w = queueSX.await(latch, nanosTimeout, nanosEnd);
+        queueSX = mQueueSX;
 
-            if (queueSX == null) {
-                // Assume LockManager was closed.
+        if (queueSX == null) {
+            // Assume LockManager was closed.
+            locker.mWaitingFor = null;
+            return INTERRUPTED;
+        }
+
+        if (queueSX.isEmpty()) {
+            // Indicate that last signal has been consumed, and also free memory.
+            mQueueSX = null;
+        }
+
+        if (w >= 1) {
+            mLockCount = ~0;
+            locker.mWaitingFor = null;
+            return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
+        } else {
+            if (ur == ACQUIRED) {
+                unlockUpgradable();
+            }
+            if (w == 0) {
+                return TIMED_OUT_LOCK;
+            } else {
                 locker.mWaitingFor = null;
                 return INTERRUPTED;
-            }
-
-            if (queueSX.isEmpty()) {
-                // Indicate that last signal has been consumed, and also free memory.
-                mQueueSX = null;
-            }
-
-            if (w < 1) {
-                if (ur == ACQUIRED) {
-                    unlockUpgradable();
-                }
-                if (w == 0) {
-                    return TIMED_OUT_LOCK;
-                } else {
-                    locker.mWaitingFor = null;
-                    return INTERRUPTED;
-                }
-            }
-
-            // Because latch was released while waiting on condition, check
-            // everything again.
-
-            acquired: {
-                int count = mLockCount;
-                if (count == 0x80000000) {
-                    mLockCount = ~0;
-                } else if (count != ~0) {
-                    break acquired;
-                }
-                locker.mWaitingFor = null;
-                return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
-            }
-
-            // Signal was bogus or lock was grabbed by another thread, so retry.
-
-            if (nanosTimeout >= 0 && (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                return TIMED_OUT_LOCK;
             }
         }
     }
@@ -751,24 +687,6 @@ final class Lock {
             return lockerHTcontains((LockOwnerHTEntry[]) sharedObj, locker);
         }
         return false;
-    }
-
-    /**
-     * @return ACQUIRED, OWNED_SHARED, or null
-     */
-    private LockResult tryLockShared(LockOwner locker) {
-        int count = mLockCount;
-        if (count == ~0) {
-            return null;
-        }
-        if (count != 0 && isSharedLockOwner(locker)) {
-            return OWNED_SHARED;
-        }
-        if ((count & 0x7fffffff) >= 0x7ffffffe) {
-            throw new IllegalStateException("Too many shared locks held");
-        }
-        addSharedLockOwner(count, locker);
-        return ACQUIRED;
     }
 
     private void addSharedLockOwner(int count, LockOwner locker) {
