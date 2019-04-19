@@ -58,6 +58,7 @@ public class TestAll {
             LargeValueDirectMappedTest.class,
             LargeValueNonDurableTest.class,
             LargeValueFuzzTest.class,
+            LHashTableTest.class,
             ExtraLargeValueTest.class,
             ExtraLargeValueDirectTest.class,
             ExtraLargeValueNonDurableTest.class,

@@ -814,6 +814,15 @@ public class RecoverTest {
 
     @Test
     public void cachePriming() throws Exception {
+        cachePriming(false);
+    }
+
+    @Test
+    public void skipCachePriming() throws Exception {
+        cachePriming(true);
+    }
+
+    private void cachePriming(boolean skip) throws Exception {
         Index ix = mDb.openIndex("test");
 
         for (int i=0; i<1_000_000; i++) {
@@ -838,6 +847,17 @@ public class RecoverTest {
 
         mDb.close();
         assertTrue(primer.exists());
+
+        if (skip) {
+            // Primer is skipped if for the wrong database.
+            mDb = newTempDatabase(getClass(), mConfig.cachePriming(false));
+            mDb.close();
+            File base = baseFileForTempDatabase(getClass(), mDb);
+            File newPrimer = new File(base.getPath() + ".primer");
+            assertTrue(primer.renameTo(newPrimer));
+            primer = newPrimer;
+            mConfig.cachePriming(true);
+        }
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         assertFalse(primer.exists());

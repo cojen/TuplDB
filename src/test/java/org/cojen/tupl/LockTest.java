@@ -1191,6 +1191,24 @@ public class LockTest {
         }
         locker.scopeExitAll();
 
+        // Deep scoping with big scopes.
+        for (int i=0; i<10; i++) {
+            assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i), -1));
+            locker.scopeEnter();
+            for (int j=0; j<1000; j++) {
+                assertEquals(ACQUIRED, locker.tryLockExclusive(0, key("k" + i + ", " + j), -1));
+            }
+        }
+        for (int i=10; --i>=0; ) {
+            locker.scopeExit();
+            assertEquals(UNOWNED, locker.lockCheck(0, key("k" + (i + 1))));
+            for (int j=0; j<1000; j++) {
+                assertEquals(UNOWNED, locker.lockCheck(0, key("k" + i + ", " + j)));
+            }
+        }
+        locker.scopeExitAll();
+        assertEquals(UNOWNED, locker.lockCheck(0, key("k" + 0)));
+
         for (int q=0; q<3; q++) {
             for (int w=0; w<2; w++) {
                 if (w != 0) {
