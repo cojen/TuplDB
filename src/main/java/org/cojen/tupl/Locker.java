@@ -791,11 +791,7 @@ class Locker extends LockOwner {
 
     final void pushUpgrade(Lock lock) {
         Object tailObj = mTailBlock;
-        if (tailObj == null) {
-            Block block = new Block(lock);
-            block.firstUpgrade();
-            mTailBlock = block;
-        } else if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock) {
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             if (tailObj != lock || mParentScope != null) {
@@ -835,21 +831,12 @@ class Locker extends LockOwner {
 
         private Block mPrev;
 
-        Block(Lock first) {
-            (mLocks = new Lock[FIRST_BLOCK_CAPACITY])[0] = first;
-            mSize = 1;
-        }
-
         Block(Lock first, Lock second) {
             Lock[] locks = new Lock[FIRST_BLOCK_CAPACITY];
             locks[0] = first;
             locks[1] = second;
             mLocks = locks;
             mSize = 2;
-        }
-
-        void firstUpgrade() {
-            mUpgrades = 1L << 63;
         }
 
         void secondUpgrade() {
@@ -862,9 +849,7 @@ class Locker extends LockOwner {
         private Block(Block prev, Lock first, long upgrade) {
             mPrev = prev;
             int capacity = prev.mLocks.length;
-            if (capacity < FIRST_BLOCK_CAPACITY) {
-                capacity = FIRST_BLOCK_CAPACITY;
-            } else if (capacity < HIGHEST_BLOCK_CAPACITY) {
+            if (capacity < HIGHEST_BLOCK_CAPACITY) {
                 capacity <<= 1;
             }
             (mLocks = new Lock[capacity])[0] = first;
