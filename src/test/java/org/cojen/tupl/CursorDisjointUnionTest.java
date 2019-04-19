@@ -71,36 +71,26 @@ public class CursorDisjointUnionTest extends CursorNonDurableTest {
         return mDb.stats().cursorCount() / 2;
     }
 
-    @Test
-    @Ignore
     @Override
     public void randomLock() throws Exception {
         // Random search isn't supported.
     }
 
-    @Test
-    @Ignore
     @Override
     public void random() throws Exception {
         // Random search isn't supported.
     }
 
-    @Test
-    @Ignore
     @Override
     public void randomNotGhost() throws Exception {
         // Random search isn't supported.
     }
 
-    @Test
-    @Ignore
     @Override
     public void randomRange() throws Exception {
         // Random search isn't supported.
     }
 
-    @Test
-    @Ignore
     @Override
     public void randomNonRange() throws Exception {
         // Random search isn't supported.

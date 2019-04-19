@@ -40,7 +40,7 @@ public class CloseNonDurableTest extends CloseTest {
         mDb = null;
     }
 
-    @Test @Ignore
+    @Override
     public void cacheChurn() {
         // Non-durable database cannot exhaust the cache.
     }

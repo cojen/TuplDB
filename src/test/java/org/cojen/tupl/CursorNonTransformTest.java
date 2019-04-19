@@ -56,8 +56,6 @@ public class CursorNonTransformTest extends CursorNonDurableTest {
         return (TreeCursor) ((TransformedCursor) c).source();
     }
 
-    @Test
-    @Ignore
     @Override
     public void lockNoLoad() throws Exception {
         // Transformer requires value to be loaded.
