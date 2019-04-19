@@ -2193,6 +2193,48 @@ public class LockTest {
         }
     }
 
+    @Test
+    public void tryLockExclusiveWaitingUpgrader() throws Exception {
+        Locker locker1 = new Locker(mManager);
+        assertEquals(ACQUIRED, locker1.lockShared(0, k1, -1));
+
+        AtomicReference<Throwable> ex2 = new AtomicReference<>();
+
+        Thread t2 = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Locker locker2 = new Locker(mManager);
+                locker2.lockExclusive(0, k1, -1);
+                fail();
+            } catch (LockInterruptedException e) {
+                // Expected.
+            } catch (Throwable e) {
+                ex2.set(e);
+            }
+        }));
+
+        AtomicReference<Throwable> ex3 = new AtomicReference<>();
+
+        Thread t3 = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Locker locker3 = new Locker(mManager);
+                assertEquals(ACQUIRED, locker3.lockUpgradable(0, k1, -1));
+            } catch (Throwable e) {
+                ex3.set(e);
+            }
+        }));
+
+        // At this point, t2 owns the upgradable lock but is blocked by the initial shared
+        // lock. Thread t3 is waiting for the upgradable lock. By interrupting t2, it will give
+        // up and signal that t3 can proceed.
+
+        t2.interrupt();
+        t2.join();
+        t3.join();
+
+        assertNull(ex2.get());
+        assertNull(ex3.get());
+    }
+
     private long scheduleUnlock(final Locker locker, final long delayMillis) {
         return schedule(locker, delayMillis, 0);
     }
