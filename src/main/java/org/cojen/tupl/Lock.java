@@ -82,9 +82,8 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is
-     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
-     * is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
+     * the locker's mWaitingFor field is set to this Lock as a side-effect.
      *
      * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
@@ -159,9 +158,8 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is
-     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
-     * is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
+     * the locker's mWaitingFor field is set to this Lock as a side-effect.
      *
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
@@ -236,9 +234,8 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is
-     * TIMED_OUT_LOCK and timeout was non-zero, the locker's mWaitingFor field
-     * is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
+     * the locker's mWaitingFor field is set to this Lock as a side-effect.
      *
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
@@ -250,27 +247,23 @@ final class Lock {
         }
 
         LatchCondition queueSX = mQueueSX;
-        if (queueSX != null) {
-            if (nanosTimeout == 0) {
-                if (ur == ACQUIRED) {
-                    unlockUpgradable();
+        quick: {
+            if (queueSX == null) {
+                if (mLockCount == 0x80000000) {
+                    mLockCount = ~0;
+                    return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
+                } else if (nanosTimeout != 0) {
+                    mQueueSX = queueSX = new LatchCondition();
+                    break quick;
                 }
-                locker.mWaitingFor = this;
-                return TIMED_OUT_LOCK;
+            } else if (nanosTimeout != 0) {
+                break quick;
             }
-        } else {
-            if (mLockCount == 0x80000000) {
-                mLockCount = ~0;
-                return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
+            if (ur == ACQUIRED) {
+                unlockUpgradable();
             }
-            if (nanosTimeout == 0) {
-                if (ur == ACQUIRED) {
-                    unlockUpgradable();
-                }
-                locker.mWaitingFor = this;
-                return TIMED_OUT_LOCK;
-            }
-            mQueueSX = queueSX = new LatchCondition();
+            locker.mWaitingFor = this;
+            return TIMED_OUT_LOCK;
         }
 
         locker.mWaitingFor = this;
