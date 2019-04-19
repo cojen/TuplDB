@@ -251,11 +251,11 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </td>
 </tr>
 <tr class="rowColor" id="i11">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#signalRelease(org.cojen.tupl.util.Latch)">signalRelease</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="colLast">
-<div class="block">If a first waiter exists, the held exclusive latch is released, and then the waiter is
- signaled.</div>
+<div class="block">With the exclusive latch held, signals the first waiter, of any type, and then releases
+ the latch.</div>
 </td>
 </tr>
 <tr class="altColor" id="i12">
@@ -266,11 +266,11 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </td>
 </tr>
 <tr class="rowColor" id="i13">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#signalSharedRelease(org.cojen.tupl.util.Latch)">signalSharedRelease</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="colLast">
-<div class="block">If a first shared waiter exists, the held exclusive latch is released, and then the
- waiter is signaled.</div>
+<div class="block">With the exclusive latch held, signals the first waiter (if shared), and then releases
+ the latch.</div>
 </td>
 </tr>
 </tbody>
@@ -448,13 +448,9 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>signalRelease</h4>
-<pre class="methodSignature">public final&nbsp;boolean&nbsp;signalRelease&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
-<div class="block">If a first waiter exists, the held exclusive latch is released, and then the waiter is
- signaled.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>false if no waiter and latch wasn't released</dd>
-</dl>
+<pre class="methodSignature">public final&nbsp;void&nbsp;signalRelease&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
+<div class="block">With the exclusive latch held, signals the first waiter, of any type, and then releases
+ the latch.</div>
 </li>
 </ul>
 <a id="signalNext()">
@@ -498,13 +494,9 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <ul class="blockList">
 <li class="blockList">
 <h4>signalSharedRelease</h4>
-<pre class="methodSignature">public final&nbsp;boolean&nbsp;signalSharedRelease&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
-<div class="block">If a first shared waiter exists, the held exclusive latch is released, and then the
- waiter is signaled.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>false if no shared waiter and latch wasn't released</dd>
-</dl>
+<pre class="methodSignature">public final&nbsp;void&nbsp;signalSharedRelease&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</pre>
+<div class="block">With the exclusive latch held, signals the first waiter (if shared), and then releases
+ the latch.</div>
 </li>
 </ul>
 <a id="signalNextShared()">

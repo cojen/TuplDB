@@ -183,19 +183,19 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </td>
 </tr>
 <tr class="rowColor">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../LatchCondition.html#signalRelease(org.cojen.tupl.util.Latch)">signalRelease</a></span>&#8203;(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="colLast">
-<div class="block">If a first waiter exists, the held exclusive latch is released, and then the waiter is
- signaled.</div>
+<div class="block">With the exclusive latch held, signals the first waiter, of any type, and then releases
+ the latch.</div>
 </td>
 </tr>
 <tr class="altColor">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">LatchCondition.</span><code><span class="memberNameLink"><a href="../LatchCondition.html#signalSharedRelease(org.cojen.tupl.util.Latch)">signalSharedRelease</a></span>&#8203;(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="colLast">
-<div class="block">If a first shared waiter exists, the held exclusive latch is released, and then the
- waiter is signaled.</div>
+<div class="block">With the exclusive latch held, signals the first waiter (if shared), and then releases
+ the latch.</div>
 </td>
 </tr>
 </tbody>

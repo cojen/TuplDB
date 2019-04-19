@@ -337,9 +337,8 @@ final class _Lock {
                     ht.remove(this);
                 } else if (queueU != null) {
                     // Signal at most one upgradable lock waiter.
-                    if (queueU.signalRelease(ht)) {
-                        return;
-                    }
+                    queueU.signalRelease(ht);
+                    return;
                 }
             } else {
                 // Unlocking an exclusive lock.
@@ -351,9 +350,8 @@ final class _Lock {
                         ht.remove(this);
                     } else {
                         // Signal at most one upgradable lock waiter.
-                        if (queueU.signalRelease(ht)) {
-                            return;
-                        }
+                        queueU.signalRelease(ht);
+                        return;
                     }
                 } else {
                     if (queueU != null) {
@@ -363,9 +361,8 @@ final class _Lock {
                     // Signal first shared lock waiter. Queue doesn't contain any exclusive
                     // lock waiters, because they would need to acquire upgradable lock first,
                     // which was held.
-                    if (queueSX.signalRelease(ht)) {
-                        return;
-                    }
+                    queueSX.signalRelease(ht);
+                    return;
                 }
             }
         } else {
@@ -404,9 +401,8 @@ final class _Lock {
                     // Signal any exclusive lock waiter. Queue shouldn't contain any shared
                     // lock waiters, because no exclusive lock is held. In case there are any,
                     // signal them instead.
-                    if (queueSX.signalRelease(ht)) {
-                        return;
-                    }
+                    queueSX.signalRelease(ht);
+                    return;
                 }
             } else if (count == 0 && queueSX == null && mQueueU == null) {
                 // _Lock is now completely unused.
@@ -451,15 +447,14 @@ final class _Lock {
                     // Signal the first shared lock waiter. Queue doesn't contain any exclusive
                     // lock waiters, because they would need to acquire upgradable lock first,
                     // which was held.
-                    if (!queueSX.signalRelease(latch)) {
-                        latch.releaseExclusive();
-                    }
+                    queueSX.signalRelease(latch);
                     return;
                 }
             }
 
             // Signal at most one upgradable lock waiter.
-            if (queueU != null && queueU.signalRelease(latch)) {
+            if (queueU != null) {
+                queueU.signalRelease(latch);
                 return;
             }
         } else if ((mLockCount == 0 || !isSharedLockOwner(locker)) && !isClosed(locker)) {
@@ -495,8 +490,10 @@ final class _Lock {
         deleteGhost(latch);
         mLockCount = 0x80000000;
         LatchCondition queueSX = mQueueSX;
-        if (queueSX == null || !queueSX.signalSharedRelease(latch)) {
+        if (queueSX == null) {
             latch.releaseExclusive();
+        } else {
+            queueSX.signalSharedRelease(latch);
         }
     }
 

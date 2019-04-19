@@ -188,20 +188,18 @@ public class LatchCondition {
     }
 
     /**
-     * If a first waiter exists, the held exclusive latch is released, and then the waiter is
-     * signaled.
-     *
-     * @return false if no waiter and latch wasn't released
+     * With the exclusive latch held, signals the first waiter, of any type, and then releases
+     * the latch.
      */
-    public final boolean signalRelease(Latch latch) {
+    public final void signalRelease(Latch latch) {
         Node head = mHead;
         if (head != null) {
             head.signal();
+            // Release first, because the unparked thread might immediately block on the latch.
             latch.releaseExclusive();
             head.unpark();
-            return true;
         } else {
-            return false;
+            latch.releaseExclusive();
         }
     }
 
@@ -251,20 +249,18 @@ public class LatchCondition {
     }
 
     /**
-     * If a first shared waiter exists, the held exclusive latch is released, and then the
-     * waiter is signaled.
-     *
-     * @return false if no shared waiter and latch wasn't released
+     * With the exclusive latch held, signals the first waiter (if shared), and then releases
+     * the latch.
      */
-    public final boolean signalSharedRelease(Latch latch) {
+    public final void signalSharedRelease(Latch latch) {
         Node head = mHead;
         if (head != null && head.mWaitState == Node.WAITING_SHARED) {
             head.signal();
+            // Release first, because the unparked thread might immediately block on the latch.
             latch.releaseExclusive();
             head.unpark();
-            return true;
         } else {
-            return false;
+            latch.releaseExclusive();
         }
     }
 
