@@ -41,6 +41,8 @@ public class TestAll {
             CrudSelfIntersectionTest.class,
             CrudSelfDifferenceTest.class,
             CrudDisjointUnionTest.class,
+            CrudStripedFileTest.class,
+            CrudStripedFileDirectTest.class,
             CursorTest.class,
             CursorDirectTest.class,
             CursorDirectMappedTest.class,
