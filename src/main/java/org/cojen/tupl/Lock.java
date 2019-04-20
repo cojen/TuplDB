@@ -505,25 +505,19 @@ final class Lock {
     /**
      * @param latch might be briefly released and re-acquired
      */
-    void deleteGhost(Latch latch) {
+    private void deleteGhost(Latch latch) {
         // TODO: Unlock due to rollback can be optimized. It never needs to actually delete
         // ghosts, because the undo actions replaced them.
 
         Object obj = mSharedLockOwnersObj;
-        if (!(obj instanceof GhostFrame)) {
-            return;
+        if (obj instanceof GhostFrame) {
+            mSharedLockOwnersObj = null;
+            // Note that the Database is obtained via a weak reference, but no null check needs
+            // to be performed. The Database would have to have been closed first, but doing
+            // this transfers lock ownership. Ghosts cannot be deleted if the ownership has
+            // changed, and this is checked by the caller of this method.
+            ((GhostFrame) obj).action(mOwner.getDatabase(), latch, this);
         }
-
-        final GhostFrame frame = (GhostFrame) obj;
-        mSharedLockOwnersObj = null;
-
-        final LocalDatabase db = mOwner.getDatabase();
-        if (db == null) {
-            // Database was closed.
-            return;
-        }
-
-        frame.action(db, latch, this);
     }
 
     /**
