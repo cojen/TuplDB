@@ -101,34 +101,29 @@ abstract class DataIn extends InputStream {
             mStart = start + len;
             mPos += len;
             return len;
-        } else {
+        } else if (avail > 0) {
             arraycopy(mBuffer, start, b, off, avail);
             mStart = 0;
             mEnd = 0;
-            off += avail;
-            len -= avail;
-
-            if (avail > 0) {
-                mPos += avail;
-                return avail;
-            } else if (len >= mBuffer.length) {
-                int amt = doRead(b, off, len);
-                if (amt > 0) {
-                    mPos += amt;
-                }
+            mPos += avail;
+            return avail;
+        } else if (len >= mBuffer.length) {
+            int amt = doRead(b, off, len);
+            if (amt > 0) {
+                mPos += amt;
+            }
+            return amt;
+        } else {
+            int amt = doRead(mBuffer, 0, mBuffer.length);
+            if (amt <= 0) {
                 return amt;
             } else {
-                int amt = doRead(mBuffer, 0, mBuffer.length);
-                if (amt <= 0) {
-                    return amt;
-                } else {
-                    int fill = Math.min(amt, len);
-                    arraycopy(mBuffer, 0, b, off, fill);
-                    mStart = fill;
-                    mEnd = amt;
-                    mPos += fill;
-                    return fill;
-                }
+                int fill = Math.min(amt, len);
+                arraycopy(mBuffer, 0, b, off, fill);
+                mStart = fill;
+                mEnd = amt;
+                mPos += fill;
+                return fill;
             }
         }
     }
