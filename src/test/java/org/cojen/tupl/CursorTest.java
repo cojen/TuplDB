@@ -271,16 +271,30 @@ public class CursorTest {
 
     @Test
     public void findGeLock() throws Exception {
+        findGeLock(false);
+    }
+
+    @Test
+    public void findNearbyGeLock() throws Exception {
+        findGeLock(true);
+    }
+
+    private void findGeLock(boolean nearby) throws Exception {
         View ix = openIndex("test");
-        ix.store(Transaction.BOGUS, key(0), value(0));
+        byte[] key = key(0);
+        ix.store(Transaction.BOGUS, key, value(0));
 
         // Lock key 0.
         Transaction txn = mDb.newTransaction();
-        ix.store(txn, key(0), value(0));
+        ix.store(txn, key, value(0));
 
         Cursor c = ix.newCursor(null);
         try {
-            c.findGe(key(0));
+            if (nearby) {
+                c.findNearbyGe(key);
+            } else {
+                c.findGe(key);
+            }
             fail();
         } catch (LockTimeoutException e) {
         }
@@ -288,11 +302,29 @@ public class CursorTest {
         txn.exit();
 
         // If timed out, cursor is at the desired key, but no value is available.
-        fastAssertArrayEquals(key(0), c.key());
+        fastAssertArrayEquals(key, c.key());
         assertTrue(c.value() == Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
+
+        txn.reset();
+
+        // No timeout.
+        if (nearby) {
+            assertEquals(LockResult.UNOWNED, c.findNearbyGe(key));
+        } else {
+            assertEquals(LockResult.UNOWNED, c.findGe(key));
+        }
+
+        // Not found.
+        c.link(txn);
+        if (nearby) {
+            assertEquals(LockResult.UNOWNED, c.findNearbyGe(key(1)));
+        } else {
+            assertEquals(LockResult.UNOWNED, c.findGe(key(1)));
+        }
+        txn.reset();
 
         c.reset();
     }
@@ -317,16 +349,30 @@ public class CursorTest {
 
     @Test
     public void findLeLock() throws Exception {
-        View ix = openIndex("test");
-        ix.store(Transaction.BOGUS, key(0), value(0));
+        findLeLock(false);
+    }
 
-        // Lock key 0.
+    @Test
+    public void findNearbyLeLock() throws Exception {
+        findLeLock(true);
+    }
+
+    private void findLeLock(boolean nearby) throws Exception {
+        View ix = openIndex("test");
+        byte[] key = key(1);
+        ix.store(Transaction.BOGUS, key, value(1));
+
+        // Lock key 1.
         Transaction txn = mDb.newTransaction();
-        ix.store(txn, key(0), value(0));
+        ix.store(txn, key, value(1));
 
         Cursor c = ix.newCursor(null);
         try {
-            c.findLe(key(0));
+            if (nearby) {
+                c.findNearbyLe(key);
+            } else {
+                c.findLe(key);
+            }
             fail();
         } catch (LockTimeoutException e) {
         }
@@ -334,11 +380,29 @@ public class CursorTest {
         txn.exit();
 
         // If timed out, cursor is at the desired key, but no value is available.
-        fastAssertArrayEquals(key(0), c.key());
+        fastAssertArrayEquals(key, c.key());
         assertTrue(c.value() == Cursor.NOT_LOADED);
 
         c.load();
-        fastAssertArrayEquals(value(0), c.value());
+        fastAssertArrayEquals(value(1), c.value());
+
+        txn.reset();
+
+        // No timeout.
+        if (nearby) {
+            assertEquals(LockResult.UNOWNED, c.findNearbyLe(key));
+        } else {
+            assertEquals(LockResult.UNOWNED, c.findLe(key));
+        }
+
+        // Not found.
+        c.link(txn);
+        if (nearby) {
+            assertEquals(LockResult.UNOWNED, c.findNearbyLe(key(0)));
+        } else {
+            assertEquals(LockResult.UNOWNED, c.findLe(key(0)));
+        }
+        txn.reset();
 
         c.reset();
     }
