@@ -446,12 +446,9 @@ public class TestUtils {
             synchronized (this) {
                 baseFile = mTempDatabases.remove(db);
             }
-            if (baseFile == null) {
-                throw new IllegalArgumentException();
-            }
             db.close();
 
-            if (deleteRedo) {
+            if (deleteRedo && baseFile != null) {
                 String baseName = baseFile.getName();
                 for (File f : baseFile.getParentFile().listFiles()) {
                     String name = f.getName();

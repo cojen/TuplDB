@@ -846,6 +846,10 @@ class Utils extends org.cojen.tupl.io.Utils {
      * @param min delete numbers greater than or equal to this
      */
     static void deleteNumberedFiles(File baseFile, String pattern, long min) throws IOException {
+        if (baseFile == null) {
+            return;
+        }
+
         File parentFile = baseFile.getParentFile();
         File[] files;
         if (parentFile == null || (files = parentFile.listFiles()) == null) {

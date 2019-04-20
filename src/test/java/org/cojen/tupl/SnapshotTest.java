@@ -21,6 +21,9 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.io.MappedPageArray;
+import org.cojen.tupl.io.OpenOption;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -350,6 +353,96 @@ public class SnapshotTest {
         } catch (IncompleteRestoreException e) {
             // Expected.
         }
+
+        deleteTempFiles(getClass());
+    }
+
+    @Test
+    public void restoreToMappedFile() throws Exception {
+        File base = newTempBaseFile(getClass());
+        File snapshotFile = newTempBaseFile(getClass());
+        File restoredBase = newTempBaseFile(getClass());
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .pageSize(4096)
+            .baseFile(base)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
+            .durabilityMode(DurabilityMode.NO_FLUSH);
+
+        decorate(config);
+
+        Database db = Database.open(config);
+        Index index = db.openIndex("test1");
+        final long indexId = index.getId();
+
+        for (int i=0; i<1_000_000; i++) {
+            String key = "key-" + i;
+            String value = "value-" + i;
+            index.store(null, key.getBytes(), value.getBytes());
+        }
+
+        db.checkpoint();
+
+        FileOutputStream out = new FileOutputStream(snapshotFile);
+
+        Snapshot s = db.beginSnapshot();
+        long expectedLength = s.length();
+        s.writeTo(out);
+        out.close();
+        s.close();
+        db.close();
+        db = null;
+        index = null;
+
+        assertEquals(expectedLength, snapshotFile.length());
+
+        MappedPageArray map = MappedPageArray.open
+            (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
+
+        // Note that no base file is provided. This means no redo logging.
+        DatabaseConfig restoredConfig = new DatabaseConfig()
+            .directPageAccess(false)
+            .pageSize(4096)
+            .dataPageArray(map)
+            .minCacheSize(10_000_000).maxCacheSize(100_000_000)
+            .durabilityMode(DurabilityMode.NO_FLUSH)
+            .checkpointRate(-1, null);
+
+        decorate(restoredConfig);
+        
+        Database restored = Database.restoreFromSnapshot
+            (restoredConfig, new FileInputStream(snapshotFile));
+
+        assertTrue(restored.verify(null));
+        Index restoredIx = restored.openIndex("test1");
+        assertEquals(indexId, restoredIx.getId());
+
+        for (int i=0; i<1_000_000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = restoredIx.load(null, key);
+            byte[] expectedValue = ("value-" + i).getBytes();
+            fastAssertArrayEquals(expectedValue, value);
+        }
+
+        restoredIx.store(null, "hello".getBytes(), "world".getBytes());
+        fastAssertArrayEquals("world".getBytes(), restoredIx.load(null, "hello".getBytes()));
+
+        restored = reopenTempDatabase(getClass(), restored, restoredConfig);
+        restoredIx = restored.openIndex("test1");
+        assertEquals(indexId, restoredIx.getId());
+
+        for (int i=0; i<1_000_000; i++) {
+            byte[] key = ("key-" + i).getBytes();
+            byte[] value = restoredIx.load(null, key);
+            byte[] expectedValue = ("value-" + i).getBytes();
+            fastAssertArrayEquals(expectedValue, value);
+        }
+
+        // No redo, so it's lost.
+        assertNull(restoredIx.load(null, "hello".getBytes()));
+
+        restored.close();
 
         deleteTempFiles(getClass());
     }
