@@ -1012,7 +1012,7 @@ final class _UndoLog implements _DatabaseAccess {
             break;
 
         case OP_UNDELETE_LK_FRAGMENTED:
-            if ((activeIndex = findIndex(activeIndex)) != null) {
+            {
                 byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
                 int keyLoc = calcUnsignedVarIntLength(key.length);
                 arraycopy(entry, keyLoc, key, 0, key.length);
@@ -1023,16 +1023,16 @@ final class _UndoLog implements _DatabaseAccess {
                 encodeLongBE(trashKey, 0, mTxnId);
                 arraycopy(entry, tidLoc, trashKey, 8, tidLen);
 
-                do {
+                while (true) {
                     try {
                         activeIndex = findIndex(activeIndex);
                         mDatabase.fragmentedTrash().remove((_Tree) activeIndex, key, trashKey);
                         break;
                     } catch (ClosedIndexException e) {
                         // User closed the shared index reference, so re-open it.
-                        activeIndex = findIndex(null);
+                        activeIndex = null;
                     }
-                } while (activeIndex != null);
+                }
             }
             break;
 

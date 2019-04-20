@@ -600,4 +600,26 @@ public class TransactionTest {
 
         txn.exit();
     }
+
+    @Test
+    public void undeleteFragmentedMissing() throws Exception {
+        // Test when an undo log refers to fragments for an index which is missing.
+
+        Random rnd = new Random(23895777);
+        byte[] bigValue = randomStr(rnd, 10000);
+        byte[] bigKey = randomStr(rnd, 10000);
+        byte[] smallKey = "key".getBytes();
+
+        Index ix = mDb.openIndex("test");
+        ix.store(null, smallKey, bigValue);
+        ix.store(null, bigKey, bigValue);
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, smallKey, null);
+        ix.store(txn, bigKey, null);
+
+        mDb.deleteIndex(ix);
+
+        txn.exit();
+    }
 }
