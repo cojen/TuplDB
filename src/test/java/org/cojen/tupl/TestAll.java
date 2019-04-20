@@ -70,6 +70,7 @@ public class TestAll {
             LockTest.class,
             DeadlockTest.class,
             RecoverTest.class,
+            RecoverCryptoTest.class,
             RecoverDirectTest.class,
             RecoverMappedTest.class,
             RecoverMappedDirectTest.class,
