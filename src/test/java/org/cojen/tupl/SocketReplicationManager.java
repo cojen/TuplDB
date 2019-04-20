@@ -18,6 +18,7 @@
 package org.cojen.tupl;
 
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -163,6 +164,10 @@ class SocketReplicationManager implements ReplicationManager {
         mWriter.mDisabled = true;
     }
 
+    public void suspendConfirmation(boolean b) {
+        mWriter.suspendConfirmation(b);
+    }
+
     public long writeControl(byte[] message) throws IOException {
         return mAccessor.control(message);
     }
@@ -186,9 +191,19 @@ class SocketReplicationManager implements ReplicationManager {
         private final OutputStream mOut;
         private boolean mNotified;
         private volatile boolean mDisabled;
+        private volatile boolean mSuspendConfirmation;
 
         StreamWriter(OutputStream out) throws IOException {
             mOut = out;
+        }
+
+        synchronized void suspendConfirmation(boolean b) {
+            if (b) {
+                mSuspendConfirmation = true;
+            } else {
+                mSuspendConfirmation = false;
+                notifyAll();
+            }
         }
 
         @Override
@@ -226,11 +241,24 @@ class SocketReplicationManager implements ReplicationManager {
 
         @Override
         public boolean confirm(long position, long timeoutNanos)
-            throws ConfirmationFailureException
+            throws ConfirmationFailureException, InterruptedIOException
         {
             if (mDisabled) {
                 throw new ConfirmationFailureException();
             }
+
+            try {
+                if (mSuspendConfirmation) {
+                    synchronized (this) {
+                        while (mSuspendConfirmation) {
+                            wait();
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+
             return true;
         }
 

@@ -1919,6 +1919,17 @@ public class LockTest {
     }
 
     @Test
+    public void attachment() throws Exception {
+        Locker locker = new Locker(mManager);
+        try {
+            locker.attach("hello");
+            fail();
+        } catch (UnsupportedOperationException e) {
+            // Expected.
+        }
+    }
+
+    @Test
     public void unlockCombine() throws Exception {
         Locker locker = new Locker(mManager);
 

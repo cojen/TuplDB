@@ -136,6 +136,43 @@ public class ReplicationTest {
     }
 
     @Test
+    public void lockRelease() throws Exception {
+        // Test that shared and upgradable locks are released while waiting for a transaction
+        // to fully commit.
+
+        Index lix = mLeader.openIndex("test");
+        for (int i=0; i<3; i++) {
+            lix.store(null, ("k" + i).getBytes(), ("v" + i).getBytes());
+        }
+
+        Transaction txn = mLeader.newTransaction();
+        lix.store(txn, "k0".getBytes(), "!".getBytes());
+        lix.load(txn, "k1".getBytes()); // upgradable lock
+        txn.lockMode(LockMode.REPEATABLE_READ);
+        lix.load(txn, "k2".getBytes()); // read lock
+        mLeaderMan.suspendConfirmation(true);
+        txn.commit();
+
+        // Can obtain exclusive locks only for the unmodified keys.
+        Transaction txn2 = mLeader.newTransaction();
+        try {
+            txn2.lockExclusive(lix.getId(), "k0".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+            // Expected.
+        }
+        txn2.lockExclusive(lix.getId(), "k1".getBytes());
+        txn2.lockExclusive(lix.getId(), "k2".getBytes());
+        txn2.exit();
+
+        mLeaderMan.suspendConfirmation(false);
+        fence();
+        Index rix = mReplica.openIndex("test");
+
+        fastAssertArrayEquals("!".getBytes(), rix.load(null, "k0".getBytes()));
+    }
+
+    @Test
     public void unsafe() throws Exception {
         // Replication with unsafe locking is supported, but if the application hasn't
         // performed it's own locking on the index entry, the outcome is undefined. Race
