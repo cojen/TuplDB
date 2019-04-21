@@ -866,45 +866,31 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNDELETE_FRAGMENTED:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
-                if ((activeIndex = findIndex(activeIndex)) != null) {
-                    byte[] key = decodeNodeKey(entry);
-
-                    do {
-                        TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
-                        try {
-                            cursor.deleteGhost(key);
-                            break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            activeIndex = findIndex(null);
-                        } catch (Throwable e) {
-                            throw closeOnFailure(cursor, e);
-                        }
-                    } while (activeIndex != null);
-                }
+                byte[] key = decodeNodeKey(entry);
+                activeIndex = doUndo(activeIndex, ix -> {
+                    TreeCursor cursor = new TreeCursor((Tree) ix, null);
+                    try {
+                        cursor.deleteGhost(key);
+                    } catch (Throwable e) {
+                        throw closeOnFailure(cursor, e);
+                    }
+                });
                 break;
 
             case OP_UNDELETE_LK:
             case OP_UNDELETE_LK_FRAGMENTED:
                 // Since transaction was committed, don't insert an entry
                 // to undo a delete, but instead delete the ghost.
-                if ((activeIndex = findIndex(activeIndex)) != null) {
-                    byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
-                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-
-                    do {
-                        TreeCursor cursor = new TreeCursor((Tree) activeIndex, null);
-                        try {
-                            cursor.deleteGhost(key);
-                            break;
-                        } catch (ClosedIndexException e) {
-                            // User closed the shared index reference, so re-open it.
-                            activeIndex = findIndex(null);
-                        } catch (Throwable e) {
-                            throw closeOnFailure(cursor, e);
-                        }
-                    } while (activeIndex != null);
-                }
+                key = new byte[decodeUnsignedVarInt(entry, 0)];
+                arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+                activeIndex = doUndo(activeIndex, ix -> {
+                    TreeCursor cursor = new TreeCursor((Tree) ix, null);
+                    try {
+                        cursor.deleteGhost(key);
+                    } catch (Throwable e) {
+                        throw closeOnFailure(cursor, e);
+                    }
+                });
                 break;
             }
         } while (mLength > 0);
@@ -934,107 +920,56 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_UNCREATE:
-            while ((activeIndex = findIndex(activeIndex)) != null) {
-                try {
-                    activeIndex.delete(Transaction.BOGUS, mActiveKey);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
-                }
-            }
+            activeIndex = doUndo(activeIndex, ix -> ix.delete(Transaction.BOGUS, mActiveKey));
             break;
 
         case OP_UNINSERT:
-            while ((activeIndex = findIndex(activeIndex)) != null) {
-                try {
-                    activeIndex.delete(Transaction.BOGUS, entry);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
-                }
-            }
+            activeIndex = doUndo(activeIndex, ix -> ix.delete(Transaction.BOGUS, entry));
             break;
 
         case OP_UNUPDATE:
         case OP_UNDELETE: {
-            if ((activeIndex = findIndex(activeIndex)) != null) {
-                byte[][] pair = decodeNodeKeyValuePair(entry);
-
-                do {
-                    try {
-                        activeIndex.store(Transaction.BOGUS, pair[0], pair[1]);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        activeIndex = findIndex(null);
-                    }
-                } while (activeIndex != null);
-            }
+            byte[][] pair = decodeNodeKeyValuePair(entry);
+            activeIndex = doUndo(activeIndex, ix -> ix.store(Transaction.BOGUS, pair[0], pair[1]));
             break;
         }
 
         case OP_UNUPDATE_LK:
-        case OP_UNDELETE_LK:
-            if ((activeIndex = findIndex(activeIndex)) != null) {
-                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
-                int keyLoc = calcUnsignedVarIntLength(key.length);
-                arraycopy(entry, keyLoc, key, 0, key.length);
+        case OP_UNDELETE_LK: {
+            byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+            int keyLoc = calcUnsignedVarIntLength(key.length);
+            arraycopy(entry, keyLoc, key, 0, key.length);
 
-                int valueLoc = keyLoc + key.length;
-                byte[] value = new byte[entry.length - valueLoc];
-                arraycopy(entry, valueLoc, value, 0, value.length);
+            int valueLoc = keyLoc + key.length;
+            byte[] value = new byte[entry.length - valueLoc];
+            arraycopy(entry, valueLoc, value, 0, value.length);
 
-                do {
-                    try {
-                        activeIndex.store(Transaction.BOGUS, key, value);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        activeIndex = findIndex(null);
-                    }
-                } while (activeIndex != null);
-            }
+            activeIndex = doUndo(activeIndex, ix -> ix.store(Transaction.BOGUS, key, value));
             break;
+        }
 
         case OP_UNDELETE_FRAGMENTED:
-            while (true) {
-                try {
-                    activeIndex = findIndex(activeIndex);
-                    mDatabase.fragmentedTrash().remove(mTxnId, (Tree) activeIndex, entry);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
-                }
-            }
+            activeIndex = doUndo(activeIndex, ix -> {
+                mDatabase.fragmentedTrash().remove(mTxnId, (Tree) ix, entry);
+            });
             break;
 
-        case OP_UNDELETE_LK_FRAGMENTED:
-            {
-                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
-                int keyLoc = calcUnsignedVarIntLength(key.length);
-                arraycopy(entry, keyLoc, key, 0, key.length);
+        case OP_UNDELETE_LK_FRAGMENTED: {
+            byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+            int keyLoc = calcUnsignedVarIntLength(key.length);
+            arraycopy(entry, keyLoc, key, 0, key.length);
 
-                int tidLoc = keyLoc + key.length;
-                int tidLen = entry.length - tidLoc;
-                byte[] trashKey = new byte[8 + tidLen];
-                encodeLongBE(trashKey, 0, mTxnId);
-                arraycopy(entry, tidLoc, trashKey, 8, tidLen);
+            int tidLoc = keyLoc + key.length;
+            int tidLen = entry.length - tidLoc;
+            byte[] trashKey = new byte[8 + tidLen];
+            encodeLongBE(trashKey, 0, mTxnId);
+            arraycopy(entry, tidLoc, trashKey, 8, tidLen);
 
-                while (true) {
-                    try {
-                        activeIndex = findIndex(activeIndex);
-                        mDatabase.fragmentedTrash().remove((Tree) activeIndex, key, trashKey);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        // User closed the shared index reference, so re-open it.
-                        activeIndex = null;
-                    }
-                }
-            }
+            activeIndex = doUndo(activeIndex, ix -> {
+                mDatabase.fragmentedTrash().remove((Tree) ix, key, trashKey);
+            });
             break;
+        }
 
         case OP_CUSTOM:
             TransactionHandler handler = mDatabase.mCustomTxnHandler;
@@ -1050,45 +985,33 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNEXTEND:
             long length = decodeUnsignedVarLong(entry, new IntegerRef.Value());
-            while ((activeIndex = findIndex(activeIndex)) != null) {
-                try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
+            activeIndex = doUndo(activeIndex, ix -> {
+                try (Cursor c = ix.newAccessor(Transaction.BOGUS, mActiveKey)) {
                     c.valueLength(length);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
                 }
-            }
+            });
             break;
 
         case OP_UNALLOC:
             IntegerRef offsetRef = new IntegerRef.Value();
             length = decodeUnsignedVarLong(entry, offsetRef);
             long pos = decodeUnsignedVarLong(entry, offsetRef);
-            while ((activeIndex = findIndex(activeIndex)) != null) {
-                try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
+            activeIndex = doUndo(activeIndex, ix -> {
+                try (Cursor c = ix.newAccessor(Transaction.BOGUS, mActiveKey)) {
                     c.valueClear(pos, length);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
                 }
-            }
+            });
             break;
 
         case OP_UNWRITE:
             offsetRef = new IntegerRef.Value();
             pos = decodeUnsignedVarLong(entry, offsetRef);
             int off = offsetRef.get();
-            while ((activeIndex = findIndex(activeIndex)) != null) {
-                try (Cursor c = activeIndex.newAccessor(Transaction.BOGUS, mActiveKey)) {
+            activeIndex = doUndo(activeIndex, ix -> {
+                try (Cursor c = ix.newAccessor(Transaction.BOGUS, mActiveKey)) {
                     c.valueWrite(pos, entry, off, entry.length - off);
-                    break;
-                } catch (ClosedIndexException e) {
-                    // User closed the shared index reference, so re-open it.
-                    activeIndex = null;
                 }
-            }
+            });
             break;
         }
 
@@ -1115,6 +1038,27 @@ final class UndoLog implements DatabaseAccess {
             p_delete(pentry);
         }
         return pair;
+    }
+
+    @FunctionalInterface
+    private static interface UndoTask {
+        void run(Index activeIndex) throws IOException;
+    }
+
+    /**
+     * @return null if index was deleted
+     */
+    private Index doUndo(Index activeIndex, UndoTask task) throws IOException {
+        while ((activeIndex = findIndex(activeIndex)) != null) {
+            try {
+                task.run(activeIndex);
+                break;
+            } catch (ClosedIndexException e) {
+                // User closed the shared index reference, so re-open it.
+                activeIndex = null;
+            }
+        }
+        return activeIndex;
     }
 
     /**
