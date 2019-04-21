@@ -368,18 +368,13 @@ class _Locker extends _LockOwner {
     }
 
     /**
-     * _Lock acquisition used by recovery.
+     * _Lock acquisition used by undo recovery.
      *
      * @param lock _Lock instance to insert, unless another already exists. The mIndexId,
      * mKey, and mHashCode fields must be set.
      */
-    final LockResult lockExclusive(_Lock lock, long nanosTimeout) throws LockFailureException {
-        LockResult result = mManager.getLockHT(lock.mHashCode)
-            .tryLockExclusive(this, lock, nanosTimeout);
-        if (result.isHeld()) {
-            return result;
-        }
-        throw failed(TYPE_EXCLUSIVE, result, nanosTimeout);
+    final void recoverLock(_Lock lock) {
+        mManager.getLockHT(lock.mHashCode).recoverLock(this, lock);
     }
 
     /**

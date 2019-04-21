@@ -750,8 +750,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         boolean trace = debugListener != null &&
                             Boolean.TRUE.equals(config.mDebugOpen.get("traceUndo"));
 
-                        master.recoverTransactions
-                            (debugListener, trace, txns, LockMode.UPGRADABLE_READ, 0);
+                        master.recoverTransactions(debugListener, trace, txns);
                     }
                 }
 

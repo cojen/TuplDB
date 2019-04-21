@@ -77,10 +77,8 @@ final class LocalTransaction extends Locker implements Transaction {
     }
 
     // Constructor for undo recovery.
-    LocalTransaction(LocalDatabase db, long txnId, LockMode lockMode, long timeoutNanos,
-                     int hasState)
-    {
-        this(db, null, DurabilityMode.NO_REDO, lockMode, timeoutNanos);
+    LocalTransaction(LocalDatabase db, long txnId, int hasState) {
+        this(db, null, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, 0);
         mTxnId = txnId;
         mHasState = hasState;
     }
@@ -726,16 +724,6 @@ final class LocalTransaction extends Locker implements Transaction {
         throws LockFailureException
     {
         return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
-    }
-
-    /**
-     * Lock acquisition used by recovery.
-     *
-     * @param lock Lock instance to insert, unless another already exists. The mIndexId,
-     * mKey, and mHashCode fields must be set.
-     */
-    final LockResult lockExclusive(Lock lock) throws LockFailureException {
-        return super.lockExclusive(lock, mLockTimeoutNanos);
     }
 
     @Override

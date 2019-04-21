@@ -1328,8 +1328,7 @@ final class UndoLog implements DatabaseAccess {
      * @param trace when true, log all recovered undo operations to debugListener
      */
     void recoverTransactions(EventListener debugListener, boolean trace,
-                             LHashTable.Obj<LocalTransaction> txns,
-                             LockMode lockMode, long timeoutNanos)
+                             LHashTable.Obj<LocalTransaction> txns)
         throws IOException
     {
         byte[] opRef = new byte[1];
@@ -1347,8 +1346,7 @@ final class UndoLog implements DatabaseAccess {
                      log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos, log.mActiveIndexId);
             }
 
-            LocalTransaction txn = log.recoverTransaction
-                (debugListener, trace, lockMode, timeoutNanos);
+            LocalTransaction txn = log.recoverTransaction(debugListener, trace);
 
             // Reload the UndoLog, since recoverTransaction consumes it all.
             txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
@@ -1361,8 +1359,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Method consumes entire log as a side-effect.
      */
-    private final LocalTransaction recoverTransaction(EventListener debugListener, boolean trace,
-                                                      LockMode lockMode, long timeoutNanos)
+    private final LocalTransaction recoverTransaction(EventListener debugListener, boolean trace)
         throws IOException
     {
         byte[] opRef = new byte[1];
@@ -1433,47 +1430,39 @@ final class UndoLog implements DatabaseAccess {
                 break;
 
             case OP_UNINSERT:
-                if (lockMode != LockMode.UNSAFE) {
-                    scope.addLock(mActiveIndexId, entry);
-                }
+                scope.addLock(mActiveIndexId, entry);
                 break;
 
             case OP_UNUPDATE:
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED:
-                if (lockMode != LockMode.UNSAFE) {
-                    byte[] key = decodeNodeKey(entry);
+                byte[] key = decodeNodeKey(entry);
 
-                    scope.addLock(mActiveIndexId, key)
-                        // Indicate that a ghost must be deleted when the transaction is
-                        // committed. When the frame is uninitialized, the Node.deleteGhost
-                        // method uses the slow path and searches for the entry.
-                        .setGhostFrame(new GhostFrame());
-                }
+                scope.addLock(mActiveIndexId, key)
+                    // Indicate that a ghost must be deleted when the transaction is
+                    // committed. When the frame is uninitialized, the Node.deleteGhost
+                    // method uses the slow path and searches for the entry.
+                    .setGhostFrame(new GhostFrame());
                 break;
 
             case OP_UNUPDATE_LK:
             case OP_UNDELETE_LK:
             case OP_UNDELETE_LK_FRAGMENTED:
-                if (lockMode != LockMode.UNSAFE) {
-                    byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
-                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+                key = new byte[decodeUnsignedVarInt(entry, 0)];
+                arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
 
-                    scope.addLock(mActiveIndexId, key)
-                        // Indicate that a ghost must be deleted when the transaction is
-                        // committed. When the frame is uninitialized, the Node.deleteGhost
-                        // method uses the slow path and searches for the entry.
-                        .setGhostFrame(new GhostFrame());
-                }
+                scope.addLock(mActiveIndexId, key)
+                    // Indicate that a ghost must be deleted when the transaction is
+                    // committed. When the frame is uninitialized, the Node.deleteGhost
+                    // method uses the slow path and searches for the entry.
+                    .setGhostFrame(new GhostFrame());
                 break;
 
             case OP_CUSTOM:
                 break;
 
             case OP_ACTIVE_KEY:
-                if (lockMode != LockMode.UNSAFE) {
-                    mActiveKey = entry;
-                }
+                mActiveKey = entry;
                 break;
 
             case OP_UNCREATE:
@@ -1489,8 +1478,7 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        LocalTransaction txn = new LocalTransaction
-            (mDatabase, mTxnId, lockMode, timeoutNanos, hasState);
+        LocalTransaction txn = new LocalTransaction(mDatabase, mTxnId, hasState);
 
         scope = scopes.pollFirst();
         if (acquireLocks) {
@@ -1668,7 +1656,7 @@ final class UndoLog implements DatabaseAccess {
             if (lock != null) while (true) {
                 // Copy next before the field is overwritten.
                 Lock next = lock.mLockManagerNext;
-                txn.lockExclusive(lock);
+                txn.recoverLock(lock);
                 if (next == null) {
                     break;
                 }

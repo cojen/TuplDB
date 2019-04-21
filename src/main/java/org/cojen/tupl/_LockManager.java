@@ -451,56 +451,41 @@ final class _LockManager {
         }
 
         /**
-         * @param newLock _Lock instance to insert, unless another already exists. The mIndexId,
+         * @param lock _Lock instance to insert, unless another already exists. The mIndexId,
          * mKey, and mHashCode fields must be set.
          */
-        LockResult tryLockExclusive(_Locker locker, _Lock newLock, long nanosTimeout) {
-            int hash = newLock.mHashCode;
+        void recoverLock(_Locker locker, _Lock lock) {
+            int hash = lock.mHashCode;
 
-            _Lock lock;
-            LockResult result;
-            lockEx: {
-                acquireExclusive();
-                try {
-                    _Lock[] entries = mEntries;
-                    int index = hash & (entries.length - 1);
-                    for (lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
-                        if (lock.matches(newLock.mIndexId, newLock.mKey, hash)) {
-                            result = lock.tryLockExclusive(this, locker, nanosTimeout);
-                            break lockEx;
-                        }
+            acquireExclusive();
+            try {
+                _Lock[] entries = mEntries;
+                int index = hash & (entries.length - 1);
+                for (_Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
+                    if (e.matches(lock.mIndexId, lock.mKey, hash)) {
+                        return;
                     }
-
-                    if (mSize >= mGrowThreshold) {
-                        entries = rehash(entries);
-                        index = hash & (entries.length - 1);
-                    }
-
-                    lock = newLock;
-                    lock.mLockManagerNext = entries[index];
-                    lock.mLockCount = ~0;
-                    lock.mOwner = locker;
-
-                    // Fence so that the isAvailable method doesn't observe a broken chain.
-                    VarHandle.storeStoreFence();
-                    entries[index] = lock;
-
-                    mSize++;
-                } finally {
-                    releaseExclusive();
                 }
 
-                locker.push(lock);
-                return LockResult.ACQUIRED;
+                if (mSize >= mGrowThreshold) {
+                    entries = rehash(entries);
+                    index = hash & (entries.length - 1);
+                }
+
+                lock.mLockManagerNext = entries[index];
+                lock.mLockCount = ~0;
+                lock.mOwner = locker;
+
+                // Fence so that the isAvailable method doesn't observe a broken chain.
+                VarHandle.storeStoreFence();
+                entries[index] = lock;
+
+                mSize++;
+            } finally {
+                releaseExclusive();
             }
 
-            if (result == ACQUIRED) {
-                locker.push(lock);
-            } else if (result == UPGRADED) {
-                locker.pushUpgrade(lock);
-            }
-
-            return result;
+            locker.push(lock);
         }
 
         /**
