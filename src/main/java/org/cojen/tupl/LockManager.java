@@ -525,6 +525,7 @@ final class LockManager {
                             if (e.mLockCount == ~0) {
                                 // Transfer exclusive lock.
                                 e.mOwner = locker;
+                                prev = e;
                             } else {
                                 // Release and remove lock.
                                 e.mLockCount = 0;
@@ -538,7 +539,7 @@ final class LockManager {
                                 mSize--;
                             }
 
-                            e.setSharedLockOwner((LockOwner) null);
+                            e.setSharedLockOwner(null);
 
                             // Interrupt all waiters.
 
@@ -554,7 +555,6 @@ final class LockManager {
                                 e.mQueueSX = null;
                             }
 
-                            prev = e;
                             e = next;
                         }
                     }

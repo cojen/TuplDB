@@ -388,4 +388,34 @@ public class CloseTest {
         } catch (ClosedIndexException e) {
         }
     }
+
+    @Test
+    public void releaseLocks() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        for (int i=0; i<1000; i++) {
+            ix.store(txn, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+            ix.load(txn, ("lock-" + i).getBytes());
+        }
+
+        mDb.close();
+
+        for (int i=0; i<1000; i++) {
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), ("hello-" + i).getBytes()));
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), ("lock-" + i).getBytes()));
+        }
+
+        // Shared/upgradable locks can still be acquired.
+        for (int i=0; i<1000; i++) {
+            assertEquals(LockResult.ACQUIRED,
+                         txn.tryLockExclusive(ix.getId(), ("lock-" + i).getBytes(), 1000));
+        }
+
+        // Cannot acquire exclusive locks because they're held by a hidden locker.
+        for (int i=0; i<1000; i++) {
+            assertEquals(LockResult.TIMED_OUT_LOCK,
+                         txn.tryLockExclusive(ix.getId(), ("hello-" + i).getBytes(), 0));
+        }
+    }
 }
