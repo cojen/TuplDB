@@ -193,7 +193,7 @@ class SocketReplicationManager implements ReplicationManager {
         private volatile boolean mDisabled;
         private volatile boolean mSuspendConfirmation;
 
-        StreamWriter(OutputStream out) throws IOException {
+        StreamWriter(OutputStream out) {
             mOut = out;
         }
 
@@ -229,10 +229,11 @@ class SocketReplicationManager implements ReplicationManager {
         @Override
         public int write(byte[] b, int off, int len, long commitPos) {
             try {
-                if (!mDisabled) {
-                    mOut.write(b, off, len);
-                    mPos += len;
+                if (mDisabled) {
+                    return -1;
                 }
+                mOut.write(b, off, len);
+                mPos += len;
                 return 0;
             } catch (IOException e) {
                 return -1;
@@ -252,6 +253,9 @@ class SocketReplicationManager implements ReplicationManager {
                     synchronized (this) {
                         while (mSuspendConfirmation) {
                             wait();
+                        }
+                        if (mDisabled) {
+                            throw new ConfirmationFailureException();
                         }
                     }
                 }

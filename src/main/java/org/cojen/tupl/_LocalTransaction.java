@@ -607,14 +607,14 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
     @Override
     public final void reset(Throwable cause) {
-        if (cause == null) {
-            try {
+        try {
+            if (cause == null) {
                 reset();
-            } catch (Throwable e) {
-                // Ignore. Transaction is borked as a side-effect.
+            } else {
+                borked(cause, true, false); // rollback = true, rethrow = false
             }
-        } else {
-            borked(cause, true, false); // rollback = true, rethrow = false
+        } catch (Throwable e) {
+            // Ignore. Transaction is borked as a side-effect.
         }
     }
 
@@ -707,12 +707,6 @@ final class _LocalTransaction extends _Locker implements Transaction {
     @Override
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
         return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
-    }
-
-    final LockResult lockUpgradable(long indexId, byte[] key, int hash)
-        throws LockFailureException
-    {
-        return super.lockUpgradable(indexId, key, hash, mLockTimeoutNanos);
     }
 
     @Override

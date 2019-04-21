@@ -23,8 +23,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.io.CauseCloseable;
-
 import static org.cojen.tupl.PageOps.*;
 import static org.cojen.tupl.Utils.*;
 
@@ -35,7 +33,7 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor {
+class TreeCursor extends AbstractValueAccessor implements Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -4219,7 +4217,7 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
      * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
-    private void doValueModify(int op, long pos, byte[] buf, int off, long len)
+    final void doValueModify(int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
         if (mTxn == null) {
@@ -4383,23 +4381,6 @@ class TreeCursor extends AbstractValueAccessor implements CauseCloseable, Cursor
         mFrame = frame;
         reset();
         return rethrow(e);
-    }
-
-    @Override
-    public final void close(Throwable cause) {
-        try {
-            if (cause instanceof DatabaseException) {
-                DatabaseException de = (DatabaseException) cause;
-                if (de.isRecoverable()) {
-                    return;
-                }
-            }
-            throw closeOnFailure(mTree.mDatabase, cause);
-        } catch (IOException e) {
-            // Ignore.
-        } finally {
-            reset();
-        }
     }
 
     /**

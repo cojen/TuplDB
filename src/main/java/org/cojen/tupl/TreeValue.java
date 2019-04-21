@@ -78,12 +78,14 @@ final class TreeValue {
             len = 1 + (((vHeader & 0x0f) << 16)
                        | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
         } else {
-            // ghost
+            // Ghost. This case isn't expected, because TreeCursor.compact doesn't
+            // call this method for non-fragmented values.
             return -1;
         }
 
         if ((vHeader & Node.ENTRY_FRAGMENTED) == 0) {
-            // Not fragmented.
+            // Not fragmented. This case isn't expected, because TreeCursor.compact doesn't
+            // call this method for non-fragmented values.
             return pos >= len ? -1 : 0;
         }
 
@@ -232,6 +234,8 @@ final class TreeValue {
                         }
 
                         if (b == TOUCH_VALUE) {
+                            // This case isn't expected, because TreeCursor.compact doesn't
+                            // call this method for non-fragmented values.
                             return 0;
                         }
 
@@ -326,6 +330,8 @@ final class TreeValue {
 
                 case OP_WRITE:
                     if (b == TOUCH_VALUE) {
+                        // This case isn't expected, because TreeCursor.compact doesn't
+                        // call this method for non-fragmented values.
                         return 0;
                     }
 
@@ -543,6 +549,15 @@ final class TreeValue {
                         // Fallthrough to the next case (OP_WRITE) to extend the length.
                         break clearOrTruncate;
                     }
+
+                    if (txn != null) {
+                        // When truncating a value which might be sparse at the end, ensure that
+                        // the length is fully restored. In all other cases, this is redundant
+                        // because the length is restored by writing back the old content. Note
+                        // that the "unextend" operation is used here to actually untruncate.
+                        txn.pushUnextend(cursor.mTree.mId, cursor.mKey, fLen);
+                    }
+
                     bLen = fLen - pos;
                 }
 
@@ -824,6 +839,8 @@ final class TreeValue {
                 } else {
                     if (b == TOUCH_VALUE) {
                         // Don't extend the value.
+                        // This case isn't expected, because TreeCursor.compact holds the node
+                        // latch and doesn't touch beyond the end of the value.
                         return 0;
                     }
 
@@ -984,29 +1001,27 @@ final class TreeValue {
                     } else {
                         if (amt > 0 || b == TOUCH_VALUE) {
                             // Obtain node from cache, or read it only for partial write.
+                            final Node fNode;
                             if (txn == null) {
-                                final Node fNode = db
-                                    .nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
-                                try {
-                                    if (db.markFragmentDirty(fNode)) {
-                                        p_int48PutLE(page, loc, fNode.id());
-                                    }
-                                    p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
-                                } finally {
-                                    fNode.releaseExclusive();
-                                }
+                                fNode = db.nodeMapLoadFragmentExclusive(fNodeId, amt < pageSize);
                             } else {
-                                final Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
+                                fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
                                 try {
                                     txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                     pos, fNode.mPage, fNodeOff, amt);
-                                    if (db.markFragmentDirty(fNode)) {
-                                        p_int48PutLE(page, loc, fNode.id());
-                                    }
-                                    p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
-                                } finally {
+                                } catch (Throwable e) {
                                     fNode.releaseExclusive();
+                                    throw e;
                                 }
+                            }
+
+                            try {
+                                if (db.markFragmentDirty(fNode)) {
+                                    p_int48PutLE(page, loc, fNode.id());
+                                }
+                                p_copyFromArray(b, bOff, fNode.mPage, fNodeOff, amt);
+                            } finally {
+                                fNode.releaseExclusive();
                             }
                         }
                     }
@@ -1806,6 +1821,7 @@ final class TreeValue {
             if (fNode == null) {
                 if (dstNode != null) {
                     p_clear(dstNode.mPage, 0, amount);
+                    dstNode.releaseExclusive();
                 }
             } else {
                 /*P*/ byte[] fPage = fNode.mPage;

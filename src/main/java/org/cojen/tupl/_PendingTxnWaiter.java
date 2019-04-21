@@ -17,8 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.IOException;
-
 /**
  * Used by {@link _ReplRedoWriter} to queue up transactions which commit asynchronously.
  *
@@ -167,7 +165,7 @@ final class _PendingTxnWaiter extends Thread {
             do {
                 try {
                     behind.commit(db);
-                } catch (IOException e) {
+                } catch (Exception e) {
                     uncaught(db, e);
                 }
             } while ((behind = behind.mPrev) != null);
@@ -182,7 +180,7 @@ final class _PendingTxnWaiter extends Thread {
                 } else {
                     pending.rollback(db);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 uncaught(db, e);
             }
             pending = pending.mPrev;
@@ -190,6 +188,9 @@ final class _PendingTxnWaiter extends Thread {
     }
 
     private static void uncaught(_LocalDatabase db, Throwable e) {
+        if (db.isClosed()) {
+            return;
+        }
         EventListener listener = db.eventListener();
         if (listener != null) {
             listener.notify(EventType.REPLICATION_PANIC,

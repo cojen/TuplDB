@@ -145,12 +145,7 @@ public class MergeViewTest {
         basics(this::buildSymmetricDifferenceAlt1);
     }
 
-    @FunctionalInterface
-    static interface Builder {
-        public void run() throws Exception;
-    }
-
-    private void basics(Builder builder) throws Exception {
+    private void basics(Callback builder) throws Exception {
         // First only.
         storeFirst("a-key", "a-value");
         storeFirst("b-key", "b-value");

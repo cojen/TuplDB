@@ -1024,6 +1024,110 @@ public class ReplicationTest {
         fastAssertArrayEquals(value, replica.load(null, key));
     }
 
+    @Test
+    public void scopeRollbackLeadershipLost() throws Exception {
+        Index ix = mLeader.openIndex("test");
+        Transaction txn = mLeader.newTransaction();
+        ix.store(txn, "k1".getBytes(), "v1".getBytes());
+        txn.enter();
+        ix.store(txn, "k2".getBytes(), "v2".getBytes());
+        txn.flush();
+
+        fence();
+
+        mLeaderMan.disableWrites();
+
+        // Force early internal detection of unmodifiable state. No exception is thrown because
+        // of NO_FLUSH mode.
+        ix.store(null, "x".getBytes(), null);
+
+        // Rollback the scopes, which will attempt to write to the redo log.
+        txn.exit();
+        txn.exit();
+
+        assertNull(ix.load(null, "k1".getBytes()));
+        assertNull(ix.load(null, "k2".getBytes()));
+
+        Index rix = mReplica.openIndex("test");
+
+        // Locks cannot be obtained because without a leader, lingering transactions cannot be
+        // rolled back in the log.
+
+        try {
+            rix.load(null, "k1".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        try {
+            rix.load(null, "k2".getBytes());
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+    }
+
+    @Test
+    public void cursorAutoCommit() throws Exception {
+        Index ix = mLeader.openIndex("test");
+        Cursor c = ix.newCursor(null);
+        c.find("hello".getBytes());
+        c.commit("world".getBytes());
+
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+        fastAssertArrayEquals("world".getBytes(), rix.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void storeCommitNoUndo() throws Exception {
+        Index ix = mLeader.openIndex("test");
+        fence();
+        Index rix = mReplica.openIndex("test");
+
+        rix.store(Transaction.BOGUS, "hello".getBytes(), "world".getBytes());
+
+        Transaction txn = mLeader.newTransaction();
+        Cursor c = ix.newCursor(txn);
+        c.find("hello".getBytes());
+        // Commit of a delete which does nothing generates no undo log entry. A redo log entry
+        // is always generated, however.
+        c.commit(null);
+
+        fence();
+
+        // Verify that redo log entry was generated.
+        assertNull(rix.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void assignTransactionId() throws Exception {
+        // Simple test which improves code coverage. Storing against a registered cursor should
+        // assign a transaction id if necessary, but this only happens when storing null
+        // against a non-existent entry. Otherwise, writing to the undo log would create the
+        // transaction id first.
+
+        Index ix = mLeader.openIndex("test");
+        fence();
+        Index rix = mReplica.openIndex("test");
+
+        rix.store(Transaction.BOGUS, "hello".getBytes(), "world".getBytes());
+
+        Transaction txn = mLeader.newTransaction();
+        Cursor c = ix.newCursor(txn);
+        c.find("hello".getBytes());
+        c.register();
+        // Store of a delete which does nothing generates no undo log entry. A redo log entry
+        // is always generated, however.
+        c.store(null);
+        txn.commit();
+
+        fence();
+
+        // Verify that redo log entry was generated.
+        assertNull(rix.load(null, "hello".getBytes()));
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

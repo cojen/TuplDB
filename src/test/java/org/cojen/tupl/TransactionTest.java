@@ -622,4 +622,55 @@ public class TransactionTest {
 
         txn.exit();
     }
+
+    @Test
+    public void miscChecks() throws Exception {
+        Transaction txn = mDb.newTransaction();
+
+        try {
+            txn.lockMode(null);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        txn.lockTimeout(0, null);
+        txn.lockTimeout(-1, null);
+        try {
+            txn.lockTimeout(1, null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+
+        txn.lockTimeout(10, TimeUnit.SECONDS);
+        assertEquals(10_000, txn.lockTimeout(TimeUnit.MILLISECONDS));
+
+        try {
+            txn.durabilityMode(null);
+            fail();
+        } catch (IllegalArgumentException e) {
+        }
+
+        Exception ex = new Exception();
+        txn.reset(ex);
+        try {
+            txn.check();
+        } catch (InvalidTransactionException e) {
+            assertEquals(ex, e.getCause());
+        }
+
+        txn = mDb.newTransaction();
+
+        try {
+            txn.customRedo("hello".getBytes(), 0, null);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            txn.customUndo("hello".getBytes());
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+    }
 }

@@ -108,9 +108,21 @@ class NonReplicationManager implements ReplicationManager {
         notifyAll();
     }
 
+    /**
+     * @param only suspend for given thread
+     */
+    void suspendConfirmation(Thread t) {
+        NonWriter writer;
+        synchronized (this) {
+            writer = mWriter;
+        }
+        writer.suspendConfirmation(t);
+    }
+
     private class NonWriter implements Writer {
         private final List<Runnable> mCallbacks = new ArrayList<>();
 
+        private Thread mSuspend;
         private boolean mClosed;
         private long mPosition;
 
@@ -148,13 +160,15 @@ class NonReplicationManager implements ReplicationManager {
         @Override
         public synchronized boolean confirm(long position, long timeoutNanos) {
             while (true) {
-                if (mPosition >= position) {
-                    return true;
-                }
-                if (mClosed) {
-                    return false;
-                }
                 try {
+                    if (mSuspend != Thread.currentThread()) {
+                        if (mPosition >= position) {
+                            return true;
+                        }
+                        if (mClosed) {
+                            return false;
+                        }
+                    }
                     wait();
                 } catch (InterruptedException e) {
                 }
@@ -172,11 +186,19 @@ class NonReplicationManager implements ReplicationManager {
             return mPosition;
         }
 
+        synchronized void suspendConfirmation(Thread t) {
+            mSuspend = t;
+            if (t == null) {
+                notifyAll();
+            }
+        }
+
         synchronized void close() {
             mClosed = true;
             for (Runnable r : mCallbacks) {
                 r.run();
             }
+            mSuspend = null;
             notifyAll();
         }
     }

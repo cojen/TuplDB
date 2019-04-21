@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.io.IOException;
+
 import org.junit.*;
 
 /**
@@ -32,5 +34,12 @@ public class ValueAccessorDirectTest extends ValueAccessorTest {
     @Override
     protected DatabaseConfig decorate(DatabaseConfig config) {
         return config.directPageAccess(true);
+    }
+
+    @Override
+    protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
+        throws IOException
+    {
+        ((_TreeCursor) c).doValueModify(TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
     }
 }

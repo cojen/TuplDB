@@ -176,16 +176,6 @@ final class _LockManager {
      *
      * @param frame must be bound to the ghost position
      */
-    final void ghosted(long indexId, byte[] key, _GhostFrame frame) {
-        ghosted(indexId, key, hash(indexId, key), frame);
-    }
-
-   /**
-     * Mark a lock as referencing a ghosted entry. Caller must ensure that lock
-     * is already exclusively held.
-     *
-     * @param frame must be bound to the ghost position
-     */
     final void ghosted(long indexId, byte[] key, int hash, _GhostFrame frame) {
         LockHT ht = getLockHT(hash);
         ht.acquireExclusive();

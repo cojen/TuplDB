@@ -217,6 +217,42 @@ public class CustomLogTest {
         assertArrayEquals("value".getBytes(), ix.load(null, "key".getBytes()));
     }
 
+    @Test
+    public void recover3() throws Exception {
+        // Like recover2, except the transaction rolls back.
+
+        byte[] message = "hello".getBytes();
+
+        Transaction txn = mDb.newTransaction();
+
+        Index ix = mDb.openIndex("test");
+        ix.store(txn, "key".getBytes(), "value".getBytes());
+
+        txn.customUndo(message);
+        txn.customRedo(message, 0, null);
+
+        mDb.checkpoint();
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+
+        assertEquals(0, mHandler.mRedoMessages.size());
+
+        ix = mDb.openIndex("test");
+        assertNull(ix.load(null, "key".getBytes()));
+    }
+
+    @Test
+    public void scopeRedo() throws Exception {
+        Transaction txn = mDb.newTransaction();
+        txn.enter();
+        byte[] message = "hello".getBytes();
+        txn.customRedo(message, 0, null);
+        txn.commitAll();
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        assertEquals(1, mHandler.mRedoMessages.size());
+        assertArrayEquals(message, mHandler.mRedoMessages.get(0));
+    }
+
     class Handler implements TransactionHandler {
         List<byte[]> mRedoMessages = new ArrayList<>();
         long mRedoIndexId;

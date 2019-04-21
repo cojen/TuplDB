@@ -133,16 +133,56 @@ public class CompactTest {
     }
 
     @Test
-    public void largeValues() throws Exception {
+    public void largeValues1() throws Exception {
+        largeValues(512, 1000, 4000, 4000);
+    }
+
+    @Test
+    public void largeValues2() throws Exception {
+        largeValues(16384, 100, 10000, 50000);
+    }
+
+    @Test
+    public void largeValues3() throws Exception {
+        largeValues(65536, 100, 70000, 90000);
+    }
+
+    @Test
+    public void largeValues4() throws Exception {
+        largeValues(512, 100, 30000, 50000);
+    }
+
+    @Test
+    public void largeValues5() throws Exception {
+        // Include a large sparse value too.
+        largeValues(512, 100, 30000, 50000, () -> {
+            Index ix = openTestIndex();
+            ValueAccessor accessor = ix.newAccessor(null, "sparse".getBytes());
+            accessor.valueLength(100_000);
+            accessor.close();
+        });
+    }
+
+    private void largeValues(final int pageSize, final int count,
+                             final int min, final int max)
+        throws Exception
+    {
+        largeValues(pageSize, count, min, max, null);
+    }
+
+    private void largeValues(final int pageSize, final int count,
+                             final int min, final int max,
+                             final Callback prepare)
+        throws Exception
+    {
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
-                                       .pageSize(512)
+                                       .pageSize(pageSize)
                                        .minCacheSize(10_000_000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
         final Index ix = openTestIndex();
         final int seed = 1234;
-        final int count = 1000;
 
         Random rnd1 = new Random(seed);
         Random rnd2 = new Random(seed);
@@ -150,7 +190,7 @@ public class CompactTest {
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
             byte[] key = ("key" + k).getBytes();
-            byte[] value = randomStr(rnd2, 4000);
+            byte[] value = randomStr(rnd2, min, max);
             ix.store(Transaction.BOGUS, key, value);
         }
 
@@ -161,6 +201,10 @@ public class CompactTest {
                 byte[] key = ("key" + k).getBytes();
                 ix.delete(Transaction.BOGUS, key);
             }
+        }
+
+        if (prepare != null) {
+            prepare.run();
         }
 
         Database.Stats stats1 = mDb.stats();
@@ -178,7 +222,7 @@ public class CompactTest {
         rnd2 = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
-            byte[] v = randomStr(rnd2, 4000);
+            byte[] v = randomStr(rnd2, min, max);
             if (i % 2 == 0) {
                 byte[] key = ("key" + k).getBytes();
                 byte[] value = ix.load(Transaction.BOGUS, key);
@@ -202,7 +246,7 @@ public class CompactTest {
         rnd2 = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
-            byte[] v = randomStr(rnd2, 4000);
+            byte[] v = randomStr(rnd2, min, max);
             if (i % 2 == 0) {
                 byte[] key = ("key" + k).getBytes();
                 byte[] value = ix.load(Transaction.BOGUS, key);

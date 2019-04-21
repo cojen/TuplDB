@@ -270,4 +270,41 @@ public class LargeKeyTest {
             }
         }
     }
+
+    @Test
+    public void recovery() throws Exception {
+        DatabaseConfig config = new DatabaseConfig().checkpointRate(-1, null);
+        config = decorate(config);
+        Database db = newTempDatabase(getClass(), config);
+        Index ix = db.openIndex("test");
+
+        Random rnd = new Random(18732);
+
+        byte[] key1 = randomStr(rnd, 10000);
+        byte[] val1 = randomStr(rnd, 100);
+
+        byte[] key2 = randomStr(rnd, 10000);
+        byte[] val2 = randomStr(rnd, 100);
+
+        byte[] key3 = randomStr(rnd, 10000);
+        byte[] val3 = randomStr(rnd, 10000);
+
+        ix.store(null, key1, val1);
+        ix.store(null, key2, val2);
+        ix.store(null, key3, val3);
+
+        Transaction txn = db.newTransaction();
+        ix.store(txn, key1, val2); // update
+        ix.store(txn, key2, null); // delete
+        ix.store(txn, key3, null); // delete large value
+        db.checkpoint();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+
+        // Everything rolled back.
+        fastAssertArrayEquals(val1, ix.load(null, key1));
+        fastAssertArrayEquals(val2, ix.load(null, key2));
+        fastAssertArrayEquals(val3, ix.load(null, key3));
+    }
 }

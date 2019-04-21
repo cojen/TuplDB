@@ -197,26 +197,22 @@ final class UndoLog implements DatabaseAccess {
                 node.releaseExclusive();
                 throw e;
             }
-        } else if (mLength == 0) {
-            return 0;
         } else {
-            mNode = node = allocUnevictableNode(0);
-
-            byte[] buffer = mBuffer;
-            if (buffer == null) {
-                // Set pointer to top entry (none at the moment).
-                mNodeTopPos = pageSize(node.mPage);
-            } else {
-                int pos = mBufferPos;
-                int size = buffer.length - pos;
-                /*P*/ byte[] page = node.mPage;
-                int newPos = pageSize(page) - size;
-                p_copyFromArray(buffer, pos, page, newPos, size);
-                // Set pointer to top entry.
-                mNodeTopPos = newPos;
-                mBuffer = null;
-                mBufferPos = 0;
+            if (mLength == 0) {
+                return 0;
             }
+            // Note: Buffer cannot be null if length is non-zero.
+            byte[] buffer = mBuffer;
+            int pos = mBufferPos;
+            int size = buffer.length - pos;
+            mNode = node = allocUnevictableNode(0);
+            /*P*/ byte[] page = node.mPage;
+            int newPos = pageSize(page) - size;
+            p_copyFromArray(buffer, pos, page, newPos, size);
+            // Set pointer to top entry.
+            mNodeTopPos = newPos;
+            mBuffer = null;
+            mBufferPos = 0;
         }
 
         node.undoTop(mNodeTopPos);
@@ -248,6 +244,9 @@ final class UndoLog implements DatabaseAccess {
      * exclusive db commit lock.
      */
     void delete() {
+        mLength = 0;
+        mBufferPos = 0;
+        mBuffer = null;
         Node node = mNode;
         if (node != null) {
             mNode = null;
@@ -297,29 +296,27 @@ final class UndoLog implements DatabaseAccess {
      *
      * @param op OP_UNUPDATE, OP_UNDELETE or OP_UNDELETE_FRAGMENTED
      */
-    final void pushNodeEncoded(final long indexId, byte op, long payloadPtr, int off, int len)
-        throws IOException
-    {
-        setActiveIndexId(indexId);
-
-        byte[] payload;
-        if ((DirectPageOps.p_byteGet(payloadPtr, off) & 0xc0) == 0xc0) {
-            // Key is fragmented and cannot be stored as-is, so expand it fully and switch to
-            // using the "LK" op variant.
-            /*P*/ // [
-            throw new AssertionError(); // shouldn't be using direct page access
-            /*P*/ // |
-            /*P*/ // payload = Node.expandKeyAtLoc
-            /*P*/ //     (this, payloadPtr, off, len, op != OP_UNDELETE_FRAGMENTED);
-            /*P*/ // op += LK_ADJUST;
-            /*P*/ // ]
-        } else {
-            payload = new byte[len];
-            DirectPageOps.p_copyToArray(payloadPtr, off, payload, 0, len);
-        }
-
-        doPush(op, payload);
-    }
+    /*P*/ // [|
+    /*P*/ // final void pushNodeEncoded(long indexId, byte op, long payloadPtr, int off, int len)
+    /*P*/ //     throws IOException
+    /*P*/ // {
+    /*P*/ //     setActiveIndexId(indexId);
+    /*P*/ // 
+    /*P*/ //     byte[] payload;
+    /*P*/ //     if ((DirectPageOps.p_byteGet(payloadPtr, off) & 0xc0) == 0xc0) {
+    /*P*/ //         // Key is fragmented and cannot be stored as-is, so expand it fully and
+    /*P*/ //         // switch to using the "LK" op variant.
+    /*P*/ //         payload = _Node.expandKeyAtLoc
+    /*P*/ //             (this, payloadPtr, off, len, op != OP_UNDELETE_FRAGMENTED);
+    /*P*/ //         op += LK_ADJUST;
+    /*P*/ //     } else {
+    /*P*/ //         payload = new byte[len];
+    /*P*/ //         DirectPageOps.p_copyToArray(payloadPtr, off, payload, 0, len);
+    /*P*/ //     }
+    /*P*/ // 
+    /*P*/ //     doPush(op, payload);
+    /*P*/ // }
+    /*P*/ // ]
 
     private void setActiveIndexId(long indexId) throws IOException {
         long activeIndexId = mActiveIndexId;
@@ -454,13 +451,15 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Caller must hold db commit lock.
      */
-    void pushUnwrite(long indexId, byte[] key, long pos, long ptr, int off, int len)
-        throws IOException
-    {
-        byte[] b = new byte[len];
-        DirectPageOps.p_copyToArray(ptr, off, b, 0, len);
-        pushUnwrite(indexId, key, pos, b, 0, len);
-    }
+    /*P*/ // [|
+    /*P*/ // void pushUnwrite(long indexId, byte[] key, long pos, long ptr, int off, int len)
+    /*P*/ //     throws IOException
+    /*P*/ // {
+    /*P*/ //     byte[] b = new byte[len];
+    /*P*/ //     DirectPageOps.p_copyToArray(ptr, off, b, 0, len);
+    /*P*/ //     pushUnwrite(indexId, key, pos, b, 0, len);
+    /*P*/ // }
+    /*P*/ // ]
 
     /**
      * @return true if active index and key already match
@@ -811,6 +810,7 @@ final class UndoLog implements DatabaseAccess {
         do {
             byte[] entry = pop(opRef, true);
             if (entry == null) {
+                // Undo log would have to be corrupt for this case to occur.
                 break;
             }
             byte op = opRef[0];
@@ -823,13 +823,10 @@ final class UndoLog implements DatabaseAccess {
      * to be called during recovery.
      */
     final void deleteGhosts() throws IOException {
-        if (mLength <= 0) {
-            return;
-        }
-
         byte[] opRef = new byte[1];
         Index activeIndex = null;
-        do {
+
+        while (true) {
             byte[] entry = pop(opRef, true);
             if (entry == null) {
                 break;
@@ -893,7 +890,7 @@ final class UndoLog implements DatabaseAccess {
                 });
                 break;
             }
-        } while (mLength > 0);
+        }
     }
 
     /**
@@ -1106,13 +1103,8 @@ final class UndoLog implements DatabaseAccess {
         Node node = mNode;
         if (node == null) {
             byte[] buffer = mBuffer;
-            if (buffer == null) {
-                opRef[0] = 0;
-                mLength = 0;
-                return null;
-            }
-            int pos = mBufferPos;
-            if (pos >= buffer.length) {
+            int pos;
+            if (buffer == null || (pos = mBufferPos) >= buffer.length) {
                 opRef[0] = 0;
                 mLength = 0;
                 return null;
@@ -1379,6 +1371,7 @@ final class UndoLog implements DatabaseAccess {
         loop: while (mLength > 0) {
             byte[] entry = pop(opRef, false);
             if (entry == null) {
+                // Undo log would have to be corrupt for this case to occur.
                 break;
             }
 

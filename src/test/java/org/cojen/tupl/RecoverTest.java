@@ -21,6 +21,7 @@ import java.io.File;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -348,6 +349,32 @@ public class RecoverTest {
             assertEquals(null, ix.load(null, "b".getBytes()));
         }
         assertArrayEquals("v3".getBytes(), ix.load(null, "c".getBytes()));
+    }
+
+    @Test
+    public void scopeRollbackRemainEmpty() throws Exception {
+        // Force an undo log to be created with an empty buffer. This test is designed to
+        // handle a special case in the UndoLog.writeToMaster method. Nothing is written to the
+        // master undo log when an empty buffer exists.
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        txn.enter();
+        ix.store(txn, "a".getBytes(), "v1".getBytes());
+        txn.exit();
+
+        mDb.checkpoint();
+
+        // No undo log entries will be created, but redo will be. Note that transaction doesn't
+        // need to be committed with unsafe lock mode.
+        txn.lockMode(LockMode.UNSAFE);
+        ix.store(txn, "a".getBytes(), "v2".getBytes());
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+
+        fastAssertArrayEquals("v2".getBytes(), ix.load(null, "a".getBytes()));
     }
 
     @Test
@@ -1154,5 +1181,116 @@ public class RecoverTest {
         assertTrue(ix2.tryLockUpgradable(txn2, "key1".getBytes(), 1).isHeld());
 
         db2.close();
+    }
+
+    @Test
+    public void undoCommit() throws Exception {
+        // Tests how the UndoLog.OP_COMMIT operation detects a checkpoint in the middle of a
+        // transaction commit. It should sweep through and delete any lingering ghost records.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .checkpointRate(-1, null)
+            .durabilityMode(DurabilityMode.SYNC);
+
+        decorate(config);
+
+        // open database with NonReplicationManager
+        NonReplicationManager replMan = new NonReplicationManager();
+        config.replicate(replMan);
+        Database db = newTempDatabase(getClass(), config);
+
+        // open index
+        replMan.asLeader();
+        Thread.yield();
+        Index ix1 = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix1 = db.openIndex("test1");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+        assertTrue(ix1 != null);
+
+        Index ix2 = db.openIndex("test2");
+
+        Random rnd = new Random(123);
+
+        byte[] k1 = "k1".getBytes();
+        byte[] v1 = "v1".getBytes();
+        ix1.store(null, k1, v1);
+
+        byte[] k2 = "k2".getBytes();
+        byte[] v2 = randomStr(rnd, 10000);
+        ix2.store(null, k2, v2);
+
+        byte[] k3 = randomStr(rnd, 10000);
+        byte[] v3 = "v3".getBytes();
+        ix1.store(null, k3, v3);
+
+        byte[] k4 = randomStr(rnd, 10000);
+        byte[] v4 = randomStr(rnd, 10000);
+        ix2.store(null, k4, v4);
+
+        Transaction txn = db.newTransaction();
+        ix1.delete(txn, k1);
+        ix2.delete(txn, k2);
+        ix1.delete(txn, k3);
+        ix2.delete(txn, k4);
+
+        AtomicReference<Exception> ex = new AtomicReference<>();
+
+        Thread t1 = startAndWaitUntilBlocked(new Thread() {
+            @Override
+            public void run() {
+                // By suspending confirmation, the commit will hang.
+                replMan.suspendConfirmation(Thread.currentThread());
+                try {
+                    txn.commit();
+                } catch (Exception e) {
+                    ex.set(e);
+                }
+            }
+        });
+
+        // Force UndoLog to persist, and then close with an unfinished transaction.
+        db.checkpoint();
+        db.close();
+        replMan.suspendConfirmation(null);
+
+        t1.join();
+
+        {
+            Exception e = ex.get();
+            assertTrue(e instanceof DatabaseException);
+            assertEquals("Closed", e.getMessage());
+        }
+
+        // Close and reopen, forcing clean up.
+        NonReplicationManager replMan2 = new NonReplicationManager();
+        config.replicate(replMan2);
+        db = reopenTempDatabase(getClass(), db, config);
+        replMan2.asLeader();
+
+        Index ix3 = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix3 = db.openIndex("test3");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+        assertTrue(ix3 != null);
+
+        // If ghosts remain, then indexes cannot be dropped.
+        ix1 = db.openIndex("test1");
+        ix2 = db.openIndex("test2");
+        ix1.drop();
+        ix2.drop();
     }
 }

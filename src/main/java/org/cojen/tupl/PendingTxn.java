@@ -45,7 +45,8 @@ final class PendingTxn extends LockOwner {
 
     @Override
     public final LocalDatabase getDatabase() {
-        return mUndoLog.getDatabase();
+        UndoLog undo = mUndoLog;
+        return undo == null ? null : undo.getDatabase();
     }
 
     @Override

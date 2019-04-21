@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2019 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -18,17 +18,11 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Generic callback interface which is used by some tests.
  *
  * @author Brian S O'Neill
  */
-public class TransactionDirectTest extends TransactionTest {
-    public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(TransactionDirectTest.class.getName());
-    }
-
-    @Override
-    protected Database newTempDatabase() throws Exception {
-        return TestUtils.newTempDatabase(getClass(), TestUtils.OpenMode.DIRECT);
-    }
+@FunctionalInterface
+interface Callback {
+    public void run() throws Exception;
 }

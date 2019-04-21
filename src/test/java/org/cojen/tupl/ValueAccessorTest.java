@@ -52,6 +52,12 @@ public class ValueAccessorTest {
         return config;
     }
 
+    protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
+        throws IOException
+    {
+        ((TreeCursor) c).doValueModify(TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+    }
+
     @After
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
@@ -1409,16 +1415,22 @@ public class ValueAccessorTest {
     @Test
     public void undoUpdateFragmentedInlineDirect() throws Exception {
         // Test rollback of value update, with inline content and direct pointers.
-        undoUpdateFragmentedInline(false);
+        undoUpdateFragmentedInline(false, false);
     }
 
     @Test
     public void undoUpdateFragmentedInlineIndirect() throws Exception {
         // Test rollback of value update, with inline content and indirect pointers.
-        undoUpdateFragmentedInline(true);
+        undoUpdateFragmentedInline(true, false);
     }
 
-    private void undoUpdateFragmentedInline(boolean indirect) throws Exception {
+    @Test
+    public void undoUpdateFragmentedInlineDirectCheckpoint() throws Exception {
+        // Test rollback of value update, with inline content and direct pointers.
+        undoUpdateFragmentedInline(false, true);
+    }
+
+    private void undoUpdateFragmentedInline(boolean indirect, boolean checkpoint) throws Exception {
         Index ix = mDb.openIndex("test");
 
         byte[] k1 = "key-1".getBytes();
@@ -1439,6 +1451,10 @@ public class ValueAccessorTest {
         txn.reset();
 
         fastAssertArrayEquals(v1, ix.load(null, k1));
+
+        if (checkpoint) {
+            mDb.checkpoint();
+        }
 
         // Test inline replace and extend.
 
@@ -1646,6 +1662,234 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void scopeRedo() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 526776;
+        Random rnd = new Random(seed);
+
+        byte[] key = "test".getBytes();
+        byte[] value = randomStr(rnd, 100);
+
+        ix.store(null, key, value);
+
+        Transaction txn = mDb.newTransaction();
+        txn.enter();
+        ValueAccessor accessor = ix.newAccessor(txn, key);
+        accessor.valueLength(10);
+        txn.commitAll();
+
+        byte[] v2 = ix.load(null, key);
+        assertEquals(10, v2.length);
+    }
+
+    @Test
+    public void undoExtendMany() throws Exception {
+        // Fill the undo log with a mix of unextend operations.
+
+        Index ix1 = mDb.openIndex("test1");
+        Index ix2 = mDb.openIndex("test2");
+
+        final long seed = 9035768;
+        Random rnd = new Random(seed);
+
+        Index ix = ix1;
+
+        Transaction txn = mDb.newTransaction();
+
+        for (int k=0; k<100; k++) {
+            byte[] key = randomStr(rnd, 50);
+            ValueAccessor accessor = ix.newAccessor(txn, key);
+
+            long pos = 0;
+            for (int v=0; v<30; v++) {
+                byte[] chunk = randomStr(rnd, 100);
+                accessor.valueWrite(pos, chunk, 0, chunk.length);
+                pos += chunk.length;
+
+                if (rnd.nextInt(10) == 0) {
+                    if (rnd.nextInt(2) == 0) {
+                        ix = ix == ix1 ? ix2 : ix1;
+                    }
+                    ix.store(txn, "break".getBytes(), "it".getBytes());
+                }
+            }
+
+            accessor.close();
+        }
+
+        txn.exit();
+
+        assertEquals(0, ix.count(null, null));
+    }
+
+    @Test
+    public void noLengthChange() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 1984574;
+        Random rnd = new Random(seed);
+
+        for (int size : new int[]{100, 2000, 100_000}) {
+            byte[] key = randomStr(rnd, 10);
+            byte[] value = randomStr(rnd, size);
+            ix.store(null, key, value);
+            ValueAccessor accessor = ix.newAccessor(null, key);
+            accessor.valueLength(value.length);
+            assertEquals(value.length, accessor.valueLength());
+            accessor.close();
+        }
+    }
+
+    @Test
+    public void noClearTail() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 1984574;
+        Random rnd = new Random(seed);
+
+        for (int size : new int[]{100, 2000, 100_000}) {
+            byte[] key = randomStr(rnd, 10);
+            byte[] value = randomStr(rnd, size);
+            ix.store(null, key, value);
+            ValueAccessor accessor = ix.newAccessor(null, key);
+            accessor.valueClear(value.length, 0);
+            assertEquals(value.length, accessor.valueLength());
+            accessor.close();
+        }
+    }
+
+    @Test
+    public void clearSparseValue() throws Exception {
+        Index ix = mDb.openIndex("test!");
+        Cursor c = ix.newCursor(null);
+        c.find("key".getBytes());
+        c.valueLength(100_000);
+        c.valueClear(0, 100_000);
+        assertEquals(100_000, c.valueLength());
+        c.load();
+        fastAssertArrayEquals(new byte[100_000], c.value());
+        c.close();
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
+    public void truncateSparseValue() throws Exception {
+        Index ix = mDb.openIndex("test!");
+        Cursor c = ix.newCursor(null);
+        c.find("key".getBytes());
+        c.valueLength(10_000_000);
+        c.valueWrite(100_000, new byte[]{1}, 0, 1);
+        c.valueLength(1);
+        assertEquals(1, c.valueLength());
+        c.load();
+        fastAssertArrayEquals(new byte[1], c.value());
+        c.close();
+
+        assertTrue(ix.verify(null));
+
+        // Do again with rollback.
+
+        Transaction txn = mDb.newTransaction();
+        c = ix.newCursor(txn);
+        c.find("key2".getBytes());
+        c.valueLength(10_000_000);
+        c.valueWrite(100_000, new byte[]{1}, 0, 1);
+        txn.commit();
+        c.valueLength(1);
+        txn.reset();
+        c.load();
+        byte[] expect = new byte[10_000_000];
+        expect[100_000] = 1;
+        fastAssertArrayEquals(expect, c.value());
+        c.close();
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
+    public void fullyTruncateSparseValue() throws Exception {
+        // Passing 0 to TreeCursor.valueLength always bypasses the use of TreeValue. In case
+        // this behavior ever changes, make sure that TreeValue works.
+
+        Index ix = mDb.openIndex("test!");
+        Cursor c = ix.newCursor(null);
+        c.find("key".getBytes());
+        c.valueLength(10_000_000);
+        c.valueWrite(100_000, new byte[]{1}, 0, 1);
+
+        // bypass...
+        doValueModify(c, TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+
+        assertEquals(0, c.valueLength());
+
+        c.load();
+        fastAssertArrayEquals(new byte[0], c.value());
+        c.close();
+
+        assertTrue(ix.verify(null));
+
+        // Do again with rollback.
+
+        Transaction txn = mDb.newTransaction();
+        c = ix.newCursor(txn);
+        c.find("key2".getBytes());
+        c.valueLength(10_000_000);
+        c.valueWrite(100_000, new byte[]{1}, 0, 1);
+        txn.commit();
+        doValueModify(c, TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        txn.reset();
+        c.load();
+        byte[] expect = new byte[10_000_000];
+        expect[100_000] = 1;
+        fastAssertArrayEquals(expect, c.value());
+        c.close();
+
+        assertTrue(ix.verify(null));
+    }
+
+    @Test
+    public void extendDirectSparse() throws Exception {
+        extendDirectSparse(false);
+    }
+
+    @Test
+    public void extendDirectSparseCheckpoint() throws Exception {
+        extendDirectSparse(true);
+    }
+
+    private void extendDirectSparse(boolean checkpoint) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 82539882;
+        Random rnd = new Random(seed);
+
+        // Store a direct encoded value with some inline content.
+        byte[] key = "key".getBytes();
+        byte[] value = randomStr(rnd, 512 * 20 + 10);
+        ix.store(null, key, value);
+
+        if (checkpoint) {
+            mDb.checkpoint();
+        }
+
+        // Punch a hole in the middle, making the value sparse.
+        ValueAccessor accessor = ix.newAccessor(null, key);
+        accessor.valueClear(value.length / 2, 2000);
+
+        // Extend the length to force a conversion to indirect format. Inline content will be
+        // moved into the fragments as a side-effect.
+        accessor.valueLength(100_000);
+        accessor.close();
+
+        byte[] expect = new byte[100_000];
+        System.arraycopy(value, 0, expect, 0, value.length);
+        Arrays.fill(expect, value.length / 2, (value.length / 2) + 2000, (byte) 0);
+        fastAssertArrayEquals(expect, ix.load(null, key));
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
@@ -1799,5 +2043,63 @@ public class ValueAccessorTest {
         assertEquals(amt, actual.length);
 
         fastAssertArrayEquals(value, actual);
+    }
+
+    @Test
+    public void closed() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        final long seed = 9845741;
+        Random rnd = new Random(seed);
+
+        byte[] key = "test".getBytes();
+        byte[] value = randomStr(rnd, 10000);
+
+        ValueAccessor accessor = ix.newAccessor(null, key);
+        accessor.close();
+
+        try {
+            accessor.valueLength();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            accessor.valueLength(10);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        byte[] buf = new byte[10];
+
+        try {
+            accessor.valueRead(0, buf, 0, buf.length);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            accessor.valueWrite(0, buf, 0, buf.length);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            accessor.valueClear(0, 10);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            InputStream in = accessor.newValueInputStream(0);
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            OutputStream out = accessor.newValueOutputStream(0);
+            fail();
+        } catch (IllegalStateException e) {
+        }
     }
 }
