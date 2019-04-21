@@ -471,10 +471,18 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
-        if (mKey != null && mSource.key() == null) {
+        final byte[] tkey = mKey;
+        ViewUtils.positionCheck(tkey);
+        if (mSource.key() == null) {
             throw TransformedView.fail();
         }
-        return mSource.lock();
+        byte[] value = mSource.value();
+        LockResult result = mSource.lock();
+        if (value == mSource.value()) {
+            return result;
+        }
+        mValue = NOT_LOADED;
+        return transformCurrent(result, tkey);
     }
 
     @Override

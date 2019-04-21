@@ -43,6 +43,10 @@ public class ViewTest {
         mDb = null;
     }
 
+    protected View openIndex(String name) throws Exception {
+        return mDb.openIndex(name);
+    }
+
     protected Database mDb;
 
     @Test
@@ -66,7 +70,7 @@ public class ViewTest {
     }
 
     private void ge(int start) throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewGe(key(start));
         try {
@@ -182,7 +186,7 @@ public class ViewTest {
     }
 
     private void gt(int start) throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewGt(key(start));
         try {
@@ -295,7 +299,7 @@ public class ViewTest {
     }
 
     private void le(int end) throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewLe(key(end));
         try {
@@ -411,7 +415,7 @@ public class ViewTest {
     }
 
     private void lt(int end) throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewLt(key(end));
         try {
@@ -505,7 +509,7 @@ public class ViewTest {
 
     @Test
     public void subReverse() throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewReverse().viewGe(key(80)).viewLt(key(30));
         Cursor c = view.newCursor(null);
@@ -553,7 +557,7 @@ public class ViewTest {
      * @param mode bit 0: flip construction order; 1: sub view; 2: reverse view
      */
     private void unmodifiable(int mode) throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix;
         if ((mode & 4) == 0) {
@@ -629,7 +633,7 @@ public class ViewTest {
 
     @Test
     public void prefix() throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         try {
             View view = ix.viewPrefix("key-".getBytes(), -1);
@@ -729,7 +733,7 @@ public class ViewTest {
 
     @Test
     public void prefixCompare() throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         View view = ix.viewPrefix("key-".getBytes(), 4);
 
@@ -790,7 +794,7 @@ public class ViewTest {
 
     @Test
     public void counts() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         for (int i=100; i<150; i++) {
             byte[] key = key(i);
@@ -942,7 +946,7 @@ public class ViewTest {
 
     @Test
     public void reverseCounts() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         for (int i=101; i<=150; i++) {
             byte[] key = key(i);
@@ -969,7 +973,7 @@ public class ViewTest {
 
     @Test
     public void reverseRandom() throws Exception {
-        Index ix = mDb.openIndex("test");
+        View ix = openIndex("test");
 
         for (int i=101; i<=110; i++) {
             byte[] key = key(i);
@@ -993,7 +997,7 @@ public class ViewTest {
 
     @Test
     public void keyOnlyView() throws Exception {
-        Index ix = fill();
+        View ix = fill();
 
         long count = ix.count(null, null);
         View view = ix.viewKeys();
@@ -1096,8 +1100,8 @@ public class ViewTest {
         assertNull(c.value());
     }
 
-    private Index fill() throws Exception {
-        Index ix = mDb.openIndex("views");
+    private View fill() throws Exception {
+        View ix = openIndex("views");
         for (int i=20; i<=90; i+=10) {
             byte[] key = key(i);
             ix.store(null, key, key);

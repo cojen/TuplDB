@@ -259,8 +259,8 @@ public class TransformerTest {
         fastAssertArrayEquals(key1, c.key());
         assertNull(c.value());
 
-        assertEquals(LockResult.ACQUIRED, c.lock());
-        assertEquals(LockResult.OWNED_UPGRADABLE, c.load());
+        assertEquals(LockResult.UNOWNED, c.lock());
+        assertEquals(LockResult.UNOWNED, c.load());
 
         try {
             c.store(value2);
@@ -269,7 +269,7 @@ public class TransformerTest {
             // Expected.
         }
 
-        assertEquals(LockResult.OWNED_UPGRADABLE, ix.lockCheck(txn, c.key()));
+        assertEquals(LockResult.UNOWNED, ix.lockCheck(txn, c.key()));
 
         c.store("world".getBytes());
         assertEquals(LockResult.OWNED_EXCLUSIVE, c.skip(0));
