@@ -87,6 +87,8 @@ public class TestAll {
             SmallCacheTest.class,
             ViewTest.class,
             ViewDirectTest.class,
+            RegistryTest.class,
+            RegistryDirectTest.class,
             CloseTest.class,
             CloseDirectTest.class,
             CloseDirectMappedTest.class,
