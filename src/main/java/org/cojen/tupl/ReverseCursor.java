@@ -261,8 +261,11 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.random(ReverseView.appendZero(highKey), ReverseView.appendZero((lowKey)));
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return mSource.random(highKey, highInclusive, lowKey, lowInclusive);
     }
 
     @Override

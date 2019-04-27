@@ -416,7 +416,10 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
-    public LockResult random(final byte[] lowTKey, final byte[] highTKey) throws IOException {
+    public LockResult random(final byte[] lowTKey, boolean lowInclusive,
+                             final byte[] highTKey, boolean highInclusive)
+        throws IOException
+    {
         byte[] lowKey = null;
         if (lowTKey != null) {
             lowKey = mTransformer.inverseTransformKey(lowTKey);
@@ -443,7 +446,7 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
 
         LockResult result;
         try {
-            result = mSource.random(lowKey, highKey);
+            result = mSource.random(lowKey, lowInclusive, highKey, highInclusive);
         } catch (LockFailureException e) {
             throw transformCurrent(e);
         }

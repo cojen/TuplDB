@@ -150,16 +150,34 @@ class _Tree implements View, Index {
     }
 
     @Override
-    public long count(byte[] lowKey, byte[] highKey) throws IOException {
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
         _TreeCursor cursor = newCursor(Transaction.BOGUS);
         _TreeCursor high = null;
         try {
+            cursor.mKeyOnly = true;
+
+            if (lowKey == null) {
+                cursor.first();
+            } else if (lowInclusive) {
+                cursor.findGe(lowKey);
+            } else {
+                cursor.findGt(lowKey);
+            }
+
+            long adjust = 0;
             if (highKey != null) {
                 high = newCursor(Transaction.BOGUS);
                 high.mKeyOnly = true;
                 high.find(highKey);
+                if (highInclusive && high.value() != null) {
+                    adjust = 1;
+                }
             }
-            return cursor.count(lowKey, high);
+
+            return cursor.countTo(high) + adjust;
         } finally {
             cursor.reset();
             if (high != null) {

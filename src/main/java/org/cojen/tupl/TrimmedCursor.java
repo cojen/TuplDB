@@ -278,7 +278,10 @@ final class TrimmedCursor implements Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
         mKey = null;
         if (lowKey != null) {
             lowKey = mView.applyPrefix(lowKey);
@@ -286,7 +289,7 @@ final class TrimmedCursor implements Cursor {
         if (highKey != null) {
             highKey = mView.applyPrefix(highKey);
         }
-        return mSource.random(lowKey, highKey);
+        return mSource.random(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override

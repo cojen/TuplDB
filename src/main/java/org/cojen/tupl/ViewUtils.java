@@ -39,6 +39,17 @@ class ViewUtils {
     static long count(View view, boolean autoload, byte[] lowKey, byte[] highKey)
         throws IOException
     {
+        return count(view, autoload, lowKey, true, highKey, 0);
+    }
+
+    /**
+     * @param highInclusive 1 for inclusive, 0 for exclusive
+     */
+    static long count(View view, boolean autoload,
+                      byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, int highInclusive)
+        throws IOException
+    {
         long count = 0;
             
         Cursor c = view.newCursor(Transaction.BOGUS);
@@ -47,8 +58,10 @@ class ViewUtils {
 
             if (lowKey == null) {
                 c.first();
-            } else {
+            } else if (lowInclusive) {
                 c.findGe(lowKey);
+            } else {
+                c.findGt(lowKey);
             }
 
             if (highKey == null) {
@@ -56,7 +69,7 @@ class ViewUtils {
                     count++;
                 }
             } else {
-                for (; c.key() != null && c.compareKeyTo(highKey) < 0; c.next()) {
+                for (; c.key() != null && c.compareKeyTo(highKey) < highInclusive; c.next()) {
                     count++;
                 }
             }

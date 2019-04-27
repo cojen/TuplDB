@@ -148,8 +148,11 @@ class DefaultCursor implements Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.random(lowKey, highKey);
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return mSource.random(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override

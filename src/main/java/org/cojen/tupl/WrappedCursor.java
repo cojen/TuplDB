@@ -377,6 +377,17 @@ public abstract class WrappedCursor<C extends Cursor> implements Cursor {
      * {@inheritDoc}
      */
     @Override
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return source.random(lowKey, lowInclusive, highKey, highInclusive);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult lock() throws IOException {
         return source.lock();
     }

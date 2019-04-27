@@ -152,7 +152,24 @@ public interface View {
      * @param highKey exclusive highest key in the counted range; pass null for open range
      */
     public default long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return ViewUtils.count(this, false, lowKey, highKey);
+        return count(lowKey, true, highKey, false);
+    }
+
+    /**
+     * Non-transactionally counts the number of entries within the given range. Implementations
+     * of this method typically scan over the entries, and so it shouldn't be expected to run
+     * in constant time.
+     *
+     * @param lowKey lowest key in the counted range; pass null for open range
+     * @param lowInclusive true for inclusive key, false for exclusive, ignored if key is null
+     * @param highKey highest key in the counted range; pass null for open range
+     * @param highInclusive true for inclusive key, false for exclusive, ignored if key is null
+     */
+    public default long count(byte[] lowKey, boolean lowInclusive,
+                              byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return ViewUtils.count(this, false, lowKey, lowInclusive, highKey, highInclusive ? 1 : 0);
     }
 
     /**

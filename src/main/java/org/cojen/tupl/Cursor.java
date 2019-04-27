@@ -555,7 +555,26 @@ public interface Cursor extends ValueAccessor, Closeable {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      */
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException;
+    public default LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+        return random(lowKey, true, highKey, false);
+    }
+
+    /**
+     * Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+     * distribution. If no entries exists, or if random searches aren't supported, the cursor
+     * is unpositioned.
+     *
+     * @param lowKey lowest key in the selectable range; pass null for open range
+     * @param lowInclusive true for inclusive key, false for exclusive, ignored if key is null
+     * @param highKey highest key in the selectable range; pass null for open range
+     * @param highInclusive true for inclusive key, false for exclusive, ignored if key is null
+     * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#ACQUIRED
+     * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
+     * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
+     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
+     */
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive) throws IOException;
 
     /**
      * Locks the current entry, as if by calling load. Locking is performed automatically

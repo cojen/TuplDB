@@ -90,8 +90,23 @@ final class BoundedView extends SubView {
     }
 
     @Override
-    public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.count(adjustLowKey(lowKey), adjustHighKey(highKey));
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        byte[] start = mStart;
+        if (start != null && (lowKey == null || startRangeCompare(start, lowKey) < 0)) {
+            lowKey = start;
+            lowInclusive = (mMode & START_EXCLUSIVE) == 0;
+        }
+
+        byte[] end = mEnd;
+        if (end != null && (highKey == null || endRangeCompare(end, highKey) > 0)) {
+            highKey = end;
+            highInclusive = (mMode & END_EXCLUSIVE) == 0;
+        }
+
+        return mSource.count(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override
@@ -192,29 +207,5 @@ final class BoundedView extends SubView {
     int endRangeCompare(byte[] end, byte[] key) {
         int result = compareUnsigned(key, end);
         return result != 0 ? result : (mMode & END_EXCLUSIVE);
-    }
-
-    byte[] adjustLowKey(byte[] lowKey) {
-        byte[] start = mStart;
-        if (start != null && (lowKey == null || startRangeCompare(start, lowKey) < 0)) {
-            lowKey = start;
-            if ((mMode & START_EXCLUSIVE) != 0) {
-                // Switch to exclusive start behavior.
-                lowKey = ViewUtils.appendZero(lowKey);
-            }
-        }
-        return lowKey;
-    }
-
-    byte[] adjustHighKey(byte[] highKey) {
-        byte[] end = mEnd;
-        if (end != null && (highKey == null || endRangeCompare(end, highKey) > 0)) {
-            highKey = end;
-            if ((mMode & END_EXCLUSIVE) == 0) {
-                // Switch to inclusive end behavior.
-                highKey = ViewUtils.appendZero(highKey);
-            }
-        }
-        return highKey;
     }
 }

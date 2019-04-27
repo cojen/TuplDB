@@ -131,4 +131,25 @@ public class UnionViewTest {
 
         txn.reset();
     }
+
+    @Test
+    public void doubleReverseCount() throws Exception {
+        Index empty = mDb.openIndex("empty");
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = {0};
+        byte[] k2 = {0, 0};
+        byte[] k3 = {0, 0, 0};
+
+        ix.store(null, k1, k1);
+        ix.store(null, k2, k2);
+        ix.store(null, k3, k3);
+
+        assertEquals(2, ix.count(k1, k3));
+
+        View view = ix.viewReverse().viewUnion(Combiner.first(), empty.viewReverse());
+        view = view.viewReverse();
+
+        assertEquals(2, view.count(k1, k3));
+    }
 }

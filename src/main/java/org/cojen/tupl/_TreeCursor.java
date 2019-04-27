@@ -992,15 +992,7 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
     /**
      * Called by _Tree.count. Caller must always reset the cursor after calling this method.
      */
-    long count(byte[] lowKey, _TreeCursor high) throws IOException {
-        mKeyOnly = true;
-
-        if (lowKey == null) {
-            first();
-        } else {
-            findGe(lowKey);
-        }
-
+    long countTo(_TreeCursor high) throws IOException {
         if (mKey == null || (high != null && compareUnsigned(mKey, high.mKey) >= 0)) {
             // Found nothing.
             return 0;
@@ -2244,7 +2236,19 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
-    public final LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+    public final LockResult random(byte[] lowKey, boolean lowInclusive,
+                                   byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        if (!lowInclusive && lowKey != null) {
+            // Switch to exclusive start behavior.
+            lowKey = ViewUtils.appendZero(lowKey);
+        }
+        if (highInclusive && highKey != null) {
+            // Switch to inclusive end behavior.
+            highKey = ViewUtils.appendZero(highKey);
+        }
+
         if (lowKey != null && highKey != null && compareUnsigned(lowKey, highKey) >= 0) {
             // Cannot find anything if range is empty.
             reset();

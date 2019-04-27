@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":18,"i6":6,"i7":6,"i8":18,"i9":18,"i10":18,"i11":18,"i12":18,"i13":18,"i14":18,"i15":18,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":18,"i26":6,"i27":18,"i28":18,"i29":6,"i30":18,"i31":18,"i32":6,"i33":18,"i34":6,"i35":6,"i36":18,"i37":6,"i38":18,"i39":6};
+var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":18,"i6":6,"i7":6,"i8":18,"i9":18,"i10":18,"i11":18,"i12":18,"i13":18,"i14":18,"i15":18,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":18,"i26":6,"i27":18,"i28":18,"i29":6,"i30":18,"i31":18,"i32":6,"i33":18,"i34":18,"i35":6,"i36":6,"i37":18,"i38":6,"i39":18,"i40":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -429,6 +429,17 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 </tr>
 <tr class="altColor" id="i32">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,boolean,byte%5B%5D,boolean)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
+      boolean&nbsp;lowInclusive,
+      byte[]&nbsp;highKey,
+      boolean&nbsp;highInclusive)</code></th>
+<td class="colLast">
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i33">
+<td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,byte%5B%5D)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
       byte[]&nbsp;highKey)</code></th>
 <td class="colLast">
@@ -436,7 +447,7 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  distribution.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#register()">register</a></span>()</code></th>
 <td class="colLast">
@@ -444,21 +455,21 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  replication performance when modifying a range of values.</div>
 </td>
 </tr>
-<tr class="altColor" id="i34">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i35">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long)">skip</a></span>&#8203;(long&nbsp;amount)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </td>
 </tr>
-<tr class="altColor" id="i36">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long,byte%5B%5D,boolean)">skip</a></span>&#8203;(long&nbsp;amount,
     byte[]&nbsp;limitKey,
@@ -468,7 +479,7 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  reached.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i37">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#store(byte%5B%5D)">store</a></span>&#8203;(byte[]&nbsp;value)</code></th>
 <td class="colLast">
@@ -476,14 +487,14 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  unchanged.</div>
 </td>
 </tr>
-<tr class="altColor" id="i38">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unregister()">unregister</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i39">
+<tr class="altColor" id="i40">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#value()">value</a></span>()</code></th>
 <td class="colLast">
@@ -1178,9 +1189,9 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <ul class="blockList">
 <li class="blockList">
 <h4>random</h4>
-<pre class="methodSignature"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
-                  byte[]&nbsp;highKey)
-           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">default&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
+                          byte[]&nbsp;highKey)
+                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
  distribution. If no entries exists, or if random searches aren't supported, the cursor
  is unpositioned.</div>
@@ -1188,6 +1199,33 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>lowKey</code> - inclusive lowest key in the selectable range; pass null for open range</dd>
 <dd><code>highKey</code> - exclusive highest key in the selectable range; pass null for open range</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a id="random(byte[],boolean,byte[],boolean)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>random</h4>
+<pre class="methodSignature"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
+                  boolean&nbsp;lowInclusive,
+                  byte[]&nbsp;highKey,
+                  boolean&nbsp;highInclusive)
+           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution. If no entries exists, or if random searches aren't supported, the cursor
+ is unpositioned.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>lowKey</code> - lowest key in the selectable range; pass null for open range</dd>
+<dd><code>lowInclusive</code> - true for inclusive key, false for exclusive, ignored if key is null</dd>
+<dd><code>highKey</code> - highest key in the selectable range; pass null for open range</dd>
+<dd><code>highInclusive</code> - true for inclusive key, false for exclusive, ignored if key is null</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>

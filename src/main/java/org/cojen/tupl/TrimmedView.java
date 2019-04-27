@@ -58,6 +58,14 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return mSource.count(lowKey, lowInclusive, highKey, highInclusive);
+    }
+
+    @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mSource.newTransaction(durabilityMode);
     }

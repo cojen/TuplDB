@@ -429,7 +429,10 @@ abstract class MergeCursor extends AbstractValueAccessor implements Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
         // Implementing this is problematic. Common entries must be passed to the combiner. If
         // it returns null, then another random entry must be selected and so on, indefinitely.
         reset();

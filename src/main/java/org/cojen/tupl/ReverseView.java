@@ -54,8 +54,11 @@ final class ReverseView implements View {
     }
 
     @Override
-    public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return mSource.count(appendZero(highKey), appendZero((lowKey)));
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return mSource.count(highKey, highInclusive, lowKey, lowInclusive);
     }
 
     @Override

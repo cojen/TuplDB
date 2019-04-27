@@ -552,9 +552,24 @@ final class BoundedCursor implements Cursor {
     }
 
     @Override
-    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        LockResult result = mSource.random
-            (mView.adjustLowKey(lowKey),mView.adjustHighKey(highKey));
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        byte[] start = mView.mStart;
+        if (start != null && (lowKey == null || mView.startRangeCompare(start, lowKey) < 0)) {
+            lowKey = start;
+            lowInclusive = (mView.mMode & START_EXCLUSIVE) == 0;
+        }
+
+        byte[] end = mView.mEnd;
+        if (end != null && (highKey == null || mView.endRangeCompare(end, highKey) > 0)) {
+            highKey = end;
+            highInclusive = (mView.mMode & END_EXCLUSIVE) == 0;
+        }
+
+        LockResult result = mSource.random(lowKey, lowInclusive, highKey, highInclusive);
+
         mOutOfBounds = false;
         return result;
     }

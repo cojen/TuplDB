@@ -65,7 +65,17 @@ final class TransformedView implements View {
 
     @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
-        return ViewUtils.count(this, mTransformer.requireValue() == Boolean.TRUE, lowKey, highKey);
+        return ViewUtils.count(this, mTransformer.requireValue() == Boolean.TRUE,
+                               lowKey, true, highKey, 0);
+    }
+
+    @Override
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return ViewUtils.count(this, mTransformer.requireValue() == Boolean.TRUE,
+                               lowKey, lowInclusive, highKey, highInclusive ? 1 : 0);
     }
 
     @Override

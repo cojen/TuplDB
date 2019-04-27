@@ -32,9 +32,4 @@ public class DoubleReverseTest extends ViewTest {
         // Call constructor to actually double reverse.
         return new ReverseView(mDb.openIndex(name).viewReverse());
     }
-
-    @Override
-    public void counts() throws Exception {
-        // Test doesn't work because ReverseView alters the key. Double reverse alters it twice.
-    }
 }

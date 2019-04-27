@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10,"i33":10,"i34":10,"i35":10,"i36":10,"i37":10,"i38":10,"i39":10,"i40":10,"i41":10,"i42":10,"i43":10,"i44":10,"i45":10,"i46":10,"i47":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10,"i33":10,"i34":10,"i35":10,"i36":10,"i37":10,"i38":10,"i39":10,"i40":10,"i41":10,"i42":10,"i43":10,"i44":10,"i45":10,"i46":10,"i47":10,"i48":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -471,6 +471,17 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 </tr>
 <tr class="rowColor" id="i35">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,boolean,byte%5B%5D,boolean)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
+      boolean&nbsp;lowInclusive,
+      byte[]&nbsp;highKey,
+      boolean&nbsp;highInclusive)</code></th>
+<td class="colLast">
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution.</div>
+</td>
+</tr>
+<tr class="altColor" id="i36">
+<td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#random(byte%5B%5D,byte%5B%5D)">random</a></span>&#8203;(byte[]&nbsp;lowKey,
       byte[]&nbsp;highKey)</code></th>
 <td class="colLast">
@@ -478,7 +489,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  distribution.</div>
 </td>
 </tr>
-<tr class="altColor" id="i36">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#register()">register</a></span>()</code></th>
 <td class="colLast">
@@ -486,21 +497,21 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  replication performance when modifying a range of values.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i37">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </td>
 </tr>
-<tr class="altColor" id="i38">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long)">skip</a></span>&#8203;(long&nbsp;amount)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i39">
+<tr class="altColor" id="i40">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#skip(long,byte%5B%5D,boolean)">skip</a></span>&#8203;(long&nbsp;amount,
     byte[]&nbsp;limitKey,
@@ -510,28 +521,28 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
  reached.</div>
 </td>
 </tr>
-<tr class="altColor" id="i40">
+<tr class="rowColor" id="i41">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#store(byte%5B%5D)">store</a></span>&#8203;(byte[]&nbsp;value)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i41">
+<tr class="altColor" id="i42">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unregister()">unregister</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </td>
 </tr>
-<tr class="altColor" id="i42">
+<tr class="rowColor" id="i43">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#value()">value</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i43">
+<tr class="altColor" id="i44">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueClear(long,long)">valueClear</a></span>&#8203;(long&nbsp;pos,
           long&nbsp;length)</code></th>
@@ -539,21 +550,21 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr class="altColor" id="i44">
+<tr class="rowColor" id="i45">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength()">valueLength</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total length of the accessed value.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i45">
+<tr class="altColor" id="i46">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueLength(long)">valueLength</a></span>&#8203;(long&nbsp;length)</code></th>
 <td class="colLast">
 <div class="block">Always throws UnmodifiableViewException by default.</div>
 </td>
 </tr>
-<tr class="altColor" id="i46">
+<tr class="rowColor" id="i47">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueRead(long,byte%5B%5D,int,int)">valueRead</a></span>&#8203;(long&nbsp;pos,
          byte[]&nbsp;buf,
@@ -563,7 +574,7 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <div class="block">Read from the value, starting from any position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i47">
+<tr class="altColor" id="i48">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#valueWrite(long,byte%5B%5D,int,int)">valueWrite</a></span>&#8203;(long&nbsp;pos,
           byte[]&nbsp;buf,
@@ -1564,6 +1575,35 @@ implements <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a><
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>lowKey</code> - inclusive lowest key in the selectable range; pass null for open range</dd>
 <dd><code>highKey</code> - exclusive highest key in the selectable range; pass null for open range</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a id="random(byte[],boolean,byte[],boolean)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>random</h4>
+<pre class="methodSignature">public&nbsp;<a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&nbsp;random&#8203;(byte[]&nbsp;lowKey,
+                         boolean&nbsp;lowInclusive,
+                         byte[]&nbsp;highKey,
+                         boolean&nbsp;highInclusive)
+                  throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
+ distribution. If no entries exists, or if random searches aren't supported, the cursor
+ is unpositioned.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
+<dd><code><a href="Cursor.html#random(byte%5B%5D,boolean,byte%5B%5D,boolean)">random</a></code>&nbsp;in interface&nbsp;<code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></dd>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>lowKey</code> - lowest key in the selectable range; pass null for open range</dd>
+<dd><code>lowInclusive</code> - true for inclusive key, false for exclusive, ignored if key is null</dd>
+<dd><code>highKey</code> - highest key in the selectable range; pass null for open range</dd>
+<dd><code>highInclusive</code> - true for inclusive key, false for exclusive, ignored if key is null</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>

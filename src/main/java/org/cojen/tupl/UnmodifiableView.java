@@ -95,6 +95,14 @@ final class UnmodifiableView implements Index {
     }
 
     @Override
+    public long count(byte[] lowKey, boolean lowInclusive,
+                      byte[] highKey, boolean highInclusive)
+        throws IOException
+    {
+        return mSource.count(lowKey, lowInclusive, highKey, highInclusive);
+    }
+
+    @Override
     public byte[] load(Transaction txn, byte[] key) throws IOException {
         return mSource.load(txn, key);
     }
