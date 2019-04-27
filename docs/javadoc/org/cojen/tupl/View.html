@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":18,"i8":6,"i9":18,"i10":6,"i11":6,"i12":6,"i13":6,"i14":18,"i15":6,"i16":18,"i17":18,"i18":18,"i19":18,"i20":18,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18,"i38":18,"i39":18};
+var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":18,"i8":6,"i9":18,"i10":6,"i11":6,"i12":6,"i13":6,"i14":18,"i15":6,"i16":18,"i17":18,"i18":18,"i19":18,"i20":18,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18,"i38":18,"i39":18,"i40":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -387,13 +387,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor" id="i29">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewFiltered(org.cojen.tupl.Filter)">viewFiltered</a></span>&#8203;(<a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;filter)</code></th>
+<td class="colLast">
+<div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out.</div>
+</td>
+</tr>
+<tr class="altColor" id="i30">
+<td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewGe(byte%5B%5D)">viewGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than or
  equal to the given key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i30">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewGt(byte%5B%5D)">viewGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -401,7 +408,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i31">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewIntersection</a></span>&#8203;(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
                 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -410,14 +417,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  intersection</cite></a> of this view and a second one.</div>
 </td>
 </tr>
-<tr class="altColor" id="i32">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewKeys()">viewKeys</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, which only provides the keys.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewLe(byte%5B%5D)">viewLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -425,7 +432,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  equal to the given key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i34">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewLt(byte%5B%5D)">viewLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -433,7 +440,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i35">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewPrefix(byte%5B%5D,int)">viewPrefix</a></span>&#8203;(byte[]&nbsp;prefix,
           int&nbsp;trim)</code></th>
@@ -441,14 +448,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </td>
 </tr>
-<tr class="altColor" id="i36">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewReverse()">viewReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i37">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewTransformed(org.cojen.tupl.Transformer)">viewTransformed</a></span>&#8203;(<a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code></th>
 <td class="colLast">
@@ -456,7 +463,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  transformed.</div>
 </td>
 </tr>
-<tr class="altColor" id="i38">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewUnion</a></span>&#8203;(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
          <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -465,7 +472,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  this view and a second one.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i39">
+<tr class="altColor" id="i40">
 <td class="colFirst"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#viewUnmodifiable()">viewUnmodifiable</a></span>()</code></th>
 <td class="colLast">
@@ -1284,6 +1291,23 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transformer is null</dd>
+</dl>
+</li>
+</ul>
+<a id="viewFiltered(org.cojen.tupl.Filter)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>viewFiltered</h4>
+<pre class="methodSignature">default&nbsp;<a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;viewFiltered&#8203;(<a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;filter)</pre>
+<div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out.
+
+ <p>The returned view will throw a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> on an attempt to
+ insert an entry not supported by the filter.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if filter is null</dd>
 </dl>
 </li>
 </ul>

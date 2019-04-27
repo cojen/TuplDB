@@ -37,11 +37,7 @@ public class CursorNonTransformTest extends CursorNonDurableTest {
     @Override
     protected View openIndex(String name) throws Exception {
         Index ix = mDb.openIndex(name);
-        View view = ix.viewTransformed(new Filter() {
-            public boolean isAllowed(byte[] key, byte[] value) {
-                return true;
-            }
-        });
+        View view = ix.viewFiltered((k, v) -> true);
         mViews.put(view, ix);
         return view;
     }

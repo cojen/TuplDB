@@ -162,13 +162,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewFiltered(org.cojen.tupl.Filter)">viewFiltered</a></span>&#8203;(<a href="../Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;filter)</code></th>
+<td class="colLast">
+<div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewGe(byte%5B%5D)">viewGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than or
  equal to the given key.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewGt(byte%5B%5D)">viewGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -176,7 +183,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewIntersection</a></span>&#8203;(<a href="../Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
                 <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -185,14 +192,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  intersection</cite></a> of this view and a second one.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewKeys()">viewKeys</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, which only provides the keys.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewLe(byte%5B%5D)">viewLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -200,7 +207,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  equal to the given key.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewLt(byte%5B%5D)">viewLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -208,7 +215,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  given key.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewPrefix(byte%5B%5D,int)">viewPrefix</a></span>&#8203;(byte[]&nbsp;prefix,
           int&nbsp;trim)</code></th>
@@ -216,14 +223,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewReverse()">viewReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewTransformed(org.cojen.tupl.Transformer)">viewTransformed</a></span>&#8203;(<a href="../Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code></th>
 <td class="colLast">
@@ -231,7 +238,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  transformed.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)">viewUnion</a></span>&#8203;(<a href="../Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
          <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
@@ -240,7 +247,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  this view and a second one.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>default <a href="../View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#viewUnmodifiable()">viewUnmodifiable</a></span>()</code></th>
 <td class="colLast">

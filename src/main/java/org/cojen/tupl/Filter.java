@@ -24,7 +24,7 @@ import java.io.IOException;
  * implement the {@link #isAllowed isAllowed} method.
  *
  * @author Brian S O'Neill
- * @see View#viewTransformed View.viewTransformed
+ * @see View#viewFiltered View.viewFiltered
  */
 @FunctionalInterface
 public interface Filter extends Transformer {

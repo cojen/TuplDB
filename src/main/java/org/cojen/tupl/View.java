@@ -758,6 +758,18 @@ public interface View {
     }
 
     /**
+     * Returns a sub-view, backed by this one, whose entries have been filtered out.
+     *
+     * <p>The returned view will throw a {@link ViewConstraintException} on an attempt to
+     * insert an entry not supported by the filter.
+     *
+     * @throws NullPointerException if filter is null
+     */
+    public default View viewFiltered(Filter filter) {
+        return viewTransformed(filter);
+    }
+
+    /**
      * Returns a view which represents the <a
      * href="https://en.wikipedia.org/wiki/Union_(set_theory)"><cite>set union</cite></a> of
      * this view and a second one. A union eliminates duplicate keys, by relying on a combiner
