@@ -1613,6 +1613,336 @@ public class CursorTest {
         fastAssertArrayEquals(value, c.value());
     }
 
+    @Test
+    public void delayedLocks() throws Exception {
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(1)));
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        Cursor c2 = ix.newCursor(txn2);
+        try {
+            c2.first();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        // Wait for lock and then obtain it.
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        Thread t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.first());
+        fastAssertArrayEquals(key(1), c2.key());
+        t1.join();
+
+        // Verify that lock isn't held by txn2.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(1)));
+
+        // Again by calling last.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(3)));
+        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        try {
+            c2.last();
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.last());
+        fastAssertArrayEquals(key(3), c2.key());
+        t1.join();
+
+        // Verify that lock isn't held by txn2.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(3)));
+
+        // Wait to lock an entry which gets deleted.
+        Cursor c1 = ix.newCursor(txn1);
+        assertEquals(LockResult.OWNED_EXCLUSIVE, ix.lockExclusive(txn1, key(3)));
+        c1.find(key(3));
+        t1 = delayedDelete(c1);
+        assertEquals(LockResult.UNOWNED, c2.last());
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+    }
+
+    @Test
+    public void delayedLocksIteration() throws Exception {
+        // Same sort of tests as delayedLocks, but with next/previous.
+
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        Cursor c2 = ix.newCursor(txn2);
+        assertEquals(LockResult.UNOWNED, c2.first());
+        fastAssertArrayEquals(key(1), c2.key());
+        try {
+            c2.next();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        // Wait for lock and then obtain it.
+        assertEquals(LockResult.UNOWNED, c2.first());
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        Thread t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.next());
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+
+        // Verify that lock isn't held by txn2.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        // Again by calling previous.
+        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        assertEquals(LockResult.UNOWNED, c2.last());
+        fastAssertArrayEquals(key(3), c2.key());
+        try {
+            c2.previous();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+        assertEquals(LockResult.UNOWNED, c2.last());
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.previous());
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        // Again by calling nextLe.
+        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        assertEquals(LockResult.UNOWNED, c2.first());
+        fastAssertArrayEquals(key(1), c2.key());
+        try {
+            c2.nextLe(key(2));
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+        assertEquals(LockResult.UNOWNED, c2.first());
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.nextLe(key(2)));
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        // Again by calling previousGe.
+        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        assertEquals(LockResult.UNOWNED, c2.last());
+        fastAssertArrayEquals(key(3), c2.key());
+        try {
+            c2.previousGe(key(2));
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+        assertEquals(LockResult.UNOWNED, c2.last());
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.previousGe(key(2)));
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+    }
+
+    @Test
+    public void delayedLocksFindNearby() throws Exception {
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        Cursor c2 = ix.newCursor(txn2);
+        assertEquals(LockResult.UNOWNED, c2.first());
+        fastAssertArrayEquals(key(1), c2.key());
+        try {
+            c2.findNearby(key(2));
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        try {
+            c2.lock();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        // Wait for lock and then obtain it.
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        Thread t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.findNearby(key(2)));
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+
+        // Verify that lock isn't held by txn2.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+    }
+
+    @Test
+    public void delayedLocksFindNearbyNotFound() throws Exception {
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        // Lock a key which doesn't exist.
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(5)));
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        Cursor c2 = ix.newCursor(txn2);
+        assertEquals(LockResult.UNOWNED, c2.first());
+        fastAssertArrayEquals(key(1), c2.key());
+        try {
+            c2.findNearby(key(5));
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(5), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        // Wait for lock and then obtain it.
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        Thread t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, c2.findNearby(key(5)));
+        fastAssertArrayEquals(key(5), c2.key());
+        assertNull(c2.value());
+        t1.join();
+
+        // Verify that lock isn't held by txn2.
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(5)));
+    }
+
+    @Test
+    public void delayedLocksLoad() throws Exception {
+        delayedLocks(0);
+    }
+
+    @Test
+    public void delayedLocksLock() throws Exception {
+        delayedLocks(1);
+    }
+
+    /**
+     * @param mode 0 for load, 1 for lock
+     */
+    private void delayedLocks(int mode) throws Exception {
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        Transaction txn2 = mDb.newTransaction();
+        txn2.lockMode(LockMode.UNSAFE);
+        Cursor c2 = ix.newCursor(txn2);
+        assertEquals(LockResult.UNOWNED, c2.find(key(2)));
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        try {
+            if (mode == 0) c2.load(); else c2.lock();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        // Wait for lock and then obtain it.
+        txn2.lockTimeout(1, TimeUnit.MINUTES);
+        Thread t1 = delayedUnlock(txn1);
+        assertEquals(LockResult.UNOWNED, mode == 0 ? c2.load() : c2.lock());
+        fastAssertArrayEquals(key(2), c2.key());
+        t1.join();
+
+        // Obtain another lock without waiting.
+        txn2.lockMode(LockMode.UNSAFE);
+        assertEquals(LockResult.UNOWNED, c2.find(key(3)));
+        fastAssertArrayEquals(value(3), c2.value());
+        txn2.lockMode(LockMode.READ_COMMITTED);
+        assertEquals(LockResult.UNOWNED, mode == 0 ? c2.load() : c2.lock());
+        fastAssertArrayEquals(value(3), c2.value());
+    }
+
+    @Test
+    public void delayedLocksNullTxn() throws Exception {
+        View ix = openIndex("test");
+
+        for (int i = 1; i <= 3; i++) {
+            ix.store(Transaction.BOGUS, key(i), value(i));
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn1, key(2)));
+
+        Cursor c2 = ix.newCursor(null);
+        try {
+            c2.find(key(2));
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+
+        try {
+            c2.lock();
+            fail();
+        } catch (LockTimeoutException e) {
+            fastAssertArrayEquals(key(2), c2.key());
+            assertEquals(Cursor.NOT_LOADED, c2.value());
+        }
+    }
+
+    private static Thread delayedUnlock(Transaction txn) {
+        return startAndWaitUntilBlocked(new Thread(() -> {
+            sleep(1000);
+            txn.unlock();
+        }));
+    }
+
+    private static Thread delayedDelete(Cursor c) {
+        return startAndWaitUntilBlocked(new Thread(() -> {
+            sleep(1000);
+            try {
+                c.commit(null);
+            } catch (Exception e) {
+                Utils.rethrow(e);
+            }
+        }));
+    }
+
     protected void verifyPositions(View ix, Cursor[] cursors) throws Exception {
         for (Cursor existing : cursors) {
             Cursor c = ix.newCursor(Transaction.BOGUS);

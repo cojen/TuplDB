@@ -2578,6 +2578,8 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
         } else {
             LockMode mode = txn.lockMode();
             if (mode.noReadLock) {
+                // Not expected. Caller typically calls tryLockKey first, which would have
+                // returned UNOWNED instead of null, and doLoad won't be called.
                 result = LockResult.UNOWNED;
                 locker = null;
             } else {
@@ -2721,6 +2723,8 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
                     }
                     result = txn.lockShared(mTree.mId, key, keyHash);
                     if (result != LockResult.ACQUIRED) {
+                        // Not expected. If the transaction already owned the lock, then
+                        // the tryLockLoad call earler would have returned true.
                         return result;
                     }
                     result = LockResult.UNOWNED;
@@ -2796,6 +2800,8 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
                             result = LockResult.UNOWNED;
                             locker = txn;
                         } else {
+                            // Not expected. If the transaction already owned the lock, then
+                            // the tryLockLoad call earler would have returned true.
                             locker = null;
                         }
                     } else {

@@ -73,9 +73,9 @@ public class ConfigTest {
         Database.open(config);
     }
 
-    @Test
-    @Ignore("Too disruptive when running concurrently with other tests. " +
-            "Causes all sorts of GC pauses and OOM failures in other tests.")
+    //@Test
+    //@Ignore("Too disruptive when running concurrently with other tests. " +
+    //        "Causes all sorts of GC pauses and OOM failures in other tests.")
     public void outOfMemory() throws Exception {
         DatabaseConfig config = new DatabaseConfig();
         try {

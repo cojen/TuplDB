@@ -289,4 +289,23 @@ public class TempIndexTest {
             txn.reset();
         }
     }
+
+    @Test
+    public void cursorCommitBogusTxn() throws Exception {
+        Index ix = mDb.newTemporaryIndex();
+        Cursor c = ix.newCursor(Transaction.BOGUS);
+        c.find("hello".getBytes());
+        c.commit("world".getBytes());
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void valueWrite() throws Exception {
+        Index ix = mDb.newTemporaryIndex();
+        ValueAccessor accessor = ix.newAccessor(null, "hello".getBytes());
+        byte[] buf = "world".getBytes();
+        accessor.valueWrite(0, buf, 0, buf.length);
+        accessor.close();
+        fastAssertArrayEquals("world".getBytes(), ix.load(null, "hello".getBytes()));
+    }
 }

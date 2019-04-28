@@ -441,21 +441,47 @@ abstract class MergeCursor extends AbstractValueAccessor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
-        return load(false);
-    }
-
-    @Override
-    public LockResult load() throws IOException {
-        return load(true);
-    }
-
-    private LockResult load(boolean autoload) throws IOException {
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
 
         return perform(txn -> {
             alignKeys(key);
-            final boolean original = autoload(autoload);
+
+            LockResult result;
+            if (mKeyOnly) {
+                result = select(txn);
+            } else {
+                mKeyOnly = true;
+                try {
+                    // Need to load the values from the sources if the lock is acquired.
+                    final boolean oFirst = mFirst.autoload(true);
+                    try {
+                        final boolean oSecond = mSecond.autoload(true);
+                        try {
+                            result = select(txn);
+                        } finally {
+                            mSecond.autoload(oSecond);
+                        }
+                    } finally {
+                        mFirst.autoload(oFirst);
+                    }
+                } finally {
+                    mKeyOnly = false;
+                }
+            }
+
+            return result == null ? LockResult.UNOWNED : result;
+        });
+    }
+
+    @Override
+    public LockResult load() throws IOException {
+        byte[] key = mKey;
+        ViewUtils.positionCheck(key);
+
+        return perform(txn -> {
+            alignKeys(key);
+            final boolean original = autoload(true);
             try {
                 LockResult result = select(txn);
                 return result == null ? LockResult.UNOWNED : result;

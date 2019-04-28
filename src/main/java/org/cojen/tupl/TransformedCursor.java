@@ -480,7 +480,13 @@ final class TransformedCursor extends AbstractValueAccessor implements Cursor {
             throw TransformedView.fail();
         }
         byte[] value = mSource.value();
-        LockResult result = mSource.lock();
+        LockResult result;
+        try {
+            result = mSource.lock();
+        } catch (IOException e) {
+            mValue = NOT_LOADED;
+            throw e;
+        }
         if (value == mSource.value()) {
             return result;
         }

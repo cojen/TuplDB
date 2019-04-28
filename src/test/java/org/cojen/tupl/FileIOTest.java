@@ -56,8 +56,8 @@ public class FileIOTest {
     // Newer versions of Linux allocate as much as possible instead of failing atomically. The
     // FileIO class reverts the allocation, but until it finishes, other threads and processes
     // writing to the temp directory fail with "No space left on device".
-    @Ignore
-    @Test
+    //@Ignore
+    //@Test
     public void preallocateTooLarge() throws Exception {
         assumeTrue(Platform.isLinux()); 
         FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
@@ -119,8 +119,8 @@ public class FileIOTest {
         fio.close();
     }
 
-    @Ignore
-    @Test
+    //@Ignore
+    //@Test
     public void crash() throws Exception {
         // Reproduces SIGBUS crash. Requires writing direct buffers
         // to a mapped file when there is not enough space left. To avoid having

@@ -632,6 +632,23 @@ public class CrudTest {
     }
 
     @Test
+    public void insertFailLockRelease() throws Exception {
+        View ix = openIndex("test");
+
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+        ix.store(null, key, value);
+
+        Transaction txn = mDb.newTransaction();
+        txn.lockMode(LockMode.READ_COMMITTED);
+        assertFalse(ix.insert(txn, key, value));
+
+        // Verify that lock isn't owned by not timing out.
+        ix.store(null, key, null);
+        assertNull(ix.load(null, key));
+    }
+
+    @Test
     public void testFill() throws Exception {
         View ix = openIndex("test");
         testFill(ix, 10);

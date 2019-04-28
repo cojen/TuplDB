@@ -658,7 +658,7 @@ final class Lock {
     }
 
     /**
-     * Note: Caller can short-circuit this test by checking the lock count first. If non-zero,
+     * Note: Caller can short-circuit this test by checking the lock count first. If negative,
      * then this method should return false. If the caller has already determined that mQueueSX
      * is non-null, then the short-circuit test is redundant and isn't useful.
      */
