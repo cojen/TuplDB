@@ -458,6 +458,13 @@ public class TestUtils {
                 }
             }
 
+            if (false) {
+                Map<String, Object> props = new HashMap<>();
+                props.put("traceUndo", true);
+                config.debugOpen(null, props);
+                System.exit(1);
+            }
+
             if (destroy) {
                 db = Database.destroy(config.baseFile(baseFile));
             } else {

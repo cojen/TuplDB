@@ -96,7 +96,7 @@ final class PendingTxn extends LockOwner {
 
         UndoLog undo = mUndoLog;
         if (undo != null) {
-            undo.truncate(true);
+            undo.truncate();
             mContext.unregister(undo);
         }
 

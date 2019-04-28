@@ -85,10 +85,11 @@ final class UndoLog implements DatabaseAccess {
     private static final byte OP_SCOPE_ENTER = (byte) 1;
     private static final byte OP_SCOPE_COMMIT = (byte) 2;
 
-    // Indicates that transaction has been committed.
+    @Deprecated // replaced with OP_LOG_COPY_C and OP_LOG_REF_C
     static final byte OP_COMMIT = (byte) 4;
 
     // Indicates that transaction has been committed and log is partially truncated.
+    @Deprecated // replaced with OP_LOG_COPY_C and OP_LOG_REF_C
     static final byte OP_COMMIT_TRUNCATE = (byte) 5;
 
     // Indicates that transaction has been prepared for two-phase commit.
@@ -149,6 +150,14 @@ final class UndoLog implements DatabaseAccess {
     // Payload is the value position and bytes to undo a value write. (ValueAccessor op)
     static final byte OP_UNWRITE = (byte) 31;
 
+    // Copy to a committed log from master log. Payload is transaction id, active index id,
+    // buffer size (short type), and serialized buffer.
+    private static final byte OP_LOG_COPY_C = (byte) 32;
+
+    // Reference to a committed log from master log. Payload is transaction id, active index
+    // id, length, node id, and top entry offset.
+    private static final byte OP_LOG_REF_C = (byte) 33;
+
     private final LocalDatabase mDatabase;
     private final long mTxnId;
 
@@ -169,6 +178,8 @@ final class UndoLog implements DatabaseAccess {
 
     // Active key is used for ValueAccessor operations.
     private byte[] mActiveKey;
+
+    private byte mCommitted;
 
     UndoLog(LocalDatabase db, long txnId) {
         mDatabase = db;
@@ -255,6 +266,47 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Called by LocalTransaction with db commit lock held.
+     */
+    void commit() {
+        mCommitted = OP_LOG_COPY_C - OP_LOG_COPY;
+    }
+
+    /**
+     * If the transaction was committed, deletes any ghosts and truncates the log.
+     *
+     * @return if transaction was committed
+     */
+    boolean recoveryCleanup() throws IOException {
+        if (mCommitted != 0) {
+            // Transaction was actually committed, but redo log is gone. This can happen when a
+            // checkpoint completes in the middle of the transaction commit operation.
+            if (mNode != null && mNodeTopPos == 0) {
+                // This signals that the checkpoint captured the undo log in the middle of a
+                // truncation, and any ghosts were already deleted.
+                truncate();
+            } else {
+                // Deleting ghosts truncates the undo log as a side-effect.
+                deleteGhosts();
+            }
+            return true;
+        }
+
+        // Look for deprecated commit ops.
+
+        switch (peek(true)) {
+        default:
+            return false;
+        case OP_COMMIT:
+            deleteGhosts();
+            return true;
+        case OP_COMMIT_TRUNCATE:
+            truncate();
+            return true;
+        }
+    }
+
+    /**
      * Caller must hold db commit lock.
      */
     final void pushUninsert(final long indexId, byte[] key) throws IOException {
@@ -328,13 +380,6 @@ final class UndoLog implements DatabaseAccess {
             }
             mActiveIndexId = indexId;
         }
-    }
-
-    /**
-     * Caller must hold db commit lock.
-     */
-    void pushCommit() throws IOException {
-        doPush(OP_COMMIT);
     }
 
     /**
@@ -722,14 +767,12 @@ final class UndoLog implements DatabaseAccess {
 
     /**
      * Truncate all log entries. Caller does not need to hold db commit lock.
-     *
-     * @param commit pass true to indicate that top of stack is a commit op
      */
-    final void truncate(boolean commit) throws IOException {
+    final void truncate() throws IOException {
         final CommitLock commitLock = mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.acquireShared();
         try {
-            shared = doTruncate(commitLock, shared, commit);
+            shared = doTruncate(commitLock, shared);
         } finally {
             shared.release();
         }
@@ -737,11 +780,8 @@ final class UndoLog implements DatabaseAccess {
 
     /**
      * Truncate all log entries. Caller must hold db commit lock.
-     *
-     * @param commit pass true to indicate that top of stack is a commit op
      */
-    final CommitLock.Shared doTruncate(CommitLock commitLock, CommitLock.Shared shared,
-                                       boolean commit)
+    final CommitLock.Shared doTruncate(CommitLock commitLock, CommitLock.Shared shared)
         throws IOException
     {
         if (mLength > 0) {
@@ -751,25 +791,14 @@ final class UndoLog implements DatabaseAccess {
             } else {
                 node.acquireExclusive();
                 while ((node = popNode(node, true)) != null) {
-                    if (commit) {
-                        // When shared lock is released, log can be checkpointed in an
-                        // incomplete state. Although caller must have already pushed the
-                        // commit op, any of the remaining nodes might be referenced by an
-                        // older master undo log entry. Must call prepareToDelete before
-                        // calling redirty, in case node contains data which has been
-                        // marked to be written out with the active checkpoint. The state
-                        // assigned by redirty is such that the node might be written
-                        // by the next checkpoint.
-                        mDatabase.prepareToDelete(node);
-                        mDatabase.redirty(node);
-                        /*P*/ byte[] page = node.mPage;
-                        int end = pageSize(page) - 1;
-                        node.undoTop(end);
-                        p_bytePut(page, end, OP_COMMIT_TRUNCATE);
-                    }
                     if (commitLock.hasQueuedThreads()) {
                         // Release and re-acquire, to unblock any threads waiting for
-                        // checkpoint to begin.
+                        // checkpoint to begin. In case the checkpoint writes out the node(s)
+                        // before truncation finishes, use a top position of zero to indicate
+                        // that recovery should simply complete the truncation. A position of
+                        // zero within the node is otherwise illegal, since it refers to the
+                        // header, which doesn't contain undo operations.
+                        mNodeTopPos = 0;
                         shared.release();
                         shared = commitLock.acquireShared();
                     }
@@ -1072,7 +1101,8 @@ final class UndoLog implements DatabaseAccess {
      * @param delete true to delete empty nodes
      * @return last pushed op, or 0 if empty
      */
-    final byte peek(boolean delete) throws IOException {
+    @Deprecated
+    private byte peek(boolean delete) throws IOException {
         Node node = mNode;
         if (node == null) {
             return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
@@ -1280,7 +1310,7 @@ final class UndoLog implements DatabaseAccess {
             writeHeaderToMaster(workspace);
             encodeShortLE(workspace, (8 + 8), bsize);
             arraycopy(buffer, pos, workspace, (8 + 8 + 2), bsize);
-            master.doPush(OP_LOG_COPY, workspace, 0, psize);
+            master.doPush((byte) (OP_LOG_COPY + mCommitted), workspace, 0, psize);
         } else {
             if (workspace == null) {
                 workspace = new byte[INITIAL_BUFFER_SIZE];
@@ -1289,8 +1319,9 @@ final class UndoLog implements DatabaseAccess {
             encodeLongLE(workspace, (8 + 8), mLength);
             encodeLongLE(workspace, (8 + 8 + 8), node.id());
             encodeShortLE(workspace, (8 + 8 + 8 + 8), mNodeTopPos);
-            master.doPush(OP_LOG_REF, workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
+            master.doPush((byte) (OP_LOG_REF + mCommitted), workspace, 0, (8 + 8 + 8 + 8 + 2), 1);
         }
+
         return workspace;
     }
 
@@ -1333,9 +1364,10 @@ final class UndoLog implements DatabaseAccess {
                     (EventType.DEBUG,
                      "Recovered transaction undo log: " +
                      "txnId=%1$d, length=%2$d, bufferPos=%3$d, " +
-                     "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$s",
+                     "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$d, committed=%7$s",
                      log.mTxnId, log.mLength, log.mBufferPos,
-                     log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos, log.mActiveIndexId);
+                     log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos, log.mActiveIndexId,
+                     log.mCommitted != 0);
             }
 
             LocalTransaction txn = log.recoverTransaction(debugListener, trace);
@@ -1354,6 +1386,12 @@ final class UndoLog implements DatabaseAccess {
     private final LocalTransaction recoverTransaction(EventListener debugListener, boolean trace)
         throws IOException
     {
+        if (mNode != null && mNodeTopPos == 0) {
+            // The checkpoint captured a committed log in the middle of truncation. The
+            // recoveryCleanup method will finish the truncation.
+            return new LocalTransaction(mDatabase, mTxnId, 0);
+        }
+
         byte[] opRef = new byte[1];
         Scope scope = new Scope();
 
@@ -1530,6 +1568,14 @@ final class UndoLog implements DatabaseAccess {
             opStr = "LOG_REF";
             break;
 
+        case OP_LOG_COPY_C:
+            opStr = "LOG_COPY_C";
+            break;
+
+        case OP_LOG_REF_C:
+            opStr = "LOG_REF_C";
+            break;
+
         case OP_INDEX:
             opStr = "INDEX";
             payloadStr = "indexId=" + decodeLongLE(entry, 0);
@@ -1659,12 +1705,14 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * @param masterLogOp OP_LOG_COPY or OP_LOG_REF
+     * @param masterLogOp OP_LOG_*
      */
     private UndoLog recoverUndoLog(byte masterLogOp, byte[] masterLogEntry)
         throws IOException
     {
-        if (masterLogOp != OP_LOG_COPY && masterLogOp != OP_LOG_REF) {
+        if (masterLogOp != OP_LOG_COPY && masterLogOp != OP_LOG_REF &&
+            masterLogOp != OP_LOG_COPY_C && masterLogOp != OP_LOG_REF_C)
+        {
             throw new DatabaseException("Unknown undo log entry type: " + masterLogOp);
         }
 
@@ -1672,14 +1720,14 @@ final class UndoLog implements DatabaseAccess {
         UndoLog log = new UndoLog(mDatabase, txnId);
         log.mActiveIndexId = decodeLongLE(masterLogEntry, 8);
 
-        if (masterLogOp == OP_LOG_COPY) {
+        if ((masterLogOp & 1) == 0) { // OP_LOG_COPY or OP_LOG_COPY_C
             int bsize = decodeUnsignedShortLE(masterLogEntry, (8 + 8));
             log.mLength = bsize;
             byte[] buffer = new byte[bsize];
             arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
             log.mBuffer = buffer;
             log.mBufferPos = 0;
-        } else {
+        } else { // OP_LOG_REF or OP_LOG_REF_C
             log.mLength = decodeLongLE(masterLogEntry, (8 + 8));
             long nodeId = decodeLongLE(masterLogEntry, (8 + 8 + 8));
             int topEntry = decodeUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
@@ -1696,6 +1744,8 @@ final class UndoLog implements DatabaseAccess {
 
             log.mNode.releaseExclusive();
         }
+
+        log.mCommitted = (byte) ((masterLogOp >> 1) & OP_LOG_COPY);
 
         return log;
     }

@@ -245,7 +245,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                         // Indicates that undo log should be truncated instead
                         // of rolled back during recovery. Commit lock can now
                         // be released safely. See recoveryCleanup.
-                        undo.pushCommit();
+                        undo.commit();
                     } finally {
                         shared.release();
                     }
@@ -264,13 +264,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     // Calling this deletes any ghosts too.
                     super.scopeUnlockAll();
 
-                    // Truncate obsolete log entries after releasing locks.
-                    // Recovery might need to re-delete ghosts, which is only
-                    // possible with a complete undo log. Truncate operation
-                    // can be interrupted by a checkpoint, allowing a partial
-                    // undo log to be seen by the recovery. It will not attempt
-                    // to delete ghosts.
-                    undo.truncate(true);
+                    // Truncate obsolete log entries after releasing locks. Recovery might need
+                    // to re-delete ghosts, which is only possible with a complete undo log.
+                    // Truncate operation can be interrupted by a checkpoint, allowing a
+                    // partial undo log to be seen by the recovery.
+                    undo.truncate();
 
                     mContext.unregister(undo);
                     mUndoLog = null;
@@ -403,7 +401,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     super.scopeUnlockAll();
                 } else {
                     try {
-                        undo.pushCommit();
+                        undo.commit();
                     } finally {
                         shared.release();
                     }
@@ -419,7 +417,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                     super.scopeUnlockAll();
 
-                    undo.truncate(true);
+                    undo.truncate();
 
                     mContext.unregister(undo);
                     mUndoLog = null;
@@ -870,24 +868,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
         _UndoLog undo = mUndoLog;
         if (undo != null) {
-            switch (undo.peek(true)) {
-            default:
-                break;
-
-            case _UndoLog.OP_COMMIT:
-                // Transaction was actually committed, but redo log is gone. This can happen
-                // when a checkpoint completes in the middle of the transaction commit
-                // operation. Method truncates undo log as a side-effect.
-                undo.deleteGhosts();
-                finish = true;
-                break;
-
-            case _UndoLog.OP_COMMIT_TRUNCATE:
-                // Like OP_COMMIT, but ghosts have already been deleted.
-                undo.truncate(false);
-                finish = true;
-                break;
-            }
+            finish |= undo.recoveryCleanup();
         }
 
         if (finish) {

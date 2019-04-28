@@ -1730,8 +1730,6 @@ final class _LocalDatabase extends AbstractDatabase {
                 root = allocLatchedNode(rootId, _NodeGroup.MODE_UNEVICTABLE);
                 root.id(rootId);
                 try {
-                    // Note: Same as redirty method, except mPage is assigned when fully mapped.
-                    // The redirty method assumes that the page doesn't change.
                     /*P*/ // [|
                     if (mFullyMapped) {
                         root.mPage = mPageDb.dirtyPage(rootId);
@@ -4361,19 +4359,6 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Caller must hold commit lock and exclusive latch on node. This method
-     * should only be called for nodes whose existing data is not needed.
-     */
-    void redirty(_Node node) throws IOException {
-        /*P*/ // [|
-        if (mFullyMapped) {
-            mPageDb.dirtyPage(node.id());
-        }
-        /*P*/ // ]
-        node.mGroup.addDirty(node, mCommitState);
-    }
-
-    /**
      * Caller must hold commit lock and exclusive latch on node. Latch is always released by
      * this method, even if an exception is thrown.
      */
@@ -5451,7 +5436,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 CommitLock.Shared shared = mCommitLock.acquireShared();
                 try {
                     if (!isClosed()) {
-                        shared = masterUndoLog.doTruncate(mCommitLock, shared, false);
+                        shared = masterUndoLog.doTruncate(mCommitLock, shared);
                     }
                 } finally {
                     shared.release();
