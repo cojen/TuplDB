@@ -94,8 +94,16 @@ public class CompactTest {
 
         Database.Stats stats2 = mDb.stats();
 
-        assertTrue(stats2.freePages() < stats1.freePages());
-        assertTrue(stats2.totalPages() < stats1.totalPages());
+        try {
+            assertTrue(stats2.freePages() < stats1.freePages());
+            assertTrue(stats2.totalPages() < stats1.totalPages());
+        } catch (AssertionError e) {
+            // Can fail if delayed by concurrent test load. Retry.
+            mDb.compactFile(null, 0.9);
+            stats2 = mDb.stats();
+            assertTrue(stats2.freePages() < stats1.freePages());
+            assertTrue(stats2.totalPages() < stats1.totalPages());
+        }
 
         assertTrue(mDb.verify(null));
 
@@ -213,8 +221,16 @@ public class CompactTest {
 
         Database.Stats stats2 = mDb.stats();
 
-        assertTrue(stats2.freePages() < stats1.freePages());
-        assertTrue(stats2.totalPages() < stats1.totalPages());
+        try {
+            assertTrue(stats2.freePages() < stats1.freePages());
+            assertTrue(stats2.totalPages() < stats1.totalPages());
+        } catch (AssertionError e) {
+            // Can fail if delayed by concurrent test load. Retry.
+            mDb.compactFile(null, 0.9);
+            stats2 = mDb.stats();
+            assertTrue(stats2.freePages() < stats1.freePages());
+            assertTrue(stats2.totalPages() < stats1.totalPages());
+        }
 
         assertTrue(mDb.verify(null));
 
@@ -520,8 +536,16 @@ public class CompactTest {
         mDb.compactFile(null, 0.9);
         Database.Stats stats3 = mDb.stats();
 
-        assertTrue(stats3.freePages() < stats2.freePages());
-        assertTrue(stats3.totalPages() < stats2.totalPages());
+        try {
+            assertTrue(stats3.freePages() < stats2.freePages());
+            assertTrue(stats3.totalPages() < stats2.totalPages());
+        } catch (AssertionError e) {
+            // Can fail if delayed by concurrent test load. Retry.
+            mDb.compactFile(null, 0.9);
+            stats3 = mDb.stats();
+            assertTrue(stats3.freePages() < stats2.freePages());
+            assertTrue(stats3.totalPages() < stats2.totalPages());
+        }
     }
 
     @Test
