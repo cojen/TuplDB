@@ -773,7 +773,7 @@ final class Node extends Clutch implements DatabaseAccess {
         try {
             db.writePage(id(), page);
         } catch (IOException e) {
-            throw new WriteFailureException(e);
+            throw WriteFailureException.make(e);
         }
     }
 

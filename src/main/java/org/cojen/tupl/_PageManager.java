@@ -611,7 +611,7 @@ final class _PageManager {
                 // Should not happen with page limit override.
                 throw e;
             } catch (IOException e) {
-                throw new WriteFailureException(e);
+                throw WriteFailureException.make(e);
             } finally {
                 if (mPageLimitOverride != null) {
                     mPageLimitOverride.remove();

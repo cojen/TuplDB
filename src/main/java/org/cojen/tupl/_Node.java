@@ -773,7 +773,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         try {
             db.writePage(id(), page);
         } catch (IOException e) {
-            throw new WriteFailureException(e);
+            throw WriteFailureException.make(e);
         }
     }
 

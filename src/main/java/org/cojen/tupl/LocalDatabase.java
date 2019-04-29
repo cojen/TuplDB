@@ -171,7 +171,7 @@ final class LocalDatabase extends AbstractDatabase {
     /*P*/ // [
     private byte[] mCommitHeader;
     /*P*/ // |
-    /*P*/ // private volatile long mCommitHeader = p_null();
+    /*P*/ // private long mCommitHeader = p_null();
     /*P*/ // private static final VarHandle cCommitHeaderHandle;
     /*P*/ // ]
     private UndoLog mCommitMasterUndoLog;
@@ -5238,9 +5238,11 @@ final class LocalDatabase extends AbstractDatabase {
 
             final Node root = mRegistry.mRoot;
 
+            /*P*/ byte[] header = mCommitHeader;
+
             long nowNanos = System.nanoTime();
 
-            if (!force) {
+            if (!force && header == p_null()) {
                 thresholdCheck : {
                     if (delayThresholdNanos == 0) {
                         break thresholdCheck;
@@ -5300,8 +5302,6 @@ final class LocalDatabase extends AbstractDatabase {
             }
 
             boolean resume = true;
-
-            /*P*/ byte[] header = mCommitHeader;
             UndoLog masterUndoLog = mCommitMasterUndoLog;
 
             if (header == p_null()) {
@@ -5404,6 +5404,8 @@ final class LocalDatabase extends AbstractDatabase {
 
                 p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
                 p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+
+                mCommitHeader = header;
 
                 mPageDb.commit(resume, header, (boolean resume_, /*P*/ byte[] header_) -> {
                     flush(resume_, header_);

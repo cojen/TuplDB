@@ -607,6 +607,10 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
                 // contended mode, and it cannot flip back until after the downgraded latch has
                 // been fully released.
                 node.mCachedState = Node.CACHED_CLEAN;
+            } catch (Throwable e) {
+                // Add it back to the list for flushing again later.
+                addDirty(node, (byte) state);
+                throw e;
             } finally {
                 node.releaseShared();
             }
