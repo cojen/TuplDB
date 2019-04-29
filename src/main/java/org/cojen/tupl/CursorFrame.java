@@ -147,7 +147,7 @@ class CursorFrame {
     /**
      * Acquire an exclusive latch on this frame's bound node.
      *
-     * @return frame node, or null if not not bound
+     * @return frame node, or null if not bound
      */
     final Node acquireExclusiveIfBound() {
         Node node = mNode;

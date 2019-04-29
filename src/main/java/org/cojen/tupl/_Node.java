@@ -2221,7 +2221,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
             int vfrag;
             byte[] value;
-            if (longEncodedLen <= db.mMaxEntrySize) {
+            if (longEncodedLen <= db.mMaxEntrySize && ((int) vlength) >= 0) {
                 vfrag = 0;
                 value = new byte[(int) vlength];
                 encodedLen = (int) longEncodedLen;

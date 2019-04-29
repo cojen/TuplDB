@@ -1890,6 +1890,67 @@ public class ValueAccessorTest {
     }
 
     @Test
+    public void largeValueException() throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] k3 = "k3".getBytes();
+        byte[] k4 = "k4".getBytes();
+
+        Cursor c = ix.newCursor(null);
+        c.find(k1);
+        c.valueLength(0x8000_0000L);
+        c.find(k2);
+        c.valueLength(0x1000_0000_0000L);
+        c.find(k3);
+        c.valueLength(Long.MAX_VALUE - 100);
+        c.find(k4);
+        c.valueLength(Long.MAX_VALUE);
+        c.close();
+
+        try {
+            ix.load(null, k1);
+            fail();
+        } catch (LargeValueException e) {
+        }
+
+        try {
+            ix.load(null, k2);
+            fail();
+        } catch (LargeValueException e) {
+        }
+
+        try {
+            ix.load(null, k3);
+            fail();
+        } catch (LargeValueException e) {
+        }
+
+        try {
+            ix.load(null, k4);
+            fail();
+        } catch (LargeValueException e) {
+        }
+
+        c = ix.newCursor(null);
+        try {
+            c.find(k1);
+            fail();
+        } catch (LargeValueException e) {
+        }
+        c.autoload(false);
+        assertEquals(0x8000_0000L, c.valueLength());
+        c.find(k2);
+        assertEquals(0x1000_0000_0000L, c.valueLength());
+        c.find(k3);
+        assertEquals(Long.MAX_VALUE - 100, c.valueLength());
+        c.find(k4);
+        assertEquals(Long.MAX_VALUE, c.valueLength());
+        c.close();
+    }
+
+    @Test
     public void inputRead() throws Exception {
         Index ix = mDb.openIndex("test");
 
