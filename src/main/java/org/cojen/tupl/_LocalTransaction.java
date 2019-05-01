@@ -126,6 +126,11 @@ final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
+    public _LocalDatabase getDatabase() {
+        return mDatabase;
+    }
+
+    @Override
     public void attach(Object obj) {
         mAttachment = obj;
     }

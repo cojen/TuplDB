@@ -55,7 +55,7 @@ class _Locker extends _LockOwner {
     }
 
     @Override
-    public final _LocalDatabase getDatabase() {
+    public _LocalDatabase getDatabase() {
         _LockManager manager = mManager;
         if (manager != null) {
             WeakReference<_LocalDatabase> ref = manager.mDatabaseRef;
