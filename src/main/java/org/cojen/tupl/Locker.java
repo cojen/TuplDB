@@ -138,32 +138,6 @@ class Locker extends LockOwner {
     }
 
     /**
-     * NT == No Timeout or deadlock exception thrown
-     *
-     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
-     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
-     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
-     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
-     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    @SuppressWarnings("incomplete-switch")
-    final LockResult lockNT(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
-        throws LockFailureException
-    {
-        LockResult result = manager().getLockHT(hash)
-            .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
-        if (!result.isHeld()) {
-            switch (result) {
-            case ILLEGAL:
-                throw new IllegalUpgradeException();
-            case INTERRUPTED:
-                throw new LockInterruptedException();
-            }
-        }
-        return result;
-    }
-
-    /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
      * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
@@ -224,20 +198,6 @@ class Locker extends LockOwner {
     }
 
     /**
-     * NT == No Timeout or deadlock exception thrown
-     *
-     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
-     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
-     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
-     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    final LockResult lockSharedNT(long indexId, byte[] key, int hash, long nanosTimeout)
-        throws LockFailureException
-    {
-        return lockNT(TYPE_SHARED, indexId, key, hash, nanosTimeout);
-    }
-
-    /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
      * LockResult#alreadyOwned owned}, transaction already owns a strong enough
@@ -294,20 +254,6 @@ class Locker extends LockOwner {
         throws LockFailureException
     {
         return lock(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
-    }
-
-    /**
-     * NT == No Timeout or deadlock exception thrown
-     *
-     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
-     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
-     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
-     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    final LockResult lockUpgradableNT(long indexId, byte[] key, int hash, long nanosTimeout)
-        throws LockFailureException
-    {
-        return lockNT(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -375,20 +321,6 @@ class Locker extends LockOwner {
      */
     final void recoverLock(Lock lock) {
         mManager.getLockHT(lock.mHashCode).recoverLock(this, lock);
-    }
-
-    /**
-     * NT == No Timeout or deadlock exception thrown
-     *
-     * @return {@link LockResult#TIMED_OUT_LOCK TIMED_OUT_LOCK}, {@link
-     * LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
-     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or
-     * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    final LockResult lockExclusiveNT(long indexId, byte[] key, int hash, long nanosTimeout)
-        throws LockFailureException
-    {
-        return lockNT(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
     }
 
     /**
