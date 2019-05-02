@@ -1323,7 +1323,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 txn.lockExclusive(mRegistryKeyMap.mId, idKey);
                 txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // _Lock in a consistent order, avoiding deadlocks.
-                    if (Arrays.compareUnsigned(oldNameKey, newNameKey) <= 0) {
+                if (Arrays.compareUnsigned(oldNameKey, newNameKey) <= 0) {
                     txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
                     txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
                 } else {
@@ -1381,6 +1381,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
             }
 
+            txn.durabilityMode(DurabilityMode.NO_REDO);
             mRegistryKeyMap.delete(txn, oldNameKey);
             mRegistryKeyMap.store(txn, idKey, newName);
 
@@ -3271,7 +3272,7 @@ final class _LocalDatabase extends AbstractDatabase {
             // Pass the transaction to acquire the lock.
             byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-            _Tree tree = quickFindIndex(name);
+            _Tree tree = lookupIndexById(treeId);
             if (tree != null) {
                 // Another thread got the lock first and loaded the tree.
                 return tree;
