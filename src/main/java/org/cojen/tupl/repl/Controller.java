@@ -273,7 +273,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         // Wake up syncCommit waiters which are stuck because removed peers aren't responding.
-        mSyncCommitCondition.signalAll();
+        mSyncCommitCondition.signalAll(this);
     }
 
     @Override
@@ -876,7 +876,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog.close();
         acquireExclusive();
         try {
-            mSyncCommitCondition.signalAll();
+            mSyncCommitCondition.signalAll(this);
         } finally {
             releaseExclusive();
         }
@@ -2147,7 +2147,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mStateLog.commitDurable(durablePosition)) {
                 acquireExclusive();
                 try {
-                    mSyncCommitCondition.signalAll();
+                    mSyncCommitCondition.signalAll(this);
                 } finally {
                     releaseExclusive();
                 }

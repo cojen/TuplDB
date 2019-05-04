@@ -816,7 +816,7 @@ public class Latch {
             while (true) {
                 for (int i=0; i<SPIN_LIMIT; i++) {
                     boolean acquired = latch.doTryAcquireExclusive();
-                    Object waiter = mWaiter;
+                    Thread waiter = mWaiter;
                     if (waiter == null) {
                         // Fair handoff, and so node is no longer in the queue.
                         return 1;
@@ -826,7 +826,7 @@ public class Latch {
                         continue;
                     }
                     // Acquired, so no need to reference the waiter anymore.
-                    if (mWaitState != SIGNALED) {
+                    if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
                         cWaiterHandle.setOpaque(this, null);
                     } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
@@ -842,44 +842,89 @@ public class Latch {
         }
 
         /**
-         * Called by thread which was parked after it resumes. Caller must hold exclusive
-         * latch, and is responsible for removing node from queue if return value is 0.
-         *
-         * @return -1 if interrupted, 0 if not signaled, 1 if signaled
-         */
-        final int condResumed(LatchCondition queue) {
-            if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
-                condRemove(queue);
-                return 1;
-            }
-
-            if (((Thread) cWaiterHandle.get(this)).isInterrupted()) {
-                Thread.interrupted();
-                condRemove(queue);
-                return -1;
-            }
-
-            return 0;
-        }
-
-        /**
          * Used for latch condition. Caller must hold exclusive latch.
          */
-        final void condSignal() {
+        final void condSignal(Latch latch, LatchCondition queue) {
+            condRemove(queue);
             cWaitStateHandle.set(this, SIGNALED);
+            latch.enqueue(this);
+        }
+
+        /**
+         * Called by thread which is holding exclusive latch, and has enqueued this node into
+         * the condition queue. When method returns, exclusive latch is held again.
+         *
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         */
+        final int condAwait(Latch latch, LatchCondition queue, long nanosTimeout, long nanosEnd) {
+            latch.releaseExclusive();
+
+            start: while (true) {
+                if (nanosTimeout < 0) {
+                    LockSupport.park(latch);
+                } else {
+                    LockSupport.parkNanos(latch, nanosTimeout);
+                }
+
+                int trials = 0;
+                while (true) {
+                    for (int i=0; i<SPIN_LIMIT; i++) {
+                        boolean acquired = latch.doTryAcquireExclusive();
+                        Thread waiter = mWaiter;
+                        if (waiter == null) {
+                            // Signaled, and so node is no longer in the queue.
+                            return 1;
+                        }
+
+                        if (!acquired) {
+                            Thread.onSpinWait();
+                            continue;
+                        }
+
+                        if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
+                            cWaiterHandle.set(this, null);
+                            return 1;
+                        }
+
+                        if (waiter.isInterrupted()) {
+                            Thread.interrupted();
+                            condRemove(queue);
+                            return -1;
+                        }
+
+                        // Spurious unpark, or timed out.
+
+                        if (nanosTimeout >= 0) {
+                            if (nanosTimeout == 0
+                                || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0)
+                            {
+                                condRemove(queue);
+                                return 0;
+                            }
+                        }
+
+                        latch.releaseExclusive();
+                        continue start;
+                    }
+
+                    if (++trials < SPIN_LIMIT >> 1) {
+                        // Yield to avoid parking.
+                        Thread.yield();
+                    } else  {
+                        // Thread might have been unparked for a reason. If interrupted or
+                        // timed out, the exclusive latch is still required to remove the
+                        // waiter from the queue, or to even return from this method.
+                        trials = 0;
+                        LockSupport.park(latch);
+                    }
+                }
+            }
         }
 
         /**
          * Used for latch condition. Caller must hold exclusive latch.
          */
-        final void condUnpark() {
-            LockSupport.unpark((Thread) cWaiterHandle.get(this));
-        }
-
-        /**
-         * Used for latch condition. Caller must hold exclusive latch.
-         */
-        final void condRemove(LatchCondition queue) {
+        private void condRemove(LatchCondition queue) {
             WaitNode prev = (WaitNode) cPrevHandle.get(this);
             WaitNode next = (WaitNode) cNextHandle.get(this);
             if (prev == null) {
@@ -967,7 +1012,7 @@ public class Latch {
 
                 if (cStateHandle.compareAndSet(latch, state, state + 1)) {
                     // Acquired, so no need to reference the thread anymore.
-                    Object waiter = mWaiter;
+                    Thread waiter = mWaiter;
                     if (waiter == null || !cWaiterHandle.compareAndSet(this, waiter, null)) {
                         if (!cStateHandle.compareAndSet(latch, state + 1, state)) {
                             cStateHandle.getAndAdd(latch, -1);

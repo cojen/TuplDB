@@ -124,36 +124,6 @@ public class LatchCondition {
             return -1;
         }
 
-        enqueue(node);
-
-        if (nanosTimeout < 0) {
-            while (true) {
-                latch.releaseExclusive();
-                LockSupport.park(this);
-                latch.acquireExclusive();
-                int result = node.condResumed(this);
-                if (result != 0) {
-                    return result;
-                }
-            }
-        } else {
-            while (true) {
-                latch.releaseExclusive();
-                LockSupport.parkNanos(this, nanosTimeout);
-                latch.acquireExclusive();
-                int result = node.condResumed(this);
-                if (result != 0) {
-                    return result;
-                }
-                if (nanosTimeout == 0 || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0) {
-                    node.condRemove(this);
-                    return 0;
-                }
-            }
-        }
-    }
-
-    private void enqueue(WaitNode node) {
         WaitNode tail = mTail;
         if (tail == null) {
             mHead = node;
@@ -162,112 +132,71 @@ public class LatchCondition {
             cPrevHandle.set(node, tail);
         }
         mTail = node;
+
+        return node.condAwait(latch, this, nanosTimeout, nanosEnd);
     }
 
     /**
-     * Signals the first waiter, of any type. Caller must hold shared or exclusive latch.
+     * Signals the first waiter, of any type. Caller must hold exclusive latch.
      */
-    public final void signal() {
+    public final void signal(Latch latch) {
         WaitNode head = mHead;
         if (head != null) {
-            head.condSignal();
-            head.condUnpark();
+            head.condSignal(latch, this);
         }
     }
 
     /**
-     * With the exclusive latch held, signals the first waiter, of any type, and then releases
-     * the latch.
-     */
-    // TODO: remove
-    public final void signalRelease(Latch latch) {
-        WaitNode head = mHead;
-        if (head != null) {
-            head.condSignal();
-            // Release first, because the unparked thread might immediately block on the latch.
-            latch.releaseExclusive();
-            head.condUnpark();
-        } else {
-            latch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Signals the first waiter, of any type. Caller must hold shared or exclusive latch.
+     * Signals the first waiter, of any type. Caller must hold exclusive latch.
      *
      * @return false if no waiters of any type exist
      */
-    public final boolean signalNext() {
+    public final boolean signalNext(Latch latch) {
         WaitNode head = mHead;
         if (head == null) {
             return false;
         }
-        head.condSignal();
-        head.condUnpark();
+        head.condSignal(latch, this);
         return true;
     }
 
     /**
-     * Signals all waiters, of any type. Caller must hold shared or exclusive latch.
+     * Signals all waiters, of any type. Caller must hold exclusive latch.
      */
-    public final void signalAll() {
-        WaitNode node = mHead;
-        if (node != null) {
-            do {
-                node.condSignal();
-                node = (WaitNode) cNextHandle.get(node);
-            } while (node != null);
-            node = mHead;
-            do {
-                node.condUnpark();
-                node = (WaitNode) cNextHandle.get(node);
-            } while (node != null);
+    public final void signalAll(Latch latch) {
+        while (true) {
+            WaitNode head = mHead;
+            if (head == null) {
+                return;
+            }
+            head.condSignal(latch, this);
         }
     }
 
     /**
-     * Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
-     * exclusive latch.
+     * Signals the first waiter, but only if it's a shared waiter. Caller must hold exclusive
+     * latch.
      */
-    public final void signalShared() {
+    public final void signalShared(Latch latch) {
         WaitNode head = mHead;
         if (head != null && ((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
-            head.condSignal();
-            head.condUnpark();
+            head.condSignal(latch, this);
         }
     }
 
     /**
-     * With the exclusive latch held, signals the first waiter (if shared), and then releases
-     * the latch.
-     */
-    // TODO: remove
-    public final void signalSharedRelease(Latch latch) {
-        WaitNode head = mHead;
-        if (head != null && ((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
-            head.condSignal();
-            // Release first, because the unparked thread might immediately block on the latch.
-            latch.releaseExclusive();
-            head.condUnpark();
-        } else {
-            latch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Signals the first waiter, but only if it's a shared waiter. Caller must hold shared or
-     * exclusive latch.
+     * Signals the first waiter, but only if it's a shared waiter. Caller must hold exclusive
+     * latch.
      *
      * @return false if no waiters of any type exist
      */
-    public final boolean signalNextShared() {
+    public final boolean signalNextShared(Latch latch) {
         WaitNode head = mHead;
         if (head == null) {
             return false;
         }
         if (((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
-            head.condSignal();
-            head.condUnpark();
+            head.condSignal(latch, this);
         }
         return true;
     }

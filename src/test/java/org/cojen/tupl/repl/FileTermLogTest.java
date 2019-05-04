@@ -488,7 +488,7 @@ public class FileTermLogTest {
                         protected void doRun(long commit) {
                             mLatch.acquireExclusive();
                             mCommit = commit;
-                            mLatchCondition.signal();
+                            mLatchCondition.signal(mLatch);
                             mLatch.releaseExclusive();
                         }
                     });
@@ -503,12 +503,12 @@ public class FileTermLogTest {
                     long commit = mLog.waitForCommit(mWaitFor, -1);
                     mLatch.acquireExclusive();
                     mCommit = commit;
-                    mLatchCondition.signal();
+                    mLatchCondition.signal(mLatch);
                     mLatch.releaseExclusive();
                 } catch (Exception e) {
                     mLatch.acquireExclusive();
                     mEx = e;
-                    mLatchCondition.signal();
+                    mLatchCondition.signal(mLatch);
                     mLatch.releaseExclusive();
                 }
             }

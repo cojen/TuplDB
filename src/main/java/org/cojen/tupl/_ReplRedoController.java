@@ -245,7 +245,7 @@ final class _ReplRedoController extends _ReplRedoWriter {
         acquireExclusive();
         try {
             if (mLeaderNotifyCondition != null) {
-                mLeaderNotifyCondition.signalAll();
+                mLeaderNotifyCondition.signalAll(this);
                 mLeaderNotifyCondition = null;
             }
 

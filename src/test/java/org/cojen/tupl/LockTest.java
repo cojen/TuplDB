@@ -703,47 +703,6 @@ public class LockTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
-    public void blockedOnQueuedSharedWaiters() throws Exception {
-        // This test requires that a queue of shared waiters exists, which then is slowly
-        // drained. The best way to ensure that this occurs is by suspending the first waiter
-        // in the queue (Lock.mQueueSX). Suspend is deprecated, but if it does nothing instead,
-        // this test should still pass. Test coverage might be reduced as a result.
-
-        Locker locker = new Locker(mManager);
-
-        assertEquals(ACQUIRED, locker.tryLockExclusive(0, k1, -1));
-
-        Thread[] threads = new Thread[2];
-
-        for (int i=0; i<2; i++) {
-            threads[i] = startAndWaitUntilBlocked(new Thread(() -> {
-                try {
-                    Locker locker2 = new Locker(mManager);
-                    locker2.tryLockShared(0, k1, -1);
-                    locker2.unlock();
-                } catch (Exception e) {
-                    Utils.uncaught(e);
-                }
-            }));
-        }
-
-        threads[0].suspend();
-        try {
-            locker.unlock();
-            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 0));
-            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 1));
-            assertEquals(ACQUIRED, locker.tryLockUpgradable(0, k1, -1));
-            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 0));
-            assertEquals(TIMED_OUT_LOCK, locker.tryLockExclusive(0, k1, 1));
-        } finally {
-            threads[0].resume();
-        }
-
-        assertEquals(UPGRADED, locker.tryLockExclusive(0, k1, -1));
-    }
-
-    @Test
     public void interrupts() throws Exception {
         interrupts(-1);
     }
