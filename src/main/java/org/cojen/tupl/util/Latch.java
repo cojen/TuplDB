@@ -38,7 +38,8 @@ public class Latch {
 
     static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 1;
 
-    static final VarHandle cStateHandle, cFirstHandle, cLastHandle, cWaiterHandle, cNextHandle;
+    static final VarHandle cStateHandle, cFirstHandle, cLastHandle,
+        cWaiterHandle, cWaitStateHandle, cPrevHandle, cNextHandle;
 
     static {
         try {
@@ -61,6 +62,14 @@ public class Latch {
             cWaiterHandle =
                 MethodHandles.lookup().findVarHandle
                 (WaitNode.class, "mWaiter", Thread.class);
+
+            cWaitStateHandle =
+                MethodHandles.lookup().findVarHandle
+                (WaitNode.class, "mWaitState", int.class);
+
+            cPrevHandle =
+                MethodHandles.lookup().findVarHandle
+                (WaitNode.class, "mPrev", WaitNode.class);
 
             cNextHandle =
                 MethodHandles.lookup().findVarHandle
@@ -265,7 +274,7 @@ public class Latch {
                         return;
                     }
 
-                    if (!first.mFair) {
+                    if (first.mWaitState != WaitNode.SIGNALED) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
                         LockSupport.unpark(waiter);
@@ -600,7 +609,7 @@ public class Latch {
                 // Lost the race. Request fair handoff.
 
                 if (denied++ == 0) {
-                    node.mFair = true;
+                    node.mWaitState = WaitNode.SIGNALED;
                 }
             }
         }
@@ -768,11 +777,27 @@ public class Latch {
 
     static class WaitNode {
         volatile Thread mWaiter;
-        volatile boolean mFair;
+
+        static final int SIGNALED = 1, COND_WAIT = 2, COND_WAIT_SHARED = 3;
+        volatile int mWaitState;
 
         // Only set if node was deleted and must be bypassed when a new node is enqueued.
         volatile WaitNode mPrev;
         volatile WaitNode mNext;
+
+        /**
+         * Constructor for latch wait.
+         */
+        WaitNode() {
+        }
+
+        /**
+         * Constructor for condition wait. Caller must hold exclusive latch.
+         */
+        WaitNode(int waitState) {
+            cWaiterHandle.set(this, Thread.currentThread());
+            cWaitStateHandle.set(this, waitState);
+        }
 
         /**
          * @return true if timed out or interrupted
@@ -801,7 +826,7 @@ public class Latch {
                         continue;
                     }
                     // Acquired, so no need to reference the waiter anymore.
-                    if (!mFair) {
+                    if (mWaitState != SIGNALED) {
                         cWaiterHandle.setOpaque(this, null);
                     } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
@@ -816,12 +841,72 @@ public class Latch {
             }
         }
 
+        /**
+         * Called by thread which was parked after it resumes. Caller must hold exclusive
+         * latch, and is responsible for removing node from queue if return value is 0.
+         *
+         * @return -1 if interrupted, 0 if not signaled, 1 if signaled
+         */
+        final int condResumed(LatchCondition queue) {
+            if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
+                condRemove(queue);
+                return 1;
+            }
+
+            if (((Thread) cWaiterHandle.get(this)).isInterrupted()) {
+                Thread.interrupted();
+                condRemove(queue);
+                return -1;
+            }
+
+            return 0;
+        }
+
+        /**
+         * Used for latch condition. Caller must hold exclusive latch.
+         */
+        final void condSignal() {
+            cWaitStateHandle.set(this, SIGNALED);
+        }
+
+        /**
+         * Used for latch condition. Caller must hold exclusive latch.
+         */
+        final void condUnpark() {
+            LockSupport.unpark((Thread) cWaiterHandle.get(this));
+        }
+
+        /**
+         * Used for latch condition. Caller must hold exclusive latch.
+         */
+        final void condRemove(LatchCondition queue) {
+            WaitNode prev = (WaitNode) cPrevHandle.get(this);
+            WaitNode next = (WaitNode) cNextHandle.get(this);
+            if (prev == null) {
+                if ((queue.mHead = next) == null) {
+                    queue.mTail = null;
+                } else {
+                    cPrevHandle.set(next, null);
+                }
+            } else {
+                cNextHandle.set(prev, next);
+                if (next == null) {
+                    queue.mTail = prev;
+                } else {
+                    cPrevHandle.set(next, prev);
+                }
+                cPrevHandle.set(this, null);
+            }
+            cNextHandle.set(this, null);
+        }
+
+
         @Override
         public String toString() {
             StringBuilder b = new StringBuilder();
             appendMiniString(b, this);
             b.append(" {waiter=").append(mWaiter);
-            b.append(", fair=").append(mFair);
+            b.append(", state=").append(mWaitState);
             b.append(", next="); appendMiniString(b, mNext);
             b.append(", prev="); appendMiniString(b, mPrev);
             return b.append('}').toString();
