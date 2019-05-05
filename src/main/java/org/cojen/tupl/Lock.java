@@ -135,10 +135,12 @@ final class Lock {
             return INTERRUPTED;
         }
 
-        // After consuming one signal, next shared waiter must be signaled, and so on.
-        if (!queueSX.signalNextShared(latch)) {
+        if (queueSX.isEmpty()) {
             // Indicate that last signal has been consumed, and also free memory.
             mQueueSX = null;
+        } else {
+            // After consuming one signal, next shared waiter must be signaled, and so on.
+            queueSX.signalShared(latch);
         }
 
         if (w >= 1) {

@@ -147,20 +147,6 @@ public class LatchCondition {
     }
 
     /**
-     * Signals the first waiter, of any type. Caller must hold exclusive latch.
-     *
-     * @return false if no waiters of any type exist
-     */
-    public final boolean signalNext(Latch latch) {
-        WaitNode head = mHead;
-        if (head == null) {
-            return false;
-        }
-        head.condSignal(latch, this);
-        return true;
-    }
-
-    /**
      * Signals all waiters, of any type. Caller must hold exclusive latch.
      */
     public final void signalAll(Latch latch) {
@@ -182,23 +168,6 @@ public class LatchCondition {
         if (head != null && ((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
             head.condSignal(latch, this);
         }
-    }
-
-    /**
-     * Signals the first waiter, but only if it's a shared waiter. Caller must hold exclusive
-     * latch.
-     *
-     * @return false if no waiters of any type exist
-     */
-    public final boolean signalNextShared(Latch latch) {
-        WaitNode head = mHead;
-        if (head == null) {
-            return false;
-        }
-        if (((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
-            head.condSignal(latch, this);
-        }
-        return true;
     }
 
     /**
