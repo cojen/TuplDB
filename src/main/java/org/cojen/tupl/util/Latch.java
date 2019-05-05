@@ -861,9 +861,9 @@ public class Latch {
 
             start: while (true) {
                 if (nanosTimeout < 0) {
-                    LockSupport.park(latch);
+                    LockSupport.park(queue);
                 } else {
-                    LockSupport.parkNanos(latch, nanosTimeout);
+                    LockSupport.parkNanos(queue, nanosTimeout);
                 }
 
                 int trials = 0;
