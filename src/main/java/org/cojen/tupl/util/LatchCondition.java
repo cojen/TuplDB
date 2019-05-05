@@ -176,9 +176,7 @@ public class LatchCondition {
     public final void clear() {
         WaitNode node = mHead;
         while (node != null) {
-            if (((int) cWaitStateHandle.get(node)) >= WaitNode.COND_WAIT) {
-                ((Thread) cWaiterHandle.get(node)).interrupt();
-            }
+            ((Thread) cWaiterHandle.get(node)).interrupt();
             cPrevHandle.set(node, null);
             WaitNode next = (WaitNode) cNextHandle.get(node);
             cNextHandle.set(node, null);
