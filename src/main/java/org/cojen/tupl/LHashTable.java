@@ -205,12 +205,17 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
         return e;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private boolean grow() {
         if (mSize < mGrowThreshold) {
             return false;
+        } else {
+            doGrow();
+            return true;
         }
+    }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void doGrow() {
         E[] entries = mEntries;
 
         int capacity = entries.length << 1;
@@ -229,8 +234,6 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
 
         mEntries = newEntries;
         mGrowThreshold = (int) (capacity * LOAD_FACTOR);
-
-        return true;
     }
 
     public static class Entry<E extends Entry<E>> {
