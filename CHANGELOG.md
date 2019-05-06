@@ -17,6 +17,11 @@ v1.4.5
 * Fix potential race condition with latch condition signal.
 * Fix for lost exclusive lock acquisitions caused by delete short-circuit.
 * Fix which caused replica cursor registration to be lost following a checkpoint and recovery.
+* Fix undelete of large key and value which didn't cleanup the trash.
+* Fix checkpoint resumption after failure.
+* Fix race condition when open an index while it's being renamed.
+* Support for inclusive/exclusive ranges with count and random methods, and fix double wrapping
+  count defect.
 * Wait for replication recovery when starting up, and wait for the local member to become the
   leader if it's the only group member which can become the leader.
 * Speed up redo log recovery by using multiple threads.
@@ -50,6 +55,9 @@ v1.4.5
 * Add non-blocking replication read support.
 * Include database stats when throwing a cache exhausted exception.
 * Added a convenience method to set the cache size.
+* LatchCondition now unparks the signaled waiter as the latch is released. Earlier behavior
+  could result in extra context switches (thundering herd).
+* Code coverage improvements and fixes.
 
 v1.4.4 (2018-06-30)
 ------
