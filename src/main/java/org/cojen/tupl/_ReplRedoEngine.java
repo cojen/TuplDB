@@ -131,7 +131,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         mTransactions = txnTable;
 
-        mIndexes = new LHashTable.Obj<>(16);
+        mIndexes = new LHashTable.Obj<>(0);
 
         final CursorTable cursorTable;
         if (cursors == null) {
@@ -1367,6 +1367,10 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             return;
         } finally {
             decoder.mDeactivated = true;
+            // No need to reference these anymore.
+            synchronized (mIndexes) {
+                mIndexes.clear(0);
+            }
         }
 
         _RedoWriter redo;
