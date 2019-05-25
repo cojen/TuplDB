@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.4.5
+v1.5.0
 ------
 
 * Depends on Java 9, replacing "unsafe" usage with VarHandles.
