@@ -530,7 +530,6 @@ class Tree implements View, Index {
         keyCheck(key);
         TreeCursor cursor = newCursor(txn);
         try {
-            cursor.mKeyOnly = true;
             return cursor.findAndModify(key, TreeCursor.MODIFY_INSERT, value);
         } finally {
             cursor.reset();
@@ -542,7 +541,6 @@ class Tree implements View, Index {
         keyCheck(key);
         TreeCursor cursor = newCursor(txn);
         try {
-            cursor.mKeyOnly = true;
             return cursor.findAndModify(key, TreeCursor.MODIFY_REPLACE, value);
         } finally {
             cursor.reset();

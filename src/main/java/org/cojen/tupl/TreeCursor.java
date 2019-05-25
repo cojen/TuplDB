@@ -3222,41 +3222,42 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
         Node node = leaf.mNode;
         int pos = leaf.mNodePos;
 
-        byte[] originalValue;
-
-        if (pos < 0) {
-            originalValue = null;
-        } else {
-            try {
-                originalValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
-            } catch (Throwable e) {
-                node.releaseExclusive();
-                shared.release();
-                throw e;
-            }
-        }
-
         check: {
             if (oldValue == MODIFY_INSERT) {
-                if (originalValue == null) {
+                if (pos < 0 || node.hasLeafValue(pos) == null) {
                     // Insert allowed.
                     break check;
                 }
             } else if (oldValue == MODIFY_REPLACE) {
-                if (originalValue != null) {
+                if (pos >= 0 && node.hasLeafValue(pos) != null) {
                     // Replace allowed.
                     break check;
                 }
-            } else if (oldValue == MODIFY_UPDATE) {
-                if (!Arrays.equals(originalValue, newValue)) {
-                    // Update allowed.
-                    break check;
-                }
             } else {
-                // Provided an ordinary oldValue.
-                if (Arrays.equals(oldValue, originalValue)) {
-                    // Update allowed.
-                    break check;
+                byte[] originalValue;
+                if (pos < 0) {
+                    originalValue = null;
+                } else {
+                    try {
+                        // TODO: If originalValue is fragmented, quick compare length initially.
+                        originalValue = node.retrieveLeafValue(pos);
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        shared.release();
+                        throw e;
+                    }
+                }
+                if (oldValue == MODIFY_UPDATE) {
+                    if (!Arrays.equals(originalValue, newValue)) {
+                        // Update allowed.
+                        break check;
+                    }
+                } else {
+                    // Provided an ordinary oldValue.
+                    if (Arrays.equals(oldValue, originalValue)) {
+                        // Update allowed.
+                        break check;
+                    }
                 }
             }
 
