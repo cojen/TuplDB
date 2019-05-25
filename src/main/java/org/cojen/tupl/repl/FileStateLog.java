@@ -18,7 +18,6 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.nio.ByteOrder;

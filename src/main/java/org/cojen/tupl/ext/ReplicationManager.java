@@ -27,7 +27,6 @@ import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
 /**

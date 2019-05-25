@@ -19,8 +19,6 @@ package org.cojen.tupl.util;
 
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.locks.LockSupport;
-
 import static org.cojen.tupl.util.Latch.*;
 
 /**

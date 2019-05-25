@@ -17,13 +17,11 @@
 
 package org.cojen.tupl;
 
-import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
 
 import java.util.Arrays;
 
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.System.arraycopy;

@@ -22,7 +22,6 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Simple task scheduler that doesn't hoard waiting threads, unlike ScheduledThreadPoolExecutor.

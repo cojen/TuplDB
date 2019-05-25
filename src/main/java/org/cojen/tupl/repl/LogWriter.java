@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import java.util.function.LongConsumer;
-
 /**
  * For writing data into the log. The inherited info fields only exist for convenience, and are
  * not used directly by the writer.

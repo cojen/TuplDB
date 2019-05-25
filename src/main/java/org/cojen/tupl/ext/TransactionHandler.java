@@ -19,8 +19,6 @@ package org.cojen.tupl.ext;
 
 import java.io.IOException;
 
-import java.util.concurrent.locks.Lock;
-
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.Transaction;

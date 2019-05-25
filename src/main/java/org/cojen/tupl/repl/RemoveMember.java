@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import java.io.EOFException;
-
 import java.net.SocketAddress;
 
 import java.util.Collections;

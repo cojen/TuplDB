@@ -264,9 +264,8 @@ final class FileTermLog extends Latch implements TermLog {
             }
             startPosition = ((Segment) mSegments.first()).mStartPosition;
         } else if (startPosition < highestPosition) {
-            Segment first;
             if (mSegments.isEmpty()
-                || (first = (Segment) mSegments.first()).mStartPosition > startPosition)
+                || ((Segment) mSegments.first()).mStartPosition > startPosition)
             {
                 throw new IllegalStateException
                     ("Missing start segment: " + startPosition + ", term=" + term);
