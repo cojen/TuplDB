@@ -121,14 +121,12 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  Database db = Database.open(config);
  </pre>
 
- <p>Open a regular database, setting the minimum cache size to ensure enough
- memory is initially available. A weak <a href="DurabilityMode.html" title="enum in org.cojen.tupl"><code>durability mode</code></a>
- offers the best transactional commit performance.
+ <p>Open a regular database, with a fixed cache size, and a weak <a href="DurabilityMode.html" title="enum in org.cojen.tupl"><code>durability mode</code></a> for the best transactional commit performance.
 
  <pre>
  DatabaseConfig config = new DatabaseConfig()
     .baseFilePath("/var/lib/tupl/myapp")
-    .minCacheSize(100_000_000)
+    .cacheSize(100_000_000)
     .durabilityMode(DurabilityMode.NO_FLUSH);
 
  Database db = Database.open(config);

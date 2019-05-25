@@ -43,14 +43,13 @@ import static org.cojen.tupl.Utils.*;
  * Database db = Database.open(config);
  * </pre>
  *
- * <p>Open a regular database, setting the minimum cache size to ensure enough
- * memory is initially available. A weak {@link DurabilityMode durability mode}
- * offers the best transactional commit performance.
+ * <p>Open a regular database, with a fixed cache size, and a weak {@link DurabilityMode
+ * durability mode} for the best transactional commit performance.
  *
  * <pre>
  * DatabaseConfig config = new DatabaseConfig()
  *    .baseFilePath("/var/lib/tupl/myapp")
- *    .minCacheSize(100_000_000)
+ *    .cacheSize(100_000_000)
  *    .durabilityMode(DurabilityMode.NO_FLUSH);
  *
  * Database db = Database.open(config);
