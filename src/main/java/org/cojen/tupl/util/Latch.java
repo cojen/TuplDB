@@ -55,7 +55,7 @@ public class Latch {
 
             cWaiterHandle =
                 MethodHandles.lookup().findVarHandle
-                (WaitNode.class, "mWaiter", Thread.class);
+                (WaitNode.class, "mWaiter", Object.class);
 
             cWaitStateHandle =
                 MethodHandles.lookup().findVarHandle
@@ -196,12 +196,12 @@ public class Latch {
 
             WaitNode node = first;
             while (true) {
-                Thread waiter = node.mWaiter;
+                Object waiter = node.mWaiter;
                 if (waiter != null) {
                     if (node instanceof Shared) {
                         cStateHandle.getAndAdd(this, 1);
                         if (cWaiterHandle.compareAndSet(node, waiter, null)) {
-                            Parker.unpark(waiter);
+                            Parker.unpark((Thread) waiter);
                         } else {
                             // Already unparked, so fix the share count.
                             cStateHandle.getAndAdd(this, -1);
@@ -258,7 +258,7 @@ public class Latch {
             WaitNode first = mLatchFirst;
 
             unpark: if (first != null) {
-                Thread waiter = first.mWaiter;
+                Object waiter = first.mWaiter;
 
                 if (waiter != null) {
                     if (first instanceof Shared) {
@@ -271,7 +271,7 @@ public class Latch {
                     if (first.mWaitState != WaitNode.SIGNALED) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
-                        Parker.unpark(waiter);
+                        Parker.unpark((Thread) waiter);
                         return;
                     }
                 }
@@ -291,9 +291,20 @@ public class Latch {
                 }
 
                 if (waiter != null && cWaiterHandle.compareAndSet(first, waiter, null)) {
-                    // Fair handoff to waiting thread.
-                    Parker.unpark(waiter);
-                    return;
+                    // Fair handoff to waiting thread or continuation.
+                    if (waiter instanceof Thread) {
+                        Parker.unpark((Thread) waiter);
+                        return;
+                    }
+                    try {
+                        if (!((Continuation) waiter).run()) {
+                            return;
+                        }
+                    } catch (Throwable e) {
+                        Utils.uncaught(e);
+                    }
+                    trials = 0;
+                    continue;
                 }
             }
 
@@ -770,7 +781,7 @@ public class Latch {
     }
 
     static class WaitNode {
-        volatile Thread mWaiter;
+        volatile Object mWaiter;
 
         static final int SIGNALED = 1, COND_WAIT = 2, COND_WAIT_SHARED = 3;
         volatile int mWaitState;
@@ -788,8 +799,8 @@ public class Latch {
         /**
          * Constructor for condition wait. Caller must hold exclusive latch.
          */
-        WaitNode(int waitState) {
-            cWaiterHandle.set(this, Thread.currentThread());
+        WaitNode(Object waiter, int waitState) {
+            cWaiterHandle.set(this, waiter);
             cWaitStateHandle.set(this, waitState);
         }
 
@@ -810,7 +821,7 @@ public class Latch {
             while (true) {
                 for (int i=0; i<SPIN_LIMIT; i++) {
                     boolean acquired = latch.doTryAcquireExclusive();
-                    Thread waiter = mWaiter;
+                    Object waiter = mWaiter;
                     if (waiter == null) {
                         // Fair handoff, and so node is no longer in the queue.
                         return 1;
@@ -864,7 +875,7 @@ public class Latch {
                 while (true) {
                     for (int i=0; i<SPIN_LIMIT; i++) {
                         boolean acquired = latch.doTryAcquireExclusive();
-                        Thread waiter = mWaiter;
+                        Object waiter = mWaiter;
                         if (waiter == null) {
                             // Signaled, and so node is no longer in the queue.
                             return 1;
@@ -880,8 +891,7 @@ public class Latch {
                             return 1;
                         }
 
-                        if (waiter.isInterrupted()) {
-                            Thread.interrupted();
+                        if (Thread.interrupted()) {
                             condRemove(queue);
                             return -1;
                         }
@@ -1006,7 +1016,7 @@ public class Latch {
 
                 if (cStateHandle.compareAndSet(latch, state, state + 1)) {
                     // Acquired, so no need to reference the thread anymore.
-                    Thread waiter = mWaiter;
+                    Object waiter = mWaiter;
                     if (waiter == null || !cWaiterHandle.compareAndSet(this, waiter, null)) {
                         if (!cStateHandle.compareAndSet(latch, state + 1, state)) {
                             cStateHandle.getAndAdd(latch, -1);
