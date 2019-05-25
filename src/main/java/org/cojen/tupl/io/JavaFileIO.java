@@ -30,6 +30,9 @@ import java.nio.channels.FileChannel;
 
 import java.util.EnumSet;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
+
 import static org.cojen.tupl.io.Utils.*;
 
 /**
@@ -42,7 +45,9 @@ final class JavaFileIO extends AbstractFileIO {
     private final File mFile;
     private final String mMode;
 
-    // Access these fields while synchronized on mFilePool.
+    // Access these file pool fields using this latch.
+    private final Latch mFilePoolLatch;
+    private final LatchCondition mFilePoolCondition;
     private final FileAccess[] mFilePool;
     private int mFilePoolTop;
 
@@ -81,13 +86,18 @@ final class JavaFileIO extends AbstractFileIO {
             openFileCount = 1;
         }
 
+        mFilePoolLatch = new Latch();
+        mFilePoolCondition = new LatchCondition();
         mFilePool = new FileAccess[openFileCount];
 
         try {
-            synchronized (mFilePool) {
+            mFilePoolLatch.acquireExclusive();
+            try {
                 for (int i=0; i<openFileCount; i++) {
                     mFilePool[i] = openRaf(file, mode);
                 }
+            } finally {
+                mFilePoolLatch.releaseExclusive();
             }
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
@@ -204,7 +214,8 @@ final class JavaFileIO extends AbstractFileIO {
 
         IOException ex = null;
 
-        synchronized (mFilePool) {
+        mFilePoolLatch.acquireExclusive();
+        try {
             try {
                 closePool();
             } catch (IOException e) {
@@ -220,6 +231,8 @@ final class JavaFileIO extends AbstractFileIO {
                     }
                 }
             }
+        } finally {
+            mFilePoolLatch.releaseExclusive();
         }
 
         if (ex != null) {
@@ -247,12 +260,13 @@ final class JavaFileIO extends AbstractFileIO {
                 mCause = cause;
             }
 
-            synchronized (mFilePool) {
-                try {
-                    closePool();
-                } catch (IOException e) {
-                    ex = e;
-                }
+            mFilePoolLatch.acquireExclusive();
+            try {
+                closePool();
+            } catch (IOException e) {
+                ex = e;
+            } finally {
+                mFilePoolLatch.releaseExclusive();
             }
         } finally {
             mAccessLock.releaseExclusive();
@@ -298,26 +312,32 @@ final class JavaFileIO extends AbstractFileIO {
 
     private RandomAccessFile accessFile() throws InterruptedIOException {
         RandomAccessFile[] pool = mFilePool;
-        synchronized (pool) {
+        Latch latch = mFilePoolLatch;
+        latch.acquireExclusive();
+        try {
             int top;
             while ((top = mFilePoolTop) == pool.length) {
-                try {
-                    pool.wait();
-                } catch (InterruptedException e) {
+                if (mFilePoolCondition.await(latch) < 1) {
                     throw new InterruptedIOException();
                 }
             }
             RandomAccessFile file = pool[top];
             mFilePoolTop = top + 1;
             return file;
+        } finally {
+            latch.releaseExclusive();
         }
     }
 
     private void yieldFile(RandomAccessFile file) {
         RandomAccessFile[] pool = mFilePool;
-        synchronized (pool) {
+        Latch latch = mFilePoolLatch;
+        latch.acquireExclusive();
+        try {
             pool[--mFilePoolTop] = file;
-            pool.notify();
+            mFilePoolCondition.signal(latch);
+        } finally {
+            latch.releaseExclusive();
         }
     }
 
