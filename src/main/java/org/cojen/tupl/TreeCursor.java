@@ -3214,56 +3214,83 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
         // Find with no lock because caller must already acquire exclusive lock.
         find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
 
-        CursorFrame leaf = mFrame;
-        CommitLock.Shared shared = prepareStoreUpgrade(leaf, newValue);
-
-        // Note: Must obtain reference to node after calling prepareStoreUpgrade, because it
-        // might have released and reacquired the latch.
+        final CursorFrame leaf = mFrame;
         Node node = leaf.mNode;
-        int pos = leaf.mNodePos;
+        boolean exclusive = false;
 
-        check: {
-            if (oldValue == MODIFY_INSERT) {
-                if (pos < 0 || node.hasLeafValue(pos) == null) {
-                    // Insert allowed.
-                    break check;
-                }
-            } else if (oldValue == MODIFY_REPLACE) {
-                if (pos >= 0 && node.hasLeafValue(pos) != null) {
-                    // Replace allowed.
-                    break check;
-                }
-            } else {
-                byte[] originalValue;
-                if (pos < 0) {
-                    originalValue = null;
-                } else {
-                    try {
-                        // TODO: If originalValue is fragmented, quick compare length initially.
-                        originalValue = node.retrieveLeafValue(pos);
-                    } catch (Throwable e) {
-                        node.releaseExclusive();
-                        shared.release();
-                        throw e;
+        final CommitLock commitLock = mTree.mDatabase.commitLock();
+        CommitLock.Shared shared = commitLock.tryAcquireShared();
+
+        if (shared == null) {
+            node.releaseShared();
+            shared = commitLock.acquireShared();
+            node = leaf.acquireShared();
+            splitCheck: if (node.mSplit != null) {
+                exclusive = true;
+                if (!node.tryUpgrade()) {
+                    node.releaseShared();
+                    node = leaf.acquireExclusive();
+                    if (node.mSplit == null) {
+                        break splitCheck;
                     }
                 }
-                if (oldValue == MODIFY_UPDATE) {
-                    if (!Arrays.equals(originalValue, newValue)) {
-                        // Update allowed.
+                node = mTree.finishSplit(leaf, node);
+            }
+        }
+
+        while (true) {
+            int pos = leaf.mNodePos;
+
+            check: {
+                if (oldValue == MODIFY_INSERT) {
+                    if (pos < 0 || node.hasLeafValue(pos) == null) {
+                        // Insert allowed.
+                        break check;
+                    }
+                } else if (oldValue == MODIFY_REPLACE) {
+                    if (pos >= 0 && node.hasLeafValue(pos) != null) {
+                        // Replace allowed.
                         break check;
                     }
                 } else {
-                    // Provided an ordinary oldValue.
-                    if (Arrays.equals(oldValue, originalValue)) {
-                        // Update allowed.
-                        break check;
+                    byte[] originalValue;
+                    if (pos < 0) {
+                        originalValue = null;
+                    } else {
+                        try {
+                            // TODO: If originalValue is fragmented, compare without loading.
+                            originalValue = node.retrieveLeafValue(pos);
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            shared.release();
+                            throw e;
+                        }
+                    }
+                    if (oldValue == MODIFY_UPDATE) {
+                        if (!Arrays.equals(originalValue, newValue)) {
+                            // Update allowed.
+                            break check;
+                        }
+                    } else {
+                        // Provided an ordinary oldValue.
+                        if (Arrays.equals(oldValue, originalValue)) {
+                            // Update allowed.
+                            break check;
+                        }
                     }
                 }
+
+                node.release(exclusive);
+                shared.release();
+                return false;
             }
 
-            node.releaseExclusive();
-            shared.release();
-            return false;
+            if (notSplitDirtyUpgrade(leaf, exclusive)) {
+                break;
+            }
+
+            exclusive = true;
+            node = leaf.mNode;
         }
 
         if (newValue == null) {
@@ -5122,6 +5149,74 @@ class TreeCursor extends AbstractValueAccessor implements Cursor {
             // Since node latch was released, start over and check everything again properly.
             node = frame.acquireExclusive();
         }
+    }
+
+    /**
+     * Called with latch held for an unsplit node, which is upgraded to an exclusive latch.
+     * Leaf frame is dirtied, and the same applies to all parent nodes. Caller must hold shared
+     * commit lock, to prevent deadlock. Node latch is released if an exception is thrown.
+     *
+     * @param exclusive true if upgrade was already performed
+     * @return true if latch was never released for the upgrade
+     */
+    final boolean notSplitDirtyUpgrade(final CursorFrame frame, boolean exclusive)
+        throws IOException
+    {
+        final Node node = frame.mNode;
+
+        if (!exclusive && !node.tryUpgrade()) {
+            node.releaseShared();
+        } else {
+            LocalDatabase db = mTree.mDatabase;
+            if (!db.shouldMarkDirty(node)) {
+                return true;
+            }
+
+            CursorFrame parentFrame = frame.mParentFrame;
+            if (parentFrame == null) {
+                try {
+                    db.doMarkDirty(mTree, node);
+                    return true;
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
+                }
+            }
+
+            // Make sure the parent is not split and dirty too.
+            Node parentNode = parentFrame.tryAcquireExclusive();
+
+            if (parentNode != null) {
+                // Parent latch was acquired without releasing the current node latch.
+
+                if (parentNode.mSplit == null && !db.shouldMarkDirty(parentNode)) {
+                    // Parent is ready to be updated.
+                    try {
+                        db.doMarkDirty(mTree, node);
+                        parentNode.updateChildRefId(parentFrame.mNodePos, node.id());
+                        return true;
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        throw e;
+                    } finally {
+                        parentNode.releaseExclusive();
+                    }
+                }
+
+                node.releaseExclusive();
+            } else {
+                node.releaseExclusive();
+                parentFrame.acquireExclusive();
+            }
+
+            // Parent must be dirtied.
+            notSplitDirty(parentFrame).releaseExclusive();
+        }
+
+        // Since node latch was released, start over and check everything again properly.
+        frame.acquireExclusive();
+        notSplitDirty(frame);
+        return false;
     }
 
     /**
