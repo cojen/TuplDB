@@ -1185,9 +1185,12 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     private Index getIndex(Transaction txn, long indexId) throws IOException {
         LHashTable.ObjEntry<SoftReference<Index>> entry = mIndexes.get(indexId);
         if (entry != null) {
-            Index ix = entry.value.get();
-            if (ix != null) {
-                return ix;
+            SoftReference<Index> ref = entry.value;
+            if (ref != null) {
+                Index ix = ref.get();
+                if (ix != null) {
+                    return ix;
+                }
             }
         }
         return openIndex(txn, indexId, entry);
