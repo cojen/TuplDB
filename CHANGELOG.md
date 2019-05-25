@@ -20,6 +20,11 @@ v1.4.5
 * Fix undelete of large key and value which didn't cleanup the trash.
 * Fix checkpoint resumption after failure.
 * Fix race condition when open an index while it's being renamed.
+* Fix rare NPE caused by race condition in the replication engine.
+* Fix in replication hole fill request handling which dropped them too soon, leading to a flood
+  of duplicate requests.
+* Guard against a flood of duplicate hole fill requests. De-duplicate them and handle them in
+  at most one thread per remote peer.
 * Support for inclusive/exclusive ranges with count and random methods, and fix double wrapping
   count defect.
 * Wait for replication recovery when starting up, and wait for the local member to become the
@@ -57,6 +62,8 @@ v1.4.5
 * Added a convenience method to set the cache size.
 * LatchCondition now unparks the signaled waiter as the latch is released. Earlier behavior
   could result in extra context switches (thundering herd).
+* Latching performance improvements when parking/unparking threads.
+* Don't dirty a node when insert/replace/update returns false, reducing unnecessary writes.
 * Code coverage improvements and fixes.
 
 v1.4.4 (2018-06-30)
