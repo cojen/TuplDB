@@ -1773,6 +1773,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                             // Move to next term.
                             reader.release();
                             reader = mStateLog.openReader(startPosition);
+                            continue;
                         }
                         break;
                     }
