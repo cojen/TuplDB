@@ -22,8 +22,6 @@ import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.concurrent.locks.LockSupport;
-
 import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
@@ -510,7 +508,7 @@ public abstract class Clutch extends Latch {
 
             if (nanosTimeout < 0) {
                 while (!isZero(slot)) {
-                    LockSupport.park(this);
+                    Parker.park(this);
                     if (Thread.interrupted()) {
                         cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
                         throw new InterruptedException();
@@ -519,7 +517,7 @@ public abstract class Clutch extends Latch {
             } else if (!isZero(slot)) {
                 long start = System.nanoTime();
                 while (true) {
-                    LockSupport.parkNanos(this, nanosTimeout);
+                    Parker.parkNanos(this, nanosTimeout);
                     if (Thread.interrupted()) {
                         cObjectArrayHandle.setVolatile(mSlots, slot, clutch);
                         throw new InterruptedException();
@@ -549,7 +547,7 @@ public abstract class Clutch extends Latch {
             // Store thread to signal that exclusive is requested, and to call unpark.
             cObjectArrayHandle.setVolatile(mSlots, slot, Thread.currentThread());
             while (!isZero(slot)) {
-                LockSupport.park(this);
+                Parker.park(this);
                 // Clear the interrupted flag.
                 Thread.interrupted();
             }
@@ -576,7 +574,7 @@ public abstract class Clutch extends Latch {
             add(slot, -1, stripe);
             Object entry = cObjectArrayHandle.getVolatile(mSlots, slot);
             if (entry instanceof Thread && isZero(slot)) {
-                LockSupport.unpark((Thread) entry);
+                Parker.unpark((Thread) entry);
             }
         }
 

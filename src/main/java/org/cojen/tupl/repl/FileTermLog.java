@@ -35,8 +35,6 @@ import java.util.SortedSet;
 
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import java.util.concurrent.locks.LockSupport;
-
 import java.util.function.BiFunction;
 
 import java.util.regex.Matcher;
@@ -48,6 +46,7 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Parker;
 import org.cojen.tupl.util.Worker;
 
 /**
@@ -538,9 +537,9 @@ final class FileTermLog extends Latch implements TermLog {
 
         while (true) {
             if (nanosTimeout < 0) {
-                LockSupport.park(waiter);
+                Parker.park(waiter);
             } else {
-                LockSupport.parkNanos(waiter, nanosTimeout);
+                Parker.parkNanos(waiter, nanosTimeout);
             }
             if (Thread.interrupted()) {
                 throw new InterruptedIOException();
@@ -591,7 +590,7 @@ final class FileTermLog extends Latch implements TermLog {
         protected void doRun(long position) {
             mWaiter = null;
             mAppliablePosition = position;
-            LockSupport.unpark(mThread);
+            Parker.unpark(mThread);
         }
     }
 

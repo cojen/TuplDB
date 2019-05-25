@@ -20,8 +20,6 @@ package org.cojen.tupl.util;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import java.util.concurrent.locks.LockSupport;
-
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -43,10 +41,6 @@ public class Latch {
 
     static {
         try {
-            // Reduce the risk of "lost unpark" due to classloading.
-            // https://bugs.openjdk.java.net/browse/JDK-8074773
-            Class<?> clazz = LockSupport.class;
-
             cStateHandle =
                 MethodHandles.lookup().findVarHandle
                 (Latch.class, "mLatchState", int.class);
@@ -207,7 +201,7 @@ public class Latch {
                     if (node instanceof Shared) {
                         cStateHandle.getAndAdd(this, 1);
                         if (cWaiterHandle.compareAndSet(node, waiter, null)) {
-                            LockSupport.unpark(waiter);
+                            Parker.unpark(waiter);
                         } else {
                             // Already unparked, so fix the share count.
                             cStateHandle.getAndAdd(this, -1);
@@ -277,7 +271,7 @@ public class Latch {
                     if (first.mWaitState != WaitNode.SIGNALED) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
-                        LockSupport.unpark(waiter);
+                        Parker.unpark(waiter);
                         return;
                     }
                 }
@@ -298,7 +292,7 @@ public class Latch {
 
                 if (waiter != null && cWaiterHandle.compareAndSet(first, waiter, null)) {
                     // Fair handoff to waiting thread.
-                    LockSupport.unpark(waiter);
+                    Parker.unpark(waiter);
                     return;
                 }
             }
@@ -581,7 +575,7 @@ public class Latch {
         if (acquireResult < 0) {
             int denied = 0;
             while (true) {
-                boolean parkAbort = node.park(this);
+                boolean parkAbort = node.parkNow(this);
 
                 acquireResult = node.tryAcquire(this);
 
@@ -802,8 +796,8 @@ public class Latch {
         /**
          * @return true if timed out or interrupted
          */
-        boolean park(Latch latch) {
-            LockSupport.park(latch);
+        boolean parkNow(Latch latch) {
+            Parker.parkNow(latch);
             return false;
         }
 
@@ -861,9 +855,9 @@ public class Latch {
 
             start: while (true) {
                 if (nanosTimeout < 0) {
-                    LockSupport.park(queue);
+                    Parker.park(queue);
                 } else {
-                    LockSupport.parkNanos(queue, nanosTimeout);
+                    Parker.parkNanos(queue, nanosTimeout);
                 }
 
                 int trials = 0;
@@ -915,7 +909,7 @@ public class Latch {
                         // timed out, the exclusive latch is still required to remove the
                         // waiter from the queue, or to even return from this method.
                         trials = 0;
-                        LockSupport.park(latch);
+                        Parker.park(latch);
                     }
                 }
             }
@@ -970,12 +964,12 @@ public class Latch {
         }
 
         @Override
-        final boolean park(Latch latch) {
+        final boolean parkNow(Latch latch) {
             if (mNanosTimeout < 0) {
-                LockSupport.park(latch);
+                Parker.parkNow(latch);
                 return Thread.currentThread().isInterrupted();
             } else {
-                LockSupport.parkNanos(latch, mNanosTimeout);
+                Parker.parkNanosNow(latch, mNanosTimeout);
                 if (Thread.currentThread().isInterrupted()) {
                     return true;
                 }
@@ -1044,12 +1038,12 @@ public class Latch {
         }
 
         @Override
-        final boolean park(Latch latch) {
+        final boolean parkNow(Latch latch) {
             if (mNanosTimeout < 0) {
-                LockSupport.park(latch);
+                Parker.parkNow(latch);
                 return Thread.currentThread().isInterrupted();
             } else {
-                LockSupport.parkNanos(latch, mNanosTimeout);
+                Parker.parkNanosNow(latch, mNanosTimeout);
                 if (Thread.currentThread().isInterrupted()) {
                     return true;
                 }

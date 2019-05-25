@@ -19,11 +19,10 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.util.concurrent.locks.LockSupport;
-
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Parker;
 
 /**
  * Implementation of a replicated redo log, used by {@link _ReplRedoController}.
@@ -302,9 +301,9 @@ class _ReplRedoWriter extends _RedoWriter {
                             }
                             mBufferLatch.releaseExclusive();
                             if (parked) {
-                                LockSupport.unpark(consumer);
+                                Parker.unpark(consumer);
                             }
-                            LockSupport.park(mBufferLatch);
+                            Parker.park(mBufferLatch);
                             mBufferLatch.acquireExclusive();
                             buffer = mBuffer;
                             if (buffer == null) {
@@ -360,7 +359,7 @@ class _ReplRedoWriter extends _RedoWriter {
                     // thread, and so something extra is needed.
                     if (mConsumerParked) {
                         mConsumerParked = false;
-                        LockSupport.unpark(mConsumer);
+                        Parker.unpark(mConsumer);
                     }
 
                     return mWritePos;
@@ -423,7 +422,7 @@ class _ReplRedoWriter extends _RedoWriter {
         mBufferLatch.releaseExclusive();
 
         if (consumer != null) {
-            LockSupport.unpark(consumer);
+            Parker.unpark(consumer);
             try {
                 consumer.join();
             } catch (InterruptedException e) {
@@ -520,14 +519,14 @@ class _ReplRedoWriter extends _RedoWriter {
             mConsumerParked = true;
             Thread producer = mProducer;
             mBufferLatch.releaseExclusive();
-            LockSupport.unpark(producer);
-            LockSupport.park(mBufferLatch);
+            Parker.unpark(producer);
+            Parker.park(mBufferLatch);
             mBufferLatch.acquireExclusive();
         }
 
         mConsumer = null;
         mBuffer = null;
-        LockSupport.unpark(mProducer);
+        Parker.unpark(mProducer);
         mBufferLatch.releaseExclusive();
 
         mEngine.mController.switchToReplica(mReplWriter);

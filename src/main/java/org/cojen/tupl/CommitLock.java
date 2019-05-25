@@ -25,11 +25,11 @@ import java.util.concurrent.atomic.LongAdder;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.LockSupport;
 
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Parker;
 
 /**
  * Lock implementation which supports highly concurrent shared requests, but exclusive requests
@@ -206,7 +206,7 @@ final class CommitLock implements Lock {
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {
-            LockSupport.unpark(t);
+            Parker.unpark(t);
         }
     }
 
@@ -253,9 +253,9 @@ final class CommitLock implements Lock {
 
                     while (true) {
                         if (nanosTimeout < 0) {
-                            LockSupport.park(this);
+                            Parker.park(this);
                         } else {
-                            LockSupport.parkNanos(this, nanosTimeout);
+                            Parker.parkNanos(this, nanosTimeout);
                         }
 
                         if (Thread.interrupted()) {
