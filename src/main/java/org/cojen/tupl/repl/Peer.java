@@ -34,7 +34,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * @author Brian S O'Neill
  */
 final class Peer implements Comparable<Peer> {
-    private static final VarHandle cGroupVersionHandle, cSnapshotScoreHandle;
+    private static final VarHandle cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle;
 
     static {
         try {
@@ -45,6 +45,10 @@ final class Peer implements Comparable<Peer> {
             cSnapshotScoreHandle =
                 MethodHandles.lookup().findVarHandle
                 (Peer.class, "mSnapshotScore", SnapshotScore.class);
+
+            cRangesHandle =
+                MethodHandles.lookup().findVarHandle
+                (Peer.class, "mQueryRanges", RangeSet.class);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -67,6 +71,9 @@ final class Peer implements Comparable<Peer> {
 
     // Used for election stability.
     volatile long mLeaderCheck;
+
+    // Tracks data ranges requested by the peer.
+    private volatile RangeSet mQueryRanges;
 
     /**
      * Construct a key for finding peers in an ordered set.
@@ -126,6 +133,58 @@ final class Peer implements Comparable<Peer> {
         if (score != null) {
             score.snapshotScoreReply(activeSessions, weight);
         }
+    }
+
+    /**
+     * @return non-null set if it was just created
+     */
+    RangeSet queryData(long startPosition, long endPosition) {
+        RangeSet set = mQueryRanges;
+
+        while (true) {
+            RangeSet result = null;
+
+            if (set == null) {
+                set = new RangeSet();
+                RangeSet existing = (RangeSet) cRangesHandle.compareAndExchange(this, null, set);
+                if (existing == null) {
+                    result = set;
+                } else {
+                    set = existing;
+                }
+            }
+
+            if (set.add(startPosition, endPosition)) {
+                return result;
+            }
+
+            set = finishedQueries(set);
+        }
+    }
+
+    /**
+     * @return non-null set if more queries must be handled
+     */
+    RangeSet finishedQueries(RangeSet set) {
+        if (set.closeIfEmpty()) {
+            RangeSet existing = (RangeSet) cRangesHandle.compareAndExchange(this, set, null);
+            if (existing == set) {
+                set = null;
+            } else {
+                set = existing;
+            }
+        }
+
+        return set;
+    }
+
+    /**
+     * To be called upon catching an exception while trying to handle query requests. New
+     * requests can still be received, which will then create a new RangeSet.
+     */
+    void discardQueries(RangeSet set) {
+        mQueryRanges = null;
+        set.close();
     }
 
     @Override

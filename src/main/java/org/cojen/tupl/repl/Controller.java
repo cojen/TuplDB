@@ -1725,73 +1725,101 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean queryData(Channel from, long startPosition, long endPosition) {
-        if (endPosition > startPosition) {
-            mScheduler.execute(() -> doQueryData(from, startPosition, endPosition));
+        if (endPosition <= startPosition) {
+            return true;
         }
-        return true;
-    }
 
-    private void doQueryData(Channel from, long startPosition, long endPosition) {
-        // TODO: Gracefully handle stale data requests, received after log compaction.
+        Peer peer = from.peer();
+        if (peer == null) {
+            return true;
+        }
 
-        try {
-            LogReader reader = mStateLog.openReader(startPosition);
+        RangeSet rangeSet = peer.queryData(startPosition, endPosition);
+        if (rangeSet == null) {
+            // Assume a thread is already running.
+            return true;
+        }
 
-            try {
-                long remaining = endPosition - startPosition;
-                byte[] buf = new byte[(int) Math.min(9000, remaining)];
-
-                while (true) {
-                    long currentTerm = 0;
-
-                    long prevTerm = reader.prevTerm();
-                    long position = reader.position();
-                    long term = reader.term();
-
-                    int require = (int) Math.min(buf.length, remaining);
-                    int amt = reader.tryRead(buf, 0, require);
-
-                    if (amt == 0) {
-                        // If the leader, read past the commit position, up to the highest
-                        // position.
-                        acquireShared();
-                        try {
-                            if (mLocalMode == MODE_LEADER) {
-                                int any = reader.tryReadAny(buf, amt, require);
-                                if (any > 0) {
-                                    currentTerm = mCurrentTerm;
-                                    amt += any;
-                                }
-                            }
-                        } finally {
-                            releaseShared();
-                        }
+        return mScheduler.execute(() -> {
+            RangeSet set = rangeSet;
+            while (true) {
+                RangeSet.Range range = set.removeLowest();
+                if (range == null) {
+                    set = peer.finishedQueries(set);
+                    if (set == null) {
+                        return;
                     }
-
-                    if (amt <= 0) {
-                        if (amt < 0) {
-                            // Move to next term.
-                            reader.release();
-                            reader = mStateLog.openReader(startPosition);
-                            continue;
-                        }
-                        break;
-                    }
-
-                    from.queryDataReply(null, currentTerm, prevTerm, term, position, buf, 0, amt);
-
-                    startPosition += amt;
-                    remaining -= amt;
-
-                    if (remaining <= 0) {
-                        break;
+                } else {
+                    try {
+                        doQueryData(from, range.start, range.end);
+                    } catch (Throwable e) {
+                        uncaught(e);
+                        peer.discardQueries(set);
+                        return;
                     }
                 }
-            } finally {
-                reader.release();
             }
-        } catch (IOException e) {
-            uncaught(e);
+        });
+    }
+
+    private void doQueryData(Channel from, long startPosition, long endPosition)
+        throws IOException
+    {
+        // TODO: Gracefully handle stale data requests, received after log compaction.
+
+        LogReader reader = mStateLog.openReader(startPosition);
+
+        try {
+            long remaining = endPosition - startPosition;
+            byte[] buf = new byte[(int) Math.min(9000, remaining)];
+
+            while (true) {
+                long currentTerm = 0;
+
+                long prevTerm = reader.prevTerm();
+                long position = reader.position();
+                long term = reader.term();
+
+                int require = (int) Math.min(buf.length, remaining);
+                int amt = reader.tryRead(buf, 0, require);
+
+                if (amt == 0) {
+                    // If the leader, read past the commit position, up to the highest position.
+                    acquireShared();
+                    try {
+                        if (mLocalMode == MODE_LEADER) {
+                            int any = reader.tryReadAny(buf, amt, require);
+                            if (any > 0) {
+                                currentTerm = mCurrentTerm;
+                                amt += any;
+                            }
+                        }
+                    } finally {
+                        releaseShared();
+                    }
+                }
+
+                if (amt <= 0) {
+                    if (amt < 0) {
+                        // Move to next term.
+                        reader.release();
+                        reader = mStateLog.openReader(startPosition);
+                        continue;
+                    }
+                    break;
+                }
+
+                from.queryDataReply(null, currentTerm, prevTerm, term, position, buf, 0, amt);
+
+                startPosition += amt;
+                remaining -= amt;
+
+                if (remaining <= 0) {
+                    break;
+                }
+            }
+        } finally {
+            reader.release();
         }
     }
 
