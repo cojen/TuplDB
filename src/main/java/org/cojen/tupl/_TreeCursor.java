@@ -706,7 +706,7 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
 
                 // When this point is reached, only the shared parent latch is held, and the
                 // child node has reached the edge. Advance the position of the parent node, or
-                // keeping going up the tree if the parent has reached the edge too.
+                // keep going up the tree if the parent has reached the edge too.
 
                 int parentPos = parentFrame.mNodePos;
 
@@ -821,7 +821,7 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
 
                 // When this point is reached, only the shared parent latch is held, and the
                 // child node has reached the edge. Advance the position of the parent node, or
-                // keeping going up the tree if the parent has reached the edge too.
+                // keep going up the tree if the parent has reached the edge too.
 
                 int parentPos = parentFrame.mNodePos;
 
@@ -1329,7 +1329,7 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
 
                 // When this point is reached, only the shared parent latch is held, and the
                 // child node has reached the edge. Advance the position of the parent node, or
-                // keeping going up the tree if the parent has reached the edge too.
+                // keep going up the tree if the parent has reached the edge too.
 
                 int parentPos = parentFrame.mNodePos;
 
@@ -1444,7 +1444,7 @@ class _TreeCursor extends AbstractValueAccessor implements Cursor {
 
                 // When this point is reached, only the shared parent latch is held, and the
                 // child node has reached the edge. Advance the position of the parent node, or
-                // keeping going up the tree if the parent has reached the edge too.
+                // keep going up the tree if the parent has reached the edge too.
 
                 int parentPos = parentFrame.mNodePos;
 
