@@ -1466,28 +1466,32 @@ final class _UndoLog implements _DatabaseAccess {
 
             case OP_UNUPDATE:
             case OP_UNDELETE:
-            case OP_UNDELETE_FRAGMENTED:
+            case OP_UNDELETE_FRAGMENTED: {
                 byte[] key = decodeNodeKey(entry);
-
-                scope.addLock(mActiveIndexId, key)
+                _Lock lock = scope.addLock(mActiveIndexId, key);
+                if (op != OP_UNUPDATE) {
                     // Indicate that a ghost must be deleted when the transaction is
                     // committed. When the frame is uninitialized, the _Node.deleteGhost
                     // method uses the slow path and searches for the entry.
-                    .setGhostFrame(new _GhostFrame());
+                    lock.setGhostFrame(new _GhostFrame());
+                }
                 break;
+            }
 
             case OP_UNUPDATE_LK:
             case OP_UNDELETE_LK:
-            case OP_UNDELETE_LK_FRAGMENTED:
-                key = new byte[decodeUnsignedVarInt(entry, 0)];
+            case OP_UNDELETE_LK_FRAGMENTED: {
+                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
                 arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-
-                scope.addLock(mActiveIndexId, key)
+                _Lock lock = scope.addLock(mActiveIndexId, key);
+                if (op != OP_UNUPDATE_LK) {
                     // Indicate that a ghost must be deleted when the transaction is
                     // committed. When the frame is uninitialized, the _Node.deleteGhost
                     // method uses the slow path and searches for the entry.
-                    .setGhostFrame(new _GhostFrame());
+                    lock.setGhostFrame(new _GhostFrame());
+                }
                 break;
+            }
 
             case OP_CUSTOM:
                 break;

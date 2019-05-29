@@ -241,6 +241,27 @@ public class RecoverTest {
     }
 
     @Test
+    public void recoverInsertDeleteGhost() throws Exception {
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] value = "value".getBytes();
+
+        Index ix = mDb.openIndex("test");
+
+        Transaction txn = mDb.newTransaction();
+        ix.store(txn, k2, value);
+        ix.store(txn, k2, null);
+        mDb.checkpoint();
+        ix.store(txn, k1, value);
+        txn.commit();
+
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        ix = mDb.openIndex("test");
+        assertArrayEquals(value, ix.load(null, k1));
+        assertEquals(null, ix.load(null, k2));
+    }
+
+    @Test
     public void multiLockUndo() throws Exception {
         byte[] k1 = "k1".getBytes();
         byte[] k2 = "k2".getBytes();

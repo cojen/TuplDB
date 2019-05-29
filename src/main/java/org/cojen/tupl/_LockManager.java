@@ -453,6 +453,11 @@ final class _LockManager {
                 int index = hash & (entries.length - 1);
                 for (_Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
                     if (e.matches(lock.mIndexId, lock.mKey, hash)) {
+                        // _Lock already exists, but make sure any ghost frame is preserved.
+                        Object ghost = lock.getSharedLockOwner();
+                        if (ghost instanceof _GhostFrame) {
+                            e.setGhostFrame((_GhostFrame) ghost);
+                        }
                         return;
                     }
                 }
