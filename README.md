@@ -37,21 +37,20 @@ using the base as a prefix.
 ```java
 DatabaseConfig config = new DatabaseConfig()
     .baseFilePath("/var/lib/tupl")
-    .minCacheSize(100_000_000)
+    .cacheSize(100_000_000)
     .durabilityMode(DurabilityMode.NO_FLUSH);
 
 Database db = Database.open(config);
 ```
 
-Notice that a minimum cache size is set, and also notice the durability mode. A weak
+Notice that a fixed cache size is set, and also notice the durability mode. A weak
 [durability mode](https://tupl.cojen.org/javadoc/org/cojen/tupl/DurabilityMode.html) improves
 the performance of transactional changes, by not immediately flushing those
 changes to the underlying files.
 
-Setting a minimum cache size is generally preferred over setting a maximum size, because it
+Setting a fixed cache size is generally preferred over setting a maximum size, because it
 pre-allocates the cache when the Database is opened. This allows any heap size limits to be
-detected early, yielding an OutOfMemoryError. When not specified, the maximum cache size
-matches the minimum cache size. When neither is specified, the default cache size is 1000
+detected early, yielding an OutOfMemoryError. The default cache size is 1000
 pages, and the default page size is 4096 bytes.
 
 Basic operations
