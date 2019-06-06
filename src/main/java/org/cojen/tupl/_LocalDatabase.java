@@ -4229,13 +4229,15 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Mark an unmapped node as dirty. Caller must hold commit lock and exclusive latch on
-     * node. Method does nothing if node is already dirty. Latch is never released by this
-     * method, even if an exception is thrown.
+     * Mark an unmapped node as dirty (used by _UndoLog). Caller must hold commit lock and
+     * exclusive latch on node. Method does nothing if node is already dirty. Latch is never
+     * released by this method, even if an exception is thrown.
      */
     void markUnmappedDirty(_Node node) throws IOException {
         if (node.mCachedState != mCommitState) {
-            node.write(mPageDb);
+            if (node.mCachedState != CACHED_CLEAN) {
+                node.write(mPageDb);
+            }
 
             long newId = mPageDb.allocPage();
             long oldId = node.id();
