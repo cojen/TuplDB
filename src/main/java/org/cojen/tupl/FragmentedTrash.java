@@ -33,12 +33,12 @@ import static java.util.Arrays.compareUnsigned;
  * @author Brian S O'Neill
  */
 final class FragmentedTrash {
-    final Tree mTrash;
+    final BTree mTrash;
 
     /**
      * @param trash internal index for persisting trash
      */
-    FragmentedTrash(Tree trash) {
+    FragmentedTrash(BTree trash) {
         mTrash = trash;
     }
 
@@ -59,7 +59,7 @@ final class FragmentedTrash {
         byte[] payload = new byte[valueLen];
         p_copyToArray(entry, valueStart, payload, 0, valueLen);
 
-        TreeCursor cursor = prepareEntry(txn.txnId());
+        BTreeCursor cursor = prepareEntry(txn.txnId());
         byte[] key = cursor.key();
         try {
             // Write trash entry first, ensuring that the undo log entry will refer to
@@ -99,7 +99,7 @@ final class FragmentedTrash {
      * Returns a cursor ready to store a new trash entry. Caller must reset or
      * close the cursor when done.
      */
-    private TreeCursor prepareEntry(long txnId) throws IOException {
+    private BTreeCursor prepareEntry(long txnId) throws IOException {
         // Key entry format is transaction id prefix, followed by a variable
         // length integer. Integer is reverse encoded, and newer entries within
         // the transaction have lower integer values.
@@ -107,7 +107,7 @@ final class FragmentedTrash {
         byte[] prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
+        BTreeCursor cursor = new BTreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);
@@ -137,7 +137,7 @@ final class FragmentedTrash {
      *
      * @param index index to store entry into; pass null to fully delete it instead
      */
-    void remove(long txnId, Tree index, byte[] undoEntry) throws IOException {
+    void remove(long txnId, BTree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
 
         /*P*/ byte[] undo = p_transfer(undoEntry);
@@ -165,8 +165,8 @@ final class FragmentedTrash {
      *
      * @param index index to store entry into; pass null to fully delete it instead
      */
-    void remove(Tree index, byte[] indexKey, byte[] trashKey) throws IOException {
-        TreeCursor trashCursor = new TreeCursor(mTrash, Transaction.BOGUS);
+    void remove(BTree index, byte[] indexKey, byte[] trashKey) throws IOException {
+        BTreeCursor trashCursor = new BTreeCursor(mTrash, Transaction.BOGUS);
         try {
             trashCursor.find(trashKey);
 
@@ -175,7 +175,7 @@ final class FragmentedTrash {
             } else {
                 byte[] fragmented = trashCursor.value();
                 if (fragmented != null) {
-                    TreeCursor ixCursor = new TreeCursor(index, Transaction.BOGUS);
+                    BTreeCursor ixCursor = new BTreeCursor(index, Transaction.BOGUS);
                     try {
                         ixCursor.find(indexKey);
                         ixCursor.storeFragmented(fragmented);
@@ -204,7 +204,7 @@ final class FragmentedTrash {
         LocalDatabase db = mTrash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        TreeCursor cursor = new TreeCursor(mTrash, Transaction.BOGUS);
+        BTreeCursor cursor = new BTreeCursor(mTrash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);

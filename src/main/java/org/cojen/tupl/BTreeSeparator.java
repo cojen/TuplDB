@@ -39,9 +39,9 @@ import static java.util.Arrays.compareUnsigned;
  */
 /*P*/
 @SuppressWarnings("serial")
-abstract class TreeSeparator extends LongAdder {
+abstract class BTreeSeparator extends LongAdder {
     protected final LocalDatabase mDatabase;
-    protected final Tree[] mSources;
+    protected final BTree[] mSources;
     protected final Executor mExecutor;
 
     private final int mWorkerCount;
@@ -58,7 +58,7 @@ abstract class TreeSeparator extends LongAdder {
         try {
             cExceptionHandle =
                 MethodHandles.lookup().findVarHandle
-                (TreeSeparator.class, "mException", Throwable.class);
+                (BTreeSeparator.class, "mException", Throwable.class);
 
             cSpawnCountHandle =
                 MethodHandles.lookup().findVarHandle
@@ -72,7 +72,7 @@ abstract class TreeSeparator extends LongAdder {
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */
-    TreeSeparator(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
+    BTreeSeparator(LocalDatabase db, BTree[] sources, Executor executor, int workerCount) {
         if (db == null || sources.length <= 0 || workerCount <= 0) {
             throw new IllegalArgumentException();
         }
@@ -137,7 +137,7 @@ abstract class TreeSeparator extends LongAdder {
      *
      * @param firstRange first separated range; the ranges are ordered lowest to highest.
      */
-    protected abstract void finished(Chain<Tree> firstRange);
+    protected abstract void finished(Chain<BTree> firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
         Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
@@ -176,8 +176,8 @@ abstract class TreeSeparator extends LongAdder {
     /**
      * @param lowKey inclusive lowest key in the worker range; pass null for open range
      */
-    private TreeCursor openSourceCursor(int sourceSlot, byte[] lowKey) throws IOException {
-        TreeCursor scursor = mSources[sourceSlot].newCursor(Transaction.BOGUS);
+    private BTreeCursor openSourceCursor(int sourceSlot, byte[] lowKey) throws IOException {
+        BTreeCursor scursor = mSources[sourceSlot].newCursor(Transaction.BOGUS);
         scursor.mKeyOnly = true;
         if (lowKey == null) {
             scursor.first();
@@ -195,9 +195,9 @@ abstract class TreeSeparator extends LongAdder {
     private byte[] selectSplitKey(byte[] lowKey, byte[] highKey) throws IOException {
         // Select a random key from a random source.
 
-        Tree source = mSources[ThreadLocalRandom.current().nextInt(mSources.length)];
+        BTree source = mSources[ThreadLocalRandom.current().nextInt(mSources.length)];
 
-        TreeCursor scursor = source.newCursor(Transaction.BOGUS);
+        BTreeCursor scursor = source.newCursor(Transaction.BOGUS);
         try {
             scursor.mKeyOnly = true;
             scursor.random(lowKey, highKey);
@@ -258,14 +258,14 @@ abstract class TreeSeparator extends LongAdder {
         finished(first);
     }
 
-    private final class Worker implements Runnable, Chain<Tree> {
+    private final class Worker implements Runnable, Chain<BTree> {
         final int mHash;
         final byte[] mLowKey;
         byte[] mHighKey;
         final Selector[] mQueue;
         volatile int mSpawnCount;
         Worker mHashtableNext;
-        private Tree mTarget;
+        private BTree mTarget;
 
         // Linked list of workers, ordered by the range of keys they act upon.
         Worker mNext;
@@ -301,7 +301,7 @@ abstract class TreeSeparator extends LongAdder {
         }
 
         @Override
-        public Tree element() {
+        public BTree element() {
             return mTarget;
         }
 
@@ -315,7 +315,7 @@ abstract class TreeSeparator extends LongAdder {
 
             int queueSize = 0;
             for (int slot = 0; slot < queue.length; slot++) {
-                TreeCursor scursor = openSourceCursor(slot, mLowKey);
+                BTreeCursor scursor = openSourceCursor(slot, mLowKey);
                 if (scursor.key() != null) {
                     queue[queueSize++] = new Selector(slot, scursor);
                 }
@@ -330,13 +330,13 @@ abstract class TreeSeparator extends LongAdder {
                 siftDown(queue, queueSize, i, queue[i]);
             }
 
-            TreeCursor tcursor = null;
+            BTreeCursor tcursor = null;
             byte[] highKey = mHighKey;
             byte count = 0;
 
             while (true) {
                 Selector selector = queue[0];
-                TreeCursor scursor = selector.mSource;
+                BTreeCursor scursor = selector.mSource;
 
                 transfer: {
                     if (highKey != null && compareUnsigned(scursor.key(), highKey) >= 0) {
@@ -416,11 +416,11 @@ abstract class TreeSeparator extends LongAdder {
 
     private static final class Selector {
         final int mSourceSlot;
-        final TreeCursor mSource;
+        final BTreeCursor mSource;
 
         boolean mSkip;
 
-        Selector(int slot, TreeCursor source) {
+        Selector(int slot, BTreeCursor source) {
             mSourceSlot = slot;
             mSource = source;
         }

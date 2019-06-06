@@ -25,13 +25,13 @@ import static org.junit.Assert.*;
 import static org.cojen.tupl.TestUtils.*;
 
 /**
- * Tests for the Tree.graftTempTree method.
+ * Tests for the BTree.graftTempTree method.
  *
  * @author Brian S O'Neill
  */
-public class TreeGraftTest {
+public class BTreeGraftTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(TreeGraftTest.class.getName());
+        org.junit.runner.JUnitCore.main(BTreeGraftTest.class.getName());
     }
 
     @Before
@@ -48,8 +48,8 @@ public class TreeGraftTest {
 
     @Test
     public void basic() throws Exception {
-        Tree t1 = (Tree) mDatabase.newTemporaryIndex();
-        Tree t2 = (Tree) mDatabase.newTemporaryIndex();
+        BTree t1 = (BTree) mDatabase.newTemporaryIndex();
+        BTree t2 = (BTree) mDatabase.newTemporaryIndex();
 
         byte[] k = "hello".getBytes();
         byte[] v = "world".getBytes();
@@ -57,7 +57,7 @@ public class TreeGraftTest {
         t1.store(null, k, v);
         t2.store(null, v, k);
 
-        Tree survivior = Tree.graftTempTree(t1, t2);
+        BTree survivior = BTree.graftTempTree(t1, t2);
         assertEquals(t1, survivior);
 
         assertEquals(t1, mDatabase.indexById(t1.getId()));
@@ -100,13 +100,13 @@ public class TreeGraftTest {
             final long seed = 123 + count1 + count2;
             Random rnd = new Random(seed);
 
-            Tree t1 = (Tree) mDatabase.newTemporaryIndex();
-            Tree t2 = (Tree) mDatabase.newTemporaryIndex();
+            BTree t1 = (BTree) mDatabase.newTemporaryIndex();
+            BTree t2 = (BTree) mDatabase.newTemporaryIndex();
 
             fillTree(t1, count1, rnd, (byte) 0);
             fillTree(t2, count2, rnd, (byte) 1);
 
-            Tree survivor = Tree.graftTempTree(t1, t2);
+            BTree survivor = BTree.graftTempTree(t1, t2);
 
             if (survivor == t1) {
                 assertEquals(t1, mDatabase.indexById(t1.getId()));
@@ -136,20 +136,20 @@ public class TreeGraftTest {
         final long seed = 5224555;
         Random rnd = new Random(seed);
 
-        Tree[] trees = new Tree[256];
+        BTree[] trees = new BTree[256];
         for (int i=0; i<trees.length; i++) {
-            trees[i] = (Tree) mDatabase.newTemporaryIndex();
+            trees[i] = (BTree) mDatabase.newTemporaryIndex();
             fillTree(trees[i], 100, rnd, (byte) i);
         }
 
-        Tree survivor = trees[0];
+        BTree survivor = trees[0];
         for (int i=1; i<trees.length; i++) {
-            survivor = Tree.graftTempTree(survivor, trees[i]);
+            survivor = BTree.graftTempTree(survivor, trees[i]);
         }
 
         assertEquals(100 * trees.length, survivor.count(null, null));
 
-        // Tree height remains reasonable.
+        // BTree height remains reasonable.
         assertEquals(3, height(survivor));
 
         // Verify contents.
@@ -159,7 +159,7 @@ public class TreeGraftTest {
         }
     }
 
-    private static void fillTree(Tree tree, int count, Random rnd, byte keyPrefix)
+    private static void fillTree(BTree tree, int count, Random rnd, byte keyPrefix)
         throws Exception
     {
         for (int i=0; i<count; i++) {
@@ -170,10 +170,10 @@ public class TreeGraftTest {
         }
     }
 
-    private static void findInFilledTree(Tree tree, int count, Random rnd, byte keyPrefix)
+    private static void findInFilledTree(BTree tree, int count, Random rnd, byte keyPrefix)
         throws Exception
     {
-        TreeCursor tc = tree.newCursor(Transaction.BOGUS);
+        BTreeCursor tc = tree.newCursor(Transaction.BOGUS);
 
         for (int i=0; i<count; i++) {
             byte[] key = TestUtils.randomStr(rnd, 10, 30);
@@ -188,7 +188,7 @@ public class TreeGraftTest {
         tc.reset();
     }
 
-    private static int height(Tree tree) throws Exception {
+    private static int height(BTree tree) throws Exception {
         HeightObserver obs = new HeightObserver();
         assertTrue(tree.verify(obs));
         return obs.height;

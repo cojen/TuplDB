@@ -40,6 +40,6 @@ public class ValueAccessorDirectTest extends ValueAccessorTest {
     protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
-        ((_TreeCursor) c).doValueModify(TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        ((_BTreeCursor) c).doValueModify(BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
     }
 }

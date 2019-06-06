@@ -55,7 +55,7 @@ public class ValueAccessorTest {
     protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
         throws IOException
     {
-        ((TreeCursor) c).doValueModify(TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        ((BTreeCursor) c).doValueModify(BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
     }
 
     @After
@@ -1810,8 +1810,8 @@ public class ValueAccessorTest {
 
     @Test
     public void fullyTruncateSparseValue() throws Exception {
-        // Passing 0 to TreeCursor.valueLength always bypasses the use of TreeValue. In case
-        // this behavior ever changes, make sure that TreeValue works.
+        // Passing 0 to BTreeCursor.valueLength always bypasses the use of BTreeValue. In case
+        // this behavior ever changes, make sure that BTreeValue works.
 
         Index ix = mDb.openIndex("test!");
         Cursor c = ix.newCursor(null);
@@ -1820,7 +1820,7 @@ public class ValueAccessorTest {
         c.valueWrite(100_000, new byte[]{1}, 0, 1);
 
         // bypass...
-        doValueModify(c, TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        doValueModify(c, BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
 
         assertEquals(0, c.valueLength());
 
@@ -1838,7 +1838,7 @@ public class ValueAccessorTest {
         c.valueLength(10_000_000);
         c.valueWrite(100_000, new byte[]{1}, 0, 1);
         txn.commit();
-        doValueModify(c, TreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        doValueModify(c, BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
         txn.reset();
         c.load();
         byte[] expect = new byte[10_000_000];

@@ -31,7 +31,7 @@ import java.util.Comparator;
 /*P*/
 class _SortScanner implements Scanner {
     private final _LocalDatabase mDatabase;
-    private _TreeCursor mCursor;
+    private _BTreeCursor mCursor;
     private Supplier mSupplier;
 
     /**
@@ -58,7 +58,7 @@ class _SortScanner implements Scanner {
 
     @Override
     public boolean step() throws IOException {
-        _TreeCursor c = cursor();
+        _BTreeCursor c = cursor();
         try {
             doStep(c);
             if (c.key() != null) {
@@ -73,14 +73,14 @@ class _SortScanner implements Scanner {
         }
     }
 
-    protected void doStep(_TreeCursor c) throws IOException {
+    protected void doStep(_BTreeCursor c) throws IOException {
         c.deleteNext();
     }
 
     @Override
     public void close() throws IOException {
         try {
-            _TreeCursor c = mCursor;
+            _BTreeCursor c = mCursor;
             if (c != null) {
                 mCursor = null;
                 mDatabase.deleteIndex(c.mTree).run();
@@ -97,18 +97,18 @@ class _SortScanner implements Scanner {
         }
     }
 
-    void ready(_Tree tree) throws IOException {
-        _TreeCursor c = new _TreeCursor(tree, Transaction.BOGUS);
+    void ready(_BTree tree) throws IOException {
+        _BTreeCursor c = new _BTreeCursor(tree, Transaction.BOGUS);
         initPosition(c);
         mCursor = c;
     }
 
-    protected void initPosition(_TreeCursor c) throws IOException {
+    protected void initPosition(_BTreeCursor c) throws IOException {
         c.first();
     }
 
     static interface Supplier {
-        _Tree get() throws IOException;
+        _BTree get() throws IOException;
 
         void close() throws IOException;
     }
@@ -117,14 +117,14 @@ class _SortScanner implements Scanner {
         mSupplier = supplier;
     }
 
-    private _TreeCursor cursor() {
-        _TreeCursor c = mCursor;
+    private _BTreeCursor cursor() {
+        _BTreeCursor c = mCursor;
         return c == null ? openCursor() : c;
     }
 
-    private _TreeCursor openCursor() {
+    private _BTreeCursor openCursor() {
         try {
-            _Tree tree;
+            _BTree tree;
             if (mSupplier == null) {
                 // Assume that scanner is being used after being closed.
                 tree = mDatabase.newTemporaryIndex();

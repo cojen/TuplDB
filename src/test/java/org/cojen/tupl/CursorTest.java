@@ -57,8 +57,8 @@ public class CursorTest {
         return ((Index) ix).verify(null);
     }
 
-    protected TreeCursor treeCursor(Cursor c) {
-        return (TreeCursor) c;
+    protected BTreeCursor treeCursor(Cursor c) {
+        return (BTreeCursor) c;
     }
 
     protected boolean equalPositions(Cursor a, Cursor b) throws Exception {
@@ -1133,7 +1133,7 @@ public class CursorTest {
     }
 
     protected void verifyExtremities(View ix) throws Exception {
-        TreeCursor extremity = treeCursor(ix.newCursor(Transaction.BOGUS));
+        BTreeCursor extremity = treeCursor(ix.newCursor(Transaction.BOGUS));
         assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
         assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
     }

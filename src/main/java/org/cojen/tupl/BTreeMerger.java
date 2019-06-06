@@ -27,28 +27,28 @@ import java.util.concurrent.Executor;
  */
 /*P*/
 @SuppressWarnings("serial")
-abstract class TreeMerger extends TreeSeparator {
+abstract class BTreeMerger extends BTreeSeparator {
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread
      * @param workerCount maximum parallelism; must be at least 1
      */
-    TreeMerger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
+    BTreeMerger(LocalDatabase db, BTree[] sources, Executor executor, int workerCount) {
         super(db, sources, executor, workerCount);
     }
 
     @Override
-    protected void finished(Chain<Tree> firstRange) {
-        Tree merged = firstRange.element();
+    protected void finished(Chain<BTree> firstRange) {
+        BTree merged = firstRange.element();
 
         if (merged != null) merge: {
-            Chain<Tree> range = firstRange.next();
+            Chain<BTree> range = firstRange.next();
 
             while (range != null) {
-                Tree tree = range.element();
+                BTree tree = range.element();
 
                 if (tree != null) {
                     try {
-                        merged = Tree.graftTempTree(merged, tree);
+                        merged = BTree.graftTempTree(merged, tree);
                     } catch (Throwable e) {
                         failed(e);
 
@@ -74,7 +74,7 @@ abstract class TreeMerger extends TreeSeparator {
             merged(merged);
         }
 
-        for (Tree source : mSources) {
+        for (BTree source : mSources) {
             if (isEmpty(source)) {
                 try {
                     mDatabase.quickDeleteTemporaryTree(source);
@@ -93,22 +93,22 @@ abstract class TreeMerger extends TreeSeparator {
     /**
      * Receives the target tree; called at most once.
      */
-    protected abstract void merged(Tree tree);
+    protected abstract void merged(BTree tree);
 
     /**
      * Receives any remaining source trees when merger is stopped. Is null when all finished.
      */
-    protected abstract void remainder(Tree tree);
+    protected abstract void remainder(BTree tree);
 
-    private static boolean isEmpty(Tree tree) {
+    private static boolean isEmpty(BTree tree) {
         Node root = tree.mRoot;
         root.acquireShared();
         boolean empty = root.isLeaf() && !root.hasKeys();
         root.releaseShared();
 
         if (!empty) {
-            // Double check with a cursor. Tree might be composed of many empty leaf nodes.
-            TreeCursor c = tree.newCursor(Transaction.BOGUS);
+            // Double check with a cursor. BTree might be composed of many empty leaf nodes.
+            BTreeCursor c = tree.newCursor(Transaction.BOGUS);
             try {
                 c.mKeyOnly = true;
                 c.first();

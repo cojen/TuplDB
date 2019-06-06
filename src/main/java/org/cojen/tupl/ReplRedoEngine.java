@@ -78,7 +78,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
      */
     ReplRedoEngine(ReplicationManager manager, int maxThreads,
                    LocalDatabase db, LHashTable.Obj<LocalTransaction> txns,
-                   LHashTable.Obj<TreeCursor> cursors)
+                   LHashTable.Obj<BTreeCursor> cursors)
         throws IOException
     {
         if (manager == null) {
@@ -227,7 +227,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         synchronized (mCursors) {
             mCursors.traverse(entry -> {
-                TreeCursor cursor = entry.mCursor;
+                BTreeCursor cursor = entry.mCursor;
                 mDatabase.unregisterCursor(cursor.mCursorId);
                 reset(cursor);
                 return true;
@@ -682,7 +682,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         long scrambledCursorId = mix(cursorId);
         Index ix = getIndex(indexId);
         if (ix != null) {
-            TreeCursor tc = (TreeCursor) ix.newCursor(Transaction.BOGUS);
+            BTreeCursor tc = (BTreeCursor) ix.newCursor(Transaction.BOGUS);
             tc.mKeyOnly = true;
             tc.mCursorId = cursorId;
             register(tc);
@@ -704,7 +704,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (ce != null) {
             // Need to enqueue a task with the correct thread, to ensure that the reset doesn't
             // run concurrently with any unfinished cursor actions.
-            TreeCursor tc = ce.mCursor;
+            BTreeCursor tc = ce.mCursor;
             Worker w = ce.mWorker;
             if (w == null) {
                 // Cursor was never actually used.
@@ -743,7 +743,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                TreeCursor tc = findAndRegister(ce, txn, key);
+                BTreeCursor tc = findAndRegister(ce, txn, key);
 
                 do {
                     try {
@@ -797,7 +797,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
-        TreeCursor tc = ce.mCursor;
+        BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
@@ -808,7 +808,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                TreeCursor tc = ce.mCursor;
+                BTreeCursor tc = ce.mCursor;
                 tc.mTxn = txn;
 
                 do {
@@ -841,7 +841,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
-        TreeCursor tc = ce.mCursor;
+        BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
@@ -852,7 +852,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                TreeCursor tc = ce.mCursor;
+                BTreeCursor tc = ce.mCursor;
                 tc.mTxn = txn;
 
                 do {
@@ -880,7 +880,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
-        TreeCursor tc = ce.mCursor;
+        BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
@@ -891,7 +891,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                TreeCursor tc = ce.mCursor;
+                BTreeCursor tc = ce.mCursor;
                 tc.mTxn = txn;
 
                 do {
@@ -1252,8 +1252,8 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         return openIndex(indexId);
     }
 
-    private void register(TreeCursor tc) throws IOException {
-        Tree cursorRegistry = mDatabase.openCursorRegistry();
+    private void register(BTreeCursor tc) throws IOException {
+        BTree cursorRegistry = mDatabase.openCursorRegistry();
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             mDatabase.registerCursor(cursorRegistry, tc);
@@ -1262,10 +1262,10 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
-    private TreeCursor findAndRegister(CursorEntry ce, LocalTransaction txn, byte[] key)
+    private BTreeCursor findAndRegister(CursorEntry ce, LocalTransaction txn, byte[] key)
         throws IOException
     {
-        TreeCursor tc = ce.mCursor;
+        BTreeCursor tc = ce.mCursor;
         tc.mTxn = txn;
         tc.findNearby(key);
         register(tc);
@@ -1292,10 +1292,10 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
      *
      * @param e cause, which is rethrown if not due to index closure
      */
-    private TreeCursor reopenCursor(Throwable e, CursorEntry ce) throws IOException {
+    private BTreeCursor reopenCursor(Throwable e, CursorEntry ce) throws IOException {
         checkClosedIndex(e);
 
-        TreeCursor tc = ce.mCursor;
+        BTreeCursor tc = ce.mCursor;
         Index ix = openIndex(tc.mTree.mId);
 
         if (ix == null) {
@@ -1309,7 +1309,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
             byte[] key = tc.key();
             reset(tc);
 
-            tc = (TreeCursor) ix.newCursor(txn);
+            tc = (BTreeCursor) ix.newCursor(txn);
             tc.mKeyOnly = true;
             tc.mTxn = txn;
             tc.mCursorId = cursorId;
@@ -1448,7 +1448,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
-    private void reset(TreeCursor cursor) {
+    private void reset(BTreeCursor cursor) {
         // Clear cursor id first, to prevent reset from writing a redo log entry.
         long cursorId = cursor.mCursorId;
         cursor.mCursorId = 0;
@@ -1461,11 +1461,11 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     static final class CursorEntry extends LHashTable.Entry<CursorEntry> {
-        TreeCursor mCursor;
+        BTreeCursor mCursor;
         Worker mWorker;
         byte[] mKey;
 
-        void recovered(TreeCursor c) {
+        void recovered(BTreeCursor c) {
             mCursor = c;
             mKey = c.key();
         }

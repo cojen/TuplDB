@@ -53,11 +53,11 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     private final Executor mExecutor;
 
     // Active sort trees, each of which has only a root node.
-    private _Tree[] mSortTrees;
+    private _BTree[] mSortTrees;
     private int mSortTreesSize;
 
     // Pool of trees with only a root node.
-    private _Tree[] mSortTreePool;
+    private _BTree[] mSortTreePool;
     private int mSortTreePoolSize;
 
     // Last task added which is acting on sort trees (one root node), forming a stack. For
@@ -82,14 +82,14 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
     private static final class Level {
         final int mLevelNum;
-        _Tree[] mTrees;
+        _BTree[] mTrees;
         int mSize;
-        _TreeMerger mMerger;
+        _BTreeMerger mMerger;
         boolean mStopped;
 
         Level(int levelNum) {
             mLevelNum = levelNum;
-            mTrees = new _Tree[LEVEL_MIN_SIZE];
+            mTrees = new _BTree[LEVEL_MIN_SIZE];
         }
 
         synchronized void stop() {
@@ -110,12 +110,12 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             }
         }
 
-        synchronized _Tree waitForFirstTree() throws InterruptedIOException {
+        synchronized _BTree waitForFirstTree() throws InterruptedIOException {
             waitUntilFinished();
             return mTrees[0];
         }
 
-        synchronized void finished(_TreeMerger merger) {
+        synchronized void finished(_BTreeMerger merger) {
             if (merger == mMerger) {
                 mMerger = null;
                 notifyAll();
@@ -129,12 +129,12 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         try {
             _Node node;
             if (mSortTreesSize == 0) {
-                _Tree sortTree = allocSortTree();
-                (mSortTrees = new _Tree[MIN_SORT_TREES])[0] = sortTree;
+                _BTree sortTree = allocSortTree();
+                (mSortTrees = new _BTree[MIN_SORT_TREES])[0] = sortTree;
                 mSortTreesSize = 1;
                 node = sortTree.mRoot;
             } else {
-                _Tree sortTree = mSortTrees[mSortTreesSize - 1];
+                _BTree sortTree = mSortTrees[mSortTreesSize - 1];
                 node = latchRootDirty(sortTree);
             }
 
@@ -156,9 +156,9 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     }
 
     @Override
-    public _Tree finish() throws IOException {
+    public _BTree finish() throws IOException {
         try {
-            _Tree tree = doFinish(null);
+            _BTree tree = doFinish(null);
             finishComplete();
             return tree;
         } catch (Throwable e) {
@@ -183,7 +183,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
     private Scanner finishScan(_SortScanner scanner) throws IOException {
         try {
-            _Tree tree = doFinish(scanner);
+            _BTree tree = doFinish(scanner);
             if (tree != null) {
                 finishComplete();
                 scanner.ready(tree);
@@ -202,7 +202,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     /**
      * @param scanner pass null to always wait to finish
      */
-    private _Tree doFinish(_SortScanner scanner) throws IOException {
+    private _BTree doFinish(_SortScanner scanner) throws IOException {
         Level finishLevel;
 
         synchronized (this) {
@@ -233,12 +233,12 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 }
             }
 
-            final _Tree[] sortTrees = mSortTrees;
+            final _BTree[] sortTrees = mSortTrees;
             final int size = mSortTreesSize;
             mSortTrees = null;
             mSortTreesSize = 0;
 
-            _Tree[] allTrees;
+            _BTree[] allTrees;
 
             if (size == 0) {
                 if (numLevelTrees == 0) {
@@ -247,9 +247,9 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 if (numLevelTrees == 1) {
                     return levels[0].mTrees[0];
                 }
-                allTrees = new _Tree[numLevelTrees];
+                allTrees = new _BTree[numLevelTrees];
             } else {
-                _Tree tree;
+                _BTree tree;
                 if (size == 1) {
                     tree = sortTrees[0];
                     CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
@@ -270,7 +270,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                     return tree;
                 }
 
-                allTrees = new _Tree[numLevelTrees + 1];
+                allTrees = new _BTree[numLevelTrees + 1];
                 // Place newest tree at the end, to favor its entries if any duplicates exist.
                 allTrees[numLevelTrees] = tree;
             }
@@ -293,7 +293,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             finishLevel = levels[0];
             levels = null;
             finishLevel.mSize = 0;
-            _TreeMerger merger = newTreeMerger(allTrees, finishLevel, finishLevel);
+            _BTreeMerger merger = newTreeMerger(allTrees, finishLevel, finishLevel);
             finishLevel.mMerger = merger;
             merger.start();
 
@@ -306,9 +306,9 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
         scanner.notReady(new _SortScanner.Supplier() {
             @Override
-            public _Tree get() throws IOException {
+            public _BTree get() throws IOException {
                 try {
-                    _Tree tree = finishLevel.waitForFirstTree();
+                    _BTree tree = finishLevel.waitForFirstTree();
                     finishComplete();
                     return tree;
                 } catch (Throwable e) {
@@ -378,7 +378,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         // Drain the pool.
         if (mSortTreePoolSize > 0) {
             do {
-                _Tree tree = mSortTreePool[--mSortTreePoolSize];
+                _BTree tree = mSortTreePool[--mSortTreePoolSize];
                 mSortTreePool[mSortTreePoolSize] = null;
                 mDatabase.quickDeleteTemporaryTree(tree);
             } while (mSortTreePoolSize > 0);
@@ -399,7 +399,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
     @Override
     public void reset() throws IOException {
-        List<_Tree> toDrop = null;
+        List<_BTree> toDrop = null;
 
         synchronized (this) {
             mState = S_RESET;
@@ -418,7 +418,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
             if (levels != null) {
                 for (Level level : levels) {
-                    _Tree[] trees;
+                    _BTree[] trees;
                     int size;
                     synchronized (level) {
                         trees = level.mTrees;
@@ -438,7 +438,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 mSortTreeLevels = null;
             }
 
-            _Tree[] sortTrees = mSortTrees;
+            _BTree[] sortTrees = mSortTrees;
             int size = mSortTreesSize;
             mSortTrees = null;
             mSortTreesSize = 0;
@@ -453,7 +453,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             }
         }
 
-        if (toDrop != null) for (_Tree tree : toDrop) {
+        if (toDrop != null) for (_BTree tree : toDrop) {
             tree.drop(false).run();
         }
 
@@ -469,16 +469,16 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         if (mSortTreesSize >= mSortTrees.length) {
             mSortTrees = Arrays.copyOf(mSortTrees, MAX_SORT_TREES);
         }
-        _Tree sortTree = allocSortTree();
+        _BTree sortTree = allocSortTree();
         mSortTrees[mSortTreesSize++] = sortTree;
         return sortTree.mRoot;
     }
 
     // Caller must be synchronized and hold commit lock.
-    private _Tree allocSortTree() throws IOException {
+    private _BTree allocSortTree() throws IOException {
         checkState();
 
-        _Tree tree;
+        _BTree tree;
         _Node root;
 
         int size = mSortTreePoolSize;
@@ -496,7 +496,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     }
 
     // Caller must hold commit lock.
-    private _Node latchRootDirty(_Tree tree) throws IOException {
+    private _Node latchRootDirty(_BTree tree) throws IOException {
         _Node root = tree.mRoot;
         root.acquireExclusive();
         try {
@@ -512,11 +512,11 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     private void mergeSortTrees() throws IOException {
         // Merge the sort tree nodes into a new temporary index.
 
-        final _Tree dest = mDatabase.newTemporaryIndex();
+        final _BTree dest = mDatabase.newTemporaryIndex();
 
-        final _Tree[] sortTrees = mSortTrees;
+        final _BTree[] sortTrees = mSortTrees;
         final int size = mSortTreesSize;
-        mSortTrees = new _Tree[MAX_SORT_TREES];
+        mSortTrees = new _BTree[MAX_SORT_TREES];
         mSortTreesSize = 0;
 
         if (mSortTreeLevels == null) {
@@ -542,16 +542,16 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
      * Merger of sort trees, which only consist of a single node.
      */
     private final class Merger implements Runnable {
-        private _Tree[] mSortTrees;
+        private _BTree[] mSortTrees;
         private int mSize;
-        private _Tree mDest;
+        private _BTree mDest;
 
         Merger mPrev;
 
         // Is set when more trees must be added when merge is done.
         Merger mNext;
 
-        Merger(Merger prev, _Tree[] sortTrees, int size, _Tree dest) {
+        Merger(Merger prev, _BTree[] sortTrees, int size, _BTree dest) {
             mPrev = prev;
             mSortTrees = sortTrees;
             mSize = size;
@@ -571,12 +571,12 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
     /**
      * @param merger can be null if not called from Merger class
      */
-    private void doMergeSortTrees(Merger merger, _Tree[] sortTrees, int size, _Tree dest)
+    private void doMergeSortTrees(Merger merger, _BTree[] sortTrees, int size, _BTree dest)
         throws IOException
     {
         Throwable ex = null;
 
-        final _TreeCursor appender = dest.newCursor(Transaction.BOGUS);
+        final _BTreeCursor appender = dest.newCursor(Transaction.BOGUS);
         try {
             appender.firstLeaf();
 
@@ -606,7 +606,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                     shared.release();
                     shared = commitLock.acquireShared();
                     for (int i=0; i<size; i++) {
-                        _Tree sortTree = sortTrees[i];
+                        _BTree sortTree = sortTrees[i];
                         mDatabase.markDirty(sortTree, sortTree.mRoot);
                     }
                 }
@@ -614,7 +614,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                 int len = size;
 
                 while (true) {
-                    _Tree sortTree = sortTrees[0];
+                    _BTree sortTree = sortTrees[0];
                     _Node node = sortTree.mRoot;
 
                     int order = node.garbage();
@@ -633,7 +633,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                             // All done.
                             break;
                         }
-                        _Tree last = sortTrees[len];
+                        _BTree last = sortTrees[len];
                         sortTrees[len] = sortTree;
                         sortTree = last;
                     }
@@ -710,13 +710,13 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         }
     }
 
-    private static void siftDown(_Tree[] sortTrees, int size, int pos, _Tree element)
+    private static void siftDown(_BTree[] sortTrees, int size, int pos, _BTree element)
         throws IOException
     {
         int half = size >>> 1;
         while (pos < half) {
             int childPos = (pos << 1) + 1;
-            _Tree child = sortTrees[childPos];
+            _BTree child = sortTrees[childPos];
             int rightPos = childPos + 1;
             if (rightPos < size && compareSortTrees(child, sortTrees[rightPos]) > 0) {
                 childPos = rightPos;
@@ -731,7 +731,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         sortTrees[pos] = element;
     }
 
-    private static int compareSortTrees(_Tree leftTree, _Tree rightTree) throws IOException {
+    private static int compareSortTrees(_BTree leftTree, _BTree rightTree) throws IOException {
         _Node left = leftTree.mRoot;
         _Node right = rightTree.mRoot;
 
@@ -774,12 +774,12 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         }
     }
 
-    private void addToLevel(Level level, int maxSize, _Tree tree) {
-        _TreeMerger merger;
+    private void addToLevel(Level level, int maxSize, _BTree tree) {
+        _BTreeMerger merger;
 
         try {
             synchronized (level) {
-                _Tree[] trees = level.mTrees;
+                _BTree[] trees = level.mTrees;
                 int size = level.mSize;
 
                 if (size >= trees.length) {
@@ -817,15 +817,15 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
         }
     }
 
-    private _TreeMerger newTreeMerger(_Tree[] trees, Level level, Level nextLevel) {
-        return new _TreeMerger(mDatabase, trees, mExecutor, MERGE_THREAD_COUNT) {
+    private _BTreeMerger newTreeMerger(_BTree[] trees, Level level, Level nextLevel) {
+        return new _BTreeMerger(mDatabase, trees, mExecutor, MERGE_THREAD_COUNT) {
             @Override
-            protected void merged(_Tree tree) {
+            protected void merged(_BTree tree) {
                 addToLevel(nextLevel, L1_MAX_SIZE, tree);
             }
 
             @Override
-            protected void remainder(_Tree tree) {
+            protected void remainder(_BTree tree) {
                 if (tree != null) {
                     addToLevel(nextLevel, L1_MAX_SIZE, tree);
                 } else {

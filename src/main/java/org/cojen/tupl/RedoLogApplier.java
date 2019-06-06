@@ -38,7 +38,7 @@ final class RedoLogApplier extends ReplRedoEngine implements ReplicationManager 
      * @param maxThreads pass zero to use all processors; see DatabaseConfig.maxReplicaThreads
      */
     RedoLogApplier(int maxThreads, LocalDatabase db, LHashTable.Obj<LocalTransaction> txns,
-                   LHashTable.Obj<TreeCursor> cursors)
+                   LHashTable.Obj<BTreeCursor> cursors)
         throws IOException
     {
         // Passing null for manager implies that this class is the manager. Passing 'this' is

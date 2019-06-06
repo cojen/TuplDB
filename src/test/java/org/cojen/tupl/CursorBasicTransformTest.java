@@ -48,8 +48,8 @@ public class CursorBasicTransformTest extends CursorNonDurableTest {
     }
 
     @Override
-    protected TreeCursor treeCursor(Cursor c) {
-        return (TreeCursor) ((TransformedCursor) c).source();
+    protected BTreeCursor treeCursor(Cursor c) {
+        return (BTreeCursor) ((TransformedCursor) c).source();
     }
 
     @Override

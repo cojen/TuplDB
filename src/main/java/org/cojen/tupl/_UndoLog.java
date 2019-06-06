@@ -894,7 +894,7 @@ final class _UndoLog implements _DatabaseAccess {
                 // to undo a delete, but instead delete the ghost.
                 byte[] key = decodeNodeKey(entry);
                 activeIndex = doUndo(activeIndex, ix -> {
-                    _TreeCursor cursor = new _TreeCursor((_Tree) ix, null);
+                    _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
                     try {
                         cursor.deleteGhost(key);
                     } catch (Throwable e) {
@@ -910,7 +910,7 @@ final class _UndoLog implements _DatabaseAccess {
                 key = new byte[decodeUnsignedVarInt(entry, 0)];
                 arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
                 activeIndex = doUndo(activeIndex, ix -> {
-                    _TreeCursor cursor = new _TreeCursor((_Tree) ix, null);
+                    _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
                     try {
                         cursor.deleteGhost(key);
                     } catch (Throwable e) {
@@ -976,7 +976,7 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_UNDELETE_FRAGMENTED:
             activeIndex = doUndo(activeIndex, ix -> {
-                mDatabase.fragmentedTrash().remove(mTxnId, (_Tree) ix, entry);
+                mDatabase.fragmentedTrash().remove(mTxnId, (_BTree) ix, entry);
             });
             break;
 
@@ -992,7 +992,7 @@ final class _UndoLog implements _DatabaseAccess {
             arraycopy(entry, tidLoc, trashKey, 8, tidLen);
 
             activeIndex = doUndo(activeIndex, ix -> {
-                mDatabase.fragmentedTrash().remove((_Tree) ix, key, trashKey);
+                mDatabase.fragmentedTrash().remove((_BTree) ix, key, trashKey);
             });
             break;
         }

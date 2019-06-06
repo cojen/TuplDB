@@ -40,7 +40,7 @@ public class CursorDefaultTest extends CursorTest {
     }
 
     @Override
-    protected TreeCursor treeCursor(Cursor c) {
-        return (TreeCursor) (((DefaultCursor) c).mSource);
+    protected BTreeCursor treeCursor(Cursor c) {
+        return (BTreeCursor) (((DefaultCursor) c).mSource);
     }
 }

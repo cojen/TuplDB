@@ -341,7 +341,7 @@ final class _SnapshotPageArray extends PageArray {
         private final long mSnapshotPageCount;
         private final long mSnapshotRedoPosition;
 
-        private final _Tree mPageCopyIndex;
+        private final _BTree mPageCopyIndex;
         private final File mTempFile;
 
         private final Latch mSnapshotLatch;

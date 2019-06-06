@@ -54,7 +54,7 @@ final class _Split {
     /**
      * Set full and actual key.
      */
-    final void setKey(_Tree tree, byte[] fullKey) throws IOException {
+    final void setKey(_BTree tree, byte[] fullKey) throws IOException {
         setKey(tree.mDatabase, fullKey);
     }
 

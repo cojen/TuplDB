@@ -327,7 +327,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
      *
      * @param undoTxn pass this if undo logging is required, BOGUS otherwise
      */
-    final void storeCommit(_LocalTransaction undoTxn, _TreeCursor cursor, byte[] value)
+    final void storeCommit(_LocalTransaction undoTxn, _BTreeCursor cursor, byte[] value)
         throws IOException
     {
         if (mRedo == null) {
@@ -1039,7 +1039,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
      * Attempt to generate an identifier for a cursor to perform direct redo operations.
      * Caller must hold commit lock.
      */
-    final boolean tryRedoCursorRegister(_TreeCursor cursor) throws IOException {
+    final boolean tryRedoCursorRegister(_BTreeCursor cursor) throws IOException {
         if (mRedo == null || (mTxnId <= 0 && mRedo.adjustTransactionId(1) <= 0)) {
             return false;
         } else {
@@ -1048,14 +1048,14 @@ final class _LocalTransaction extends _Locker implements Transaction {
         }
     }
 
-    private long doRedoCursorRegister(_TreeCursor cursor) throws IOException {
+    private long doRedoCursorRegister(_BTreeCursor cursor) throws IOException {
         long cursorId = mContext.nextTransactionId();
         try {
             mContext.redoCursorRegister(mRedo, cursorId, cursor.mTree.mId);
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
-        _Tree cursorRegistry = mDatabase.openCursorRegistry();
+        _BTree cursorRegistry = mDatabase.openCursorRegistry();
         cursor.mCursorId = cursorId;
         mDatabase.registerCursor(cursorRegistry, cursor);
         return cursorId;
@@ -1067,7 +1067,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
      * @param op OP_SET_LENGTH, OP_WRITE, or OP_CLEAR
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
-    final void redoCursorValueModify(_TreeCursor cursor, int op,
+    final void redoCursorValueModify(_BTreeCursor cursor, int op,
                                      long pos, byte[] buf, int off, long len)
         throws IOException
     {
@@ -1108,9 +1108,9 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 cursor.mCursorId = cursorId | (1L << 63);
             }
 
-            if (op == _TreeValue.OP_SET_LENGTH) {
+            if (op == _BTreeValue.OP_SET_LENGTH) {
                 mContext.redoCursorValueSetLength(mRedo, cursorId, txnId, pos);
-            } else if (op == _TreeValue.OP_WRITE) {
+            } else if (op == _BTreeValue.OP_WRITE) {
                 mContext.redoCursorValueWrite(mRedo, cursorId, txnId, pos, buf, off, (int) len);
             } else {
                 mContext.redoCursorValueClear(mRedo, cursorId, txnId, pos, len);

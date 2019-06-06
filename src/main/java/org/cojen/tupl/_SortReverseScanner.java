@@ -38,12 +38,12 @@ class _SortReverseScanner extends _SortScanner {
     }
 
     @Override
-    protected void doStep(_TreeCursor c) throws IOException {
+    protected void doStep(_BTreeCursor c) throws IOException {
         c.deletePrevious();
     }
 
     @Override
-    protected void initPosition(_TreeCursor c) throws IOException {
+    protected void initPosition(_BTreeCursor c) throws IOException {
         c.last();
     }
 }

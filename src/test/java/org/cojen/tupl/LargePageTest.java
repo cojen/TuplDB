@@ -54,7 +54,7 @@ public class LargePageTest {
             ix.store(Transaction.BOGUS, key, key);
         }
 
-        Node root = ((Tree) ix).mRoot;
+        Node root = ((BTree) ix).mRoot;
         assertTrue(root.isLeaf());
         assertEquals(4, root.availableBytes());
 

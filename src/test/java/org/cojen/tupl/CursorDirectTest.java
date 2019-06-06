@@ -40,8 +40,8 @@ public class CursorDirectTest extends CursorTest {
         mDb = newTempDatabase(getClass(), OpenMode.DIRECT);
     }
 
-    protected _TreeCursor directTreeCursor(Cursor c) {
-        return (_TreeCursor) c;
+    protected _BTreeCursor directTreeCursor(Cursor c) {
+        return (_BTreeCursor) c;
     }
 
     @Override
@@ -60,9 +60,9 @@ public class CursorDirectTest extends CursorTest {
 
         Cursor c1 = ix.newCursor(Transaction.BOGUS);
         for (c1.first(); c1.key() != null; c1.next()) {
-            _TreeCursor c2 = directTreeCursor(ix.newCursor(Transaction.BOGUS));
+            _BTreeCursor c2 = directTreeCursor(ix.newCursor(Transaction.BOGUS));
             for (c2.first(); c2.key() != null; c2.next()) {
-                _TreeCursor ref = directTreeCursor(c1.copy());
+                _BTreeCursor ref = directTreeCursor(c1.copy());
                 ref.findNearby(c2.key());
                 assertTrue(ref.equalPositions(c2));
                 ref.reset();
@@ -74,7 +74,7 @@ public class CursorDirectTest extends CursorTest {
 
     @Override
     protected void verifyExtremities(View ix) throws Exception {
-        _TreeCursor extremity = directTreeCursor(ix.newCursor(Transaction.BOGUS));
+        _BTreeCursor extremity = directTreeCursor(ix.newCursor(Transaction.BOGUS));
         assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
         assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
     }

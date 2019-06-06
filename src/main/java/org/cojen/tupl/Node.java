@@ -1908,7 +1908,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      * @param cursor key and value are updated
      */
-    void retrieveLeafEntry(int pos, TreeCursor cursor) throws IOException {
+    void retrieveLeafEntry(int pos, BTreeCursor cursor) throws IOException {
         final /*P*/ byte[] page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         int header = p_byteGet(page, loc++);
@@ -1964,7 +1964,7 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnDeleteLeafEntry(LocalTransaction txn, Tree tree, byte[] key, int keyHash, int pos)
+    void txnDeleteLeafEntry(LocalTransaction txn, BTree tree, byte[] key, int keyHash, int pos)
         throws IOException
     {
         // Allocate early, in case out of memory.
@@ -2029,7 +2029,7 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnPreUpdateLeafEntry(LocalTransaction txn, Tree tree, byte[] key, int pos)
+    void txnPreUpdateLeafEntry(LocalTransaction txn, BTree tree, byte[] key, int pos)
         throws IOException
     {
         final /*P*/ byte[] page = mPage;
@@ -2144,7 +2144,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, byte[] value)
+    void insertLeafEntry(CursorFrame frame, BTree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
         final LocalDatabase db = tree.mDatabase;
@@ -2201,7 +2201,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertBlankLeafEntry(CursorFrame frame, Tree tree, int pos, byte[] okey, long vlength)
+    void insertBlankLeafEntry(CursorFrame frame, BTree tree, int pos, byte[] okey, long vlength)
         throws IOException
     {
         final LocalDatabase db = tree.mDatabase;
@@ -2262,7 +2262,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param okey original key
      */
     void insertFragmentedLeafEntry(CursorFrame frame,
-                                   Tree tree, int pos, byte[] okey, byte[] value)
+                                   BTree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
         final LocalDatabase db = tree.mDatabase;
@@ -2323,7 +2323,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return Location for newly allocated entry, already pointed to by search vector, or
      * negative if leaf must be split. Complement of negative value is available leaf bytes.
      */
-    int createLeafEntry(final CursorFrame frame, Tree tree, int pos, final int encodedLen) {
+    int createLeafEntry(final CursorFrame frame, BTree tree, int pos, final int encodedLen) {
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
@@ -2436,7 +2436,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeaf(Tree tree, CursorFrame parentFrame,
+    private int tryRebalanceLeaf(BTree tree, CursorFrame parentFrame,
                                  int pos, int insertLen, int minAmount)
     {
         int result;
@@ -2467,7 +2467,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeafLeft(Tree tree, CursorFrame parentFrame,
+    private int tryRebalanceLeafLeft(BTree tree, CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
     {
         final /*P*/ byte[] rightPage = mPage;
@@ -2658,7 +2658,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeafRight(Tree tree, CursorFrame parentFrame,
+    private int tryRebalanceLeafRight(BTree tree, CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
     {
         final /*P*/ byte[] leftPage = mPage;
@@ -2852,7 +2852,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param keyPos position to insert split key
      * @param splitChild child node which split
      */
-    void insertSplitChildRef(final CursorFrame frame, Tree tree, int keyPos, Node splitChild)
+    void insertSplitChildRef(final CursorFrame frame, BTree tree, int keyPos, Node splitChild)
         throws IOException
     {
         final Split split = splitChild.mSplit;
@@ -2945,7 +2945,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @throws AssertionError if entry must be split to make room but split is not allowed
      */
     private void createInternalEntry(final CursorFrame frame, InResult result,
-                                     Tree tree, int keyPos, int encodedLen,
+                                     BTree tree, int keyPos, int encodedLen,
                                      int newChildPos, boolean allowSplit)
         throws IOException
     {
@@ -3136,7 +3136,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 2-based position increment; 0 if try failed
      */
-    private int tryRebalanceInternalLeft(Tree tree, CursorFrame parentFrame,
+    private int tryRebalanceInternalLeft(BTree tree, CursorFrame parentFrame,
                                          int keyPos, int minAmount)
     {
         final Node parent = parentFrame.tryAcquireExclusive();
@@ -3324,7 +3324,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param keyPos position to insert into; this position cannot move right
      * @param minAmount minimum amount of bytes to move to make room
      */
-    private boolean tryRebalanceInternalRight(Tree tree, CursorFrame parentFrame,
+    private boolean tryRebalanceInternalRight(BTree tree, CursorFrame parentFrame,
                                               int keyPos, int minAmount)
     {
         final Node parent = parentFrame.tryAcquireExclusive();
@@ -3527,7 +3527,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(CursorFrame frame, Tree tree, int pos, int vfrag, byte[] value)
+    void updateLeafValue(CursorFrame frame, BTree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
         /*P*/ byte[] page = mPage;
@@ -3999,7 +3999,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * Caller must also hold commit lock. The right node is always released as
      * a side effect, but left node is never released by this method.
      */
-    static void moveLeafToLeftAndDelete(Tree tree, Node leftNode, Node rightNode)
+    static void moveLeafToLeftAndDelete(BTree tree, Node leftNode, Node rightNode)
         throws IOException
     {
         tree.mDatabase.prepareToDelete(rightNode);
@@ -4045,7 +4045,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param parentLoc location of parent entry
      * @param parentLen length of parent entry
      */
-    static void moveInternalToLeftAndDelete(Tree tree, Node leftNode, Node rightNode,
+    static void moveInternalToLeftAndDelete(BTree tree, Node leftNode, Node rightNode,
                                             /*P*/ byte[] parentPage, int parentLoc, int parentLen)
         throws IOException
     {
@@ -4185,7 +4185,7 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param stub frames bound to root node move here
      */
-    void rootDelete(Tree tree, Node child, Node stub) throws IOException {
+    void rootDelete(BTree tree, Node child, Node stub) throws IOException {
         try {
             tree.mDatabase.prepareToDelete(child);
 
@@ -4205,7 +4205,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
     }
 
-    private void doRootDelete(Tree tree, Node child, Node stub) throws IOException {
+    private void doRootDelete(BTree tree, Node child, Node stub) throws IOException {
         /*P*/ byte[] oldRootPage = mPage;
 
         /*P*/ // [
@@ -4573,7 +4573,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert
      */
-    void splitLeafAscendingAndCopyEntry(Tree tree, Node snode, int spos, int encodedLen, int pos)
+    void splitLeafAscendingAndCopyEntry(BTree tree, Node snode, int spos, int encodedLen, int pos)
         throws IOException
     {
         // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
@@ -4635,7 +4635,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(Tree tree, byte[] okey, byte[] akey,
+    private void splitLeafAndCreateEntry(BTree tree, byte[] okey, byte[] akey,
                                          int vfrag, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
@@ -5030,7 +5030,7 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * Fragments a value to fit into a node which is splitting.
      */
-    private static void fragmentValueForSplit(Tree tree, FragParams params) throws IOException {
+    private static void fragmentValueForSplit(BTree tree, FragParams params) throws IOException {
         byte[] value = params.value;
 
         // Compute the encoded key length by subtracting off the value length. This properly
@@ -5071,7 +5071,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return non-null if value got fragmented
      */
-    private byte[] storeIntoSplitLeaf(Tree tree, byte[] okey, byte[] akey,
+    private byte[] storeIntoSplitLeaf(BTree tree, byte[] okey, byte[] akey,
                                       int vfrag, byte[] value,
                                       int encodedLen, boolean forInsert)
         throws IOException
@@ -5122,7 +5122,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * @throws IOException if new node could not be allocated; no side-effects
      */
     private void splitInternal(final InResult result,
-                               final Tree tree, final int encodedLen,
+                               final BTree tree, final int encodedLen,
                                final int keyPos, final int newChildPos)
         throws IOException
     {

@@ -36,13 +36,13 @@ import static org.junit.Assert.*;
 import static org.cojen.tupl.TestUtils.*;
 
 /**
- * Tests for the TreeMergerClass.
+ * Tests for the BTreeMerger class.
  *
  * @author Brian S O'Neill
  */
-public class TreeMergerTest {
+public class BTreeMergerTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(TreeMergerTest.class.getName());
+        org.junit.runner.JUnitCore.main(BTreeMergerTest.class.getName());
     }
 
     @Before
@@ -106,9 +106,9 @@ public class TreeMergerTest {
         final long seed = 123 + numSources + countPerSource + rangePerSource + numThreads;
         Random rnd = new Random(seed);
 
-        Tree[] sources = new Tree[numSources];
+        BTree[] sources = new BTree[numSources];
         for (int i=0; i<numSources; i++) {
-            Tree source = (Tree) mDatabase.openIndex("test-" + i);
+            BTree source = (BTree) mDatabase.openIndex("test-" + i);
             sources[i] = source;
 
             byte[] value = ("value-" + i).getBytes();
@@ -126,22 +126,22 @@ public class TreeMergerTest {
             executor = Executors.newCachedThreadPool();
         }
 
-        final List<Tree> results = new ArrayList<>();
+        final List<BTree> results = new ArrayList<>();
 
-        class Merger extends TreeMerger {
-            Merger(LocalDatabase db, Tree[] sources, Executor executor, int workerCount) {
+        class Merger extends BTreeMerger {
+            Merger(LocalDatabase db, BTree[] sources, Executor executor, int workerCount) {
                 super(db, sources, executor, workerCount);
             }
 
             @Override
-            protected void merged(Tree tree) {
+            protected void merged(BTree tree) {
                 synchronized (results) {
                     results.add(tree);
                 }
             }
 
             @Override
-            protected void remainder(Tree tree) {
+            protected void remainder(BTree tree) {
                 synchronized (results) {
                     results.add(tree);
                     if (tree == null) {
@@ -151,7 +151,7 @@ public class TreeMergerTest {
             }
         }
 
-        TreeMerger merger = new Merger(mDatabase, sources, executor, numThreads);
+        BTreeMerger merger = new Merger(mDatabase, sources, executor, numThreads);
 
         if (stopAndResume) {
             new Thread(() -> {
@@ -178,14 +178,14 @@ public class TreeMergerTest {
         if (stopAndResume && results.size() > 2) {
             // Resume the sort with a new merger.
 
-            Tree[] remaining = new Tree[results.size() - 1];
+            BTree[] remaining = new BTree[results.size() - 1];
             for (int i=0; i<remaining.length; i++) {
                 remaining[i] = results.get(i);
             }
 
             results.clear();
 
-            TreeMerger remainingMerger = new Merger(mDatabase, remaining, executor, numThreads);
+            BTreeMerger remainingMerger = new Merger(mDatabase, remaining, executor, numThreads);
             remainingMerger.start();
 
             synchronized (results) {
@@ -196,7 +196,7 @@ public class TreeMergerTest {
         }
 
         assertEquals(2, results.size());
-        Tree result = results.get(0);
+        BTree result = results.get(0);
 
         long count = result.count(null, null);
         assertTrue(count <= rangePerSource);

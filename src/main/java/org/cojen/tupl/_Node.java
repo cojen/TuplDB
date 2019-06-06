@@ -56,7 +56,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                               for both: bit 1 is set if low extremity, bit 3 for high extremity
       bit  0:    endianness   0 (little), 1 (big)
 
-      TN == _Tree _Node
+      TN == Tree _Node
 
       Note that leaf type is always negative. If type encoding changes, the isLeaf and
       isInternal methods might need to be updated.
@@ -75,7 +75,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     static final byte LOW_EXTREMITY = 0x02, HIGH_EXTREMITY = 0x08;
 
-    // _Tree node header size.
+    // Tree node header size.
     static final int TN_HEADER_SIZE = 12;
 
     // Negative id indicates that node is not in use, and 1 is a reserved page id.
@@ -1908,7 +1908,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      * @param cursor key and value are updated
      */
-    void retrieveLeafEntry(int pos, _TreeCursor cursor) throws IOException {
+    void retrieveLeafEntry(int pos, _BTreeCursor cursor) throws IOException {
         final long page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         int header = p_byteGet(page, loc++);
@@ -1964,7 +1964,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnDeleteLeafEntry(_LocalTransaction txn, _Tree tree, byte[] key, int keyHash, int pos)
+    void txnDeleteLeafEntry(_LocalTransaction txn, _BTree tree, byte[] key, int keyHash, int pos)
         throws IOException
     {
         // Allocate early, in case out of memory.
@@ -2029,7 +2029,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnPreUpdateLeafEntry(_LocalTransaction txn, _Tree tree, byte[] key, int pos)
+    void txnPreUpdateLeafEntry(_LocalTransaction txn, _BTree tree, byte[] key, int pos)
         throws IOException
     {
         final long page = mPage;
@@ -2144,7 +2144,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertLeafEntry(_CursorFrame frame, _Tree tree, int pos, byte[] okey, byte[] value)
+    void insertLeafEntry(_CursorFrame frame, _BTree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
         final _LocalDatabase db = tree.mDatabase;
@@ -2201,7 +2201,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos complement of position as provided by binarySearch; must be positive
      * @param okey original key
      */
-    void insertBlankLeafEntry(_CursorFrame frame, _Tree tree, int pos, byte[] okey, long vlength)
+    void insertBlankLeafEntry(_CursorFrame frame, _BTree tree, int pos, byte[] okey, long vlength)
         throws IOException
     {
         final _LocalDatabase db = tree.mDatabase;
@@ -2262,7 +2262,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param okey original key
      */
     void insertFragmentedLeafEntry(_CursorFrame frame,
-                                   _Tree tree, int pos, byte[] okey, byte[] value)
+                                   _BTree tree, int pos, byte[] okey, byte[] value)
         throws IOException
     {
         final _LocalDatabase db = tree.mDatabase;
@@ -2323,7 +2323,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return Location for newly allocated entry, already pointed to by search vector, or
      * negative if leaf must be split. Complement of negative value is available leaf bytes.
      */
-    int createLeafEntry(final _CursorFrame frame, _Tree tree, int pos, final int encodedLen) {
+    int createLeafEntry(final _CursorFrame frame, _BTree tree, int pos, final int encodedLen) {
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
@@ -2436,7 +2436,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeaf(_Tree tree, _CursorFrame parentFrame,
+    private int tryRebalanceLeaf(_BTree tree, _CursorFrame parentFrame,
                                  int pos, int insertLen, int minAmount)
     {
         int result;
@@ -2467,7 +2467,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeafLeft(_Tree tree, _CursorFrame parentFrame,
+    private int tryRebalanceLeafLeft(_BTree tree, _CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
     {
         final long rightPage = mPage;
@@ -2658,7 +2658,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 0 if try failed, or entry location of re-used slot
      */
-    private int tryRebalanceLeafRight(_Tree tree, _CursorFrame parentFrame,
+    private int tryRebalanceLeafRight(_BTree tree, _CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
     {
         final long leftPage = mPage;
@@ -2852,7 +2852,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param keyPos position to insert split key
      * @param splitChild child node which split
      */
-    void insertSplitChildRef(final _CursorFrame frame, _Tree tree, int keyPos, _Node splitChild)
+    void insertSplitChildRef(final _CursorFrame frame, _BTree tree, int keyPos, _Node splitChild)
         throws IOException
     {
         final _Split split = splitChild.mSplit;
@@ -2945,7 +2945,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @throws AssertionError if entry must be split to make room but split is not allowed
      */
     private void createInternalEntry(final _CursorFrame frame, InResult result,
-                                     _Tree tree, int keyPos, int encodedLen,
+                                     _BTree tree, int keyPos, int encodedLen,
                                      int newChildPos, boolean allowSplit)
         throws IOException
     {
@@ -3136,7 +3136,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param minAmount minimum amount of bytes to move to make room
      * @return 2-based position increment; 0 if try failed
      */
-    private int tryRebalanceInternalLeft(_Tree tree, _CursorFrame parentFrame,
+    private int tryRebalanceInternalLeft(_BTree tree, _CursorFrame parentFrame,
                                          int keyPos, int minAmount)
     {
         final _Node parent = parentFrame.tryAcquireExclusive();
@@ -3324,7 +3324,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param keyPos position to insert into; this position cannot move right
      * @param minAmount minimum amount of bytes to move to make room
      */
-    private boolean tryRebalanceInternalRight(_Tree tree, _CursorFrame parentFrame,
+    private boolean tryRebalanceInternalRight(_BTree tree, _CursorFrame parentFrame,
                                               int keyPos, int minAmount)
     {
         final _Node parent = parentFrame.tryAcquireExclusive();
@@ -3527,7 +3527,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(_CursorFrame frame, _Tree tree, int pos, int vfrag, byte[] value)
+    void updateLeafValue(_CursorFrame frame, _BTree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
         long page = mPage;
@@ -3999,7 +3999,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * Caller must also hold commit lock. The right node is always released as
      * a side effect, but left node is never released by this method.
      */
-    static void moveLeafToLeftAndDelete(_Tree tree, _Node leftNode, _Node rightNode)
+    static void moveLeafToLeftAndDelete(_BTree tree, _Node leftNode, _Node rightNode)
         throws IOException
     {
         tree.mDatabase.prepareToDelete(rightNode);
@@ -4045,7 +4045,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param parentLoc location of parent entry
      * @param parentLen length of parent entry
      */
-    static void moveInternalToLeftAndDelete(_Tree tree, _Node leftNode, _Node rightNode,
+    static void moveInternalToLeftAndDelete(_BTree tree, _Node leftNode, _Node rightNode,
                                             long parentPage, int parentLoc, int parentLen)
         throws IOException
     {
@@ -4185,7 +4185,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      *
      * @param stub frames bound to root node move here
      */
-    void rootDelete(_Tree tree, _Node child, _Node stub) throws IOException {
+    void rootDelete(_BTree tree, _Node child, _Node stub) throws IOException {
         try {
             tree.mDatabase.prepareToDelete(child);
 
@@ -4205,7 +4205,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         }
     }
 
-    private void doRootDelete(_Tree tree, _Node child, _Node stub) throws IOException {
+    private void doRootDelete(_BTree tree, _Node child, _Node stub) throws IOException {
         long oldRootPage = mPage;
 
         /*P*/ // [
@@ -4573,7 +4573,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert
      */
-    void splitLeafAscendingAndCopyEntry(_Tree tree, _Node snode, int spos, int encodedLen, int pos)
+    void splitLeafAscendingAndCopyEntry(_BTree tree, _Node snode, int spos, int encodedLen, int pos)
         throws IOException
     {
         // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
@@ -4635,7 +4635,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param encodedLen length of new entry to allocate
      * @param pos normalized search vector position of entry to insert/update
      */
-    private void splitLeafAndCreateEntry(_Tree tree, byte[] okey, byte[] akey,
+    private void splitLeafAndCreateEntry(_BTree tree, byte[] okey, byte[] akey,
                                          int vfrag, byte[] value,
                                          int encodedLen, int pos, boolean forInsert)
         throws IOException
@@ -5030,7 +5030,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     /**
      * Fragments a value to fit into a node which is splitting.
      */
-    private static void fragmentValueForSplit(_Tree tree, FragParams params) throws IOException {
+    private static void fragmentValueForSplit(_BTree tree, FragParams params) throws IOException {
         byte[] value = params.value;
 
         // Compute the encoded key length by subtracting off the value length. This properly
@@ -5071,7 +5071,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param vfrag 0 or ENTRY_FRAGMENTED
      * @return non-null if value got fragmented
      */
-    private byte[] storeIntoSplitLeaf(_Tree tree, byte[] okey, byte[] akey,
+    private byte[] storeIntoSplitLeaf(_BTree tree, byte[] okey, byte[] akey,
                                       int vfrag, byte[] value,
                                       int encodedLen, boolean forInsert)
         throws IOException
@@ -5122,7 +5122,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @throws IOException if new node could not be allocated; no side-effects
      */
     private void splitInternal(final InResult result,
-                               final _Tree tree, final int encodedLen,
+                               final _BTree tree, final int encodedLen,
                                final int keyPos, final int newChildPos)
         throws IOException
     {
