@@ -646,7 +646,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><a href="org/cojen/tupl/util/Continuation.html" title="interface in org.cojen.tupl.util"><span class="typeNameLink">Continuation</span></a> - Interface in <a href="org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
-<div class="block">Function which is registered with the <a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a> <a href="org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)"><code>uponSignal</code></a> method.</div>
+<div class="block">Function which is registered with the <a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a> <a href="org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)"><code>uponSignal</code></a> method, or the <a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><code>Latch</code></a> <a href="org/cojen/tupl/util/Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)"><code>uponExclusive</code></a> method.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html#control(byte%5B%5D)">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
 <dd>
@@ -3709,6 +3709,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit(LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org/cojen/tupl/repl/DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive(Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive(Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dd>
+<div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal(Latch, Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>

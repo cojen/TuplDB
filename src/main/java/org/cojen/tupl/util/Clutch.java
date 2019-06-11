@@ -158,6 +158,18 @@ public abstract class Clutch extends Latch {
         }
     }
 
+    @Override
+    public final void uponExclusive(Continuation cont) {
+        super.uponExclusive(() -> {
+            int slot = mContendedSlot;
+            if (slot >= 0) {
+                getPack().unregisterExclusive(slot);
+                mContendedSlot = -1;
+            }
+            return cont.run();
+        });
+    }
+
     /**
      * Downgrade the held exclusive latch with the option to try switching to contended mode.
      * Caller must later call releaseShared instead of releaseExclusive.

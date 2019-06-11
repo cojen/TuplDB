@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -339,6 +339,13 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <div class="block">Attempt to upgrade a held shared latch into an exclusive latch.</div>
 </td>
 </tr>
+<tr class="altColor" id="i18">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive</a></span>&#8203;(<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<td class="colLast">
+<div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -496,6 +503,26 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a id="uponExclusive(org.cojen.tupl.util.Continuation)">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>uponExclusive</h4>
+<pre class="methodSignature">public&nbsp;void&nbsp;uponExclusive&#8203;(<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</pre>
+<div class="block">Invokes the given continuation upon the latch being acquired exclusively. When acquired,
+ the continuation is run by the current thread, or it's enqueued to be run by a thread
+ which releases the latch. The releasing thread actually retains the latch and runs the
+ continuation, effectively transferring latch ownership. The latch is released or
+ transferred again depending on the return value of the continuation. Any exception
+ thrown by the continuation is passed to the uncaught exception handler of the running
+ thread, and the latch is released.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>cont</code> - called with latch held, which returns true if latch is still held</dd>
 </dl>
 </li>
 </ul>

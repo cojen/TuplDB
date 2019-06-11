@@ -181,6 +181,60 @@ public class Latch {
     }
 
     /**
+     * Invokes the given continuation upon the latch being acquired exclusively. When acquired,
+     * the continuation is run by the current thread, or it's enqueued to be run by a thread
+     * which releases the latch. The releasing thread actually retains the latch and runs the
+     * continuation, effectively transferring latch ownership. The latch is released or
+     * transferred again depending on the return value of the continuation. Any exception
+     * thrown by the continuation is passed to the uncaught exception handler of the running
+     * thread, and the latch is released.
+     *
+     * @param cont called with latch held, which returns true if latch is still held
+     */
+    public void uponExclusive(Continuation cont) {
+        if (!doTryAcquireExclusive()) enqueue: {
+            WaitNode node;
+            try {
+                node = new WaitNode(cont, WaitNode.SIGNALED);
+            } catch (Throwable e) {
+                // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
+                doAcquireExclusiveSpin();
+                break enqueue;
+            }
+
+            WaitNode prev = enqueue(node);
+
+            int acquireResult = node.tryAcquireOnce(this);
+
+            if (acquireResult < 0) {
+                // Not acquired.
+                return;
+            } else if (acquireResult > 0) {
+                // Continuation already ran, and node isn't in the queue.
+                releaseExclusive();
+                return;
+            }
+
+            // Acquired while still in the queue. Remove the node now, releasing memory.
+            if (mLatchFirst != node) {
+                remove(node, prev);
+            } else {
+                removeFirst(node);
+            }
+        }
+
+        try {
+            if (!cont.run()) {
+                return;
+            }
+        } catch (Throwable e) {
+            Utils.uncaught(e);
+        }
+
+        releaseExclusive();
+    }
+
+    /**
      * Downgrade the held exclusive latch into a shared latch. Caller must later call
      * releaseShared instead of releaseExclusive.
      */
@@ -619,18 +673,19 @@ public class Latch {
             }
         }
 
-        if (acquireResult != 0) {
-            // Only remove the node if requested to do so.
-            return true;
+        if (acquireResult == 0) {
+            // Remove the node now, releasing memory.
+            if (mLatchFirst != node) {
+                remove(node, prev);
+            } else {
+                removeFirst(node);
+            }
         }
 
-        // Remove the node now, releasing memory.
+        return true;
+    }
 
-        if (mLatchFirst != node) {
-            remove(node, prev);
-            return true;
-        }
-
+    private void removeFirst(WaitNode node) {
         // Removing the first node requires special attention. Because the latch is now held by
         // the current thread, no other dequeues are in progress, but enqueues still are.
 
@@ -638,13 +693,13 @@ public class Latch {
             WaitNode next = node.mNext;
             if (next != null) {
                 mLatchFirst = next;
-                return true;
+                return;
             } else {
                 // Queue is now empty, unless an enqueue is in progress.
                 WaitNode last = mLatchLast;
                 if (last == node && cLastHandle.compareAndSet(this, last, null)) {
                     cFirstHandle.compareAndSet(this, last, null);
-                    return true;
+                    return;
                 }
             }
         }
@@ -820,23 +875,11 @@ public class Latch {
             int trials = 0;
             while (true) {
                 for (int i=0; i<SPIN_LIMIT; i++) {
-                    boolean acquired = latch.doTryAcquireExclusive();
-                    Object waiter = mWaiter;
-                    if (waiter == null) {
-                        // Fair handoff, and so node is no longer in the queue.
-                        return 1;
+                    int result = tryAcquireOnce(latch);
+                    if (result >= 0) {
+                        return result;
                     }
-                    if (!acquired) {
-                        Thread.onSpinWait();
-                        continue;
-                    }
-                    // Acquired, so no need to reference the waiter anymore.
-                    if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
-                        cWaiterHandle.setOpaque(this, null);
-                    } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
-                        return 1;
-                    }
-                    return 0;
+                    Thread.onSpinWait();
                 }
                 if (++trials >= SPIN_LIMIT >> 1) {
                     return -1;
@@ -844,6 +887,29 @@ public class Latch {
                 // Yield to avoid parking.
                 Thread.yield();
             }
+        }
+
+        /**
+         * @return {@literal <0 if not acquired; 0 if acquired and node should also be
+         * removed; >0 if acquired and node should not be removed}
+         */
+        int tryAcquireOnce(Latch latch) {
+            boolean acquired = latch.doTryAcquireExclusive();
+            Object waiter = mWaiter;
+            if (waiter == null) {
+                // Fair handoff, and so node is no longer in the queue.
+                return 1;
+            }
+            if (!acquired) {
+                return -1;
+            }
+            // Acquired, so no need to reference the waiter anymore.
+            if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
+                cWaiterHandle.setOpaque(this, null);
+            } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
+                return 1;
+            }
+            return 0;
         }
 
         /**

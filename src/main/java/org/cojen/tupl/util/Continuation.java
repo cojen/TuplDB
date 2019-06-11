@@ -19,7 +19,8 @@ package org.cojen.tupl.util;
 
 /**
  * Function which is registered with the {@link LatchCondition} {@link
- * LatchCondition#uponSignal uponSignal} method.
+ * LatchCondition#uponSignal uponSignal} method, or the {@link Latch} {@link
+ * Latch#uponExclusive uponExclusive} method.
  *
  * @author Brian S O'Neill
  */
