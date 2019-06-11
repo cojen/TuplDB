@@ -578,15 +578,13 @@ public class Latch {
 
     private boolean doTryUpgrade() {
         while (true) {
-            int state = mLatchState;
-            if ((state & ~EXCLUSIVE) != 1) {
+            if (mLatchState != 1) {
                 return false;
             }
-            if (cStateHandle.compareAndSet(this, state, EXCLUSIVE)) {
+            if (cStateHandle.compareAndSet(this, 1, EXCLUSIVE)) {
                 return true;
             }
-            // Try again if exclusive bit flipped. Don't bother with spin yielding, because the
-            // exclusive bit usually switches to 1, not 0.
+            Thread.onSpinWait();
         }
     }
 
