@@ -138,15 +138,15 @@ public class LatchCondition {
      * Invokes the given continuation upon the condition being signaled. The exclusive latch
      * must be acquired by the caller, which is retained. When the condition is signaled, the
      * continuation is enqueued to be run by a thread which releases the exclusive latch. The
-     * thread actually retains the latch and runs the continuation, effectively transferring
-     * latch ownership. The latch is released or transferred again depending on the return
-     * value of the continuation. Any exception thrown by the continuation is passed to the
-     * uncaught exception handler of the running thread, and the latch is released.
+     * releasing thread actually retains the latch and runs the continuation, effectively
+     * transferring latch ownership. The latch is released or transferred again depending on
+     * the return value of the continuation. Any exception thrown by the continuation is passed
+     * to the uncaught exception handler of the running thread, and the latch is released.
      *
      * @param latch latch being used by this condition
      * @param cont called with latch held, which returns true if latch is still held
      */
-    public final void upon(Latch latch, Continuation cont) {
+    public final void uponSignal(Latch latch, Continuation cont) {
         upon(latch, cont, WaitNode.COND_WAIT);
     }
 
@@ -154,10 +154,10 @@ public class LatchCondition {
      * Invokes the given continuation upon the condition being signaled. The exclusive latch
      * must be acquired by the caller, which is retained. When the condition is signaled, the
      * continuation is enqueued to be run by a thread which releases the exclusive latch. The
-     * thread actually retains the latch and runs the continuation, effectively transferring
-     * latch ownership. The latch is released or transferred again depending on the return
-     * value of the continuation. Any exception thrown by the continuation is passed to the
-     * uncaught exception handler of the running thread, and the latch is released.
+     * releasing thread actually retains the latch and runs the continuation, effectively
+     * transferring latch ownership. The latch is released or transferred again depending on
+     * the return value of the continuation. Any exception thrown by the continuation is passed
+     * to the uncaught exception handler of the running thread, and the latch is released.
      *
      * <p>A shared waiter intends to access a resource with shared access, and it can be
      * signaled specially. After waiting, the continuation is responsible for signaling the
@@ -166,7 +166,7 @@ public class LatchCondition {
      * @param latch latch being used by this condition
      * @param cont called with latch held, which returns true if latch is still held
      */
-    public final void uponShared(Latch latch, Continuation cont) {
+    public final void uponSignalShared(Latch latch, Continuation cont) {
         upon(latch, cont, WaitNode.COND_WAIT_SHARED);
     }
 

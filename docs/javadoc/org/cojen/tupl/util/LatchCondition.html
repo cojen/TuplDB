@@ -245,16 +245,16 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </tr>
 <tr class="altColor" id="i10">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#upon(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">upon</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-    <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+          <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i11">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-          <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignalShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignalShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
@@ -418,21 +418,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a id="upon(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">
+<a id="uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>upon</h4>
-<pre class="methodSignature">public final&nbsp;void&nbsp;upon&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-                       <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</pre>
+<h4>uponSignal</h4>
+<pre class="methodSignature">public final&nbsp;void&nbsp;uponSignal&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                             <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</pre>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
- thread actually retains the latch and runs the continuation, effectively transferring
- latch ownership. The latch is released or transferred again depending on the return
- value of the continuation. Any exception thrown by the continuation is passed to the
- uncaught exception handler of the running thread, and the latch is released.</div>
+ releasing thread actually retains the latch and runs the continuation, effectively
+ transferring latch ownership. The latch is released or transferred again depending on
+ the return value of the continuation. Any exception thrown by the continuation is passed
+ to the uncaught exception handler of the running thread, and the latch is released.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
@@ -440,21 +440,21 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Object.htm
 </dl>
 </li>
 </ul>
-<a id="uponShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">
+<a id="uponSignalShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>uponShared</h4>
-<pre class="methodSignature">public final&nbsp;void&nbsp;uponShared&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-                             <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</pre>
+<h4>uponSignalShared</h4>
+<pre class="methodSignature">public final&nbsp;void&nbsp;uponSignalShared&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+                                   <a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</pre>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
- thread actually retains the latch and runs the continuation, effectively transferring
- latch ownership. The latch is released or transferred again depending on the return
- value of the continuation. Any exception thrown by the continuation is passed to the
- uncaught exception handler of the running thread, and the latch is released.
+ releasing thread actually retains the latch and runs the continuation, effectively
+ transferring latch ownership. The latch is released or transferred again depending on
+ the return value of the continuation. Any exception thrown by the continuation is passed
+ to the uncaught exception handler of the running thread, and the latch is released.
 
  <p>A shared waiter intends to access a resource with shared access, and it can be
  signaled specially. After waiting, the continuation is responsible for signaling the

@@ -18,8 +18,8 @@
 package org.cojen.tupl.util;
 
 /**
- * Function which is registered with the {@link LatchCondition} {@link LatchCondition#upon
- * upon} method.
+ * Function which is registered with the {@link LatchCondition} {@link
+ * LatchCondition#uponSignal uponSignal} method.
  *
  * @author Brian S O'Neill
  */
