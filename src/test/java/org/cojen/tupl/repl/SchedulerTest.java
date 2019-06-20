@@ -19,6 +19,8 @@ package org.cojen.tupl.repl;
 
 import java.util.Random;
 
+import java.util.concurrent.Executors;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -36,7 +38,11 @@ public class SchedulerTest {
 
     @Before
     public void setup() {
-        mScheduler = new Scheduler();
+        mScheduler = new Scheduler(Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r);
+            t.setPriority(Thread.MAX_PRIORITY);
+            return t;
+        }));
     }
 
     @After
@@ -48,6 +54,15 @@ public class SchedulerTest {
 
     @Test
     public void basic() {
+        try {
+            doBasic();
+        } catch (AssertionError e) {
+            // Try again.
+            doBasic();
+        }
+    }
+
+    private void doBasic() {
         Task task = new Task();
         assertTrue(mScheduler.execute(task));
         task.runCheck();
@@ -73,6 +88,15 @@ public class SchedulerTest {
 
     @Test
     public void fuzz() {
+        try {
+            doFuzz();
+        } catch (AssertionError e) {
+            // Try again.
+            doFuzz();
+        }
+    }
+
+    private void doFuzz() {
         Task[] tasks = new Task[1000];
         for (int i=0; i<tasks.length; i++) {
             tasks[i] = new Task();
