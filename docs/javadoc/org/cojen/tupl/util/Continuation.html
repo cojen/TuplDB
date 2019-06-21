@@ -140,8 +140,7 @@ public interface <span class="typeNameLabel">Continuation</span></pre>
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#run()">run</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Is called upon the <a href="LatchCondition.html" title="class in org.cojen.tupl.util"><code>condition</code></a> being signaled, with the exclusive
- latch held.</div>
+<div class="block">Is called with the exclusive latch held.</div>
 </td>
 </tr>
 </tbody>
@@ -171,10 +170,11 @@ public interface <span class="typeNameLabel">Continuation</span></pre>
 <li class="blockList">
 <h4>run</h4>
 <pre class="methodSignature">boolean&nbsp;run()</pre>
-<div class="block">Is called upon the <a href="LatchCondition.html" title="class in org.cojen.tupl.util"><code>condition</code></a> being signaled, with the exclusive
- latch held. The implementation may continue in another thread with the latch still held,
- in which case it must return false. Otherwise, it should return true and let the caller
- release or transfer the exclusive latch.</div>
+<div class="block">Is called with the exclusive latch held. The implementation may continue in another
+ thread with the latch still held, in which case it must return false. Otherwise, it
+ should return true and let the caller release or transfer the exclusive latch.
+ Explicitly releasing the latch in the calling thread isn't recommended, because it can
+ lead to a stack overflow error.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>true if the latch is held; false if already released or if another thread will

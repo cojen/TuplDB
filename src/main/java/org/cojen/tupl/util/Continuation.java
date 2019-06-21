@@ -27,10 +27,11 @@ package org.cojen.tupl.util;
 @FunctionalInterface
 public interface Continuation {
     /**
-     * Is called upon the {@link LatchCondition condition} being signaled, with the exclusive
-     * latch held. The implementation may continue in another thread with the latch still held,
-     * in which case it must return false. Otherwise, it should return true and let the caller
-     * release or transfer the exclusive latch.
+     * Is called with the exclusive latch held. The implementation may continue in another
+     * thread with the latch still held, in which case it must return false. Otherwise, it
+     * should return true and let the caller release or transfer the exclusive latch.
+     * Explicitly releasing the latch in the calling thread isn't recommended, because it can
+     * lead to a stack overflow error.
      *
      * @return true if the latch is held; false if already released or if another thread will
      * release the latch later
