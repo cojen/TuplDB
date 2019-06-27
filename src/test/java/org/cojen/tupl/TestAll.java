@@ -136,6 +136,7 @@ public class TestAll {
             CursorRegisterTest.class,
             SecondaryCacheTest.class,
             CheckpointFailureTest.class,
+            ShutdownTest.class,
         };
 
         String[] names = new String[classes.length];

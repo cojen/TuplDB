@@ -168,7 +168,7 @@ final class Checkpointer implements Runnable {
                     lastDurationNanos = 0;
                 } else try {
                     long startNanos = System.nanoTime();
-                    db.checkpoint(false, mSizeThreshold, mDelayThresholdNanos);
+                    db.checkpoint(mSizeThreshold, mDelayThresholdNanos);
                     long endNanos = System.nanoTime();
 
                     lastDurationNanos = endNanos - startNanos;

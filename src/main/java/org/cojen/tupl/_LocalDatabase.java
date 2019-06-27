@@ -894,7 +894,7 @@ final class _LocalDatabase extends AbstractDatabase {
                             resetTransactionContexts(txnId);
                             txnId = -1;
 
-                            checkpoint(true, 0, 0);
+                            forceCheckpoint();
 
                             // Only cleanup after successful checkpoint.
                             for (File file : redoFiles) {
@@ -1906,7 +1906,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 pageCount = mPageDb.allocatePages(pageCount);
                 if (pageCount > 0) {
                     try {
-                        checkpoint(true, 0, 0);
+                        forceCheckpoint();
                     } catch (Throwable e) {
                         DatabaseException.rethrowIfRecoverable(e);
                         closeQuietly(this, e);
@@ -2240,7 +2240,7 @@ final class _LocalDatabase extends AbstractDatabase {
     public void checkpoint() throws IOException {
         while (!isClosed() && mPageDb.isDurable()) {
             try {
-                checkpoint(false, 0, 0);
+                checkpoint(0, 0);
                 return;
             } catch (UnmodifiableReplicaException e) {
                 // Retry.
@@ -2339,11 +2339,11 @@ final class _LocalDatabase extends AbstractDatabase {
                 return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
             });
 
-            checkpoint(true, 0, 0);
+            forceCheckpoint();
 
             if (completed && mPageDb.compactionScanFreeList()) {
                 if (!mPageDb.compactionVerify() && mPageDb.compactionScanFreeList()) {
-                    checkpoint(true, 0, 0);
+                    forceCheckpoint();
                 }
             }
         }
@@ -2353,10 +2353,10 @@ final class _LocalDatabase extends AbstractDatabase {
             completed &= mPageDb.compactionEnd();
 
             // Reclaim reserved pages, but only after a checkpoint has been performed.
-            checkpoint(true, 0, 0);
+            forceCheckpoint();
             mPageDb.compactionReclaim();
             // Checkpoint again in order for reclaimed pages to be immediately available.
-            checkpoint(true, 0, 0);
+            forceCheckpoint();
 
             if (completed) {
                 // And now, attempt to actually shrink the file.
@@ -2524,30 +2524,21 @@ final class _LocalDatabase extends AbstractDatabase {
         final Checkpointer c = mCheckpointer;
 
         try {
-            if (shutdown) {
+            if (c != null) {
+                c.close(cause);
+            }
+
+            // Wait for any in-progress checkpoint to complete.
+
+            if (mCheckpointLock.tryLock()) {
+                lockedCheckpointer = true;
+            } else if (cause == null && !(mRedoWriter instanceof _ReplRedoController)) {
+                // Only attempt lock if not panicked and not replicated. If panicked, other
+                // locks might be held and so acquiring checkpoint lock might deadlock.
+                // Replicated databases might stall indefinitely when checkpointing.
+                // Checkpointer should eventually exit after other resources are closed.
                 mCheckpointLock.lock();
                 lockedCheckpointer = true;
-                checkpoint(true, 0, 0);
-                if (c != null) {
-                    c.close(cause);
-                }
-            } else {
-                if (c != null) {
-                    c.close(cause);
-                }
-
-                // Wait for any in-progress checkpoint to complete.
-
-                if (mCheckpointLock.tryLock()) {
-                    lockedCheckpointer = true;
-                } else if (cause == null && !(mRedoWriter instanceof _ReplRedoController)) {
-                    // Only attempt lock if not panicked and not replicated. If panicked, other
-                    // locks might be held and so acquiring checkpoint lock might deadlock.
-                    // Replicated databases might stall indefinitely when checkpointing.
-                    // Checkpointer should eventually exit after other resources are closed.
-                    mCheckpointLock.lock();
-                    lockedCheckpointer = true;
-                }
             }
         } finally {
             Thread ct = c == null ? null : c.interrupt();
@@ -2616,6 +2607,14 @@ final class _LocalDatabase extends AbstractDatabase {
 
                 if (mRegistryKeyMap != null) {
                     mRegistryKeyMap.forceClose();
+                }
+
+                if (shutdown) {
+                    try {
+                        checkpoint(-1, 0, 0); // force even if closed
+                    } catch (Throwable e) {
+                        shutdown = false;
+                    }
                 }
 
                 if (mRegistry != null) {
@@ -5226,13 +5225,24 @@ final class _LocalDatabase extends AbstractDatabase {
     }
 
     @Override
-    void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
+    void checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException {
+        checkpoint(0, sizeThreshold, delayThresholdNanos);
+    }
+
+    private void forceCheckpoint() throws IOException {
+        checkpoint(1, 0, 0);
+    }
+
+    /**
+     * @param force 0: no force, 1: force if not closed, -1: force even if closed
+     */
+    private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
         // Checkpoint lock ensures consistent state between page store and logs.
         mCheckpointLock.lock();
         try {
-            if (isClosed()) {
+            if (force >= 0 && isClosed()) {
                 return;
             }
 
@@ -5245,7 +5255,7 @@ final class _LocalDatabase extends AbstractDatabase {
 
             long nowNanos = System.nanoTime();
 
-            if (!force && header == p_null()) {
+            if (force == 0 && header == p_null()) {
                 thresholdCheck : {
                     if (delayThresholdNanos == 0) {
                         break thresholdCheck;

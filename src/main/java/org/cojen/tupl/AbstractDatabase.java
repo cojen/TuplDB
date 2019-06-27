@@ -36,6 +36,5 @@ abstract class AbstractDatabase implements Database {
     /**
      * Called by Checkpointer task.
      */
-    abstract void checkpoint(boolean force, long sizeThreshold, long delayThresholdNanos)
-        throws IOException;
+    abstract void checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException;
 }
