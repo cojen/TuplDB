@@ -5063,12 +5063,11 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
             // upgrade the shared node lock to an exclusive node lock. If either of those steps
             // fail, all locks are released and then acquired in the proper order.
             //
-            // The actual approach used here unfairly acquires the shared commit lock, barging
-            // ahead of any threads waiting for the exclusive lock. This doesn't lead to
-            // starvation of the exclusive waiter because it cannot proceed as long as the
-            // split exists anyhow. The thread which created the split must be holding a shared
-            // commit lock already.
-            CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireSharedUnfair();
+            // The actual approach used here acquires the shared commit lock without checking
+            // the exclusive lock. This doesn't lead to starvation of any exclusive waiter
+            // because it cannot proceed when the split exists anyhow. The thread which created
+            // the split must be holding a shared commit lock already.
+            CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireSharedUnchecked();
             try {
                 if (!node.tryUpgrade()) {
                     node.releaseShared();
