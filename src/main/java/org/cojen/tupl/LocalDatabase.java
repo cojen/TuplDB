@@ -5420,9 +5420,7 @@ final class LocalDatabase extends AbstractDatabase {
 
                 mCommitHeader = header;
 
-                mPageDb.commit(resume, header, (boolean resume_, /*P*/ byte[] header_) -> {
-                    flush(resume_, header_);
-                });
+                mPageDb.commit(resume, header, this::checkpointFlush);
             } catch (Throwable e) {
                 if (mCommitHeader != header) {
                     p_delete(header);
@@ -5477,10 +5475,10 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * Method is invoked with exclusive commit lock and shared root node latch
-     * held. Both are released by this method.
+     * Method is invoked with exclusive commit lock and shared root node latch held. Both are
+     * released by this method.
      */
-    private void flush(final boolean resume, final /*P*/ byte[] header) throws IOException {
+    private void checkpointFlush(boolean resume, /*P*/ byte[] header) throws IOException {
         int stateToFlush = mCommitState;
 
         if (resume) {
