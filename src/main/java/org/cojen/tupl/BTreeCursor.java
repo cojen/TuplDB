@@ -5056,19 +5056,22 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
             // a shared commit lock. At this point only a shared node lock is held.
             //
             // Following proper lock order, the shared commit lock should be obtained before
-            // the node lock. However, the code optimistically tries to get the shared commit
-            // lock, then upgrade the shared node lock to an exclusive node lock.
+            // the node lock. If another thread is attempting to acquire the exclusive commit
+            // lock, attempting to acquire the shared commit lock here might stall or deadlock.
             //
-            // If either of those steps fail, all locks are released then acquired in the
-            // proper order.
-            CommitLock commitLock = mTree.mDatabase.commitLock();
-            CommitLock.Shared shared = commitLock.tryAcquireShared();
+            // One strategy is to optimistically try to get the shared commit lock, then
+            // upgrade the shared node lock to an exclusive node lock. If either of those steps
+            // fail, all locks are released and then acquired in the proper order.
+            //
+            // The actual approach used here unfairly acquires the shared commit lock, barging
+            // ahead of any threads waiting for the exclusive lock. This doesn't lead to
+            // starvation of the exclusive waiter because it cannot proceed as long as the
+            // split exists anyhow. The thread which created the split must be holding a shared
+            // commit lock already.
+            CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireSharedUnfair();
             try {
-                if (shared == null || !node.tryUpgrade()) {
+                if (!node.tryUpgrade()) {
                     node.releaseShared();
-                    if (shared == null) {
-                        shared = commitLock.acquireShared();
-                    }
                     node = frame.acquireExclusive();
                     if (node.mSplit == null) {
                         break doSplit;
@@ -5076,9 +5079,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                 }
                 node = mTree.finishSplit(frame, node);
             } finally {
-                if (shared != null) {
-                    shared.release();
-                }
+                shared.release();
             }
         }
         node.downgrade();

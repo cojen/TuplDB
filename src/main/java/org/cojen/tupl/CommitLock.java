@@ -132,6 +132,18 @@ final class CommitLock implements Lock {
     }
 
     /**
+     * Acquire shared lock, barging ahead of any thread waiting to acquire the exclusive lock.
+     *
+     * @return shared object to unlock
+     */
+    Shared acquireSharedUnfair() {
+        mSharedAcquire.increment();
+        Shared shared = mShared.get();
+        shared.count++;
+        return shared;
+    }
+
+    /**
      * Acquire shared lock.
      */
     @Override
