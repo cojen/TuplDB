@@ -251,7 +251,7 @@ public interface StreamReplicator extends DirectReplicator {
          * @return -1 if writer is deactivated, or else the amount of metadata bytes written
          */
         default int write(byte[] messages, int offset, int length) throws IOException {
-            return write(messages, offset, length, position() + length);
+            return write(null, messages, offset, length, position() + length);
         }
 
         /**
@@ -269,7 +269,22 @@ public interface StreamReplicator extends DirectReplicator {
          * position
          * @return -1 if writer is deactivated, or else the amount of metadata bytes written
          */
-         int write(byte[] messages, int offset, int length, long highestPosition)
+        default int write(byte[] messages, int offset, int length, long highestPosition)
+            throws IOException
+        {
+            return write(null, messages, offset, length, highestPosition);
+        }
+
+        /**
+         * Write complete or partial messages to the log.
+         *
+         * @param prefix optional prefix message to fully write, which advances the log
+         * position just like any other message
+         * @param highestPosition highest position (exclusive) which can become the commit
+         * position
+         * @return -1 if writer is deactivated, or else the amount of metadata bytes written
+         */
+        int write(byte[] prefix, byte[] messages, int offset, int length, long highestPosition)
             throws IOException;
     }
 }

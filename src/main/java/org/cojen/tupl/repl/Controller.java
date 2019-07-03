@@ -736,7 +736,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public int write(byte[] data, int offset, int length, long highestPosition)
+        public int write(byte[] prefix, byte[] data, int offset, int length, long highestPosition)
             throws IOException
         {
             Channel[] peerChannels;
@@ -759,7 +759,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     term = writer.term();
                     position = writer.position();
 
-                    result = writer.write(data, offset, length, highestPosition);
+                    result = writer.write(prefix, data, offset, length, highestPosition);
 
                     if (result < 0) {
                         deactivate();
@@ -801,7 +801,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 for (Channel peerChan : peerChannels) {
                     peerChan.writeData(null, prevTerm, term,
                                        position, highestPosition, commitPosition,
-                                       data, offset, length);
+                                       prefix, data, offset, length);
                 }
 
                 return result;
@@ -814,7 +814,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 if (peerChan.writeDataAndProxy
                     (null, prevTerm, term, position, highestPosition, commitPosition,
-                     data, offset, length))
+                     prefix, data, offset, length))
                 {
                     // Success.
                     return result;
@@ -1214,7 +1214,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         for (Channel peerChan : peerChannels) {
             peerChan.writeData(null, prevTerm, term, position, highestPosition, commitPosition,
-                               EMPTY_DATA, 0, 0);
+                               null, EMPTY_DATA, 0, 0);
         }
     }
 
@@ -1863,7 +1863,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public boolean writeData(Channel from, long prevTerm, long term, long position,
                              long highestPosition, long commitPosition,
-                             byte[] data, int off, int len)
+                             byte[] prefix, byte[] data, int off, int len)
     {
         from = validateLeaderTerm(from, term);
         if (from == this) {
@@ -1892,7 +1892,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             try {
-                writer.write(data, off, len, highestPosition);
+                writer.write(prefix, data, off, len, highestPosition);
                 mStateLog.commit(commitPosition);
                 mStateLog.captureHighest(writer);
                 long highestTerm = writer.mTerm;
@@ -2075,10 +2075,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
                                      long highestPosition, long commitPosition,
-                                     byte[] data, int off, int len)
+                                     byte[] prefix, byte[] data, int off, int len)
     {
         if (!writeData(from, prevTerm, term, position, highestPosition, commitPosition,
-                       data, off, len))
+                       prefix, data, off, len))
         {
             return false;
         }
@@ -2095,7 +2095,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (!fromPeer.equals(peerChan.peer())) {
                     peerChan.writeDataViaProxy(null, prevTerm, term,
                                                position, highestPosition, commitPosition,
-                                               data, off, len);
+                                               prefix, data, off, len);
                 }
             }
         }
@@ -2109,11 +2109,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
                                      long highestPosition, long commitPosition,
-                                     byte[] data, int off, int len)
+                                     byte[] prefix, byte[] data, int off, int len)
     {
         // From is null to prevent proxy channel from being selected as the leader channel.
         return writeData(null, prevTerm, term, position, highestPosition, commitPosition,
-                         data, off, len);
+                         prefix, data, off, len);
     }
 
     /**

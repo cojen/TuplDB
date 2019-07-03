@@ -1315,7 +1315,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public int write(byte[] data, int offset, int length, long highestPosition)
+        public int write(byte[] prefix, byte[] data, int offset, int length, long highestPosition)
             throws IOException
         {
             long position = mWriterPosition;
@@ -1332,22 +1332,46 @@ final class FileTermLog extends Latch implements TermLog {
             // No extra metadata is written at this layer.
             int result = 0;
 
-            while (true) {
-                int amt = segment.write(position, data, offset, length);
-                position += amt;
-                length -= amt;
-                if (length <= 0) {
-                    break;
+            doWrite: {
+                if (prefix != null) {
+                    int prefixOffset = 0;
+                    int prefixLength = prefix.length;
+                    while (true) {
+                        int amt = segment.write(position, prefix, prefixOffset, prefixLength);
+                        position += amt;
+                        prefixLength -= amt;
+                        if (prefixLength <= 0) {
+                            break;
+                        }
+                        prefixOffset += amt;
+                        mWriterSegment = null;
+                        unreferenced(segment);
+                        segment = segmentForWriting(position);
+                        if (segment == null) {
+                            result = -1;
+                            break doWrite;
+                        }
+                        mWriterSegment = segment;
+                    }
                 }
-                offset += amt;
-                mWriterSegment = null;
-                unreferenced(segment);
-                segment = segmentForWriting(position);
-                if (segment == null) {
-                    result = -1;
-                    break;
+
+                while (true) {
+                    int amt = segment.write(position, data, offset, length);
+                    position += amt;
+                    length -= amt;
+                    if (length <= 0) {
+                        break;
+                    }
+                    offset += amt;
+                    mWriterSegment = null;
+                    unreferenced(segment);
+                    segment = segmentForWriting(position);
+                    if (segment == null) {
+                        result = -1;
+                        break doWrite;
+                    }
+                    mWriterSegment = segment;
                 }
-                mWriterSegment = segment;
             }
 
             writeFinished(this, position, highestPosition);

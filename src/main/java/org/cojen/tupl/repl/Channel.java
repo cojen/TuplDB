@@ -117,13 +117,14 @@ interface Channel {
      * @param position any position in the term to write to
      * @param highestPosition highest position (exclusive) which can become the commit position
      * @param commitPosition current commit position (exclusive)
+     * @param prefix optional data prefix
      * @param off data offset
      * @param len data length
      * @return false if not sent or processed
      */
     boolean writeData(Channel from, long prevTerm, long term, long position,
                       long highestPosition, long commitPosition,
-                      byte[] data, int off, int len);
+                      byte[] prefix, byte[] data, int off, int len);
 
     /**
      * @return false if not sent or processed
@@ -134,19 +135,21 @@ interface Channel {
      * Same as writeData except peer is expected to proxy the write to the remaining peers.
      *
      * @param from the leader channel
+     * @param prefix optional data prefix
      */
     boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
                               long highestPosition, long commitPosition,
-                              byte[] data, int off, int len);
+                              byte[] prefix, byte[] data, int off, int len);
 
     /**
      * Same as writeData except this is called from a peer which acted as a proxy.
      *
      * @param from the proxy channel
+     * @param prefix optional data prefix
      */
     boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
                               long highestPosition, long commitPosition,
-                              byte[] data, int off, int len);
+                              byte[] prefix, byte[] data, int off, int len);
 
     /**
      * @param prevTerm expected term at previous position

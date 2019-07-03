@@ -476,13 +476,15 @@ final class MessageStreamReplicator implements MessageReplicator {
 
     private final class MsgWriter implements Writer {
         private final StreamReplicator.Writer mSource;
-        private final byte[] mBuffer;
+        private final byte[] mShortPrefix, mMediumPrefix, mLongPrefix;
 
         private boolean mFinished;
 
         MsgWriter(StreamReplicator.Writer source) {
             mSource = source;
-            mBuffer = new byte[8192];
+            mShortPrefix = new byte[1];
+            mMediumPrefix = new byte[2];
+            mLongPrefix = new byte[5];
             mFinished = true;
         }
 
@@ -532,66 +534,49 @@ final class MessageStreamReplicator implements MessageReplicator {
                                                  boolean finished)
             throws IOException
         {
-            byte[] buffer = mBuffer;
-            int pos = 0;
-
+            byte[] prefix;
             if (length < 128) {
-                buffer[pos++] = (byte) length;
+                prefix = mShortPrefix;
+                prefix[0] = (byte) length;
             } else if (length < 16512) {
+                prefix = mMediumPrefix;
                 int v = length - 128;
-                buffer[pos++] = (byte) (0x80 | (v >> 8));
-                buffer[pos++] = (byte) v;
+                prefix[0] = (byte) (0x80 | (v >> 8));
+                prefix[1] = (byte) v;
             } else {
-                buffer[pos++] = (byte) 0xe0;
-                Utils.encodeIntLE(buffer, pos, length);
-                pos += 4;
+                prefix = mLongPrefix;
+                prefix[0] = (byte) 0xe0;
+                Utils.encodeIntLE(prefix, 1, length);
             }
 
             // Stash this to prevent control messages from finishing batches too soon.
             mFinished = finished;
 
-            return doWriteMessage(pos, message, offset, length);
+            long highestPosition = 0;
+            if (finished) {
+                highestPosition = position() + prefix.length + length;
+            }
+
+            return mSource.write(prefix, message, offset, length, highestPosition) >= 0;
         }
 
         /**
          * @return position after message or -1 if not the leader
          */
         synchronized long writeControl(byte[] message) throws IOException {
-            byte[] buffer = mBuffer;
-            int pos = 0;
-            buffer[pos++] = (byte) 0xff;
-            Utils.encodeIntLE(buffer, pos, message.length);
-            pos += 4;
-            if (!doWriteMessage(pos, message, 0, message.length)) {
+            byte[] prefix = mLongPrefix;
+            prefix[0] = (byte) 0xff;
+            Utils.encodeIntLE(prefix, 1, message.length);
+
+            long highestPosition = 0;
+            if (mFinished) {
+                highestPosition = position() + prefix.length + message.length;
+            }
+
+            if (mSource.write(prefix, message, 0, message.length, highestPosition) < 0) {
                 return -1;
             } else {
-                return mSource.position();
-            }
-        }
-
-        // Caller must be synchronized.
-        private boolean doWriteMessage(int pos, byte[] message, int offset, int length)
-            throws IOException
-        {
-            try {
-                byte[] buffer = mBuffer;
-                int avail = buffer.length - pos;
-
-                if (length <= avail) {
-                    System.arraycopy(message, offset, buffer, pos, length);
-                    pos += length;
-                    return mSource.write(buffer, 0, pos, mFinished ? (position() + pos) : 0) >= 0;
-                } else {
-                    System.arraycopy(message, offset, buffer, pos, avail);
-                    offset += avail;
-                    length -= avail;
-                    mSource.write(buffer, 0, buffer.length, 0);
-                    return mSource.write(message, offset, length,
-                                         mFinished ? (position() + length) : 0) >= 0;
-                }
-            } catch (Throwable e) {
-                Utils.closeQuietly(this);
-                throw e;
+                return position();
             }
         }
     }

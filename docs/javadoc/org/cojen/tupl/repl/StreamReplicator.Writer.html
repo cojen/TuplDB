@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":18,"i1":18,"i2":6};
+var data = {"i0":18,"i1":6,"i2":18,"i3":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -153,6 +153,17 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 </td>
 </tr>
 <tr class="rowColor" id="i1">
+<td class="colFirst"><code>int</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;prefix,
+     byte[]&nbsp;messages,
+     int&nbsp;offset,
+     int&nbsp;length,
+     long&nbsp;highestPosition)</code></th>
+<td class="colLast">
+<div class="block">Write complete or partial messages to the log.</div>
+</td>
+</tr>
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int)">write</a></span>&#8203;(byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -161,8 +172,8 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
-<td class="colFirst"><code>int</code></td>
+<tr class="rowColor" id="i3">
+<td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;messages,
      int&nbsp;offset,
      int&nbsp;length,
@@ -246,14 +257,14 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <a id="write(byte[],int,int,long)">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>write</h4>
-<pre class="methodSignature">int&nbsp;write&#8203;(byte[]&nbsp;messages,
-          int&nbsp;offset,
-          int&nbsp;length,
-          long&nbsp;highestPosition)
-   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages,
+                  int&nbsp;offset,
+                  int&nbsp;length,
+                  long&nbsp;highestPosition)
+           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete or partial messages to the log. The <code>highestPosition</code> parameter
  defines the new absolute log position which can become the commit position. The
  provided highest position is permitted to exceed the current log size, in
@@ -265,6 +276,32 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
  pass a length of zero.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
+ position</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</li>
+</ul>
+<a id="write(byte[],byte[],int,int,long)">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>write</h4>
+<pre class="methodSignature">int&nbsp;write&#8203;(byte[]&nbsp;prefix,
+          byte[]&nbsp;messages,
+          int&nbsp;offset,
+          int&nbsp;length,
+          long&nbsp;highestPosition)
+   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<div class="block">Write complete or partial messages to the log.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>prefix</code> - optional prefix message to fully write, which advances the log
+ position just like any other message</dd>
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>

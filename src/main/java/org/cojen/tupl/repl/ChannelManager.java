@@ -875,7 +875,7 @@ final class ChannelManager {
                         in.readFully(commandLength);
                         localServer.writeData(this, prevTerm, term, position,
                                               highestPosition, commitPosition,
-                                              in.mBuffer, in.mPos, commandLength);
+                                              null, in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
                         break;
@@ -893,7 +893,7 @@ final class ChannelManager {
                         in.readFully(commandLength);
                         localServer.writeDataAndProxy(this, prevTerm, term, position,
                                                       highestPosition, commitPosition,
-                                                      in.mBuffer, in.mPos, commandLength);
+                                                      null, in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
                         break;
@@ -907,7 +907,7 @@ final class ChannelManager {
                         in.readFully(commandLength);
                         localServer.writeDataViaProxy(this, prevTerm, term, position,
                                                       highestPosition, commitPosition,
-                                                      in.mBuffer, in.mPos, commandLength);
+                                                      null, in.mBuffer, in.mPos, commandLength);
                         in.mPos += commandLength;
                         commandLength = 0;
                         break;
@@ -1091,17 +1091,25 @@ final class ChannelManager {
 
         @Override
         public boolean writeData(Channel from, long prevTerm, long term, long position,
-                                 long highestPos, long commitPos, byte[] data, int off, int len)
+                                 long highestPos, long commitPos,
+                                 byte[] prefix, byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_DATA,
-                             prevTerm, term, position, highestPos, commitPos, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos,
+                             prefix, data, off, len);
         }
 
         private boolean writeData(int op, long prevTerm, long term, long position,
                                   long highestPosition, long commitPosition,
-                                  byte[] data, int off, int len)
+                                  byte[] prefix, byte[] data, int off, int len)
         {
-            if (len > ((1 << 24) - (8 * 5))) {
+            int fullLen = len;
+
+            if (prefix != null) {
+                fullLen += prefix.length;
+            }
+
+            if (fullLen > ((1 << 24) - (8 * 5))) {
                 // TODO: break it up into several commands
                 throw new IllegalArgumentException("Too large");
             }
@@ -1112,7 +1120,7 @@ final class ChannelManager {
                 if (out == null) {
                     return false;
                 }
-                final int commandLength = (8 + 8 * 5) + len;
+                final int commandLength = (8 + 8 * 5) + fullLen;
                 byte[] command = allocWriteBuffer(commandLength);
                 prepareCommand(out, command, op, 0, commandLength - 8);
                 encodeLongLE(command, 8, prevTerm);
@@ -1120,7 +1128,12 @@ final class ChannelManager {
                 encodeLongLE(command, 24, position);
                 encodeLongLE(command, 32, highestPosition);
                 encodeLongLE(command, 40, commitPosition);
-                System.arraycopy(data, off, command, 48, len);
+                int commandOffset = 48;
+                if (prefix != null) {
+                    System.arraycopy(prefix, 0, command, commandOffset, prefix.length);
+                    commandOffset += prefix.length;
+                }
+                System.arraycopy(data, off, command, commandOffset, len);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
@@ -1135,19 +1148,21 @@ final class ChannelManager {
         @Override
         public boolean writeDataAndProxy(Channel from, long prevTerm, long term, long position,
                                          long highestPos, long commitPos,
-                                         byte[] data, int off, int len)
+                                         byte[] prefix, byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_AND_PROXY,
-                             prevTerm, term, position, highestPos, commitPos, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos,
+                             prefix, data, off, len);
         }
 
         @Override
         public boolean writeDataViaProxy(Channel from, long prevTerm, long term, long position,
                                          long highestPos, long commitPos,
-                                         byte[] data, int off, int len)
+                                         byte[] prefix, byte[] data, int off, int len)
         {
             return writeData(OP_WRITE_VIA_PROXY,
-                             prevTerm, term, position, highestPos, commitPos, data, off, len);
+                             prevTerm, term, position, highestPos, commitPos,
+                             prefix, data, off, len);
         }
 
         @Override
