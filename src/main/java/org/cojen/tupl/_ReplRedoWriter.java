@@ -353,10 +353,6 @@ class _ReplRedoWriter extends _RedoWriter {
                         mBufferTail = 0;
                     }
 
-                    // TODO: If consumer is parked, attempt to do the write immediately.
-                    // Still do the arraycopy, to support auto-tuning. Release the latch and
-                    // then do the write. This creates a race condition with the consumer
-                    // thread, and so something extra is needed.
                     if (mConsumerParked) {
                         mConsumerParked = false;
                         Parker.unpark(mConsumer);
