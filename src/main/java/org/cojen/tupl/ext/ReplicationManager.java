@@ -159,10 +159,10 @@ public interface ReplicationManager extends Closeable {
          * @param off message buffer offset
          * @param len message length
          * @param commitPos highest transaction commit position; pass 0 if nothing changed
-         * @return -1 if not the leader, or else the amount of metadata bytes written
+         * @return false only if the writer is deactivated
          * @throws IllegalArgumentException if commitPos is negative
          */
-        int write(byte[] b, int off, int len, long commitPos) throws IOException;
+        boolean write(byte[] b, int off, int len, long commitPos) throws IOException;
 
         /**
          * Blocks until all data up to the given log position is confirmed.

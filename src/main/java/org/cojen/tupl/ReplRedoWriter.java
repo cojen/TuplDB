@@ -454,14 +454,14 @@ class ReplRedoWriter extends RedoWriter {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    if (replWrite(buffer, head, buffer.length - head) < 0) {
+                    if (!replWrite(buffer, head, buffer.length - head)) {
                         break;
                     }
 
                     if (head > 0) {
                         // Write the tail section.
                         mBufferHead = 0;
-                        if (replWrite(buffer, 0, tail) < 0) {
+                        if (!replWrite(buffer, 0, tail)) {
                             break;
                         }
                     }
@@ -475,14 +475,14 @@ class ReplRedoWriter extends RedoWriter {
                     try {
                         if (head < tail) {
                             // No circular wraparound.
-                            if (replWrite(buffer, head, tail - head) < 0) {
+                            if (!replWrite(buffer, head, tail - head)) {
                                 break;
                             }
                             head = tail;
                         } else {
                             // Write only the head section.
                             int len = buffer.length - head;
-                            if (replWrite(buffer, head, len) < 0) {
+                            if (!replWrite(buffer, head, len)) {
                                 break;
                             }
                             head = 0;
@@ -528,16 +528,7 @@ class ReplRedoWriter extends RedoWriter {
         mEngine.mController.switchToReplica(mReplWriter);
     }
 
-    /**
-     * @return -1 if leadership is revoked
-     */
-    private int replWrite(byte[] buf, int off, int len) throws IOException {
-        int result = mReplWriter.write(buf, off, len, mLastCommitPos);
-        if (result > 0) {
-            // Adjust positions if more was written.
-            mWritePos += result;
-            mLastCommitPos += result;
-        }
-        return result;
+    private boolean replWrite(byte[] buf, int off, int len) throws IOException {
+        return mReplWriter.write(buf, off, len, mLastCommitPos);
     }
 }

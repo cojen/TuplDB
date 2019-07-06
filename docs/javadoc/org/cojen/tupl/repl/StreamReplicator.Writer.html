@@ -146,14 +146,14 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 </tr>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code>default int</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D)">write</a></span>&#8203;(byte[]&nbsp;messages)</code></th>
 <td class="colLast">
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
-<td class="colFirst"><code>int</code></td>
+<td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;prefix,
      byte[]&nbsp;messages,
      int&nbsp;offset,
@@ -164,7 +164,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 </td>
 </tr>
 <tr class="altColor" id="i2">
-<td class="colFirst"><code>default int</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int)">write</a></span>&#8203;(byte[]&nbsp;messages,
      int&nbsp;offset,
      int&nbsp;length)</code></th>
@@ -173,7 +173,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 </td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code>default int</code></td>
+<td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;messages,
      int&nbsp;offset,
      int&nbsp;length,
@@ -222,13 +222,13 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <ul class="blockList">
 <li class="blockList">
 <h4>write</h4>
-<pre class="methodSignature">default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages)
-           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">default&nbsp;boolean&nbsp;write&#8203;(byte[]&nbsp;messages)
+               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, 0,
  messages.length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>messages.length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
+<dd>false only if the writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -240,15 +240,15 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <ul class="blockList">
 <li class="blockList">
 <h4>write</h4>
-<pre class="methodSignature">default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages,
-                  int&nbsp;offset,
-                  int&nbsp;length)
-           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">default&nbsp;boolean&nbsp;write&#8203;(byte[]&nbsp;messages,
+                      int&nbsp;offset,
+                      int&nbsp;length)
+               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, offset,
  length, </code><a href="DirectReplicator.Accessor.html#position()"><code>position() + </code></a><code>length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
+<dd>false only if the writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -260,11 +260,11 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <ul class="blockList">
 <li class="blockList">
 <h4>write</h4>
-<pre class="methodSignature">default&nbsp;int&nbsp;write&#8203;(byte[]&nbsp;messages,
-                  int&nbsp;offset,
-                  int&nbsp;length,
-                  long&nbsp;highestPosition)
-           throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">default&nbsp;boolean&nbsp;write&#8203;(byte[]&nbsp;messages,
+                      int&nbsp;offset,
+                      int&nbsp;length,
+                      long&nbsp;highestPosition)
+               throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete or partial messages to the log. The <code>highestPosition</code> parameter
  defines the new absolute log position which can become the commit position. The
  provided highest position is permitted to exceed the current log size, in
@@ -279,7 +279,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
+<dd>false only if the writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -291,12 +291,12 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <ul class="blockListLast">
 <li class="blockList">
 <h4>write</h4>
-<pre class="methodSignature">int&nbsp;write&#8203;(byte[]&nbsp;prefix,
-          byte[]&nbsp;messages,
-          int&nbsp;offset,
-          int&nbsp;length,
-          long&nbsp;highestPosition)
-   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
+<pre class="methodSignature">boolean&nbsp;write&#8203;(byte[]&nbsp;prefix,
+              byte[]&nbsp;messages,
+              int&nbsp;offset,
+              int&nbsp;length,
+              long&nbsp;highestPosition)
+       throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Write complete or partial messages to the log.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -305,7 +305,7 @@ extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tup
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>-1 if writer is deactivated, or else the amount of metadata bytes written</dd>
+<dd>false only if the writer is deactivated</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>

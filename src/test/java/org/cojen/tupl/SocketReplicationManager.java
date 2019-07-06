@@ -227,16 +227,16 @@ class SocketReplicationManager implements ReplicationManager {
         }
 
         @Override
-        public int write(byte[] b, int off, int len, long commitPos) {
+        public boolean write(byte[] b, int off, int len, long commitPos) {
             try {
                 if (mDisabled) {
-                    return -1;
+                    return false;
                 }
                 mOut.write(b, off, len);
                 mPos += len;
-                return 0;
+                return true;
             } catch (IOException e) {
-                return -1;
+                return false;
             }
         }
 

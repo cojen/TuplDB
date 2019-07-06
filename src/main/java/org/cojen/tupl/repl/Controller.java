@@ -736,12 +736,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public int write(byte[] prefix, byte[] data, int offset, int length, long highestPosition)
+        public boolean write(byte[] prefix,
+                             byte[] data, int offset, int length,
+                             long highestPosition)
             throws IOException
         {
             Channel[] peerChannels;
             long prevTerm, term, position, commitPosition;
-            int result, proxy;
+            boolean result;
+            int proxy;
 
             w0: {
                 synchronized (this) {
@@ -749,7 +752,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                     if (peerChannels == null) {
                         // Deactivated.
-                        return -1;
+                        return false;
                     }
 
                     LogWriter writer = mWriter;
@@ -761,9 +764,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                     result = writer.write(prefix, data, offset, length, highestPosition);
 
-                    if (result < 0) {
+                    if (!result) {
                         deactivate();
-                        return -1;
+                        return false;
                     }
 
                     mStateLog.captureHighest(writer);

@@ -794,7 +794,7 @@ public class FileStateLogTest {
         // An empty term shouldn't prevent a new term from replacing it.
 
         LogWriter w1 = mLog.openWriter(0, 1, 0);
-        assertEquals(0, w1.write(new byte[100]));
+        assertTrue(w1.write(new byte[100]));
 
         // Define an empty term 2.
         assertTrue(mLog.defineTerm(1, 2, 100));
@@ -803,11 +803,11 @@ public class FileStateLogTest {
         assertTrue(mLog.defineTerm(1, 3, 200));
 
         // Continue with term 1.
-        assertEquals(0, w1.write(new byte[100]));
+        assertTrue(w1.write(new byte[100]));
         w1.release();
 
         LogWriter w3 = mLog.openWriter(1, 3, 200);
-        assertEquals(0, w3.write(new byte[100]));
+        assertTrue(w3.write(new byte[100]));
 
         mLog.commit(300);
 
@@ -824,11 +824,11 @@ public class FileStateLogTest {
         assertTrue(mLog.defineTerm(3, 6, 600));
 
         // Continue with term 3 (note that the write cannot extend past the end)
-        assertEquals(-1, w3.write(new byte[400]));
+        assertFalse(w3.write(new byte[400]));
         w3.release();
 
         LogWriter w6 = mLog.openWriter(3, 6, 600);
-        assertEquals(0, w6.write(new byte[100]));
+        assertTrue(w6.write(new byte[100]));
 
         mLog.commit(700);
 
@@ -844,12 +844,12 @@ public class FileStateLogTest {
 
         // Term 1 starts at 0.
         LogWriter w1 = mLog.openWriter(0, 1, 0);
-        assertEquals(0, w1.write(new byte[100]));
+        assertTrue(w1.write(new byte[100]));
         w1.release();
 
         // Term 2 starts at 100, but is empty so far.
         LogWriter w2 = mLog.openWriter(1, 2, 100);
-        assertEquals(0, w2.write(new byte[0]));
+        assertTrue(w2.write(new byte[0]));
         w2.release();
 
         LogInfo info = mLog.captureHighest();
@@ -863,7 +863,7 @@ public class FileStateLogTest {
 
         // Term 3 starts at 150, and forces term 1 to extend.
         LogWriter w3 = mLog.openWriter(1, 3, 150);
-        assertEquals(0, w3.write(new byte[100]));
+        assertTrue(w3.write(new byte[100]));
         w3.release();
 
         info = mLog.captureHighest();
@@ -883,17 +883,17 @@ public class FileStateLogTest {
 
         // Term 1 starts at 0.
         LogWriter w1 = mLog.openWriter(0, 1, 0);
-        assertEquals(0, w1.write(new byte[100]));
+        assertTrue(w1.write(new byte[100]));
         w1.release();
 
         // Term 2 starts at 100.
         LogWriter w2 = mLog.openWriter(1, 2, 100);
-        assertEquals(0, w2.write(new byte[100]));
+        assertTrue(w2.write(new byte[100]));
         w2.release();
 
         // Term 3 starts at 200.
         LogWriter w3 = mLog.openWriter(2, 3, 200);
-        assertEquals(0, w3.write(new byte[100]));
+        assertTrue(w3.write(new byte[100]));
         w3.release();
 
         LogInfo info = mLog.captureHighest();
@@ -902,7 +902,7 @@ public class FileStateLogTest {
 
         // Term 4 replaces term 2 and 3, and it also extends term 1.
         LogWriter w4 = mLog.openWriter(1, 4, 200);
-        assertEquals(0, w4.write(new byte[100]));
+        assertTrue(w4.write(new byte[100]));
         w4.release();
 
         info = mLog.captureHighest();
@@ -929,13 +929,13 @@ public class FileStateLogTest {
         // Term 1 starts at 0.
         long term = mLog.incrementCurrentTerm(1, 123);
         LogWriter w1 = mLog.openWriter(0, term, 0);
-        assertEquals(0, w1.write(new byte[100]));
+        assertTrue(w1.write(new byte[100]));
         w1.release();
 
         // Term 2 starts at 100.
         term = mLog.incrementCurrentTerm(1, 123);
         LogWriter w2 = mLog.openWriter(w1.term(), term, 100);
-        assertEquals(0, w2.write(new byte[100]));
+        assertTrue(w2.write(new byte[100]));
         w2.release();
 
         // Sync the highest position.
@@ -945,7 +945,7 @@ public class FileStateLogTest {
         // Term 3 replaces term 2 and extends term 1.
         term = mLog.incrementCurrentTerm(1, 123);
         LogWriter w3 = mLog.openWriter(w1.term(), term, 150);
-        assertEquals(0, w3.write(new byte[0]));
+        assertTrue(w3.write(new byte[0]));
         w3.release();
 
         mLog.close();
@@ -1109,8 +1109,7 @@ public class FileStateLogTest {
     }
 
     private static void write(LogWriter writer, byte[] data, int off, int len) throws IOException {
-        int result = writer.write(data, off, len, writer.position() + len);
-        assertEquals(0, result);
+        assertTrue(writer.write(data, off, len, writer.position() + len));
     }
 
     static void readFully(StreamReplicator.Reader reader, byte[] buf) throws IOException {

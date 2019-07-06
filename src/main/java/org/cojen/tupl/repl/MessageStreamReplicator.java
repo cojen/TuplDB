@@ -557,7 +557,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                 highestPosition = position() + prefix.length + length;
             }
 
-            return mSource.write(prefix, message, offset, length, highestPosition) >= 0;
+            return mSource.write(prefix, message, offset, length, highestPosition);
         }
 
         /**
@@ -573,7 +573,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                 highestPosition = position() + prefix.length + message.length;
             }
 
-            if (mSource.write(prefix, message, 0, message.length, highestPosition) < 0) {
+            if (!mSource.write(prefix, message, 0, message.length, highestPosition)) {
                 return -1;
             } else {
                 return position();
