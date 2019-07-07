@@ -1482,11 +1482,6 @@ class _BTree implements View, Index {
         }
     }
 
-    final boolean allowStoredCounts() {
-        // TODO: make configurable
-        return true;
-    }
-
     /**
      * Caller must hold exclusive latch and it must verify that node has
      * split. _Node latch is released if an exception is thrown.

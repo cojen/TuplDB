@@ -945,9 +945,7 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
 
                     childCount = child.countNonGhostKeys();
 
-                    if (mTree.allowStoredCounts() &&
-                        child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade())
-                    {
+                    if (child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade()) {
                         try {
                             CommitLock.Shared shared =
                                 mTree.mDatabase.commitLock().tryAcquireShared();
@@ -1087,10 +1085,8 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
             childCount = child.countNonGhostKeys();
             count += childCount;
 
-            if (mTree.allowStoredCounts() &&
+            if (child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade()) {
                 // Note: If child node is clean, it's also not split.
-                child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade())
-            {
                 try {
                     CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
                     if (shared != null) {
@@ -1568,9 +1564,7 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
 
                     childCount = child.countNonGhostKeys();
 
-                    if (mTree.allowStoredCounts() &&
-                        child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade())
-                    {
+                    if (child.mCachedState == _Node.CACHED_CLEAN && node.tryUpgrade()) {
                         try {
                             CommitLock.Shared shared =
                                 mTree.mDatabase.commitLock().tryAcquireShared();
