@@ -3726,7 +3726,7 @@ final class LocalDatabase extends AbstractDatabase {
         Node node = nodeMapGetShared(nodeId);
 
         if (node != null) {
-            node.used(ThreadLocalRandom.current());
+            node.used();
             return node;
         }
 
@@ -3793,7 +3793,7 @@ final class LocalDatabase extends AbstractDatabase {
         Node node = nodeMapGetExclusive(nodeId);
 
         if (node != null) {
-            node.used(ThreadLocalRandom.current());
+            node.used();
             return node;
         }
 
@@ -3972,7 +3972,7 @@ final class LocalDatabase extends AbstractDatabase {
                 }
             }
 
-            childNode.used(ThreadLocalRandom.current());
+            childNode.used();
             return childNode;
         }
 
@@ -4037,7 +4037,7 @@ final class LocalDatabase extends AbstractDatabase {
             childNode.mCachedState = Node.CACHED_CLEAN;
         }
 
-        childNode.used(ThreadLocalRandom.current());
+        childNode.used();
         return childNode;
     }
 

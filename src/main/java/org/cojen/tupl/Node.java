@@ -430,6 +430,10 @@ final class Node extends Clutch implements DatabaseAccess {
      * list and cannot be evicted. Caller must hold any latch on node. Latch is never released
      * by this method, even if an exception is thrown.
      */
+    void used() {
+        used(ThreadLocalRandom.current());
+    }
+
     void used(ThreadLocalRandom rnd) {
         mGroup.used(this, rnd);
     }
