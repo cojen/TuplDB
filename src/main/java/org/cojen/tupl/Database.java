@@ -126,6 +126,7 @@ public interface Database extends CauseCloseable, Flushable {
     /**
      * Returns an index by its identifier, returning null if not found.
      *
+     * @return shared Index instance
      * @throws IllegalArgumentException if id is reserved
      */
     public abstract Index indexById(long id) throws IOException;
@@ -134,6 +135,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Returns an index by its identifier, returning null if not found.
      *
      * @param id big-endian encoded long integer
+     * @return shared Index instance
      * @throws IllegalArgumentException if id is malformed or reserved
      */
     public default Index indexById(byte[] id) throws IOException {

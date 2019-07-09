@@ -637,7 +637,7 @@ final class LocalDatabase extends AbstractDatabase {
             // Also verifies the database and replication encodings.
             Node rootNode = loadRegistryRoot(config, header);
 
-            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
             if (config.mReplManager != null) {
                 mRegistry = new BTree.Repl(this, BTree.REGISTRY_ID, null, rootNode);
             } else {
@@ -676,7 +676,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(BTree.REGISTRY_KEY_MAP_ID, true, config);
+                mRegistryKeyMap = openInternalTree(BTree.REGISTRY_KEY_MAP_ID, IX_CREATE, config);
                 if (debugListener != null) {
                     Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
                     try {
@@ -694,11 +694,11 @@ final class LocalDatabase extends AbstractDatabase {
 
             BTree cursorRegistry = null;
             if (openMode != OPEN_TEMP) {
-                BTree tree = openInternalTree(BTree.FRAGMENTED_TRASH_ID, false, config);
+                BTree tree = openInternalTree(BTree.FRAGMENTED_TRASH_ID, IX_FIND, config);
                 if (tree != null) {
                     mFragmentedTrash = new FragmentedTrash(tree);
                 }
-                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, false, config);
+                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, IX_FIND, config);
             }
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
@@ -1161,12 +1161,12 @@ final class LocalDatabase extends AbstractDatabase {
 
     @Override
     public Index findIndex(byte[] name) throws IOException {
-        return openTree(name.clone(), false);
+        return openTree(name.clone(), IX_FIND);
     }
 
     @Override
     public Index openIndex(byte[] name) throws IOException {
-        return openTree(name.clone(), true);
+        return openTree(name.clone(), IX_CREATE);
     }
 
     @Override
@@ -1217,7 +1217,7 @@ final class LocalDatabase extends AbstractDatabase {
             byte[] treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, id);            
 
-            index = openTree(txn, treeIdBytes, name, false);
+            index = openTree(txn, treeIdBytes, name, IX_FIND);
         } catch (Throwable e) {
             DatabaseException.rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
@@ -1236,7 +1236,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * @return null if index is not open
      */
-    private BTree lookupIndexById(long id) {
+    private Tree lookupIndexById(long id) {
         mOpenTreesLatch.acquireShared();
         try {
             LHashTable.ObjEntry<TreeRef> entry = mOpenTreesById.get(id);
@@ -1283,8 +1283,16 @@ final class LocalDatabase extends AbstractDatabase {
         // Database instance makes this operation a bit more of a hassle to use, which is
         // desirable. Rename is not expected to be a common operation.
 
-        final BTree tree = accessTree(index);
+        accessTree(index).rename(newName, redoTxnId);
+    }
 
+    /**
+     * @param newName not cloned
+     * @param redoTxnId non-zero if rename is performed by recovery
+     */
+    void renameBTree(final BTree tree, final byte[] newName, final long redoTxnId)
+        throws IOException
+    {
         final byte[] idKey, trashIdKey;
         final byte[] oldName, oldNameKey;
         final byte[] newNameKey;
@@ -1404,10 +1412,10 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
-    private BTree accessTree(Index index) {
+    private Tree accessTree(Index index) {
         try {
-            BTree tree;
-            if ((tree = ((BTree) index)).mDatabase == this) {
+            Tree tree;
+            if ((tree = ((Tree) index)).isMemberOf(this)) {
                 return tree;
             }
         } catch (ClassCastException e) {
@@ -1458,7 +1466,7 @@ final class LocalDatabase extends AbstractDatabase {
             throw new ClosedIndexException();
         }
 
-        BTree trashed = newTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
+        BTree trashed = newBTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
 
         return new Deletion(trashed, false, null);
     }
@@ -1595,7 +1603,7 @@ final class LocalDatabase extends AbstractDatabase {
 
         long treeId = decodeLongBE(treeIdBytes, 0);
 
-        return newTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(treeId, rootId));
+        return newBTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(treeId, rootId));
     }
 
     private class Deletion implements Runnable {
@@ -1747,7 +1755,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             try {
                 BTree tree = new BTree.Temp(this, treeId, treeIdBytes, root);
-                TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
+                TreeRef treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
@@ -2051,13 +2059,8 @@ final class LocalDatabase extends AbstractDatabase {
         dout.writeLong(PRIMER_MAGIC_NUMBER);
 
         for (TreeRef treeRef : mOpenTrees.values()) {
-            BTree tree = treeRef.get();
-            if (tree != null && !BTree.isInternal(tree.mId)) {
-                // Encode name instead of identifier, to support priming set portability
-                // between databases. The identifiers won't match, but the names might.
-                byte[] name = tree.mName;
-                dout.writeInt(name.length);
-                dout.write(name);
+            Tree tree = treeRef.get();
+            if (tree != null && !BTree.isInternal(tree.getId())) {
                 tree.writeCachePrimer(dout);
             }
         }
@@ -2094,7 +2097,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
             byte[] name = new byte[len];
             din.readFully(name);
-            BTree tree = openTree(name, false);
+            Tree tree = openTree(name, IX_FIND);
             if (tree != null) {
                 tree.applyCachePrimer(din);
             } else {
@@ -2115,25 +2118,25 @@ final class LocalDatabase extends AbstractDatabase {
             int openTreesCount = 0;
 
             for (TreeRef treeRef : mOpenTrees.values()) {
-                BTree tree = treeRef.get();
+                Tree tree = treeRef.get();
                 if (tree != null) {
                     openTreesCount++;
-                    cursorCount += tree.mRoot.countCursors();
+                    cursorCount += tree.countCursors();
                 }
             }
 
-            cursorCount += mRegistry.mRoot.countCursors();
-            cursorCount += mRegistryKeyMap.mRoot.countCursors();
+            cursorCount += mRegistry.countCursors();
+            cursorCount += mRegistryKeyMap.countCursors();
 
             FragmentedTrash trash = mFragmentedTrash;
             if (trash != null) {
-                cursorCount += trash.mTrash.mRoot.countCursors();
+                cursorCount += trash.mTrash.countCursors();
             }
 
             BTree cursorRegistry = mCursorRegistry;
             if (cursorRegistry != null) {
                 // Count the cursors which are actively registering cursors. Sounds confusing.
-                cursorCount += cursorRegistry.mRoot.countCursors();
+                cursorCount += cursorRegistry.countCursors();
             }
 
             stats.openIndexes = openTreesCount;
@@ -2448,7 +2451,7 @@ final class LocalDatabase extends AbstractDatabase {
         /**
          * @return false if should stop
          */
-        boolean apply(BTree tree) throws IOException;
+        boolean apply(Tree tree) throws IOException;
     }
 
     /**
@@ -2482,7 +2485,7 @@ final class LocalDatabase extends AbstractDatabase {
                 long id = decodeLongBE(all.value(), 0);
 
                 Index index = indexById(id);
-                if (index instanceof BTree && !visitor.apply((BTree) index)) {
+                if (index instanceof Tree && !visitor.apply((Tree) index)) {
                     return false;
                 }
             }
@@ -2589,7 +2592,7 @@ final class LocalDatabase extends AbstractDatabase {
                 }
 
                 for (TreeRef ref : trees) {
-                    BTree tree = ref.get();
+                    Tree tree = ref.get();
                     if (tree != null) {
                         tree.forceClose();
                     }
@@ -2748,12 +2751,15 @@ final class LocalDatabase extends AbstractDatabase {
         mOpenTreesLatch.acquireExclusive();
         try {
             TreeRef ref = mOpenTreesById.getValue(tree.mId);
-            if (ref != null && ref.get() == tree) {
-                ref.clear();
-                if (tree.mName != null) {
-                    mOpenTrees.remove(tree.mName);
+            if (ref != null) {
+                Tree actual = ref.get();
+                if (actual != null && actual.isUserOf(tree)) {
+                    ref.clear();
+                    if (tree.mName != null) {
+                        mOpenTrees.remove(tree.mName);
+                    }
+                    mOpenTreesById.remove(tree.mId);
                 }
-                mOpenTreesById.remove(tree.mId);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -2911,7 +2917,7 @@ final class LocalDatabase extends AbstractDatabase {
             try {
                 if ((cursorRegistry = mCursorRegistry) == null) {
                     mCursorRegistry = cursorRegistry =
-                        openInternalTree(BTree.CURSOR_REGISTRY_ID, true);
+                        openInternalTree(BTree.CURSOR_REGISTRY_ID, IX_CREATE);
                 }
             } finally {
                 mOpenTreesLatch.releaseExclusive();
@@ -3070,11 +3076,13 @@ final class LocalDatabase extends AbstractDatabase {
         return loadTreeRoot(0, rootId);
     }
 
-    private BTree openInternalTree(long treeId, boolean create) throws IOException {
-        return openInternalTree(treeId, create, null);
+    private static final byte IX_FIND = 0, IX_CREATE = 1;
+
+    private BTree openInternalTree(long treeId, long ixOption) throws IOException {
+        return openInternalTree(treeId, ixOption, null);
     }
 
-    private BTree openInternalTree(long treeId, boolean create, DatabaseConfig config)
+    private BTree openInternalTree(long treeId, long ixOption, DatabaseConfig config)
         throws IOException
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
@@ -3088,7 +3096,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (rootIdBytes != null) {
                 rootId = decodeLongLE(rootIdBytes, 0);
             } else {
-                if (!create) {
+                if (ixOption == IX_FIND) {
                     return null;
                 }
                 rootId = 0;
@@ -3096,12 +3104,12 @@ final class LocalDatabase extends AbstractDatabase {
 
             Node root = loadTreeRoot(treeId, rootId);
 
-            // Cannot call newTreeInstance because mRedoWriter isn't set yet.
+            // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
             if (config != null && config.mReplManager != null) {
                 return new BTree.Repl(this, treeId, treeIdBytes, root);
             }
 
-            return newTreeInstance(treeId, treeIdBytes, null, root);
+            return newBTreeInstance(treeId, treeIdBytes, null, root);
         } finally {
             shared.release();
         }
@@ -3110,8 +3118,8 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * @param name required (cannot be null)
      */
-    private BTree openTree(byte[] name, boolean create) throws IOException {
-        return openTree(null, null, name, create);
+    private Tree openTree(byte[] name, long ixOption) throws IOException {
+        return openTree(null, null, name, ixOption);
     }
 
     /**
@@ -3119,14 +3127,14 @@ final class LocalDatabase extends AbstractDatabase {
      * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private BTree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, long ixOption)
         throws IOException
     {
-        BTree tree = quickFindIndex(name);
+        Tree tree = quickFindIndex(name);
         if (tree == null) {
             CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
-                tree = doOpenTree(findTxn, treeIdBytes, name, create);
+                tree = doOpenTree(findTxn, treeIdBytes, name, ixOption);
             } finally {
                 shared.release();
             }
@@ -3141,7 +3149,7 @@ final class LocalDatabase extends AbstractDatabase {
      * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private BTree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
+    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, long ixOption)
         throws IOException
     {
         checkClosed();
@@ -3160,10 +3168,10 @@ final class LocalDatabase extends AbstractDatabase {
         byte[] idKey;
 
         if (treeIdBytes != null) {
-            // BTree already exists.
+            // Tree already exists.
             idKey = null;
             treeId = decodeLongBE(treeIdBytes, 0);
-        } else if (!create) {
+        } else if (ixOption == IX_FIND) {
             return null;
         } else create: {
             // Transactional find supported only for opens that do not create.
@@ -3271,7 +3279,7 @@ final class LocalDatabase extends AbstractDatabase {
             // Pass the transaction to acquire the lock.
             byte[] rootIdBytes = mRegistry.load(txn, treeIdBytes);
 
-            BTree tree = lookupIndexById(treeId);
+            Tree tree = lookupIndexById(treeId);
             if (tree != null) {
                 // Another thread got the lock first and loaded the tree.
                 return tree;
@@ -3282,10 +3290,11 @@ final class LocalDatabase extends AbstractDatabase {
 
             Node root = loadTreeRoot(treeId, rootId);
 
-            tree = newTreeInstance(treeId, treeIdBytes, name, root);
+            BTree btree = newBTreeInstance(treeId, treeIdBytes, name, root);
+            tree = btree;
 
             try {
-                TreeRef treeRef = new TreeRef(tree, mOpenTreesRefQueue);
+                TreeRef treeRef = new TreeRef(tree, btree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
@@ -3300,7 +3309,7 @@ final class LocalDatabase extends AbstractDatabase {
                     mOpenTreesLatch.releaseExclusive();
                 }
             } catch (Throwable e) {
-                tree.close();
+                btree.close();
                 throw e;
             }
 
@@ -3322,7 +3331,7 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
-    private BTree newTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
+    private BTree newBTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
         BTree tree;
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Always need an explcit transaction when using auto-commit, to ensure that
@@ -3397,7 +3406,7 @@ final class LocalDatabase extends AbstractDatabase {
      * @param name required (cannot be null)
      * @return null if not found
      */
-    private BTree quickFindIndex(byte[] name) throws IOException {
+    private Tree quickFindIndex(byte[] name) throws IOException {
         TreeRef treeRef;
         mOpenTreesLatch.acquireShared();
         try {
@@ -3405,7 +3414,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (treeRef == null) {
                 return null;
             }
-            BTree tree = treeRef.get();
+            Tree tree = treeRef.get();
             if (tree != null) {
                 return tree;
             }
@@ -5179,7 +5188,7 @@ final class LocalDatabase extends AbstractDatabase {
             if ((trash = mFragmentedTrash) != null) {
                 return trash;
             }
-            BTree tree = openInternalTree(BTree.FRAGMENTED_TRASH_ID, true);
+            BTree tree = openInternalTree(BTree.FRAGMENTED_TRASH_ID, IX_CREATE);
             return mFragmentedTrash = new FragmentedTrash(tree);
         } finally {
             mOpenTreesLatch.releaseExclusive();

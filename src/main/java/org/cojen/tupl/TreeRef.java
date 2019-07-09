@@ -26,15 +26,19 @@ import java.lang.ref.WeakReference;
  * @author Brian S O'Neill
  */
 /*P*/
-final class TreeRef extends WeakReference<BTree> {
+final class TreeRef extends WeakReference<Tree> {
     final long mId;
     final byte[] mName;
     final Node mRoot;
 
-    TreeRef(BTree tree, ReferenceQueue<Object> queue) {
+    /**
+     * @param tree referenced tree
+     * @param btree access to internal state; can be same as tree param
+     */
+    TreeRef(Tree tree, BTree btree, ReferenceQueue<Object> queue) {
         super(tree, queue);
-        mId = tree.mId;
-        mName = tree.mName;
-        mRoot = tree.mRoot;
+        mId = btree.mId;
+        mName = btree.mName;
+        mRoot = btree.mRoot;
     }
 }

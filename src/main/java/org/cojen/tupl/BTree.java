@@ -38,7 +38,7 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class BTree implements View, Index {
+class BTree extends Tree implements View, Index {
     // Reserved internal tree ids.
     static final int
         REGISTRY_ID = 0,
@@ -103,11 +103,6 @@ class BTree implements View, Index {
 
     final int pageSize() {
         return mDatabase.pageSize();
-    }
-
-    @Override
-    public final String toString() {
-        return ViewUtils.toString(this);
     }
 
     @Override
@@ -771,18 +766,12 @@ class BTree implements View, Index {
         }
     }
 
-    /**
-     * Returns a view which can be passed to an observer. Internal trees are returned as
-     * unmodifiable.
-     */
+    @Override
     final Index observableView() {
         return isInternal(mId) ? new UnmodifiableView(this) : this;
     }
 
-    /**
-     * @param view view to pass to observer
-     * @return false if compaction should stop
-     */
+    @Override
     final boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
         throws IOException
     {
@@ -824,22 +813,6 @@ class BTree implements View, Index {
     }
 
     @Override
-    public final boolean verify(VerificationObserver observer) throws IOException {
-        if (observer == null) {
-            observer = new VerificationObserver();
-        }
-        Index view = observableView();
-        observer.failed = false;
-        verifyTree(view, observer);
-        boolean passed = !observer.failed;
-        observer.indexComplete(view, passed, null);
-        return passed;
-    }
-
-    /**
-     * @param view view to pass to observer
-     * @return false if should stop
-     */
     final boolean verifyTree(Index view, VerificationObserver observer) throws IOException {
         BTreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
@@ -863,6 +836,11 @@ class BTree implements View, Index {
     }
 
     @Override
+    long countCursors() {
+        return mRoot.countCursors();
+    }
+
+    @Override
     public final void close() throws IOException {
         close(false, false, false);
     }
@@ -878,6 +856,7 @@ class BTree implements View, Index {
     /**
      * Close any kind of index, even an internal one.
      */
+    @Override
     final void forceClose() throws IOException {
         close(false, false, true);
     }
@@ -975,13 +954,24 @@ class BTree implements View, Index {
     }
 
     @Override
-    public final void drop() throws IOException {
-        drop(true).run();
+    final boolean isMemberOf(Database db) {
+        return mDatabase == db;
+    }
+
+    @Override
+    final boolean isUserOf(Tree tree) {
+        return this == tree;
+    }
+
+    @Override
+    final void rename(byte[] newName, long redoTxnId) throws IOException {
+        mDatabase.renameBTree(this, newName, redoTxnId);
     }
 
     /**
      * @return delete task
      */
+    @Override
     final Runnable drop(boolean mustBeEmpty) throws IOException {
         // Acquire early to avoid deadlock when moving tree to trash.
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
@@ -1333,7 +1323,13 @@ class BTree implements View, Index {
         }
     }
 
+    @Override
     final void writeCachePrimer(final DataOutput dout) throws IOException {
+        // Encode name instead of identifier, to support priming set portability
+        // between databases. The identifiers won't match, but the names might.
+        dout.writeInt(mName.length);
+        dout.write(mName);
+
         traverseLoaded((node) -> {
             byte[] midKey;
             try {
@@ -1365,24 +1361,9 @@ class BTree implements View, Index {
         dout.writeShort(0xffff);
     }
 
+    @Override
     final void applyCachePrimer(DataInput din) throws IOException {
         new Primer(din).run();
-    }
-
-    static final void skipCachePrimer(DataInput din) throws IOException {
-        while (true) {
-            int len = din.readUnsignedShort();
-            if (len == 0xffff) {
-                break;
-            }
-            while (len > 0) {
-                int amt = din.skipBytes(len);
-                if (amt <= 0) {
-                    break;
-                }
-                len -= amt;
-            }
-        }
     }
 
     private class Primer {
