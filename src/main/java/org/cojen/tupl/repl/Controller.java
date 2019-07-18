@@ -72,6 +72,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int SYNC_RATE_LOW_MILLIS = 2000;
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
 
+    // Smallest validation value is 1, but boost it to avoiding stalling too soon. If the local
+    // member is the group leader and hasn't observed the commit position advancing over this
+    // many election periods, it revokes its own leadership. At an average election period of
+    // 250ms, the stall can last as long as 10 seconds before revocation.
+    private static final int LOCAL_LEADER_VALIDATED = 40;
+
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2,
         CONTROL_OP_UNJOIN = 3;
 
@@ -1196,13 +1202,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             commitPosition = writer.mCommitPosition;
 
             if (commitPosition >= highestPosition || commitPosition > mLeaderCommitPosition) {
-                // Smallest validation value is 1, but boost it to avoiding stalling too soon.
-                mElectionValidated = 5;
+                mElectionValidated = LOCAL_LEADER_VALIDATED;
                 mLeaderCommitPosition = commitPosition;
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
             } else {
-                toFollower("commit position is stalled");
+                toFollower("commit position is stalled: " +
+                           commitPosition + " < " + highestPosition);
                 return;
             }
         } finally {
@@ -1638,6 +1644,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             event(Level.INFO, "Local member is the leader: term=" + term +
                   ", position=" + position);
+
+            mElectionValidated = LOCAL_LEADER_VALIDATED;
 
             mLeaderReplyChannel = null;
             mLeaderRequestChannel = null;
