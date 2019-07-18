@@ -939,7 +939,6 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (position >= mLogEndPosition) {
-                releaseExclusive();
                 return null;
             }
 
