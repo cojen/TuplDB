@@ -862,15 +862,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        void deactivate() {
-            synchronized (this) {
-                if (mPeerChannels == null) {
-                    return;
-                }
-                mPeerChannels = null;
-                mSelfCommit = false;
-            }
-            mWriter.release();
+        synchronized void deactivate() {
+            mPeerChannels = null;
+            mSelfCommit = false;
         }
     }
 
@@ -1238,13 +1232,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (originalMode != MODE_FOLLOWER) {
             mLocalMode = MODE_FOLLOWER;
 
-            if (mLeaderLogWriter != null) {
-                mLeaderLogWriter.release();
-                mLeaderLogWriter = null;
+            if (mLeaderReplWriter != null) {
+                // Deactivate before releasing the log underlying writer, ensuring that it's
+                // not used again afterwards.
+                mLeaderReplWriter.deactivate();
             }
 
-            if (mLeaderReplWriter != null) {
-                mLeaderReplWriter.deactivate();
+            if (mLeaderLogWriter != null) {
+                // Note: Once released, instance cannot be directly used again. Double release
+                // of the writer is harmful if instance has been recycled.
+                mLeaderLogWriter.release();
+                mLeaderLogWriter = null;
             }
 
             StringBuilder b = new StringBuilder("Local member ");
