@@ -379,7 +379,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
         try {
             if (mLeaderReplWriter != null) {
-                throw new IllegalStateException("Writer already exists: term=" + mLeaderReplWriter.term());
+                throw new IllegalStateException
+                    ("Writer already exists: term=" + mLeaderReplWriter.term());
             }
             if (mLeaderLogWriter == null
                 || (position >= 0 && position != mLeaderLogWriter.position()))
@@ -2086,11 +2087,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                                      long highestPosition, long commitPosition,
                                      byte[] prefix, byte[] data, int off, int len)
     {
-        if (!writeData(from, prevTerm, term, position, highestPosition, commitPosition,
-                       prefix, data, off, len))
-        {
-            return false;
-        }
+        writeData(from, prevTerm, term, position, highestPosition, commitPosition,
+                  prefix, data, off, len);
+
+        // Always proxy the data, even if it was locally rejected. The local member might be a
+        // bit behind with respect to the current leadership status.
 
         Peer fromPeer = from.peer();
 
