@@ -167,8 +167,8 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Enum.html?
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#NORMAL">NORMAL</a></span></code></th>
 <td class="colLast">
-<div class="block">Normal members receive replicated data, provide consensus, cast votes, and they can
- become the leader.</div>
+<div class="block">Normal members receive replicated data, <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy
+ writes</code></a>, provide consensus, cast votes, and they can become the leader.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -180,7 +180,8 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Enum.html?
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#STANDBY">STANDBY</a></span></code></th>
 <td class="colLast">
-<div class="block">Standby members receive replicated data, and they provide consensus.</div>
+<div class="block">Standby members receive replicated data, <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy
+ writes</code></a>, and they provide consensus.</div>
 </td>
 </tr>
 </tbody>
@@ -262,8 +263,8 @@ the order they are declared.</div>
 <li class="blockList">
 <h4>NORMAL</h4>
 <pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> NORMAL</pre>
-<div class="block">Normal members receive replicated data, provide consensus, cast votes, and they can
- become the leader.</div>
+<div class="block">Normal members receive replicated data, <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy
+ writes</code></a>, provide consensus, cast votes, and they can become the leader.</div>
 </li>
 </ul>
 <a id="STANDBY">
@@ -273,8 +274,9 @@ the order they are declared.</div>
 <li class="blockList">
 <h4>STANDBY</h4>
 <pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> STANDBY</pre>
-<div class="block">Standby members receive replicated data, and they provide consensus. They don't cast
- votes, and they cannot become the leader.</div>
+<div class="block">Standby members receive replicated data, <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy
+ writes</code></a>, and they provide consensus. They don't cast votes, and they cannot become the
+ leader.</div>
 </li>
 </ul>
 <a id="OBSERVER">
@@ -284,8 +286,8 @@ the order they are declared.</div>
 <li class="blockList">
 <h4>OBSERVER</h4>
 <pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> OBSERVER</pre>
-<div class="block">Observers only receive replicated data. They don't provide consensus, they don't cast
- votes, and they cannot become the leader.</div>
+<div class="block">Observers only receive replicated data. They don't <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, they don't provide consensus, they don't cast votes, and they cannot
+ become the leader.</div>
 </li>
 </ul>
 </li>
