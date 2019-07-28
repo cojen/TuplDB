@@ -714,6 +714,14 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
+    public long contigPosition() {
+        acquireShared();
+        long position = mLogContigPosition;
+        releaseShared();
+        return position;
+    }
+
+    @Override
     public long checkForMissingData(long contigPosition, PositionRange results) {
         acquireShared();
         try {

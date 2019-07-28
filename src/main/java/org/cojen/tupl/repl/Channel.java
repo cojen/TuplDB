@@ -111,6 +111,17 @@ interface Channel {
                            byte[] data, int off, int len);
 
     /**
+     * @param currentTerm current term of leader which replied; is 0 if data is committed
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param startPosition inclusive log start position
+     * @param endPosition exclusive log end position
+     * @return false if not sent or processed
+     */
+    boolean queryDataReplyMissing(Channel from, long currentTerm,
+                                  long prevTerm, long term, long startPosition, long endPosition);
+
+    /**
      * @param from the leader channel
      * @param prevTerm expected term at previous position
      * @param term term at given position

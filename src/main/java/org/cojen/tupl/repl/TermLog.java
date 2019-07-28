@@ -129,6 +129,11 @@ interface TermLog extends LKey<TermLog>, Closeable {
     void finishTerm(long endPosition);
 
     /**
+     * Returns the highst position of contiguous data.
+     */
+    long contigPosition();
+
+    /**
      * Check for missing data by examination of the contiguous range. Pass in the highest
      * contiguous position (exclusive), as returned by the previous invocation of this method, or
      * pass Long.MAX_VALUE if unknown. The given callback receives all the missing ranges, and

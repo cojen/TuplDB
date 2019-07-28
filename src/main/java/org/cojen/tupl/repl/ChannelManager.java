@@ -86,21 +86,23 @@ final class ChannelManager {
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
     private static final int INIT_HEADER_SIZE = 40;
 
+    // By convention, requests are even and replies are odd.
     private static final int
-        OP_NOP             = 0,  //OP_NOP_REPLY = 1
+        OP_NOP             = 0,
         OP_REQUEST_VOTE    = 2,  OP_REQUEST_VOTE_REPLY   = 3,
         OP_QUERY_TERMS     = 4,  OP_QUERY_TERMS_REPLY    = 5,
         OP_QUERY_DATA      = 6,  OP_QUERY_DATA_REPLY     = 7,
         OP_WRITE_DATA      = 8,  OP_WRITE_DATA_REPLY     = 9,
         OP_SYNC_COMMIT     = 10, OP_SYNC_COMMIT_REPLY    = 11,
-        OP_COMPACT         = 12, //OP_COMPACT_REPLY = 13
+        OP_COMPACT         = 12,
         OP_SNAPSHOT_SCORE  = 14, OP_SNAPSHOT_SCORE_REPLY = 15,
         OP_UPDATE_ROLE     = 16, OP_UPDATE_ROLE_REPLY    = 17,
         OP_GROUP_VERSION   = 18, OP_GROUP_VERSION_REPLY  = 19,
         OP_GROUP_FILE      = 20, OP_GROUP_FILE_REPLY     = 21,
         OP_LEADER_CHECK    = 22, OP_LEADER_CHECK_REPLY   = 23,
-        OP_WRITE_AND_PROXY = 24, //OP_WRITE_AND_PROXY_REPLY = 25
-        OP_WRITE_VIA_PROXY = 26; //OP_WRITE_VIA_PROXY_REPLY = 27
+        OP_WRITE_AND_PROXY = 24,
+        OP_WRITE_VIA_PROXY = 26,
+        OP_QUERY_DATA_REPLY_MISSING = 29; // alternate reply from OP_QUERY_DATA
 
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
@@ -865,6 +867,16 @@ final class ChannelManager {
                         in.mPos += commandLength;
                         commandLength = 0;
                         break;
+                    case OP_QUERY_DATA_REPLY_MISSING:
+                        currentTerm = in.readLongLE();
+                        prevTerm = in.readLongLE();
+                        term = in.readLongLE();
+                        position = in.readLongLE();
+                        long endPosition = in.readLongLE();
+                        localServer.queryDataReplyMissing(this, currentTerm, prevTerm, term,
+                                                          position, endPosition);
+                        commandLength -= (8 * 5);
+                        break;
                     case OP_WRITE_DATA:
                         prevTerm = in.readLongLE();
                         term = in.readLongLE();
@@ -1087,6 +1099,15 @@ final class ChannelManager {
             } finally {
                 releaseExclusive();
             }
+        }
+
+        @Override
+        public boolean queryDataReplyMissing(Channel from, long currentTerm,
+                                             long prevTerm, long term,
+                                             long startPosition, long endPosition)
+        {
+            return writeCommand(OP_QUERY_DATA_REPLY_MISSING,
+                                currentTerm, prevTerm, term, startPosition, endPosition);
         }
 
         @Override
@@ -1363,6 +1384,27 @@ final class ChannelManager {
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
                 encodeLongLE(command, 32, d);
+                return writeCommand(out, command, 0, commandLength);
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        private boolean writeCommand(int op, long a, long b, long c, long d, long e) {
+            acquireExclusive();
+            try {
+                OutputStream out = mOut;
+                if (out == null) {
+                    return false;
+                }
+                final int commandLength = 8 + 8 * 5;
+                byte[] command = allocWriteBuffer(commandLength);
+                prepareCommand(out, command, op, 0, 8 * 5);
+                encodeLongLE(command, 8, a);
+                encodeLongLE(command, 16, b);
+                encodeLongLE(command, 24, c);
+                encodeLongLE(command, 32, d);
+                encodeLongLE(command, 40, e);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();

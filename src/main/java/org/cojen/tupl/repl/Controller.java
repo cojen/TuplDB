@@ -68,7 +68,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int CONNECT_TIMEOUT_MILLIS = 500;
     private static final int SNAPSHOT_REPLY_TIMEOUT_MILLIS = 5000;
     private static final int JOIN_TIMEOUT_MILLIS = 5000;
-    private static final int MISSING_DATA_REQUEST_SIZE = 100_000;
     private static final int SYNC_RATE_LOW_MILLIS = 2000;
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
 
@@ -1018,8 +1017,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         Channel[] channels = mConsensusChannels;
         releaseShared();
 
+        // Break up into smaller requests, to help distribute the load. A larger request count
+        // provides more even distribution due to random selection, but each request is
+        // smaller. Tiny requests cause more gaps to be tracked in the term log.
+        long requestCount = channels.length * 10L;
+        long requestSize = Math.max(100_000, (remaining + requestCount - 1) / requestCount);
+
         doRequestData: while (remaining > 0) {
-            long amt = Math.min(remaining, MISSING_DATA_REQUEST_SIZE);
+            long amt = Math.min(remaining, requestSize);
 
             int selected = rnd.nextInt(channels.length);
             int attempts = 0;
@@ -1816,6 +1821,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         reader = mStateLog.openReader(startPosition);
                         continue;
                     }
+                    from.queryDataReplyMissing
+                        (null, currentTerm, prevTerm, term, position, position + remaining);
                     break;
                 }
 
@@ -1863,6 +1870,46 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         return true;
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean queryDataReplyMissing(Channel from, long currentTerm,
+                                         long prevTerm, long term,
+                                         long startPosition, long endPosition)
+    {
+        if (currentTerm != 0 && validateLeaderTerm(from, currentTerm) == this) {
+            return false;
+        }
+
+        // No missing data was received by this reply, but indicate progress.
+        mReceivingMissingData = true;
+
+        try {
+            queryReplyTermCheck(term);
+        } catch (IOException e) {
+            uncaught(e);
+        }
+
+        // Replica peer doesn't have the data, but the leader should have it.
+
+        Channel requestChannel = leaderRequestChannel();
+        if (requestChannel == null || requestChannel == this) {
+            return false;
+        }
+
+        // Prune the range if the contiguous position has advanced.
+        TermLog termLog = mStateLog.termLogAt(startPosition);
+        if (termLog != null) {
+            startPosition = Math.max(startPosition, termLog.contigPosition());
+            if (startPosition >= endPosition) {
+                return true;
+            }
+        }
+
+        return requestChannel.queryData(this, startPosition, endPosition);
     }
 
     /**
