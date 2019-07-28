@@ -25,37 +25,33 @@ package org.cojen.tupl.repl;
 public enum Role {
     /**
      * Normal members receive replicated data, they can {@link ReplicatorConfig#proxyWrites
-     * proxy writes}, they provide consensus, they cast votes, and they can become the leader.
+     * proxy writes}, they provide consensus, and they can become the leader.
      */
     NORMAL((byte) 1),
 
     /**
      * Standby members receive replicated data, they can {@link ReplicatorConfig#proxyWrites
-     * proxy writes}, and they provide consensus. They don't cast votes, and they cannot become
-     * the leader.
+     * proxy writes}, and they provide consensus. They cannot become the leader.
      */
     STANDBY((byte) 2),
 
     /**
      * Proxy members receive replicated data, and they can {@link ReplicatorConfig#proxyWrites
-     * proxy writes}. They don't provide consensus, they don't cast votes, and they cannot
-     * become the leader.
+     * proxy writes}. They don't provide consensus, and they cannot become the leader.
      */
     PROXY((byte) 3),
 
     /**
      * Observers only receive replicated data. They don't {@link ReplicatorConfig#proxyWrites
-     * proxy writes}, they don't provide consensus, they don't cast votes, and they cannot
-     * become the leader.
+     * proxy writes}, they don't provide consensus, and they cannot become the leader.
      */
     OBSERVER((byte) 4);
 
     /**
-     * Voters provide consensus and they cast votes. They don't receive replicated data, they
-     * don't {@link ReplicatorConfig#proxyWrites proxy writes}, and they cannot become the
-     * leader.
+     * Voters only provide consensus. They don't receive replicated data, they don't {@link
+     * ReplicatorConfig#proxyWrites proxy writes}, and they cannot become the leader.
      */
-    //VOTER((byte) 0);
+    //VOTER((byte) -1);
 
     byte mCode;
 
