@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.repl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.File;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -82,6 +85,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
+    private static final VarHandle cLocalRoleHandle;
+
+    static {
+        try {
+            cLocalRoleHandle =
+                MethodHandles.lookup().findVarHandle
+                (Controller.class, "mLocalRole", Role.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     private final BiConsumer<Level, String> mEventListener;
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
@@ -99,7 +114,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Normal and standby members are required to participate in consensus.
     private Peer[] mConsensusPeers;
     private Channel[] mConsensusChannels;
-    // All channels includes observers, which cannot participate in consensus.
+    // Proxy channels includes proxies, which cannot participate in consensus.
+    private Channel[] mProxyChannels;
+    // All channels includes observers, which cannot act as proxies.
     private Channel[] mAllChannels;
 
     // Reference to leader's reply channel, only used for accessing the peer object.
@@ -243,6 +260,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         List<Peer> consensusPeers = new ArrayList<>();
         List<Channel> consensusChannels = new ArrayList<>();
+        List<Channel> proxyChannels = new ArrayList<>();
         List<Channel> allChannels = new ArrayList<>();
 
         for (Peer peer : mGroupFile.allPeers()) {
@@ -252,20 +270,39 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 channel = mChanMan.connect(peer, this);
             }
 
-            allChannels.add(channel);
-
-            if (peer.mRole == Role.NORMAL || peer.mRole == Role.STANDBY) {
+            switch (peer.mRole) {
+            case NORMAL: case STANDBY:
                 consensusPeers.add(peer);
                 consensusChannels.add(channel);
+                // fall through...
+            case PROXY:
+                proxyChannels.add(channel);
             }
+
+            allChannels.add(channel);
         }
 
         mConsensusPeers = consensusPeers.toArray(new Peer[0]);
         mConsensusChannels = consensusChannels.toArray(new Channel[0]);
-        mAllChannels = allChannels.toArray(new Channel[0]);
+
+        if (proxyChannels.equals(consensusChannels)) {
+            mProxyChannels = mConsensusChannels;
+        } else {
+            mProxyChannels = proxyChannels.toArray(new Channel[0]);
+        }
+
+        if (allChannels.equals(consensusChannels)) {
+            mAllChannels = mConsensusChannels;
+        } else if (allChannels.equals(proxyChannels)) {
+            mAllChannels = mProxyChannels;
+        } else {
+            mAllChannels = allChannels.toArray(new Channel[0]);
+        }
 
         if (mLeaderReplWriter != null) {
-            mLeaderReplWriter.update(mLeaderLogWriter, mAllChannels, consensusChannels.isEmpty());
+            mLeaderReplWriter.update
+                (mLeaderLogWriter, mAllChannels, consensusChannels.isEmpty(),
+                 mProxyWrites ? mProxyChannels : null);
         }
 
         if (mLocalMode != MODE_FOLLOWER && mGroupFile.localMemberRole() != Role.NORMAL) {
@@ -387,7 +424,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return null;
             }
             ReplWriter writer = new ReplWriter
-                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0, mProxyWrites);
+                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0,
+                 mProxyWrites ? mProxyChannels : null);
             mLeaderReplWriter = writer;
             return writer;
         } finally {
@@ -588,8 +626,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public SocketSnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
+        // Request snapshots from normal, standby, and proxy members. Observers aren't
+        // first-class and might not have the data.
         acquireShared();
-        Channel[] channels = mAllChannels;
+        Channel[] channels = mProxyChannels;
         releaseShared();
 
         if (channels.length == 0) {
@@ -706,14 +746,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         private final LogWriter mWriter;
         private Channel[] mPeerChannels;
         private boolean mSelfCommit;
+        private Channel[] mProxyChannels;
         private int mProxy;
         private long mWriteAmount;
 
-        ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit, boolean proxy) {
+        ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit,
+                   Channel[] proxyChannels)
+        {
             mWriter = writer;
-            mPeerChannels = peerChannels;
-            mSelfCommit = selfCommit;
-            mProxy = proxy ? 0 : -1;
+            init(peerChannels, selfCommit, proxyChannels);
         }
 
         @Override
@@ -747,12 +788,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                              long highestPosition)
             throws IOException
         {
-            Channel[] peerChannels;
+            Channel[] proxyChannels;
             long prevTerm, term, position, commitPosition;
             boolean result;
             int proxy;
 
             w0: {
+                Channel[] peerChannels;
                 synchronized (this) {
                     peerChannels = mPeerChannels;
 
@@ -792,12 +834,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     proxy = mProxy;
 
                     if (proxy >= 0) {
+                        proxyChannels = mProxyChannels;
                         long writeAmount = mWriteAmount + length;
                         if (writeAmount < PROXY_LIMIT) {
                             mWriteAmount = writeAmount;
                         } else {
                             // Select a different proxy to balance the load.
-                            proxy = (proxy + 1) % peerChannels.length;
+                            proxy = (proxy + 1) % proxyChannels.length;
                             mProxy = proxy;
                             mWriteAmount = 0;
                         }
@@ -818,8 +861,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             // Proxy the write through a selected peer.
 
-            for (int i = peerChannels.length; --i >= 0; ) {
-                Channel peerChan = peerChannels[proxy];
+            for (int i = proxyChannels.length; --i >= 0; ) {
+                Channel peerChan = proxyChannels[proxy];
 
                 if (peerChan.writeDataAndProxy
                     (null, prevTerm, term, position, highestPosition, commitPosition,
@@ -831,7 +874,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 synchronized (this) {
                     // Select the next peer and try again.
-                    proxy = (proxy + 1) % peerChannels.length;
+                    proxy = (proxy + 1) % proxyChannels.length;
                     mProxy = proxy;
                 }
             }
@@ -855,10 +898,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             writerClosed(this);
         }
 
-        synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit) {
+        synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit,
+                                 Channel[] proxyChannels)
+        {
             if (mWriter == writer && mPeerChannels != null) {
-                mPeerChannels = peerChannels;
-                mSelfCommit = selfCommit;
+                init(peerChannels, selfCommit, proxyChannels);
+            }
+        }
+
+        private void init(Channel[] peerChannels, boolean selfCommit, Channel[] proxyChannels) {
+            mPeerChannels = peerChannels;
+            mSelfCommit = selfCommit;
+            if (proxyChannels == null || proxyChannels.length == 0) {
+                mProxyChannels = null;
+                mProxy = -1;
+            } else {
+                mProxyChannels = proxyChannels;
+                mProxy = 0;
             }
         }
 
@@ -1012,9 +1068,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         ThreadLocalRandom rnd = ThreadLocalRandom.current();
 
         acquireShared();
-        // Only query normal and standby members. Observers aren't first-class and might not
+        // Query normal, standby, and proxy members. Observers aren't first-class and might not
         // have the data.
-        Channel[] channels = mConsensusChannels;
+        Channel[] channels = mProxyChannels;
         releaseShared();
 
         // Break up into smaller requests, to help distribute the load. A larger request count
@@ -1967,9 +2023,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
-        if (from != null) {
+        if (from != null && ((Role) cLocalRoleHandle.getOpaque(this)).providesConsensus()) {
             // TODO: Can skip reply if successful and highest didn't change.
-            // TODO: Can skip reply if local role is OBSERVER.
             from.writeDataReply(null, term, highestPosition);
         }
 
@@ -2330,7 +2385,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             message = mGroupFile.proposeUpdateRole(CONTROL_OP_UPDATE_ROLE, memberId, role);
 
-            if (peer.mRole == Role.OBSERVER || role == Role.OBSERVER) {
+            if (peer.mRole.providesConsensus() != role.providesConsensus()) {
                 // When changing the consensus, restrict to one change at a time (by the
                 // majority). Ensure that all consensus peers are caught up.
 

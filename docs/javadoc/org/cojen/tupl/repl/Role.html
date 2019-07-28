@@ -177,6 +177,12 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/lang/Enum.html?
 </td>
 </tr>
 <tr class="altColor">
+<th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#PROXY">PROXY</a></span></code></th>
+<td class="colLast">
+<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>.</div>
+</td>
+</tr>
+<tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#STANDBY">STANDBY</a></span></code></th>
 <td class="colLast">
 <div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus.</div>
@@ -273,6 +279,17 @@ the order they are declared.</div>
 <pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> STANDBY</pre>
 <div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus. They don't cast votes, and they cannot become
  the leader.</div>
+</li>
+</ul>
+<a id="PROXY">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>PROXY</h4>
+<pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> PROXY</pre>
+<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>. They don't provide consensus, they don't cast votes, and they cannot
+ become the leader.</div>
 </li>
 </ul>
 <a id="OBSERVER">
