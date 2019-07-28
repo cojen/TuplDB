@@ -874,6 +874,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 synchronized (this) {
                     // Select the next peer and try again.
+                    proxyChannels = mProxyChannels;
+                    if (proxyChannels == null) {
+                        break;
+                    }
                     proxy = (proxy + 1) % proxyChannels.length;
                     mProxy = proxy;
                 }
