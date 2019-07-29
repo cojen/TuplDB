@@ -159,8 +159,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                            boolean proxyWrites)
         throws IOException
     {
-        GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, seeds.isEmpty());
+        boolean canCreate = seeds.isEmpty() && localRole == Role.NORMAL;
+        GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, canCreate);
+
+        if (gf == null && seeds.isEmpty()) {
+            throw new JoinException
+                ("Not a member of the group and no seeds are provided. Local role must be " +
+                 Role.NORMAL + " to create the group, but configured role is: " + localRole);
+        }
+
         Controller con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
+
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
         } catch (Throwable e) {
@@ -170,6 +179,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             closeQuietly(con);
             throw e;
         }
+
         return con;
     }
 
