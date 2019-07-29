@@ -1090,8 +1090,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         // Break up into smaller requests, to help distribute the load. A larger request count
         // provides more even distribution due to random selection, but each request is
         // smaller. Tiny requests cause more gaps to be tracked in the term log.
-        long requestCount = channels.length * 10L;
-        long requestSize = Math.max(100_000, (remaining + requestCount - 1) / requestCount);
+        long requestSize;
+        if (channels.length <= 1) {
+            if (channels.length == 0) {
+                event(Level.SEVERE, "No peers to request data from");
+                return;
+            }
+            requestSize = remaining;
+        } else {
+            long requestCount = channels.length * 10L;
+            requestSize = Math.max(100_000, (remaining + requestCount - 1) / requestCount);
+        }
 
         doRequestData: while (remaining > 0) {
             long amt = Math.min(remaining, requestSize);
