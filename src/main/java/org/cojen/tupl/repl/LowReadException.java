@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 Cojen.org
+ *  Copyright 2019 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,20 +17,16 @@
 
 package org.cojen.tupl.repl;
 
-import java.io.IOException;
-
 /**
- * 
+ * Thrown when attempting to read from a log at a position lower than the start.
  *
  * @author Brian S O'Neill
  */
-interface LogReader extends LogAccessor, StreamReplicator.Reader {
-    /**
-     * Reads whatever log data is available, possibly higher than a commit index, never higher
-     * than a term, and never blocking.
-     *
-     * @return amount of bytes read, or EOF (-1) if the term end has been reached
-     * @throws LowReadException if log data was deleted (index is too low)
-     */
-    int tryReadAny(byte[] buf, int offset, int length) throws IOException;
+public class LowReadException extends IllegalStateException {
+    LowReadException() {
+    }
+
+    LowReadException(String message) {
+        super(message);
+    }
 }

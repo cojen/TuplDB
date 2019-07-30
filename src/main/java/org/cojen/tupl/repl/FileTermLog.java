@@ -1021,7 +1021,7 @@ final class FileTermLog extends Latch implements TermLog {
             long commitPosition = Math.max(mLogStartPosition, doAppliableCommitPosition());
 
             if (position < commitPosition) {
-                throw new IllegalStateException
+                throw new LowReadException
                     ("Position is too low: " + position + " < " + commitPosition);
             }
         } finally {
@@ -1941,7 +1941,11 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (io == null) {
                 if (mSegmentClosed) {
-                    throw new IOException("Closed");
+                    boolean closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
+                    if (closed) {
+                        throw new IOException("Closed");
+                    }
+                    throw new LowReadException("Log compacted");
                 }
                 EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
                 int handles = 1;

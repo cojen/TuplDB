@@ -122,7 +122,7 @@ public interface StreamReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
-     * @throws IllegalStateException if position is lower than the start position
+     * @throws LowReadException if position is lower than the start position
      */
     @Override
     Reader newReader(long position, boolean follow);
@@ -182,7 +182,7 @@ public interface StreamReplicator extends DirectReplicator {
          * term.
          *
          * @return amount of bytes read, or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log was deleted (position is too low)
+         * @throws LowReadException if log was deleted (position is too low)
          */
         default int read(byte[] buf) throws IOException {
             return read(buf, 0, buf.length);
@@ -193,7 +193,7 @@ public interface StreamReplicator extends DirectReplicator {
          * term.
          *
          * @return amount of bytes read, or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log was deleted (position is too low)
+         * @throws LowReadException if log was deleted (position is too low)
          */
         int read(byte[] buf, int offset, int length) throws IOException;
 
@@ -201,7 +201,7 @@ public interface StreamReplicator extends DirectReplicator {
          * Blocks until the buffer is fully read with messages, never reading past a commit
          * position or term.
          *
-         * @throws IllegalStateException if log was deleted (position is too low)
+         * @throws LowReadException if log was deleted (position is too low)
          * @throws EOFException if the term end has been reached too soon
          */
         default void readFully(byte[] buf, int offset, int length) throws IOException {
@@ -222,7 +222,7 @@ public interface StreamReplicator extends DirectReplicator {
          * higher than a term, and never blocking.
          *
          * @return amount of bytes read, or EOF (-1) if the term end has been reached
-         * @throws IllegalStateException if log data was deleted (position is too low)
+         * @throws LowReadException if log data was deleted (position is too low)
          */
         int tryRead(byte[] buf, int offset, int length) throws IOException;
     }

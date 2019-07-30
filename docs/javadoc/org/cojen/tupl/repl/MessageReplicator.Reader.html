@@ -205,7 +205,7 @@ extends <a href="DirectReplicator.Reader.html" title="interface in org.cojen.tup
 <dd>complete message or null if the term end has been reached</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if a partially read message remains</dd>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if log was deleted (position is too low)</dd>
+<dd><code><a href="LowReadException.html" title="class in org.cojen.tupl.repl">LowReadException</a></code> - if log was deleted (position is too low)</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>
@@ -232,7 +232,7 @@ extends <a href="DirectReplicator.Reader.html" title="interface in org.cojen.tup
 <dd>message length if positive, or the amount of bytes remaining in the message
  (ones' complement), or EOF (-1) if the term end has been reached</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if log was deleted (position is too low)</dd>
+<dd><code><a href="LowReadException.html" title="class in org.cojen.tupl.repl">LowReadException</a></code> - if log was deleted (position is too low)</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </li>

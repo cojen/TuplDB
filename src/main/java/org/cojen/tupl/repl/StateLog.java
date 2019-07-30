@@ -134,8 +134,8 @@ interface StateLog extends Closeable {
      * reader returns EOF whenever the end of a term is reached.
      *
      * @return reader or null if timed out
-     * @throws IllegalStateException if position is lower than the start position, or if replicator
-     * is closed
+     * @throws LowReadException if position is lower than the start position
+     * @throws IllegalStateException if replicator is closed
      */
     LogReader openReader(long position);
 

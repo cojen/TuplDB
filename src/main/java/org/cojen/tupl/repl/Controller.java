@@ -1847,7 +1847,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     try {
                         doQueryData(from, range.start, range.end);
                     } catch (Throwable e) {
-                        uncaught(e);
+                        if (!(e instanceof LowReadException)) {
+                            uncaught(e);
+                        }
                         peer.discardQueries(set);
                         return;
                     }
@@ -1859,8 +1861,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void doQueryData(Channel from, long startPosition, long endPosition)
         throws IOException
     {
-        // TODO: Gracefully handle stale data requests, received after log compaction.
-
         LogReader reader = mStateLog.openReader(startPosition);
 
         try {
