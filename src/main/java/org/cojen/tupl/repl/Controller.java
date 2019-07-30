@@ -1905,7 +1905,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     break;
                 }
 
-                from.queryDataReply(null, currentTerm, prevTerm, term, position, buf, 0, amt);
+                if (!from.queryDataReply
+                    (null, currentTerm, prevTerm, term, position, buf, 0, amt))
+                {
+                    break;
+                }
 
                 startPosition += amt;
                 remaining -= amt;
