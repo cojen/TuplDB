@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.Utils;
 
 /**
  * Wraps a PageArray to apply encryption operations on all pages. Is constructed by {@link
@@ -161,9 +162,21 @@ final class CryptoPageArray extends PageArray {
         try {
             // Page is being evicted, and so buf contents can be destroyed.
             mCrypto.encryptPage(index, pageSize(), buf, 0);
-            return mSource.evictPage(index, buf);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
+        }
+
+        try {
+            return mSource.evictPage(index, buf);
+        } catch (Throwable e) {
+            // Oops, better restore the page.
+            try {
+                mCrypto.decryptPage(index, pageSize(), buf, 0);
+            } catch (Throwable e2) {
+                // Time to panic.
+                Utils.closeQuietly(mSource, e2);
+            }
+            throw e;
         }
     }
 
@@ -172,9 +185,21 @@ final class CryptoPageArray extends PageArray {
         try {
             // Page is being evicted, and so buf contents can be destroyed.
             mCrypto.encryptPage(index, pageSize(), bufPtr, 0);
-            return mSource.evictPage(index, bufPtr);
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
+        }
+
+        try {
+            return mSource.evictPage(index, bufPtr);
+        } catch (Throwable e) {
+            // Oops, better restore the page.
+            try {
+                mCrypto.decryptPage(index, pageSize(), bufPtr, 0);
+            } catch (Throwable e2) {
+                // Time to panic.
+                Utils.closeQuietly(mSource, e2);
+            }
+            throw e;
         }
     }
 
