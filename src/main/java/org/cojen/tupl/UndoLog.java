@@ -799,6 +799,9 @@ final class UndoLog implements DatabaseAccess {
                         // zero within the node is otherwise illegal, since it refers to the
                         // header, which doesn't contain undo operations.
                         mNodeTopPos = 0;
+                        // Clear this early, to prevent writeToMaster from attempting to push
+                        // anything to the log. The key isn't needed to complete truncation.
+                        mActiveKey = null;
                         shared.release();
                         shared = commitLock.acquireShared();
                     }
