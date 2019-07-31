@@ -1847,7 +1847,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     try {
                         doQueryData(from, range.start, range.end);
                     } catch (Throwable e) {
-                        if (!(e instanceof LowReadException)) {
+                        if (!(e instanceof InvalidReadException)) {
                             uncaught(e);
                         }
                         peer.discardQueries(set);

@@ -89,7 +89,7 @@ public interface DirectReplicator extends Replicator {
      * @param position position to start reading from, known to have been committed
      * @param follow pass true to obtain an active reader, even if local member is the leader
      * @return reader or possibly null when follow is false
-     * @throws LowReadException if position is lower than the start position
+     * @throws InvalidReadException if position is lower than the start position
      * @throws IllegalStateException if replicator is closed
      */
     Reader newReader(long position, boolean follow);

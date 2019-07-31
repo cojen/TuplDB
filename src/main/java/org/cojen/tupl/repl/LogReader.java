@@ -30,7 +30,7 @@ interface LogReader extends LogAccessor, StreamReplicator.Reader {
      * than a term, and never blocking.
      *
      * @return amount of bytes read, or EOF (-1) if the term end has been reached
-     * @throws LowReadException if log data was deleted (index is too low)
+     * @throws InvalidReadException if log data was deleted (index is too low)
      */
     int tryReadAny(byte[] buf, int offset, int length) throws IOException;
 }

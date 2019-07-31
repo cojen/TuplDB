@@ -1023,7 +1023,7 @@ public class FileTermLogTest {
             int amt = reader.read(b);
             System.out.println(amt);
             fail();
-        } catch (IllegalStateException e) {
+        } catch (InvalidReadException e) {
             // Too low.
         }
 

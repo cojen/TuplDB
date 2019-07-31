@@ -40,7 +40,7 @@ public interface MessageReplicator extends DirectReplicator {
 
     /**
      * {@inheritDoc}
-     * @throws LowReadException if position is lower than the start position
+     * @throws InvalidReadException if position is lower than the start position
      */
     @Override
     Reader newReader(long position, boolean follow);
@@ -73,7 +73,7 @@ public interface MessageReplicator extends DirectReplicator {
          *
          * @return complete message or null if the term end has been reached
          * @throws IllegalStateException if a partially read message remains
-         * @throws LowReadException if log was deleted (position is too low)
+         * @throws InvalidReadException if log was deleted (position is too low)
          */
         byte[] readMessage() throws IOException;
 
@@ -88,7 +88,7 @@ public interface MessageReplicator extends DirectReplicator {
          *
          * @return message length if positive, or the amount of bytes remaining in the message
          * (ones' complement), or EOF (-1) if the term end has been reached
-         * @throws LowReadException if log was deleted (position is too low)
+         * @throws InvalidReadException if log was deleted (position is too low)
          */
         int readMessage(byte[] buf, int offset, int length) throws IOException;
     }

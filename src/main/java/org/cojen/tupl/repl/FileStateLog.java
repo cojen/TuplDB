@@ -842,7 +842,7 @@ final class FileStateLog extends Latch implements StateLog {
 
             termLog = (TermLog) mTermLogs.first();
 
-            throw new LowReadException
+            throw new InvalidReadException
                 ("Position is lower than start position: " +
                  position + " < " + termLog.startPosition());
         } finally {

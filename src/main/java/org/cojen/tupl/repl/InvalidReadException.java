@@ -18,15 +18,15 @@
 package org.cojen.tupl.repl;
 
 /**
- * Thrown when attempting to read from a log at a position lower than the start.
+ * Thrown when attempting to read from a log at a position that doesn't exist.
  *
  * @author Brian S O'Neill
  */
-public class LowReadException extends IllegalStateException {
-    LowReadException() {
+public class InvalidReadException extends IllegalStateException {
+    InvalidReadException() {
     }
 
-    LowReadException(String message) {
+    InvalidReadException(String message) {
         super(message);
     }
 }
