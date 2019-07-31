@@ -108,11 +108,26 @@ public class FileStateLogTest {
         assertTrue(mLog.defineTerm(15, 15, 4000));
 
         // Position in the middle of an existing term, but position is out of bounds.
-        assertFalse(mLog.defineTerm(11, 11, 1000));
-        assertFalse(mLog.defineTerm(11, 11, 1500));
-        assertFalse(mLog.defineTerm(11, 11, 2000));
-        assertFalse(mLog.defineTerm(11, 11, 3000));
-        assertFalse(mLog.defineTerm(11, 11, 5000));
+        try {
+            assertFalse(mLog.defineTerm(11, 11, 1000)); // < commit position
+            fail();
+        } catch (CommitConflictException e) {
+            assertFalse(e.isFatal());
+        }
+        try {
+            assertFalse(mLog.defineTerm(11, 11, 1500)); // < commit position
+            fail();
+        } catch (CommitConflictException e) {
+            assertFalse(e.isFatal());
+        }
+        try {
+            assertFalse(mLog.defineTerm(11, 11, 2000)); // < commit position
+            fail();
+        } catch (CommitConflictException e) {
+            assertFalse(e.isFatal());
+        }
+        assertFalse(mLog.defineTerm(11, 11, 3000)); // == commit position
+        assertFalse(mLog.defineTerm(11, 11, 5000)); // > commit position
         assertTrue(mLog.defineTerm(11, 11, 2500)); // actually in bounds
 
         // Mustn't define a term if position as the highest, although it's not usable.
@@ -917,8 +932,14 @@ public class FileStateLogTest {
         assertEquals(300, info.mHighestPosition);
         assertEquals(250, info.mCommitPosition);
 
-        assertNull(mLog.openWriter(1, 5, 200));
-        assertNull(mLog.openWriter(1, 5, 250));
+        try {
+            assertNull(mLog.openWriter(1, 5, 200)); // < commit position
+            fail();
+        } catch (CommitConflictException e) {
+            assertFalse(e.isFatal());
+        }
+
+        assertNull(mLog.openWriter(1, 5, 250)); // == commit position
     }
 
     @Test

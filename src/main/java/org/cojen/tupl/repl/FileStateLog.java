@@ -113,7 +113,7 @@ final class FileStateLog extends Latch implements StateLog {
     private final Latch mMetadataLatch;
     private int mMetadataCounter;
     private long mMetadataHighestPosition;
-    private long mMetadataDurablePosition;
+    private volatile long mMetadataDurablePosition;
 
     private long mCurrentTerm;
     private long mVotedForId;
@@ -698,6 +698,7 @@ final class FileStateLog extends Latch implements StateLog {
                         key = termLog; // update key for truncation
                         termLog = (TermLog) mTermLogs.lower(termLog); // findLt
                     } else {
+                        checkCommitConflict(termLog, position);
                         termLog = null;
                     }
                 }
@@ -709,7 +710,7 @@ final class FileStateLog extends Latch implements StateLog {
                     break defineTermLog;
                 }
 
-                if (term < actualTerm || termLog.hasCommit(position)) {
+                if (term < actualTerm || checkCommitConflict(termLog, position)) {
                     termLog = null;
                     break defineTermLog;
                 }
@@ -782,6 +783,25 @@ final class FileStateLog extends Latch implements StateLog {
         // should work fine even if this method always returns null. Finding a valid term
         // that's just lower avoids a full scan over the terms.
         return termLog == null ? null : (TermLog) mTermLogs.floor(termLog); // findLe
+    }
+
+    /**
+     * @return true if conflict exists but state log is closed
+     * @throws exception if conflict exists and state log is open
+     */
+    private boolean checkCommitConflict(TermLog termLog, long position)
+        throws CommitConflictException
+    {
+        if (termLog.hasCommit(position)) {
+            if (mClosed) {
+                return true;
+            }
+            LogInfo termInfo = new LogInfo();
+            termLog.captureHighest(termInfo);
+            long durablePosition = mMetadataDurablePosition;
+            throw new CommitConflictException(position, termInfo, durablePosition);
+        }
+        return false;
     }
 
     /**

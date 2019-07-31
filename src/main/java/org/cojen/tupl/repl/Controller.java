@@ -73,6 +73,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int JOIN_TIMEOUT_MILLIS = 5000;
     private static final int SYNC_RATE_LOW_MILLIS = 2000;
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
+    private static final int COMMIT_CONFLICT_REPORT_MILLIS = 60000;
 
     // Smallest validation value is 1, but boost it to avoiding stalling too soon. If the local
     // member is the group leader and hasn't observed the commit position advancing over this
@@ -146,6 +147,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Incremented when snapshot senders are created, and decremented when they are closed.
     private int mSnapshotSessionCount;
+
+    // Last time that a commit conflict was reported.
+    private volatile long mLastConflictReport = Long.MIN_VALUE;
 
     /**
      * @param factory optional
@@ -1619,6 +1623,37 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
+    private void commitConflict(Channel from, CommitConflictException e) {
+        if (from != null) {
+            Peer peer = from.peer();
+            if (peer != null && !peer.mRole.providesConsensus()) {
+                // Only report the conflict if it came from an authority, in which case the
+                // conflict won't likely go away,
+                return;
+            }
+        }
+
+        long now = System.currentTimeMillis();
+
+        if (now >= (mLastConflictReport + COMMIT_CONFLICT_REPORT_MILLIS)) {
+            if (mEventListener == null) {
+                uncaught(e);
+            } else {
+                StringBuilder b = new StringBuilder()
+                    .append(e.isFatal() ? "Fatal commit" : "Commit")
+                    .append(" conflict detected: position=").append(e.mPosition)
+                    .append(", conflicting term=").append(e.mTermInfo.mTerm)
+                    .append(", commit position=").append(e.mTermInfo.mCommitPosition);
+                if (!e.isFatal()) {
+                    b.append(". Restarting might rollback the conflict and resolve the issue.");
+                }
+                mEventListener.accept(Level.SEVERE, b.toString());
+            }
+
+            mLastConflictReport = now;
+        }
+    }
+
     /**
      * Called from a remote group member.
      */
@@ -1776,6 +1811,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             queryReplyTermCheck(term);
 
             mStateLog.defineTerm(prevTerm, term, startPosition);
+        } catch (CommitConflictException e) {
+            commitConflict(from, e);
         } catch (IOException e) {
             uncaught(e);
         }
@@ -1948,6 +1985,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     writer.release();
                 }
             }
+        } catch (CommitConflictException e) {
+            commitConflict(from, e);
         } catch (IOException e) {
             uncaught(e);
         }
@@ -2046,6 +2085,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } finally {
                 writer.release();
             }
+        } catch (CommitConflictException e) {
+            commitConflict(from, e);
         } catch (IOException e) {
             uncaught(e);
         }
