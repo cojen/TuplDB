@@ -1574,8 +1574,8 @@ final class _LocalDatabase extends AbstractDatabase {
                     c.store(null);
                 } else {
                     name = c.value();
-                    if (name[0] < 0) {
-                        // Found a tagged entry.
+                    if (name[0] < 0 || (idBytes != null && next == false)) {
+                        // Found a tagged entry, or found the requested entry.
                         break;
                     }
                 }
