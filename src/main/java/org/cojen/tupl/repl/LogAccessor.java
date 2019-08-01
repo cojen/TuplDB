@@ -24,7 +24,7 @@ import java.util.function.LongConsumer;
  *
  * @author Brian S O'Neill
  */
-interface LogAccessor extends StreamReplicator.Accessor {
+interface LogAccessor extends DirectReplicator.Accessor {
     /**
      * Returns the term at the previous accessor index.
      */

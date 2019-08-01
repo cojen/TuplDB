@@ -49,7 +49,7 @@ public class FileStateLogTest {
     @Before
     public void setup() throws Exception {
         mBase = TestUtils.newTempBaseFile(getClass());
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
     }
 
     @After
@@ -70,7 +70,7 @@ public class FileStateLogTest {
     private List<StateLog> mMoreLogs = new ArrayList<>();
 
     private StateLog newTempLog() throws Exception {
-        StateLog log = new FileStateLog(TestUtils.newTempBaseFile(getClass()));
+        StateLog log = FileStateLog.open(TestUtils.newTempBaseFile(getClass()));
         mMoreLogs.add(log);
         return log;
     }
@@ -502,13 +502,13 @@ public class FileStateLogTest {
         assertEquals(1, mLog.checkCurrentTerm(1));
 
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         assertEquals(1, mLog.checkCurrentTerm(0));
         assertEquals(5, mLog.incrementCurrentTerm(4, 0));
 
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         assertEquals(5, mLog.checkCurrentTerm(0));
 
@@ -547,7 +547,7 @@ public class FileStateLogTest {
         // Reopen without sync. All data for second term is gone, but the first term remains.
         // The second term definition will be recovered, because defineTermLog syncs metadata.
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
@@ -570,7 +570,7 @@ public class FileStateLogTest {
         // Reopen with sync. All data is preserved, but not committed.
         mLog.sync();
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         info = new LogInfo();
         mLog.captureHighest(info);
@@ -583,7 +583,7 @@ public class FileStateLogTest {
         assertEquals(4000, mLog.syncCommit(term, term, 4000));
         mLog.commitDurable(4000);
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         info = new LogInfo();
         mLog.captureHighest(info);
@@ -680,7 +680,7 @@ public class FileStateLogTest {
         }
 
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         LogInfo info = new LogInfo();
         mLog.captureHighest(info);
@@ -749,7 +749,7 @@ public class FileStateLogTest {
         mLog.compact(1_500_000);
 
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         TermLog termLog = mLog.termLogAt(1_500_000);
         assertEquals(1000 + 1024 * 1024, termLog.startPosition());
@@ -782,7 +782,7 @@ public class FileStateLogTest {
 
         // Close and re-open with no segment files.
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         // Continue writing the same term.
         writer = mLog.openWriter(term, term, commitPosition);
@@ -797,7 +797,7 @@ public class FileStateLogTest {
     @Test
     public void doubleOpen() throws Exception {
         try {
-            new FileStateLog(mBase);
+            FileStateLog.open(mBase);
             fail();
         } catch (IOException e) {
             assertTrue(e.getMessage().indexOf("open") > 0);
@@ -970,7 +970,7 @@ public class FileStateLogTest {
         w3.release();
 
         mLog.close();
-        mLog = new FileStateLog(mBase);
+        mLog = FileStateLog.open(mBase);
 
         LogInfo info = mLog.captureHighest();
         assertEquals(w1.term(), info.mTerm);

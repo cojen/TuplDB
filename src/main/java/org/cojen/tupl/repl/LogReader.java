@@ -33,4 +33,22 @@ interface LogReader extends LogAccessor, StreamReplicator.Reader {
      * @throws InvalidReadException if log data was deleted (index is too low)
      */
     int tryReadAny(byte[] buf, int offset, int length) throws IOException;
+
+    /**
+     * Skips whatever log data is available, never higher than a commit index, never higher
+     * than a term, and never blocking.
+     *
+     * @return amount of bytes skipped, or EOF (-1) if the term end has been reached
+     * @throws InvalidReadException if log data was deleted (index is too low)
+     */
+    long trySkip(long length) throws IOException;
+
+    /**
+     * Skips whatever log data is available, possibly higher than a commit index, never higher
+     * than a term, and never blocking.
+     *
+     * @return amount of bytes skipped, or EOF (-1) if the term end has been reached
+     * @throws InvalidReadException if log data was deleted (index is too low)
+     */
+    long trySkipAny(long length) throws IOException;
 }

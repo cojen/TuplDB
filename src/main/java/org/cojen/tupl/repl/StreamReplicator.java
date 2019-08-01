@@ -111,8 +111,15 @@ public interface StreamReplicator extends DirectReplicator {
             base.getParentFile().mkdirs();
         }
 
+        StateLog log;
+        if (config.mLocalRole == Role.VOTER) {
+            log = FileStateLog.open();
+        } else {
+            log = FileStateLog.open(base);
+        }
+
         return Controller.open(config.mEventListener,
-                               new FileStateLog(base), groupToken,
+                               log, groupToken,
                                new File(base.getPath() + ".group"), 
                                config.mSocketFactory,
                                localAddress, listenAddress, config.mLocalRole,

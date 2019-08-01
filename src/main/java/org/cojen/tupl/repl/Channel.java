@@ -163,6 +163,32 @@ interface Channel {
                               byte[] prefix, byte[] data, int off, int len);
 
     /**
+     * @param currentTerm current term of leader which replied; is 0 if data is committed
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param position any position in the term to write to
+     * @param length data length
+     * @return false if not sent or processed
+     */
+    boolean queryDataReplyVoid(Channel from, long currentTerm,
+                               long prevTerm, long term, long position, long length);
+
+    /**
+     * Write data, but without out actually receiving the data. Used by Role.VOTER.
+     *
+     * @param from the leader channel
+     * @param prevTerm expected term at previous position
+     * @param term term at given position
+     * @param position any position in the term to write to
+     * @param highestPosition highest position (exclusive) which can become the commit position
+     * @param commitPosition current commit position (exclusive)
+     * @param length data length
+     * @return false if not sent or processed
+     */
+    boolean writeVoid(Channel from, long prevTerm, long term, long position,
+                      long highestPosition, long commitPosition, long length);
+
+    /**
      * @param prevTerm expected term at previous position
      * @param term term at given position
      * @param position minimum highest commit position to persist

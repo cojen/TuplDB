@@ -45,13 +45,15 @@ public enum Role {
      * Observers only receive replicated data. They don't {@link ReplicatorConfig#proxyWrites
      * proxy writes}, they don't provide consensus, and they cannot become the leader.
      */
-    OBSERVER((byte) 4);
+    OBSERVER((byte) 4),
 
     /**
      * Voters only provide consensus. They don't receive replicated data, they don't {@link
      * ReplicatorConfig#proxyWrites proxy writes}, and they cannot become the leader.
+     *
+     * <p><i>Note: Experimental feature.</i>
      */
-    //VOTER((byte) -1);
+    VOTER((byte) -1);
 
     byte mCode;
 
@@ -60,7 +62,11 @@ public enum Role {
     }
 
     boolean providesConsensus() {
-        return this.mCode <= 2;
+        return mCode <= 2;
+    }
+
+    boolean canProxy() {
+        return mCode >= 1 && mCode <= 3;
     }
 
     static Role decode(byte code) {
@@ -73,6 +79,8 @@ public enum Role {
             return PROXY;
         case 4:
             return OBSERVER;
+        case -1:
+            return VOTER;
         default:
             throw new IllegalArgumentException();
         }

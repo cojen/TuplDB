@@ -122,11 +122,15 @@ final class FileTermLog extends Latch implements TermLog {
 
     /**
      * Create a new term.
+     *
+     * @param base can pass null to persist nothing, and reads are unsupported
      */
     static TermLog newTerm(Caches caches, Worker worker, File base, long prevTerm, long term,
                            long startPosition, long commitPosition)
     {
-        base = checkBase(base);
+        if (base != null) {
+            base = checkBase(base);
+        }
 
         FileTermLog termLog = new FileTermLog
             (caches, worker, base, prevTerm, term,
@@ -406,7 +410,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             File segFile = seg.file();
 
-            if (!segFile.delete() && segFile.exists()) {
+            if (segFile != null && !segFile.delete() && segFile.exists()) {
                 // If segment can't be deleted for some reason, try again later instead of
                 // creating a potential segment gap.
                 break;
@@ -967,7 +971,7 @@ final class FileTermLog extends Latch implements TermLog {
                 throw new IOException("Closed");
             }
 
-            long maxLength = maxSegmentLength();
+            long maxLength = mBase != null ? maxSegmentLength() : (1L << 32);
             long startPosition = position;
 
             if (startSegment != null) {
@@ -1633,6 +1637,70 @@ final class FileTermLog extends Latch implements TermLog {
             return amt;
         }
 
+        @Override
+        public long trySkip(long length) throws IOException {
+            if (length <= 0) {
+                return 0;
+            }
+
+            long position = mReaderPosition;
+            long commitPosition = mReaderCommitPosition;
+            long avail = commitPosition - position;
+
+            if (avail <= 0) {
+                FileTermLog.this.acquireShared();
+                commitPosition = doAppliableCommitPosition();
+                long endPosition = mLogEndPosition;
+                FileTermLog.this.releaseShared();
+
+                mReaderCommitPosition = commitPosition;
+                avail = commitPosition - position;
+
+                if (avail <= 0) {
+                    return commitPosition == endPosition ? EOF : 0;
+                }
+            }
+
+            long amt = Math.min(length, avail);
+
+            // Ensure that other threads can read the position safely.
+            cReaderPositionHandle.setOpaque(this, position + amt);
+
+            return amt;
+        }
+
+        @Override
+        public long trySkipAny(long length) throws IOException {
+            if (length <= 0) {
+                return 0;
+            }
+
+            long position = mReaderPosition;
+            long contigPosition = mReaderContigPosition;
+            long avail = contigPosition - position;
+
+            if (avail <= 0) {
+                FileTermLog.this.acquireShared();
+                contigPosition = mLogContigPosition;
+                long endPosition = mLogEndPosition;
+                FileTermLog.this.releaseShared();
+
+                mReaderContigPosition = contigPosition;
+                avail = contigPosition - position;
+
+                if (avail <= 0) {
+                    return contigPosition == endPosition ? EOF : 0;
+                }
+            }
+
+            long amt = Math.min(length, avail);
+
+            // Ensure that other threads can read the position safely.
+            cReaderPositionHandle.setOpaque(this, position + amt);
+
+            return amt;
+        }
+
         private Segment segmentForReading(long position) throws IOException {
             if (mReaderClosed) {
                 throw new IOException("Closed");
@@ -1743,11 +1811,17 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         File file() {
+            File base = mBase;
+
+            if (base == null) {
+                return null;
+            }
+
             long prevTerm = prevTermAt(mStartPosition);
             long term = term();
 
             StringBuilder b = new StringBuilder();
-            b.append(mBase.getPath()).append('.');
+            b.append(base.getPath()).append('.');
 
             b.append(term).append('.').append(mStartPosition);
 
@@ -1914,19 +1988,28 @@ final class FileTermLog extends Latch implements TermLog {
                     }
                     return null;
                 }
-                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                int handles = 1;
-                if (mMaxLength > 0) {
-                    options.add(OpenOption.CREATE);
-                    handles = OPEN_HANDLE_COUNT;
+
+                File file = file();
+
+                if (file == null) {
+                    io = NullFileIO.THE;
+                } else {
+                    EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                    int handles = 1;
+                    if (mMaxLength > 0) {
+                        options.add(OpenOption.CREATE);
+                        handles = OPEN_HANDLE_COUNT;
+                    }
+                    io = FileIO.open(file, options, handles);
                 }
-                io = FileIO.open(file(), options, handles);
+
                 try {
                     io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
                     Utils.closeQuietly(io);
                     throw e;
                 }
+
                 mFileIO = io;
             }
 
@@ -1947,12 +2030,19 @@ final class FileTermLog extends Latch implements TermLog {
                     }
                     throw new InvalidReadException("Log compacted");
                 }
-                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                int handles = 1;
-                if (mMaxLength > 0) {
-                    handles = OPEN_HANDLE_COUNT;
+
+                File file = file();
+
+                if (file == null) {
+                    io = NullFileIO.THE;
+                } else {
+                    EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                    int handles = 1;
+                    if (mMaxLength > 0) {
+                        handles = OPEN_HANDLE_COUNT;
+                    }
+                    mFileIO = io = FileIO.open(file, options, handles);
                 }
-                mFileIO = io = FileIO.open(file(), options, handles);
             }
 
             return io;
@@ -2036,7 +2126,10 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (io == null) {
-                file().delete();
+                File file = file();
+                if (file != null) {
+                    file.delete();
+                }
             } else {
                 io.setLength(maxLength);
             }
@@ -2117,8 +2210,16 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public String toString() {
-            return "Segment: {file=" + file() + ", startPosition=" + mStartPosition +
-                ", maxLength=" + mMaxLength + '}';
+            StringBuilder b = new StringBuilder().append("Segment: {");
+
+            File file = file();
+            if (file != null) {
+                b.append("file=").append(file).append(", ");
+            }
+
+            return b.append("startPosition=").append(mStartPosition)
+                .append(", maxLength=").append(mMaxLength)
+                .append('}').toString();
         }
     }
 }

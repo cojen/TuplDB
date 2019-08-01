@@ -75,6 +75,11 @@ public class FileTermLogTest {
         }
     }
 
+    private void withNoFile() throws Exception {
+        teardown();
+        mLog = FileTermLog.newTerm(mCaches, mWorker, null, 0, 1, 0, 0);
+    }
+
     private File mBase;
     private Worker mWorker;
     private FileTermLog.Caches mCaches;
@@ -781,6 +786,16 @@ public class FileTermLogTest {
 
     @Test
     public void missingRanges() throws Exception {
+        doMissingRanges();
+    }
+
+    @Test
+    public void missingRangesNoFile() throws Exception {
+        withNoFile();
+        doMissingRanges();
+    }
+
+    private void doMissingRanges() throws Exception {
         // Verify that missing ranges can be queried.
 
         RangeResult result = new RangeResult();
@@ -880,6 +895,16 @@ public class FileTermLogTest {
 
     @Test
     public void discardNonContigRanges() throws Exception {
+        doDiscardNonContigRanges();
+    }
+
+    @Test
+    public void discardNonContigRangesNoFile() throws Exception {
+        withNoFile();
+        doDiscardNonContigRanges();
+    }
+
+    private void doDiscardNonContigRanges() throws Exception {
         // Any non-contiguous ranges past the end of a finished term must be discarded.
 
         LogWriter writer = mLog.openWriter(100);
@@ -935,6 +960,16 @@ public class FileTermLogTest {
 
     @Test
     public void discardAllRanges() throws Exception {
+        doDiscardAllRanges();
+    }
+
+    @Test
+    public void discardAllRangesNoFile() throws Exception {
+        withNoFile();
+        doDiscardAllRanges();
+    }
+
+    private void doDiscardAllRanges() throws Exception {
         // All ranges past the end of a finished term must be discarded.
 
         LogWriter writer = mLog.openWriter(0);
@@ -984,6 +1019,16 @@ public class FileTermLogTest {
 
     @Test
     public void clampHighest() throws Exception {
+        doClampHighest();
+    }
+
+    @Test
+    public void clampHighestNoFile() throws Exception {
+        withNoFile();
+        doClampHighest();
+    }
+
+    private void doClampHighest() throws Exception {
         // Verify that the highest position cannot be set higher than the contiguous position.
 
         LogWriter writer = mLog.openWriter(0);

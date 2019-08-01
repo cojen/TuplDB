@@ -124,13 +124,43 @@ final class FileStateLog extends Latch implements StateLog {
 
     private boolean mClosed;
 
-    FileStateLog(File base) throws IOException {
-        base = FileTermLog.checkBase(base);
+    /**
+     * Open a StateLog suitable for use by a voter. Nothing is persisted, and reads are
+     * unsupported.
+     */
+    static StateLog open() throws IOException {
+        FileStateLog log = new FileStateLog(null);
 
+        // Create a primordial term.
+        log.mTermLogs.add(FileTermLog.newTerm(log.mCaches, log.mWorker, null, 0, 0, 0, 0));
+
+        return log;
+    }
+
+    /**
+     * Open a FileStateLog suitable for use by all roles except voter.
+     */
+    static FileStateLog open(File base) throws IOException {
+        return new FileStateLog(FileTermLog.checkBase(base));
+    }
+
+    private FileStateLog(File base) throws IOException {
         mBase = base;
         mWorker = Worker.make(10, 15, TimeUnit.SECONDS, null);
+        mCaches = new FileTermLog.Caches();
 
         mTermLogs = new ConcurrentSkipListSet<>();
+
+        mMetadataInfo = new LogInfo();
+        mMetadataLatch = new Latch();
+
+        if (base == null) {
+            mMetadataFile = null;
+            mMetadataLock = null;
+            mMetadataBuffer = null;
+            mMetadataCrc = null;
+            return;
+        }
 
         mMetadataFile = FileChannel.open
             (base.toPath(),
@@ -169,8 +199,6 @@ final class FileStateLog extends Latch implements StateLog {
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
         mMetadataCrc = new CRC32C();
-        mMetadataInfo = new LogInfo();
-        mMetadataLatch = new Latch();
 
         if (!mdFileExists) {
             // Prepare a new metadata file.
@@ -270,8 +298,6 @@ final class FileStateLog extends Latch implements StateLog {
                 }
             }
         }
-
-        mCaches = new FileTermLog.Caches();
 
         long prevTerm = -1;
         for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
@@ -1011,49 +1037,52 @@ final class FileStateLog extends Latch implements StateLog {
         }
 
         MappedByteBuffer bb = mMetadataBuffer;
-        int counter = mMetadataCounter;
 
-        long highestPrevTerm, highestTerm, highestPosition;
+        if (bb != null) {
+            int counter = mMetadataCounter;
 
-        if (durableOnly) {
-            // Leave the existing highest log field values alone, since no data was sync'd.
-            bb.position(((counter & 1) << SECTION_POW) + HIGHEST_PREV_TERM_OFFSET);
-            highestPrevTerm = bb.getLong();
-            highestTerm = bb.getLong();
-            highestPosition = bb.getLong();
-        } else {
-            highestTerm = mMetadataInfo.mTerm;
-            highestPosition = mMetadataInfo.mHighestPosition;
-            highestPrevTerm = highestLog == null ?
-                highestTerm : highestLog.prevTermAt(highestPosition);
+            long highestPrevTerm, highestTerm, highestPosition;
+
+            if (durableOnly) {
+                // Leave the existing highest log field values alone, since no data was sync'd.
+                bb.position(((counter & 1) << SECTION_POW) + HIGHEST_PREV_TERM_OFFSET);
+                highestPrevTerm = bb.getLong();
+                highestTerm = bb.getLong();
+                highestPosition = bb.getLong();
+            } else {
+                highestTerm = mMetadataInfo.mTerm;
+                highestPosition = mMetadataInfo.mHighestPosition;
+                highestPrevTerm = highestLog == null ?
+                    highestTerm : highestLog.prevTermAt(highestPosition);
+            }
+
+            counter += 1;
+            int offset = (counter & 1) << SECTION_POW;
+
+            bb.clear();
+            bb.position(offset + COUNTER_OFFSET);
+            bb.limit(offset + CRC_OFFSET);
+
+            bb.putInt(counter);
+            bb.putLong(mCurrentTerm);
+            bb.putLong(mVotedForId);
+            bb.putLong(highestPrevTerm);
+            bb.putLong(highestTerm);
+            bb.putLong(highestPosition);
+            bb.putLong(durablePosition);
+
+            bb.position(offset);
+            mMetadataCrc.reset();
+            mMetadataCrc.update(bb);
+
+            bb.limit(offset + METADATA_SIZE);
+            bb.putInt((int) mMetadataCrc.getValue());
+
+            bb.force();
+
+            // Update field values only after successful file I/O.
+            mMetadataCounter = counter;
         }
-
-        counter += 1;
-        int offset = (counter & 1) << SECTION_POW;
-
-        bb.clear();
-        bb.position(offset + COUNTER_OFFSET);
-        bb.limit(offset + CRC_OFFSET);
-
-        bb.putInt(counter);
-        bb.putLong(mCurrentTerm);
-        bb.putLong(mVotedForId);
-        bb.putLong(highestPrevTerm);
-        bb.putLong(highestTerm);
-        bb.putLong(highestPosition);
-        bb.putLong(durablePosition);
-
-        bb.position(offset);
-        mMetadataCrc.reset();
-        mMetadataCrc.update(bb);
-
-        bb.limit(offset + METADATA_SIZE);
-        bb.putInt((int) mMetadataCrc.getValue());
-
-        bb.force();
-
-        // Update field values only after successful file I/O.
-        mMetadataCounter = counter;
 
         if (durableOnly) {
             mMetadataDurablePosition = durablePosition;
@@ -1074,10 +1103,17 @@ final class FileStateLog extends Latch implements StateLog {
 
                 mClosed = true;
 
-                mMetadataLock.close();
+                if (mMetadataLock != null) {
+                    mMetadataLock.close();
+                }
 
-                mMetadataFile.close();
-                Utils.delete(mMetadataBuffer);
+                if (mMetadataFile != null) {
+                    mMetadataFile.close();
+                }
+
+                if (mMetadataBuffer != null) {
+                    Utils.delete(mMetadataBuffer);
+                }
 
                 for (Object key : mTermLogs) {
                     ((TermLog) key).close();

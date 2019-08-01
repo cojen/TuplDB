@@ -34,10 +34,15 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * @author Brian S O'Neill
  */
 final class Peer implements Comparable<Peer> {
-    private static final VarHandle cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle;
+    private static final VarHandle
+        cRoleHandle, cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle;
 
     static {
         try {
+            cRoleHandle =
+                MethodHandles.lookup().findVarHandle
+                (Peer.class, "mRole", Role.class);
+
             cGroupVersionHandle =
                 MethodHandles.lookup().findVarHandle
                 (Peer.class, "mGroupVersion", long.class);
@@ -90,6 +95,10 @@ final class Peer implements Comparable<Peer> {
         mMemberId = memberId;
         mAddress = addr;
         mRole = role;
+    }
+
+    Role role() {
+        return (Role) cRoleHandle.getOpaque(this);
     }
 
     long updateGroupVersion(final long groupVersion) {

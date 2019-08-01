@@ -284,12 +284,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 channel = mChanMan.connect(peer, this);
             }
 
-            switch (peer.mRole) {
-            case NORMAL: case STANDBY:
+            if (peer.mRole.providesConsensus()) {
                 consensusPeers.add(peer);
                 consensusChannels.add(channel);
-                // fall through...
-            case PROXY:
+            }
+
+            if (peer.mRole.canProxy()) {
                 proxyChannels.add(channel);
             }
 
@@ -865,9 +865,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Write directly to all the peers.
 
                 for (Channel peerChan : peerChannels) {
-                    peerChan.writeData(null, prevTerm, term,
-                                       position, highestPosition, commitPosition,
-                                       prefix, data, offset, length);
+                    if (peerChan.peer().role() == Role.VOTER) {
+                        long fullLength = length;
+                        if (prefix != null) {
+                            fullLength += prefix.length;
+                        }
+                        peerChan.writeVoid(null, prevTerm, term,
+                                           position, highestPosition, commitPosition, fullLength);
+                    } else {
+                        peerChan.writeData(null, prevTerm, term,
+                                           position, highestPosition, commitPosition,
+                                           prefix, data, offset, length);
+                    }
                 }
 
                 return result;
@@ -1898,11 +1907,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void doQueryData(Channel from, long startPosition, long endPosition)
         throws IOException
     {
+        final boolean replyVoid = from.peer().role() == Role.VOTER;
+
         LogReader reader = mStateLog.openReader(startPosition);
 
         try {
             long remaining = endPosition - startPosition;
-            byte[] buf = new byte[(int) Math.min(9000, remaining)];
+            byte[] buf = replyVoid ? null : new byte[(int) Math.min(9000, remaining)];
 
             while (true) {
                 long currentTerm = 0;
@@ -1911,15 +1922,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 long position = reader.position();
                 long term = reader.term();
 
-                int require = (int) Math.min(buf.length, remaining);
-                int amt = reader.tryRead(buf, 0, require);
+                int require, amt;
+                if (replyVoid) {
+                    require = (int) Math.min(Integer.MAX_VALUE, remaining);
+                    amt = (int) reader.trySkip(require);
+                } else {
+                    require = (int) Math.min(buf.length, remaining);
+                    amt = reader.tryRead(buf, 0, require);
+                }
 
                 if (amt == 0) {
                     // If the leader, read past the commit position, up to the highest position.
                     acquireShared();
                     try {
                         if (mLocalMode == MODE_LEADER) {
-                            int any = reader.tryReadAny(buf, amt, require);
+                            int any = replyVoid
+                                ? (int) reader.trySkipAny(require)
+                                : reader.tryReadAny(buf, amt, require);
                             if (any > 0) {
                                 currentTerm = mCurrentTerm;
                                 amt += any;
@@ -1942,10 +1961,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     break;
                 }
 
-                if (!from.queryDataReply
-                    (null, currentTerm, prevTerm, term, position, buf, 0, amt))
-                {
-                    break;
+                if (replyVoid) {
+                    if (!from.queryDataReplyVoid
+                        (null, currentTerm, prevTerm, term, position, amt))
+                    {
+                        break;
+                    }
+                } else {
+                    if (!from.queryDataReply
+                        (null, currentTerm, prevTerm, term, position, buf, 0, amt))
+                    {
+                        break;
+                    }
                 }
 
                 startPosition += amt;
@@ -2272,10 +2299,20 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (peerChannels != null) {
             for (Channel peerChan : peerChannels) {
-                if (!fromPeer.equals(peerChan.peer())) {
-                    peerChan.writeDataViaProxy(null, prevTerm, term,
-                                               position, highestPosition, commitPosition,
-                                               prefix, data, off, len);
+                Peer peer = peerChan.peer();
+                if (!fromPeer.equals(peer)) {
+                    if (peer.role() == Role.VOTER) {
+                        long fullLength = len;
+                        if (prefix != null) {
+                            fullLength += prefix.length;
+                        }
+                        peerChan.writeVoid(null, prevTerm, term,
+                                           position, highestPosition, commitPosition, fullLength);
+                    } else {
+                        peerChan.writeDataViaProxy(null, prevTerm, term,
+                                                   position, highestPosition, commitPosition,
+                                                   prefix, data, off, len);
+                    }
                 }
             }
         }
@@ -2294,6 +2331,52 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         // From is null to prevent proxy channel from being selected as the leader channel.
         return writeData(null, prevTerm, term, position, highestPosition, commitPosition,
                          prefix, data, off, len);
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean queryDataReplyVoid(Channel from, long currentTerm,
+                                      long prevTerm, long term, long position, long length)
+    {
+        boolean result = false;
+
+        while (length > Integer.MAX_VALUE) {
+            result |= queryDataReply(from, currentTerm, prevTerm, term, position,
+                                     null, 0, Integer.MAX_VALUE);
+            prevTerm = term;
+            position += Integer.MAX_VALUE;
+            length -= Integer.MAX_VALUE;
+        }
+
+        result |= queryDataReply(from, currentTerm, prevTerm, term, position,
+                                 null, 0, (int) length);
+
+        return result;
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean writeVoid(Channel from, long prevTerm, long term, long position,
+                             long highestPosition, long commitPosition, long length)
+    {
+        boolean result = false;
+
+        while (length > Integer.MAX_VALUE) {
+            result |= writeData(from, prevTerm, term, position,
+                                highestPosition, commitPosition, null, null, 0, Integer.MAX_VALUE);
+            prevTerm = term;
+            position += Integer.MAX_VALUE;
+            length -= Integer.MAX_VALUE;
+        }
+
+        result |= writeData(from, prevTerm, term, position,
+                            highestPosition, commitPosition, null, null, 0, (int) length);
+
+        return result;
     }
 
     /**
