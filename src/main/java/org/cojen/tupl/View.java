@@ -46,7 +46,7 @@ public interface View {
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for
      * auto-commit mode
      * @return a new unpositioned cursor
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public Cursor newCursor(Transaction txn);
 
@@ -55,7 +55,7 @@ public interface View {
      *
      * @param txn optional transaction for Scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first entry in the view
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Scanner newScanner(Transaction txn) throws IOException {
         Cursor c = newCursor(txn);
@@ -73,7 +73,7 @@ public interface View {
      *
      * @param txn optional transaction for Updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first entry in the view
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default Updater newUpdater(Transaction txn) throws IOException {
         if (txn == null) {
@@ -118,7 +118,7 @@ public interface View {
      * @param key non-null key
      * @return non-null cursor
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if key is not allowed
      */
     public default Cursor newAccessor(Transaction txn, byte[] key) throws IOException {
@@ -183,7 +183,7 @@ public interface View {
      * @param key non-null key
      * @return copy of value, or null if entry doesn't exist
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default byte[] load(Transaction txn, byte[] key) throws IOException {
         Cursor c = newCursor(txn);
@@ -208,7 +208,7 @@ public interface View {
      * @param key non-null key
      * @return true if entry exists
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default boolean exists(Transaction txn, byte[] key) throws IOException {
         return load(txn, key) != null;
@@ -224,7 +224,7 @@ public interface View {
      * @param key non-null key
      * @param value value to store; pass null to delete
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default void store(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -257,7 +257,7 @@ public interface View {
      * @param value value to store; pass null to delete
      * @return copy of previous value, or null if none
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -294,7 +294,7 @@ public interface View {
      * @param value value to insert, which can be null
      * @return false if entry already exists
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean insert(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -312,7 +312,7 @@ public interface View {
      * @param value value to insert; pass null to delete
      * @return false if no existing entry
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -348,7 +348,7 @@ public interface View {
      * @param value value to update to; pass null to delete
      * @return false if given value matches existing value
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -384,7 +384,7 @@ public interface View {
      * @param newValue new value to update to; pass null to delete
      * @return false if existing value doesn't match
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
@@ -423,7 +423,7 @@ public interface View {
      * @param key non-null key
      * @return false if no existing entry
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if remove is not permitted
      */
     public default boolean delete(Transaction txn, byte[] key) throws IOException {
@@ -443,7 +443,7 @@ public interface View {
      * @param value expected existing value, which can be null
      * @return false if existing value doesn't match
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if remove is not permitted
      */
     public default boolean remove(Transaction txn, byte[] key, byte[] value) throws IOException {
@@ -465,7 +465,7 @@ public interface View {
      * LockResult#OWNED_SHARED OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws NullPointerException if key is null
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public default LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
         // Default implementation isn't that great and should be overridden.
@@ -513,7 +513,7 @@ public interface View {
      * ACQUIRED}, {@link LockResult#OWNED_SHARED OWNED_SHARED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -537,7 +537,7 @@ public interface View {
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
      * @throws DeadlockException if deadlock was detected after waiting full timeout
@@ -562,7 +562,7 @@ public interface View {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
      */
@@ -584,7 +584,7 @@ public interface View {
      * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_UPGRADABLE
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -608,7 +608,7 @@ public interface View {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
      * OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
      */
@@ -630,7 +630,7 @@ public interface View {
      * after calling this method
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED UPGRADED}, or
      * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      * @throws ViewConstraintException if key is not allowed
@@ -644,7 +644,7 @@ public interface View {
      * @return {@link LockResult#UNOWNED UNOWNED}, {@link LockResult#OWNED_SHARED
      * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException;

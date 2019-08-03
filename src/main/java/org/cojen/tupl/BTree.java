@@ -1612,7 +1612,7 @@ class BTree extends Tree implements View, Index {
             /*P*/ // [|
             /*P*/ // if (txn == Transaction.BOGUS) return LocalTransaction.BOGUS;
             /*P*/ // ]
-            throw new IllegalArgumentException("Transaction belongs to a different database");
+            throw new IllegalStateException("Transaction belongs to a different database");
         }
         return null;
     }

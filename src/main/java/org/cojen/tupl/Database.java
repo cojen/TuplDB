@@ -152,7 +152,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param newName new non-null name
      * @throws ClosedIndexException if index reference is closed
      * @throws IllegalStateException if name is already in use by another index
-     * @throws IllegalArgumentException if index belongs to another database instance
+     * @throws IllegalStateException if index belongs to another database instance
      */
     public abstract void renameIndex(Index index, byte[] newName) throws IOException;
 
@@ -163,7 +163,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param newName new non-null name
      * @throws ClosedIndexException if index reference is closed
      * @throws IllegalStateException if name is already in use by another index
-     * @throws IllegalArgumentException if index belongs to another database instance
+     * @throws IllegalStateException if index belongs to another database instance
      */
     public default void renameIndex(Index index, String newName) throws IOException {
         renameIndex(index, newName.getBytes(StandardCharsets.UTF_8));
@@ -185,7 +185,7 @@ public interface Database extends CauseCloseable, Flushable {
      * @param index non-null open index
      * @return non-null task to call for reclaiming the pages used by the deleted index
      * @throws ClosedIndexException if index reference is closed
-     * @throws IllegalArgumentException if index belongs to another database instance
+     * @throws IllegalStateException if index belongs to another database instance
      * @see EventListener
      * @see Index#drop Index.drop
      */

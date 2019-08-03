@@ -73,7 +73,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      * resurrected.
      *
      * @return prior linked transaction
-     * @throws IllegalArgumentException if transaction belongs to another database instance
+     * @throws IllegalStateException if transaction belongs to another database instance
      */
     public Transaction link(Transaction txn);
 

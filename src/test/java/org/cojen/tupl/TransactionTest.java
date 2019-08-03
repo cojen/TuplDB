@@ -60,7 +60,7 @@ public class TransactionTest {
         try {
             ix.store(txn, "hello".getBytes(), "world".getBytes());
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
         }
         txn.commit();
     }

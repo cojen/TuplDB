@@ -1422,7 +1422,7 @@ final class LocalDatabase extends AbstractDatabase {
             // Cast and catch an exception instead of calling instanceof to cause a
             // NullPointerException to be thrown if index is null.
         }
-        throw new IllegalArgumentException("Index belongs to a different database");
+        throw new IllegalStateException("Index belongs to a different database");
     }
 
     @Override
