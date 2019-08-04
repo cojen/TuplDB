@@ -240,9 +240,14 @@ final class DirectPageOps {
     }
 
     static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
-        Arena arena = new Arena(pageSize, pageCount);
-        registerArena(arena);
-        return arena;
+        try {
+            Arena arena = new Arena(pageSize, pageCount);
+            registerArena(arena);
+            return arena;
+        } catch (UnsupportedOperationException e) {
+            // Not a 64-bit platform, so allocate pages using calloc.
+            return null;
+        }
     }
 
     static void p_arenaDelete(Object arena) throws IOException {

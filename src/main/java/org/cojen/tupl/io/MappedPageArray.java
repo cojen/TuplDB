@@ -27,6 +27,7 @@ import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
 
+import com.sun.jna.Native;
 import com.sun.jna.Platform;
 
 import org.cojen.tupl.DatabaseFullException;
@@ -64,6 +65,7 @@ public abstract class MappedPageArray extends PageArray {
 
     /**
      * @param file file to store pages, or null if anonymous
+     * @throws UnsupportedOperationException if not running on a 64-bit platform
      */
     public static MappedPageArray open(int pageSize, long pageCount,
                                        File file, EnumSet<OpenOption> options)
@@ -71,6 +73,10 @@ public abstract class MappedPageArray extends PageArray {
     {
         if (pageSize < 1 || pageCount < 0 || pageCount > Long.MAX_VALUE / pageSize) {
             throw new IllegalArgumentException();
+        }
+
+        if (Native.SIZE_T_SIZE < 8) {
+            throw new UnsupportedOperationException("Not a 64-bit platform");
         }
 
         if (options == null) {
