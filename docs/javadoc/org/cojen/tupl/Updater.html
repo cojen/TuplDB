@@ -65,13 +65,13 @@ loadScripts(document, 'script');</script>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#field.summary">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
 <ul class="subNavList">
 <li>Detail:&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#field.detail">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>
@@ -131,6 +131,36 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <div class="summary">
 <ul class="blockList">
 <li class="blockList">
+<!-- =========== FIELD SUMMARY =========== -->
+<section role="region">
+<ul class="blockList">
+<li class="blockList"><a id="field.summary">
+<!--   -->
+</a>
+<h3>Field Summary</h3>
+<div class="memberSummary">
+<table>
+<caption><span>Fields</span><span class="tabEnd">&nbsp;</span></caption>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Field</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>static byte[]</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#NO_UPDATE">NO_UPDATE</a></span></code></th>
+<td class="colLast">
+<div class="block">Empty marker returned by <a href="EntryFunction.html" title="interface in org.cojen.tupl"><code>EntryFunction</code></a> to indicate that no update should be
+ performed.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</li>
+</ul>
+</section>
 <!-- ========== METHOD SUMMARY =========== -->
 <section role="region">
 <ul class="blockList">
@@ -190,6 +220,27 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <div class="details">
 <ul class="blockList">
 <li class="blockList">
+<!-- ============ FIELD DETAIL =========== -->
+<section role="region">
+<ul class="blockList">
+<li class="blockList"><a id="field.detail">
+<!--   -->
+</a>
+<h3>Field Detail</h3>
+<a id="NO_UPDATE">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>NO_UPDATE</h4>
+<pre>static final&nbsp;byte[] NO_UPDATE</pre>
+<div class="block">Empty marker returned by <a href="EntryFunction.html" title="interface in org.cojen.tupl"><code>EntryFunction</code></a> to indicate that no update should be
+ performed.</div>
+</li>
+</ul>
+</li>
+</ul>
+</section>
 <!-- ============ METHOD DETAIL ========== -->
 <section role="region">
 <ul class="blockList">
@@ -205,7 +256,7 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <h4>update</h4>
 <pre class="methodSignature">boolean&nbsp;update&#8203;(byte[]&nbsp;value)
         throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Update the current value and then step to the next entry.</div>
+<div class="block">Update the current value and then step to the next entry. Pass null to delete the entry.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no more entries remain and updater has been closed</dd>
@@ -222,7 +273,9 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <h4>updateAll</h4>
 <pre class="methodSignature">default&nbsp;void&nbsp;updateAll&#8203;(<a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)
                 throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
-<div class="block">Applies the given updating action for each remaining entry, and then closes the updater.</div>
+<div class="block">Applies the given updating action for each remaining entry, and then closes the updater.
+ An entry is updated to the value returned by the action, or it's deleted when the action
+ returns null. If the action returns <a href="#NO_UPDATE"><code>NO_UPDATE</code></a>, then no update is performed.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -281,13 +334,13 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#field.summary">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
 <ul class="subNavList">
 <li>Detail:&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#field.detail">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>

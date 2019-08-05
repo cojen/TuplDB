@@ -272,4 +272,27 @@ public class UpdaterTest extends ScannerTest {
             fastAssertArrayEquals(value, ix.load(null, key));
         }
     }
+
+    @Test
+    public void updateSome() throws Exception {
+        Index ix = mDb.openIndex("test");
+        for (int i=0; i<10; i++) {
+            ix.store(null, ("" + i).getBytes(), ("value-" + i).getBytes());
+        }
+
+        newUpdater(ix, null).updateAll((k, v) -> {
+            int i = k[0] - '0';
+            if ((i & 1) == 1) {
+                return Updater.NO_UPDATE;
+            }
+            return ("updated-" + i).getBytes();
+        });
+
+        for (int i=0; i<10; i++) {
+            byte[] value = ix.load(null, ("" + i).getBytes());
+            String str = new String(value);
+            String expect = (((i & 1) == 1) ? "value-" : "updated-") + i;
+            assertEquals(expect, str);
+        }
+    }
 }
