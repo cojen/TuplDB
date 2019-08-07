@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":9,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":9,"i11":10,"i12":9,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -208,13 +208,18 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor" id="i10">
+<td class="colFirst"><code>static boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isSupported()">isSupported</a></span>()</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open()">open</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to open or reopen the page array.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>static <a href="MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open(int,long,java.io.File,java.util.EnumSet)">open</a></span>&#8203;(int&nbsp;pageSize,
     long&nbsp;pageCount,
@@ -222,7 +227,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
     <a href="https://docs.oracle.com/javase/10/docs/api/java/util/EnumSet.html?is-external=true" title="class or interface in java.util" class="externalLink">EnumSet</a>&lt;<a href="OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         byte[]&nbsp;buf,
@@ -230,7 +235,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
         long&nbsp;ptr,
@@ -238,28 +243,28 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
         int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#setPageCount(long)">setPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr class="altColor" id="i16">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncPage(long)">syncPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
          byte[]&nbsp;buf,
@@ -268,7 +273,7 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="altColor" id="i18">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
          long&nbsp;ptr,
@@ -311,6 +316,15 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 <!--   -->
 </a>
 <h3>Method Detail</h3>
+<a id="isSupported()">
+<!--   -->
+</a>
+<ul class="blockList">
+<li class="blockList">
+<h4>isSupported</h4>
+<pre class="methodSignature">public static&nbsp;boolean&nbsp;isSupported()</pre>
+</li>
+</ul>
 <a id="open(int,long,java.io.File,java.util.EnumSet)">
 <!--   -->
 </a>

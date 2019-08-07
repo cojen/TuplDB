@@ -254,6 +254,10 @@ public class TestUtils {
         }
     }
 
+    public static void assume64bit() {
+        org.junit.Assume.assumeTrue(is64bit());
+    }
+
     public static boolean is64bit() {
         return "amd64".equals(System.getProperty("os.arch"))
             || "64".equals(System.getProperty("sun.arch.data.model"));
@@ -400,6 +404,7 @@ public class TestUtils {
                 config.directPageAccess(true);
                 break;
             case DIRECT_MAPPED:
+                org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
                 int pageSize = config.mPageSize;
                 if (pageSize == 0) {
                     pageSize = 4096;

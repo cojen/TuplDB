@@ -17,7 +17,7 @@
 
 package org.cojen.tupl;
 
-import org.junit.*;
+import org.junit.BeforeClass;
 
 /**
  * 
@@ -29,40 +29,13 @@ public class RecoverMappedTest extends RecoverTest {
         org.junit.runner.JUnitCore.main(RecoverMappedTest.class.getName());
     }
 
+    @BeforeClass
+    public static void isSupported() {
+        TestUtils.assume64bit();
+    }
+
     @Override
     protected void decorate(DatabaseConfig config) throws Exception {
         config.mapDataFiles(true);
-    }
-
-    @Test
-    @Override
-    public void largeUndo() throws Exception {
-        if (TestUtils.is64bit()) {
-            super.largeUndo();
-        }
-    }
-
-    @Test
-    @Override
-    public void largeUndoExit() throws Exception {
-        if (TestUtils.is64bit()) {
-            super.largeUndoExit();
-        }
-    }
-
-    @Test
-    @Override
-    public void largeRedo() throws Exception {
-        if (TestUtils.is64bit()) {
-            super.largeRedo();
-        }
-    }
-
-    @Test
-    @Override
-    public void largeRedoExit() throws Exception {
-        if (TestUtils.is64bit()) {
-            super.largeRedoExit();
-        }
     }
 }

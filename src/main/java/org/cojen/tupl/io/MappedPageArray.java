@@ -63,6 +63,10 @@ public abstract class MappedPageArray extends PageArray {
     private volatile long mMappingPtr;
     private volatile Throwable mCause;
 
+    public static boolean isSupported() {
+        return Native.SIZE_T_SIZE >= 8;
+    }
+
     /**
      * @param file file to store pages, or null if anonymous
      * @throws UnsupportedOperationException if not running on a 64-bit platform
@@ -75,7 +79,7 @@ public abstract class MappedPageArray extends PageArray {
             throw new IllegalArgumentException();
         }
 
-        if (Native.SIZE_T_SIZE < 8) {
+        if (!isSupported()) {
             throw new UnsupportedOperationException("Not a 64-bit platform");
         }
 

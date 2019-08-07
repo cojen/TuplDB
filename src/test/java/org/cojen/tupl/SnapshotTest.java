@@ -359,6 +359,8 @@ public class SnapshotTest {
 
     @Test
     public void restoreToMappedFile() throws Exception {
+        org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
+
         File base = newTempBaseFile(getClass());
         File snapshotFile = newTempBaseFile(getClass());
         File restoredBase = newTempBaseFile(getClass());

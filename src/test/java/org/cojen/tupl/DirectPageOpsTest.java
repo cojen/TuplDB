@@ -19,6 +19,9 @@ package org.cojen.tupl;
 
 import org.junit.*;
 import static org.junit.Assert.*;
+import static org.junit.Assume.*;
+
+import org.cojen.tupl.io.MappedPageArray;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -34,6 +37,8 @@ public class DirectPageOpsTest {
 
     @Test
     public void arenaFill() throws Exception {
+        assumeTrue(MappedPageArray.isSupported());
+
         final int count = 10;
         Object arena = DirectPageOps.p_arenaAlloc(4096, count);
 
@@ -66,6 +71,8 @@ public class DirectPageOpsTest {
 
     @Test
     public void arenaSearch() throws Exception {
+        assumeTrue(MappedPageArray.isSupported());
+
         long[] p1 = new long[10];
         Object a1 = DirectPageOps.p_arenaAlloc(4096, p1.length);
         allocAll(a1, p1, 4096);
