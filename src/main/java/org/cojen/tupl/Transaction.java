@@ -492,7 +492,8 @@ public interface Transaction extends Flushable {
      * handler is invoked, it can continue the transaction workflow, by loading the previously
      * stored state.
      *
-     * @throws IllegalStateException if transaction isn't a state for supporting two-phase commit
+     * @throws IllegalStateException if transaction isn't in a state for supporting two-phase
+     * commit
      * @throws UnmodifiableReplicaException if transaction cannot replicate
      * @throws UnsupportedOperationException if completely unsupported by the transaction
      * implementation
