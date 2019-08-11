@@ -17,6 +17,9 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.IOException;
 
 import org.cojen.tupl.ext.ReplicationManager;
@@ -31,6 +34,18 @@ import org.cojen.tupl.util.LatchCondition;
  */
 /*P*/
 final class ReplRedoController extends ReplRedoWriter {
+    private static final VarHandle cCheckpointPosHandle;
+
+    static {
+        try {
+            cCheckpointPosHandle =
+                MethodHandles.lookup().findVarHandle
+                (ReplRedoController.class, "mCheckpointPos", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     final ReplicationManager mManager;
 
     // Only used during startup.
@@ -65,7 +80,7 @@ final class ReplRedoController extends ReplRedoWriter {
             mLeaderNotifyCondition = new LatchCondition();
             // Init for the shouldCheckpoint method. Without this, an initial checkpoint is
             // performed even if it's not necessary.
-            mCheckpointPos = mManager.readPosition() | (1L << 63);
+            cCheckpointPosHandle.setOpaque(this, mManager.readPosition() | (1L << 63));
         } finally {
             releaseExclusive();
         }
@@ -128,11 +143,11 @@ final class ReplRedoController extends ReplRedoWriter {
         if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
             ReplicationManager.Writer writer = redo.mReplWriter;
             if (writer == null) {
-                mCheckpointPos = mEngine.suspendedDecodePosition();
+                cCheckpointPosHandle.setOpaque(this, mEngine.suspendedDecodePosition());
                 mCheckpointTxnId = mEngine.suspendedDecodeTransactionId();
             } else {
                 redo.acquireShared();
-                mCheckpointPos = redo.mLastCommitPos;
+                cCheckpointPosHandle.set(this, redo.mLastCommitPos);
                 mCheckpointTxnId = redo.mLastCommitTxnId;
                 redo.releaseShared();
             }
@@ -178,7 +193,7 @@ final class ReplRedoController extends ReplRedoWriter {
             // writes a reset operation to the redo log.
             long endPos = writer.confirmEnd();
             if (endPos < mCheckpointPos) {
-                mCheckpointPos = endPos;
+                cCheckpointPosHandle.setOpaque(endPos);
                 mCheckpointTxnId = 0;
             }
 
@@ -195,11 +210,12 @@ final class ReplRedoController extends ReplRedoWriter {
 
     @Override
     void checkpointFinished() throws IOException {
-        mManager.checkpointed(mCheckpointPos);
+        long pos = mCheckpointPos;
+        mManager.checkpointed(pos);
         mCheckpointRedoWriter = null;
         // Keep checkpoint position for the benefit of the shouldCheckpoint method, but flip
         // the bit for the checkpointSwitch method to detect successful completion.
-        mCheckpointPos |= 1L << 63;
+        cCheckpointPosHandle.setOpaque(this, pos | 1L << 63);
         mCheckpointTxnId = 0;
     }
 
@@ -226,7 +242,22 @@ final class ReplRedoController extends ReplRedoWriter {
                 } else {
                     pos = writer.confirmedPosition();
                 }
-                mEngine.mManager.syncConfirm(pos);
+
+                ReplicationManager manager = mEngine.mManager;
+                manager.syncConfirm(pos);
+
+                // Also inform that the log can be compacted, in case it was rejected the last
+                // time. This method (force) can be called outside the regular checkpoint
+                // workflow, so use opaque access to avoid special synchronization.
+                pos = (long) cCheckpointPosHandle.getOpaque(this);
+                if (pos < 0) {
+                    try {
+                        manager.checkpointed(pos & ~(1L << 63));
+                    } catch (Throwable e) {
+                        // Ignore.
+                    }
+                }
+
                 return;
             } catch (IOException e) {
                 // Try regular sync instead, in case leadership just changed.

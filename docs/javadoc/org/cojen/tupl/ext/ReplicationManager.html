@@ -183,7 +183,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointed(long)">checkpointed</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
 <div class="block">Indicates that all data prior to the given log position has been durably
- checkpointed.</div>
+ checkpointed, and that old data can be discarded.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
@@ -506,8 +506,7 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
 <pre class="methodSignature">void&nbsp;checkpointed&#8203;(long&nbsp;position)
            throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Indicates that all data prior to the given log position has been durably
- checkpointed. The log can discard the old data. This method is never invoked
- concurrently, and the implementation should return quickly.</div>
+ checkpointed, and that old data can be discarded.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - log position immediately after the checkpoint position</dd>

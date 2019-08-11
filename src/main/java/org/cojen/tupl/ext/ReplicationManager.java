@@ -232,8 +232,7 @@ public interface ReplicationManager extends Closeable {
 
     /**
      * Indicates that all data prior to the given log position has been durably
-     * checkpointed. The log can discard the old data. This method is never invoked
-     * concurrently, and the implementation should return quickly.
+     * checkpointed, and that old data can be discarded.
      *
      * @param position log position immediately after the checkpoint position
      */
