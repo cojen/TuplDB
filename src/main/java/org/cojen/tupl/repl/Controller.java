@@ -368,13 +368,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mChanMan.joinAcceptor(this::requestJoin);
 
             acquireExclusive();
-            boolean quickElection = mConsensusChannels.length == 0;
-            mElectionValidated = quickElection ? -1 : 1;
-            releaseExclusive();
-
-            if (quickElection) {
+            if (mProxyChannels.length == 0) {
                 // Lone member can become leader immediately.
+                mElectionValidated = Integer.MIN_VALUE;
                 doElectionTask();
+            } else {
+                mElectionValidated = 1;
+                releaseExclusive();
             }
         }
 
@@ -400,7 +400,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             Reader reader;
             if (mLeaderLogWriter != null
                 && position >= mLeaderLogWriter.termStartPosition()
-                && position < mLeaderLogWriter.termEndPosition())
+                && position < mLeaderLogWriter.termEndPosition()
+                && !mLocalRole.isInterim())
             {
                 reader = null;
             } else {
@@ -433,7 +434,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     ("Writer already exists: term=" + mLeaderReplWriter.term());
             }
             if (mLeaderLogWriter == null
-                || (position >= 0 && position != mLeaderLogWriter.position()))
+                || (position >= 0 && position != mLeaderLogWriter.position())
+                || mLocalRole.isInterim())
             {
                 return null;
             }
@@ -1070,10 +1072,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mMissingContigPosition = mStateLog.checkForMissingData
                 (mMissingContigPosition, collector);
 
-            for (int i=0; i<collector.mSize; ) {
-                long startPosition = collector.mRanges[i++];
-                long endPosition = collector.mRanges[i++];
-                requestMissingData(startPosition, endPosition);
+            if (collector.mSize <= 0) {
+                acquireShared();
+                Role local = mLocalRole;
+                Channel leader = mLeaderReplyChannel;
+                releaseShared();
+                if (local == Role.NORMAL && leader != null && leader.peer().mRole.isInterim()) {
+                    acquireExclusive();
+                    mElectionValidated = Integer.MIN_VALUE; // force an election
+                    doElectionTask();
+                }
+            } else {
+                for (int i=0; i<collector.mSize; ) {
+                    long startPosition = collector.mRanges[i++];
+                    long endPosition = collector.mRanges[i++];
+                    requestMissingData(startPosition, endPosition);
+                }
             }
         }
 
@@ -1154,15 +1168,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void electionTask() {
         try {
+            acquireExclusive();
             doElectionTask();
         } finally {
             scheduleElectionTask();
         }
     }
 
+    // Caller must acquire exclusive latch, which is released by this method.
     private void doElectionTask() {
-        acquireExclusive();
-
         if (mLocalMode == MODE_LEADER) {
             doAffirmLeadership();
             return;
@@ -1175,8 +1189,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mElectionValidated--;
 
             if (mElectionValidated >= 0
-                || mGroupFile.localMemberRole() != Role.NORMAL
-                || (peerChannels = mConsensusChannels).length <= 0)
+                || !mGroupFile.localMemberRole().canProxy()
+                || (peerChannels = mProxyChannels).length <= 0)
             {
                 releaseExclusive();
                 return;
@@ -1210,27 +1224,29 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower("election timed out");
             }
 
-            if (mGroupFile.localMemberRole() != Role.NORMAL) {
-                // Only NORMAL members can become candidates.
+            if (!mGroupFile.localMemberRole().canProxy()) {
+                // Only NORMAL/STANDBY/PROXY members can become candidates.
                 releaseExclusive();
                 return;
             }
 
-            peerChannels = mConsensusChannels;
+            peerChannels = mProxyChannels;
             info = mStateLog.captureHighest();
 
-            int noLeaderCount = 1; // include self
-            for (Channel peerChan : peerChannels) {
-                if (peerChan.peer().mLeaderCheck == -1) {
-                    noLeaderCount++;
+            if (mElectionValidated > Integer.MIN_VALUE) {
+                int noLeaderCount = 1; // include self
+                for (Channel peerChan : peerChannels) {
+                    if (peerChan.peer().mLeaderCheck == -1) {
+                        noLeaderCount++;
+                    }
                 }
-            }
 
-            if (noLeaderCount <= (peerChannels.length + 1) / 2) {
-                // A majority must indicate that there's no leader, so don't anything this time.
-                mElectionValidated = 0;
-                releaseExclusive();
-                return;
+                if (noLeaderCount <= (peerChannels.length + 1) / 2) {
+                    // A majority must indicate that there's no leader, so don't anything this time.
+                    mElectionValidated = 0;
+                    releaseExclusive();
+                    return;
+                }
             }
 
             // Convert to candidate.
@@ -1262,8 +1278,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } else {
             releaseExclusive();
 
-            event(Level.INFO, "Local member is a candidate: term=" + term + ", highestTerm=" +
-                  info.mTerm + ", highestPosition=" + info.mHighestPosition);
+            StringBuilder b = new StringBuilder().append("Local member is ");
+            if (mLocalRole.isInterim()) {
+                b.append("an interim ");
+            } else {
+                b.append("a ");
+            }
+            b.append("candidate: term=").append(term).append(", highestTerm=")
+                .append(info.mTerm).append(", highestPosition=").append(info.mHighestPosition);
+
+            event(Level.INFO, b.toString());
 
             for (Channel peerChan : peerChannels) {
                 peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestPosition);
@@ -1298,7 +1322,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderCommitPosition = commitPosition;
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
-            } else {
+            } else if (mLocalRole == Role.NORMAL) {
                 toFollower("commit position is stalled: " +
                            commitPosition + " < " + highestPosition);
                 return;
@@ -1344,6 +1368,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             StringBuilder b = new StringBuilder("Local member ");
+
+            if (mLocalRole.isInterim()) {
+                b.append("interim ");
+            }
 
             if (originalMode == MODE_LEADER) {
                 if (mSkipMissingDataTask) {
@@ -1698,7 +1726,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower(null);
             }
 
-            if (currentTerm >= originalTerm && !isBehind(highestTerm, highestPosition)) {
+            if (currentTerm >= originalTerm && !isBehind(from, highestTerm, highestPosition)) {
                 if (mStateLog.checkCandidate(candidateId)) {
                     // Set voteGranted result bit to true.
                     currentTerm |= 1L << 63;
@@ -1717,9 +1745,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return true;
     }
 
-    private boolean isBehind(long term, long position) {
+    private boolean isBehind(Channel from, long term, long position) {
         LogInfo info = mStateLog.captureHighest();
-        return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition);
+        return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition)
+            // Don't elect an interim leader if it's at the same position.
+            || (mLocalRole == Role.NORMAL && from.peer().mRole.isInterim()
+                && position <= info.mHighestPosition);
     }
 
     /**
@@ -1769,8 +1800,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long position) {
         try {
-            event(Level.INFO, "Local member is the leader: term=" + term +
-                  ", position=" + position);
+            StringBuilder b = new StringBuilder().append("Local member is ");
+            if (mLocalRole.isInterim()) {
+                b.append("an interim ");
+            } else {
+                b.append("the ");
+            }
+            b.append("leader: term=").append(term).append(", position=").append(position);
+
+            event(Level.INFO, b.toString());
 
             mElectionValidated = LOCAL_LEADER_VALIDATED;
 
@@ -2217,8 +2255,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         releaseExclusive();
 
         if (first) {
-            event(Level.INFO, "Remote member is the leader: " + from.peer().mAddress +
-                  ", term=" + term);
+            StringBuilder b = new StringBuilder().append("Remote member is ");
+            if (from.peer().mRole.isInterim()) {
+                b.append("an interim ");
+            } else {
+                b.append("the ");
+            }
+            b.append("leader: ").append(from.peer().mAddress).append(", term=").append(term);
+            event(Level.INFO, b.toString());
         }
 
         return from; // validation success

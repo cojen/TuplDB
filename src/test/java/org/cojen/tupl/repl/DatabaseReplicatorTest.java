@@ -36,7 +36,9 @@ import java.util.function.Supplier;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
+import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventPrinter;
+import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
@@ -47,6 +49,7 @@ import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.TestUtils;
+import static org.cojen.tupl.TestUtils.fastAssertArrayEquals;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -121,10 +124,18 @@ public class DatabaseReplicatorTest {
             mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
             mReplPorts[i] = mSockets[i].getLocalPort();
 
+            EventListener listener = false ? new EventPrinter() : null;
+
             mReplConfigs[i] = new ReplicatorConfig()
                 .groupToken(1)
                 .localSocket(mSockets[i])
                 .baseFile(mReplBaseFiles[i]);
+
+            if (listener != null) {
+                mReplConfigs[i].eventListener((level, message) -> {
+                    listener.notify(EventType.REPLICATION_INFO, message);
+                });
+            }
 
             if (i > 0) {
                 mReplConfigs[i].addSeed(mSockets[0].getLocalSocketAddress());
@@ -136,7 +147,7 @@ public class DatabaseReplicatorTest {
             mDbConfigs[i] = new DatabaseConfig()
                 .baseFile(mReplBaseFiles[i])
                 .replicate(mReplicators[i])
-                //.eventListener(new EventPrinter())
+                .eventListener(listener)
                 .lockTimeout(5, TimeUnit.SECONDS)
                 .directPageAccess(false);
 
@@ -206,7 +217,7 @@ public class DatabaseReplicatorTest {
             byte[] value = ("world-" + t).getBytes();
             ix0.store(null, key, value);
 
-            TestUtils.fastAssertArrayEquals(value, ix0.load(null, key));
+            fastAssertArrayEquals(value, ix0.load(null, key));
 
             for (int i=0; i<dbs.length; i++) {
                 for (int q=100; --q>=0; ) {
@@ -215,7 +226,7 @@ public class DatabaseReplicatorTest {
                     try {
                         Index ix = dbs[i].openIndex("test");
                         actual = ix.load(null, key);
-                        TestUtils.fastAssertArrayEquals(value, actual);
+                        fastAssertArrayEquals(value, actual);
                         break;
                     } catch (UnmodifiableReplicaException e) {
                         // Index doesn't exist yet due to replication delay.
@@ -377,7 +388,7 @@ public class DatabaseReplicatorTest {
         db = closeAndReopen(0);
 
         ix = db.openIndex("test");
-        TestUtils.fastAssertArrayEquals(value, ix.load(null, key));
+        fastAssertArrayEquals(value, ix.load(null, key));
 
         db.close();
     }
@@ -429,10 +440,75 @@ public class DatabaseReplicatorTest {
         System.arraycopy(part1, 0, expect, 0, part1.length);
         System.arraycopy(part2, 0, expect, part1.length, part2.length);
 
-        TestUtils.fastAssertArrayEquals(expect, leaderIx.load(null, key));
-        TestUtils.fastAssertArrayEquals(expect, replicaIx.load(null, key));
+        fastAssertArrayEquals(expect, leaderIx.load(null, key));
+        fastAssertArrayEquals(expect, replicaIx.load(null, key));
 
         replicaDb.close();
+    }
+
+    @Test
+    public void proxyLeader() throws Exception {
+        // Test that a proxy member can become an interim leader and prevent data loss.
+
+        Database[] dbs = startGroup(2, Role.PROXY, null);
+        Database leaderDb = dbs[0];
+        Database replicaDb = dbs[1];
+
+        Index leaderIx = leaderDb.openIndex("test");
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+        
+        Index replicaIx = replicaDb.openIndex("test");
+
+        leaderDb.suspendCheckpoints();
+        replicaDb.suspendCheckpoints();
+        leaderDb.checkpoint();
+        replicaDb.checkpoint();
+
+        byte[] key = "key".getBytes();
+        byte[] value = "value".getBytes();
+        leaderIx.store(null, key, value);
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+
+        fastAssertArrayEquals(value, replicaIx.load(null, key));
+
+        // Close and re-open leader, which doesn't have the key in the log. Must explicitly
+        // close the replicator, to ensure that closing the database doesn't flush the log.
+        mReplicators[0].close(); 
+        leaderDb = closeAndReopen(0);
+        leaderIx = leaderDb.openIndex("test");
+
+        byte[] found = null;
+        for (int i=0; i<10; i++) {
+            found = leaderIx.load(null, key);
+            if (found != null) {
+                break;
+            }
+            Thread.sleep(1000);
+        }
+
+        fastAssertArrayEquals(value, found);
+
+        value = "value!".getBytes();
+
+        for (int i=0; i<10; i++) {
+            try {
+                leaderIx.store(null, key, value);
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                Thread.sleep(1000);
+            }
+        }
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+
+        fastAssertArrayEquals(value, replicaIx.load(null, key));
+
+        leaderDb.close();
     }
 
     /**

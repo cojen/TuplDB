@@ -69,6 +69,13 @@ public enum Role {
         return mCode >= 1 && mCode <= 3;
     }
 
+    /**
+     * Returns true if member can be a leader, but only until a normal member has caught up.
+     */
+    boolean isInterim() {
+        return mCode >= 2 && mCode <= 3;
+    }
+
     static Role decode(byte code) {
         switch (code) {
         case 1:
