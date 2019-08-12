@@ -504,7 +504,7 @@ public interface Database extends CauseCloseable, Flushable {
      * <p>When the database is replicated, no-flush and no-sync transactions commit
      * asynchronously, and this method doesn't wait for them to be fully committed. The
      * transaction must use the {@link DurabilityMode#SYNC sync} mode when commit assurance is
-     * required, and then this method can be called afterwards to acheive a stronger durability
+     * required, and then this method can be called afterwards to achieve a stronger durability
      * guarantee.
      */
     public abstract void sync() throws IOException;

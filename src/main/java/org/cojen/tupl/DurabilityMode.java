@@ -40,7 +40,7 @@ public enum DurabilityMode {
      * persisted to non-volatile storage. If the database is using a replication manager, it
      * might only guarantee that enough replicas have committed modifications to volatile
      * memory, and so the {@link Database#sync sync} method would also need to be called to
-     * acheive stronger durability.
+     * achieve stronger durability.
      */
     SYNC,
 
