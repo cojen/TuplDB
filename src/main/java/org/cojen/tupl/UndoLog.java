@@ -790,7 +790,19 @@ final class UndoLog implements DatabaseAccess {
                 mBufferPos = mBuffer.length;
             } else {
                 node.acquireExclusive();
-                while ((node = popNode(node, true)) != null) {
+                while (true) {
+                    try {
+                        if ((node = popNode(node, true)) == null) {
+                            break;
+                        }
+                    } catch (Throwable e) {
+                        // Caller will release the commit lock, and so these fields must be
+                        // cleared. See comments below.
+                        mNodeTopPos = 0;
+                        mActiveKey = null;
+                        throw e;
+                    }
+
                     if (commitLock.hasQueuedThreads()) {
                         // Release and re-acquire, to unblock any threads waiting for
                         // checkpoint to begin. In case the checkpoint writes out the node(s)
