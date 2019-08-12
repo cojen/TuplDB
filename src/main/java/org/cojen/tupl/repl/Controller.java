@@ -115,6 +115,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Normal and standby members are required to participate in consensus.
     private Peer[] mConsensusPeers;
     private Channel[] mConsensusChannels;
+    // Candidate channels can become the leader, possibly an interim leader.
+    private Channel[] mCandidateChannels;
     // Proxy channels includes proxies, which cannot participate in consensus.
     private Channel[] mProxyChannels;
     // All channels includes observers, which cannot act as proxies.
@@ -252,6 +254,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     // Caller must hold exclusive latch.
+    @SuppressWarnings("unchecked")
     private void refreshPeerSet() {
         Map<Long, Channel> oldPeerChannels = new HashMap<>();
 
@@ -274,6 +277,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         List<Peer> consensusPeers = new ArrayList<>();
         List<Channel> consensusChannels = new ArrayList<>();
+        List<Channel> candidateChannels = new ArrayList<>();
         List<Channel> proxyChannels = new ArrayList<>();
         List<Channel> allChannels = new ArrayList<>();
 
@@ -289,6 +293,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 consensusChannels.add(channel);
             }
 
+            if (peer.mRole.isCandidate()) {
+                candidateChannels.add(channel);
+            }
+
             if (peer.mRole.canProxy()) {
                 proxyChannels.add(channel);
             }
@@ -296,22 +304,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             allChannels.add(channel);
         }
 
-        mConsensusPeers = consensusPeers.toArray(new Peer[0]);
-        mConsensusChannels = consensusChannels.toArray(new Channel[0]);
+        mConsensusPeers = consensusPeers.toArray(new Peer[consensusPeers.size()]);
 
-        if (proxyChannels.equals(consensusChannels)) {
-            mProxyChannels = mConsensusChannels;
-        } else {
-            mProxyChannels = proxyChannels.toArray(new Channel[0]);
-        }
+        Channel[][] arrays = toArrays
+            (consensusChannels, candidateChannels, proxyChannels, allChannels);
 
-        if (allChannels.equals(consensusChannels)) {
-            mAllChannels = mConsensusChannels;
-        } else if (allChannels.equals(proxyChannels)) {
-            mAllChannels = mProxyChannels;
-        } else {
-            mAllChannels = allChannels.toArray(new Channel[0]);
-        }
+        mConsensusChannels = arrays[0];
+        mCandidateChannels = arrays[1];
+        mProxyChannels = arrays[2];
+        mAllChannels = arrays[3];
 
         if (mLeaderReplWriter != null) {
             mLeaderReplWriter.update
@@ -326,6 +327,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         // Wake up syncCommit waiters which are stuck because removed peers aren't responding.
         mSyncCommitCondition.signalAll(this);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Channel[][] toArrays(List<Channel>... lists) {
+        Channel[][] arrays = new Channel[lists.length][];
+
+        fill: for (int i=0; i<lists.length; i++) {
+            List<Channel> list = lists[i];
+
+            for (int j=0; j<i; j++) {
+                if (list.equals(lists[j])) {
+                    arrays[i] = arrays[j];
+                    continue fill;
+                }
+            }
+
+            arrays[i] = list.toArray(new Channel[list.size()]);
+        }
+
+        return arrays;
     }
 
     @Override
@@ -368,7 +389,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mChanMan.joinAcceptor(this::requestJoin);
 
             acquireExclusive();
-            if (mProxyChannels.length == 0) {
+            if (mCandidateChannels.length == 0) {
                 // Lone member can become leader immediately.
                 mElectionValidated = Integer.MIN_VALUE;
                 doElectionTask();
@@ -401,7 +422,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mLeaderLogWriter != null
                 && position >= mLeaderLogWriter.termStartPosition()
                 && position < mLeaderLogWriter.termEndPosition()
-                && !mLocalRole.isInterim())
+                && mLocalRole != Role.STANDBY)
             {
                 reader = null;
             } else {
@@ -435,7 +456,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
             if (mLeaderLogWriter == null
                 || (position >= 0 && position != mLeaderLogWriter.position())
-                || mLocalRole.isInterim())
+                || mLocalRole == Role.STANDBY)
             {
                 return null;
             }
@@ -1077,7 +1098,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Role local = mLocalRole;
                 Channel leader = mLeaderReplyChannel;
                 releaseShared();
-                if (local == Role.NORMAL && leader != null && leader.peer().mRole.isInterim()) {
+                if (local == Role.NORMAL && leader != null && leader.peer().mRole == Role.STANDBY) {
                     acquireExclusive();
                     mElectionValidated = Integer.MIN_VALUE; // force an election
                     doElectionTask();
@@ -1189,8 +1210,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mElectionValidated--;
 
             if (mElectionValidated >= 0
-                || !mGroupFile.localMemberRole().canProxy()
-                || (peerChannels = mProxyChannels).length <= 0)
+                || !mGroupFile.localMemberRole().isCandidate()
+                || (peerChannels = mCandidateChannels).length <= 0)
             {
                 releaseExclusive();
                 return;
@@ -1224,13 +1245,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower("election timed out");
             }
 
-            if (!mGroupFile.localMemberRole().canProxy()) {
-                // Only NORMAL/STANDBY/PROXY members can become candidates.
+            if (!mGroupFile.localMemberRole().isCandidate()) {
+                // Only NORMAL/STANDBY members can become candidates.
                 releaseExclusive();
                 return;
             }
 
-            peerChannels = mProxyChannels;
+            peerChannels = mCandidateChannels;
             info = mStateLog.captureHighest();
 
             if (mElectionValidated > Integer.MIN_VALUE) {
@@ -1279,7 +1300,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseExclusive();
 
             StringBuilder b = new StringBuilder().append("Local member is ");
-            if (mLocalRole.isInterim()) {
+            if (mLocalRole == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("a ");
@@ -1322,7 +1343,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderCommitPosition = commitPosition;
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
-            } else if (mLocalRole == Role.NORMAL) {
+            } else {
                 toFollower("commit position is stalled: " +
                            commitPosition + " < " + highestPosition);
                 return;
@@ -1369,7 +1390,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             StringBuilder b = new StringBuilder("Local member ");
 
-            if (mLocalRole.isInterim()) {
+            if (mLocalRole == Role.STANDBY) {
                 b.append("interim ");
             }
 
@@ -1749,7 +1770,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         LogInfo info = mStateLog.captureHighest();
         return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition)
             // Don't elect an interim leader if it's at the same position.
-            || (mLocalRole == Role.NORMAL && from.peer().mRole.isInterim()
+            || (mLocalRole == Role.NORMAL && from.peer().mRole == Role.STANDBY
                 && position <= info.mHighestPosition);
     }
 
@@ -1801,7 +1822,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void toLeader(long term, long position) {
         try {
             StringBuilder b = new StringBuilder().append("Local member is ");
-            if (mLocalRole.isInterim()) {
+            if (mLocalRole == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("the ");
@@ -2256,7 +2277,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (first) {
             StringBuilder b = new StringBuilder().append("Remote member is ");
-            if (from.peer().mRole.isInterim()) {
+            if (from.peer().mRole == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("the ");

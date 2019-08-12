@@ -447,10 +447,10 @@ public class DatabaseReplicatorTest {
     }
 
     @Test
-    public void proxyLeader() throws Exception {
-        // Test that a proxy member can become an interim leader and prevent data loss.
+    public void standbyLeader() throws Exception {
+        // Test that a standby member can become an interim leader and prevent data loss.
 
-        Database[] dbs = startGroup(2, Role.PROXY, null);
+        Database[] dbs = startGroup(2, Role.STANDBY, null);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 

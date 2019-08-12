@@ -31,7 +31,8 @@ public enum Role {
 
     /**
      * Standby members receive replicated data, they can {@link ReplicatorConfig#proxyWrites
-     * proxy writes}, and they provide consensus. They cannot become the leader.
+     * proxy writes}, and they provide consensus. They can only become an interim leader, to
+     * permit a normal member to catch up. An interim leader doesn't accept any new writes.
      */
     STANDBY((byte) 2),
 
@@ -69,11 +70,8 @@ public enum Role {
         return mCode >= 1 && mCode <= 3;
     }
 
-    /**
-     * Returns true if member can be a leader, but only until a normal member has caught up.
-     */
-    boolean isInterim() {
-        return mCode >= 2 && mCode <= 3;
+    boolean isCandidate() {
+        return mCode >= 1 && mCode <= 2;
     }
 
     static Role decode(byte code) {

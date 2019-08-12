@@ -283,7 +283,8 @@ the order they are declared.</div>
 <li class="blockList">
 <h4>STANDBY</h4>
 <pre>public static final&nbsp;<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a> STANDBY</pre>
-<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus. They cannot become the leader.</div>
+<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus. They can only become an interim leader, to
+ permit a normal member to catch up. An interim leader doesn't accept any new writes.</div>
 </li>
 </ul>
 <a id="PROXY">
