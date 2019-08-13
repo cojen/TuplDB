@@ -60,6 +60,8 @@ class _ReplRedoWriter extends _RedoWriter {
     private int mBufferTail = -1;
     // Absolute log position.
     private long mWritePos;
+    // Set if the consumer failed to write to the ReplicationManager.
+    private Throwable mConsumerException;
 
     /**
      * Caller must call start if a writer is supplied.
@@ -309,6 +311,7 @@ class _ReplRedoWriter extends _RedoWriter {
                             if (buffer == null) {
                                 throw nowUnmodifiable();
                             }
+                            checkConsumerException();
                         } while (mBufferHead == mBufferTail);
                     } finally {
                         mProducer = null;
@@ -396,6 +399,31 @@ class _ReplRedoWriter extends _RedoWriter {
 
     @Override
     void force(boolean metadata) throws IOException {
+        // Wait for consumer to finish writing to the ReplicationManager.
+        acquireExclusive();
+        mBufferLatch.acquireExclusive();
+        try {
+            if (mBufferTail >= 0 && mBuffer != null) {
+                while (true) {
+                    mProducer = Thread.currentThread();
+                    try {
+                        mBufferLatch.releaseExclusive();
+                        Parker.park(mBufferLatch);
+                        mBufferLatch.acquireExclusive();
+                    } finally {
+                        mProducer = null;
+                    }
+                    if (mBufferTail < 0 || mBuffer == null) {
+                        break;
+                    }
+                    checkConsumerException();
+                }
+            }
+        } finally {
+            mBufferLatch.releaseExclusive();
+            releaseExclusive();
+        }
+
         mEngine.mManager.sync();
     }
 
@@ -424,6 +452,14 @@ class _ReplRedoWriter extends _RedoWriter {
             } catch (InterruptedException e) {
                 // Ignore.
             }
+        }
+    }
+
+    private void checkConsumerException() throws WriteFailureException {
+        if (mConsumerException != null) {
+            WriteFailureException e = new WriteFailureException(mConsumerException);
+            mConsumerException = null;
+            throw e;
         }
     }
 
@@ -501,14 +537,16 @@ class _ReplRedoWriter extends _RedoWriter {
                     mBufferTail = -1;
                 }
             } catch (Throwable e) {
-                if (!(e instanceof IOException)) {
-                    Utils.uncaught(e);
+                if (mConsumerException == null) {
+                    mConsumerException = e;
                 }
                 // Keep consuming until an official leadership change is observed.
-                mBufferLatch.releaseExclusive();
-                Thread.yield();
-                mBufferLatch.acquireExclusive();
-                continue;
+                if (mProducer == null) {
+                    mBufferLatch.releaseExclusive();
+                    Thread.yield();
+                    mBufferLatch.acquireExclusive();
+                    continue;
+                }
             }
 
             // Wait for producer and loop back.
@@ -518,6 +556,13 @@ class _ReplRedoWriter extends _RedoWriter {
             Parker.unpark(producer);
             Parker.park(mBufferLatch);
             mBufferLatch.acquireExclusive();
+        }
+
+        if (mConsumerException != null) {
+            if (!(mConsumerException instanceof IOException)) {
+                Utils.uncaught(mConsumerException);
+            }
+            mConsumerException = null;
         }
 
         mConsumer = null;

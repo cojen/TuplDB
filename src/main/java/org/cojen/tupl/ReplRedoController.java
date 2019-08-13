@@ -264,7 +264,7 @@ final class ReplRedoController extends ReplRedoWriter {
             }
         }
 
-        mEngine.mManager.sync();
+        super.force(metadata);
     }
 
     /**
