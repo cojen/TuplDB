@@ -511,6 +511,38 @@ public class DatabaseReplicatorTest {
         leaderDb.close();
     }
 
+    @Test
+    public void emergencyRecovery() throws Exception {
+        // Test that database can be opened after the replication files are deleted. Anything
+        // in them is lost.
+
+        Database db = startGroup(1)[0];
+        Index ix = db.openIndex("test");
+        ix.store(null, "k1".getBytes(), "v1".getBytes());
+        db.suspendCheckpoints();
+        db.checkpoint();
+        ix.store(null, "k2".getBytes(), "v2".getBytes());
+        db.close();
+
+        File baseFile = mReplBaseFiles[0];
+        String prefix = baseFile.getName();
+        baseFile.getParentFile().listFiles(file -> {
+            String name = file.getName();
+            if (name.startsWith(prefix) && !name.endsWith(".db")) {
+                file.delete();
+            }
+            return false;
+        });
+
+        db = closeAndReopen(0);
+        ix = db.openIndex("test");
+
+        fastAssertArrayEquals("v1".getBytes(), ix.load(null, "k1".getBytes()));
+        assertNull(ix.load(null, "k2".getBytes()));
+
+        db.close();
+    }
+
     /**
      * Writes a message to the "control" index, and block the replica until it's received.
      */

@@ -428,12 +428,12 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - expected position to start writing from as leader; method returns null if
- position doesn't match</dd>
+<dd><code>position</code> - expected position to start writing from as leader; method returns null
+ if the given position is lower</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if given position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the given position is negative</dd>
 <dd><code><a href="https://docs.oracle.com/javase/10/docs/api/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </li>

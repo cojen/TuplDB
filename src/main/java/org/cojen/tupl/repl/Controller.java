@@ -455,7 +455,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     ("Writer already exists: term=" + mLeaderReplWriter.term());
             }
             if (mLeaderLogWriter == null
-                || (position >= 0 && position != mLeaderLogWriter.position())
+                || (position >= 0 && position < mLeaderLogWriter.position())
                 || mLocalRole == Role.STANDBY)
             {
                 return null;

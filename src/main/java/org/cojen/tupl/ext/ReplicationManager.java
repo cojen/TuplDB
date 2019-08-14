@@ -63,9 +63,8 @@ public interface ReplicationManager extends Closeable {
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.
      *
-     * <p>After started, the reported {@link #readPosition position} must match the one
-     * provided to this method. The position can change only after read and write operations
-     * have been performed.
+     * <p>After started, the reported {@link #readPosition position} can differ from the one
+     * provided to this method.
      *
      * @param position position to start reading from; 0 is the lowest position
      * @throws IllegalArgumentException if position is negative

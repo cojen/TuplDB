@@ -369,8 +369,8 @@ extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl"
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="DirectReplicator.html#newWriter(long)">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>position</code> - expected position to start writing from as leader; method returns null if
- position doesn't match</dd>
+<dd><code>position</code> - expected position to start writing from as leader; method returns null
+ if the given position is lower</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>

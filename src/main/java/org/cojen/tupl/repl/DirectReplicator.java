@@ -113,10 +113,10 @@ public interface DirectReplicator extends Replicator {
      *
      * <p><b>Note: Writer instances are not expected to be thread-safe.</b>
      *
-     * @param position expected position to start writing from as leader; method returns null if
-     * position doesn't match
+     * @param position expected position to start writing from as leader; method returns null
+     * if the given position is lower
      * @return writer or null if not the leader
-     * @throws IllegalArgumentException if given position is negative
+     * @throws IllegalArgumentException if the given position is negative
      * @throws IllegalStateException if an existing writer for the current term already exists
      */
     Writer newWriter(long position);

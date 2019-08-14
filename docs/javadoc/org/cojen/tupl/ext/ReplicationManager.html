@@ -361,9 +361,8 @@ extends <a href="https://docs.oracle.com/javase/10/docs/api/java/io/Closeable.ht
  all data lower than the given position is confirmed. All data at or higher than the
  given position might be discarded.
 
- <p>After started, the reported <a href="#readPosition()"><code>position</code></a> must match the one
- provided to this method. The position can change only after read and write operations
- have been performed.</div>
+ <p>After started, the reported <a href="#readPosition()"><code>position</code></a> can differ from the one
+ provided to this method.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - position to start reading from; 0 is the lowest position</dd>
