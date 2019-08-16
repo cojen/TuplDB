@@ -413,7 +413,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public Reader newReader(long position, boolean follow) {
         if (follow) {
-            return mStateLog.openReader(position);
+            return doNewReader(position);
         }
 
         acquireShared();
@@ -426,12 +426,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             {
                 reader = null;
             } else {
-                reader = mStateLog.openReader(position);
+                reader = doNewReader(position);
             }
             return reader;
         } finally {
             releaseShared();
         }
+    }
+
+    private Reader doNewReader(long position) {
+        Reader reader = mStateLog.openReader(position);
+        long commitPosition = reader.commitPosition();
+        if (position <= commitPosition) {
+            return reader;
+        }
+        reader.close();
+        throw new InvalidReadException
+            ("Position is higher than commit position: " + position + " > " + commitPosition);
     }
 
     @Override
