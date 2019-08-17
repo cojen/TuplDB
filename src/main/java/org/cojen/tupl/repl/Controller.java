@@ -198,7 +198,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog = log;
         mScheduler = new Scheduler();
         mChanMan = new ChannelManager
-            (factory, mScheduler, groupToken, gf == null ? 0 : gf.groupId());
+            (factory, mScheduler, groupToken, gf == null ? 0 : gf.groupId(), this::uncaught);
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
         mProxyWrites = proxyWrites;
@@ -1000,7 +1000,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     void uncaught(Throwable e) {
         if (!mChanMan.isStopped()) {
-            Utils.uncaught(e);
+            if (e instanceof JoinException && mEventListener != null) {
+                try {
+                    mEventListener.accept(Level.WARNING, e.getMessage());
+                } catch (Throwable e2) {
+                    // Ignore.
+                }
+            } else {
+                Utils.uncaught(e);
+            }
         }
     }
 

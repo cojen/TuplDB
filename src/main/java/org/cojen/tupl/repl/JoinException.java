@@ -19,6 +19,8 @@ package org.cojen.tupl.repl;
 
 import java.io.IOException;
 
+import java.net.SocketAddress;
+
 /**
  * Thrown when unable to join a replication group.
  *
@@ -27,10 +29,28 @@ import java.io.IOException;
 public class JoinException extends IOException {
     private static final long serialVersionUID = 1L;
 
+    final SocketAddress mAddress;
+
     public JoinException() {
+        mAddress = null;
     }
 
     public JoinException(String message) {
+        this(message, null);
+    }
+
+    JoinException(String message, SocketAddress addr) {
         super(message);
+        mAddress = addr;
+    }
+
+    @Override
+    public String getMessage() {
+        String message = super.getMessage();
+        if (mAddress != null) {
+            // Only construct the full message when something actually wants it.
+            message += ": " + mAddress;
+        }
+        return message;
     }
 }

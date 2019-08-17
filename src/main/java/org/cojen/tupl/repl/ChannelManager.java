@@ -49,7 +49,13 @@ import javax.net.SocketFactory;
 
 import org.cojen.tupl.util.Latch;
 
-import static org.cojen.tupl.io.Utils.*;
+import static org.cojen.tupl.io.Utils.closeQuietly;
+import static org.cojen.tupl.io.Utils.decodeIntLE;
+import static org.cojen.tupl.io.Utils.decodeLongLE;
+import static org.cojen.tupl.io.Utils.encodeIntLE;
+import static org.cojen.tupl.io.Utils.encodeLongLE;
+import static org.cojen.tupl.io.Utils.readFully;
+import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
  * 
@@ -109,6 +115,7 @@ final class ChannelManager {
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
     private final long mGroupToken;
+    private final Consumer<Throwable> mUncaughtHandler;
     private final Map<SocketAddress, Peer> mPeerMap;
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
@@ -128,13 +135,16 @@ final class ChannelManager {
     /**
      * @param factory optional
      */
-    ChannelManager(SocketFactory factory, Scheduler scheduler, long groupToken, long groupId) {
-        if (scheduler == null) {
+    ChannelManager(SocketFactory factory, Scheduler scheduler, long groupToken, long groupId,
+                   Consumer<Throwable> uncaughtHandler)
+    {
+        if (scheduler == null || uncaughtHandler == null) {
             throw new IllegalArgumentException();
         }
         mSocketFactory = factory;
         mScheduler = scheduler;
         mGroupToken = groupToken;
+        mUncaughtHandler = uncaughtHandler;
         mPeerMap = new HashMap<>();
         mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
         mChannels = new HashSet<>();
@@ -387,7 +397,7 @@ final class ChannelManager {
 
             s.getOutputStream().write(header);
 
-            header = readHeader(s);
+            header = readHeader(s, false);
             if (header == null) {
                 break doConnect;
             }
@@ -484,7 +494,7 @@ final class ChannelManager {
                         return;
                     }
                 }
-                uncaught(e);
+                mUncaughtHandler.accept(e);
                 Thread.yield();
             }
         }
@@ -501,7 +511,7 @@ final class ChannelManager {
         ServerChannel server = null;
 
         try {
-            byte[] header = readHeader(s);
+            byte[] header = readHeader(s, true);
             if (header == null) {
                 return;
             }
@@ -573,7 +583,7 @@ final class ChannelManager {
                 } catch (IOException e) {
                     // Ignore.
                 } catch (Throwable e) {
-                    uncaught(e);
+                    mUncaughtHandler.accept(e);
                 }
                 Closeable c = s;
                 if (facceptor instanceof ServerChannel) {
@@ -598,16 +608,19 @@ final class ChannelManager {
     /**
      * @return null if invalid
      */
-    byte[] readHeader(Socket s) {
+    byte[] readHeader(Socket s, boolean accepted) throws JoinException {
         byte[] header;
         try {
             s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
-            header = readHeader(s.getInputStream(), mGroupToken, getGroupId());
+            header = readHeader(s, accepted, mGroupToken, getGroupId());
             s.setSoTimeout(0);
             s.setTcpNoDelay(true);
         } catch (IOException e) {
-            // Ignore and close socket.
-            header = null;
+            closeQuietly(s);
+            if (e instanceof JoinException) {
+                throw (JoinException) e;
+            }
+            return null;
         }
 
         if (header == null) {
@@ -620,7 +633,11 @@ final class ChannelManager {
     /**
      * @return null if invalid
      */
-    static byte[] readHeader(InputStream in, long groupToken, long groupId) throws IOException {
+    static byte[] readHeader(Socket s, boolean accepted, long groupToken, long groupId)
+        throws IOException, JoinException
+    {
+        InputStream in = s.getInputStream();
+
         byte[] header = new byte[INIT_HEADER_SIZE];
         readFully(in, header, 0, header.length);
 
@@ -628,13 +645,20 @@ final class ChannelManager {
             return null;
         }
 
-        if (decodeLongLE(header, 8) != groupToken) {
-            return null;
-        }
+        if (decodeLongLE(header, 8) != groupToken ||
+            (decodeIntLE(header, 32) != TYPE_JOIN && decodeLongLE(header, 16) != groupId))
+        {
+            if (!accepted) {
+                throw new JoinException("Group token or id doesn't match",
+                                        s.getRemoteSocketAddress());
+            }
 
-        int connectionType = decodeIntLE(header, 32);
+            // Use illegal identifier (0) to indicate that group token or id doesn't match.
+            encodeIntLE(header, 8, 0);
+            encodeIntLE(header, 16, 0);
+            encodeHeaderCrc(header);
+            s.getOutputStream().write(header);
 
-        if (connectionType != TYPE_JOIN && (decodeLongLE(header, 16) != groupId)) {
             return null;
         }
 
@@ -685,6 +709,7 @@ final class ChannelManager {
         private OutputStream mOut;
         private ChannelInputStream mIn;
         private int mReconnectDelay;
+        private boolean mJoinFailure;
 
         // 0: not writing;  1: writing;  2+: tagged to be closed due to timeout
         volatile int mWriteState;
@@ -705,6 +730,18 @@ final class ChannelManager {
 
             try {
                 connected(doConnect(mPeer, TYPE_CONTROL));
+            } catch (JoinException e) {
+                boolean report;
+                synchronized (this) {
+                    // Only report first failure.
+                    report = !mJoinFailure;
+                    if (report) {
+                        mJoinFailure = true;
+                    }
+                }
+                if (report) {
+                    mUncaughtHandler.accept(e);
+                }
             } catch (IOException e) {
                 // Ignore.
             }
@@ -798,6 +835,7 @@ final class ChannelManager {
             mOut = out;
             mIn = in;
             mReconnectDelay = 0;
+            mJoinFailure = false;
             releaseExclusive();
 
             execute(this::inputLoop);
@@ -1010,7 +1048,7 @@ final class ChannelManager {
             } catch (IOException e) {
                 // Ignore.
             } catch (Throwable e) {
-                uncaught(e);
+                mUncaughtHandler.accept(e);
             }
 
             reconnect(in);

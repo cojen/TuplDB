@@ -283,8 +283,6 @@ class GroupJoiner {
      * @return leader address or null
      */
     private SocketAddress processReply(Socket s, long timeoutMillis) throws IOException {
-        InputStream in = s.getInputStream();
-
         if (timeoutMillis >= 0) {
             int intTimeout;
             if (timeoutMillis == 0) {
@@ -297,10 +295,10 @@ class GroupJoiner {
 
         SocketAddress addr = null;
 
-        byte[] header = ChannelManager.readHeader(in, mGroupToken, 0);
+        byte[] header = ChannelManager.readHeader(s, false, mGroupToken, 0);
 
         if (header != null) {
-            ChannelInputStream cin = new ChannelInputStream(in, 1000);
+            ChannelInputStream cin = new ChannelInputStream(s.getInputStream(), 1000);
             int op = cin.read();
             if (op == OP_ADDRESS) {
                 addr = GroupFile.parseSocketAddress(cin.readStr(cin.readIntLE()));
