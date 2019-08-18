@@ -161,7 +161,7 @@ final class GroupFile extends Latch {
     }
 
     private void peerAddedEvent(Peer peer) {
-        event(Level.INFO, "Remote member added: " + peer.mAddress + ", " + peer.mRole);
+        event(Level.INFO, "Remote member added: " + peer.mAddress + ", " + peer.role());
     }
 
     private void localRoleChangeEvent(Role from) {
@@ -177,12 +177,12 @@ final class GroupFile extends Latch {
             peerAddedEvent(to);
         } else {
             event(Level.INFO, "Remote member role changed: " + to.mAddress + ", "
-                  + from + " to " + to.mRole);
+                  + from + " to " + to.role());
         }
     }
 
     private void peerRemoveEvent(Peer peer) {
-        event(Level.INFO, "Remote member removed: " + peer.mAddress + ", " + peer.mRole);
+        event(Level.INFO, "Remote member removed: " + peer.mAddress + ", " + peer.role());
     }
 
     /**
@@ -311,9 +311,10 @@ final class GroupFile extends Latch {
                 continue;
             } else if (oldPeer.mMemberId == newPeer.mMemberId) {
                 // Update existing peer.
-                Role currentRole = oldPeer.mRole;
-                if (currentRole != newPeer.mRole) {
-                    oldPeer.mRole = newPeer.mRole;
+                Role currentRole = oldPeer.role();
+                Role newRole = newPeer.role();
+                if (currentRole != newRole) {
+                    oldPeer.role(newRole);
                     peerRoleChangeEvent(currentRole, oldPeer);
                 }
                 oldPeer = null;
@@ -901,16 +902,16 @@ final class GroupFile extends Latch {
      * Caller must hold exclusive latch.
      */
     private void doUpdateRole(Peer existing, Role role) throws IOException {
-        Role existingRole = existing.mRole;
+        Role existingRole = existing.role();
 
         if (existingRole != role) {
-            existing.mRole = role;
+            existing.role(role);
 
             try {
                 persist();
             } catch (Throwable e) {
                 // Rollback.
-                existing.mRole = existingRole;
+                existing.role(existingRole);
                 throw e;
             }
 
@@ -1129,7 +1130,7 @@ final class GroupFile extends Latch {
             writeMember(w, mLocalMemberId, mLocalMemberAddress, mLocalMemberRole);
 
             for (Peer peer : mPeerSet) {
-                writeMember(w, peer.mMemberId, peer.mAddress, peer.mRole);
+                writeMember(w, peer.mMemberId, peer.mAddress, peer.role());
             }
 
             w.flush();

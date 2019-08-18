@@ -288,16 +288,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 channel = mChanMan.connect(peer, this);
             }
 
-            if (peer.mRole.providesConsensus()) {
+            Role role = peer.role();
+
+            if (role.providesConsensus()) {
                 consensusPeers.add(peer);
                 consensusChannels.add(channel);
             }
 
-            if (peer.mRole.isCandidate()) {
+            if (role.isCandidate()) {
                 candidateChannels.add(channel);
             }
 
-            if (peer.mRole.canProxy()) {
+            if (role.canProxy()) {
                 proxyChannels.add(channel);
             }
 
@@ -1117,7 +1119,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Role local = mLocalRole;
                 Channel leader = mLeaderReplyChannel;
                 releaseShared();
-                if (local == Role.NORMAL && leader != null && leader.peer().mRole == Role.STANDBY) {
+                if (local == Role.NORMAL && leader != null
+                    && leader.peer().role() == Role.STANDBY)
+                {
                     acquireExclusive();
                     mElectionValidated = Integer.MIN_VALUE; // force an election
                     doElectionTask();
@@ -1703,7 +1707,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void commitConflict(Channel from, CommitConflictException e) {
         if (from != null) {
             Peer peer = from.peer();
-            if (peer != null && !peer.mRole.providesConsensus()) {
+            if (peer != null && !peer.role().providesConsensus()) {
                 // Only report the conflict if it came from an authority, in which case the
                 // conflict won't likely go away,
                 return;
@@ -1789,7 +1793,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         LogInfo info = mStateLog.captureHighest();
         return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition)
             // Don't elect an interim leader if it's at the same position.
-            || (mLocalRole == Role.NORMAL && from.peer().mRole == Role.STANDBY
+            || (mLocalRole == Role.NORMAL && from.peer().role() == Role.STANDBY
                 && position <= info.mHighestPosition);
     }
 
@@ -2296,7 +2300,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (first) {
             StringBuilder b = new StringBuilder().append("Remote member is ");
-            if (from.peer().mRole == Role.STANDBY) {
+            if (from.peer().role() == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("the ");
@@ -2612,7 +2616,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 break tryUpdateRole;
             }
 
-            if (peer.mRole == role) {
+            Role currentRole = peer.role();
+
+            if (currentRole == role) {
                 // Role already matches.
                 result = ErrorCodes.SUCCESS;
                 break tryUpdateRole;
@@ -2620,7 +2626,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             message = mGroupFile.proposeUpdateRole(CONTROL_OP_UPDATE_ROLE, memberId, role);
 
-            if (peer.mRole.providesConsensus() != role.providesConsensus()) {
+            if (currentRole.providesConsensus() != role.providesConsensus()) {
                 // When changing the consensus, restrict to one change at a time (by the
                 // majority). Ensure that all consensus peers are caught up.
 

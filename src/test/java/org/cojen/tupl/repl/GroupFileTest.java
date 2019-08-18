@@ -132,7 +132,7 @@ public class GroupFileTest {
         Peer peer = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.OBSERVER);
         assertTrue(peer.mMemberId != 0);
         assertEquals(new InetSocketAddress("localhost", 1002), peer.mAddress);
-        assertEquals(Role.OBSERVER, peer.mRole);
+        assertEquals(Role.OBSERVER, peer.role());
 
         Set<Peer> allPeers = gf.allPeers();
         assertEquals(1, allPeers.size());
@@ -140,12 +140,12 @@ public class GroupFileTest {
 
         Peer result = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.NORMAL);
         assertTrue(result == peer);
-        assertEquals(Role.NORMAL, peer.mRole);
+        assertEquals(Role.NORMAL, peer.role());
 
         Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
         assertTrue(peer2.mMemberId != 0);
         assertEquals(new InetSocketAddress("localhost", 1003), peer2.mAddress);
-        assertEquals(Role.STANDBY, peer2.mRole);
+        assertEquals(Role.STANDBY, peer2.role());
 
         allPeers = gf.allPeers();
         assertEquals(2, allPeers.size());
@@ -164,10 +164,10 @@ public class GroupFileTest {
         for (Peer p : allPeers) {
             if (p.equals(peer)) {
                 assertEquals(new InetSocketAddress("localhost", 1002), p.mAddress);
-                assertEquals(Role.NORMAL, p.mRole);
+                assertEquals(Role.NORMAL, p.role());
             } else {
                 assertEquals(new InetSocketAddress("localhost", 1003), p.mAddress);
-                assertEquals(Role.STANDBY, p.mRole);
+                assertEquals(Role.STANDBY, p.role());
             }
         }
     }
@@ -189,7 +189,7 @@ public class GroupFileTest {
         Peer peer = allPeers.iterator().next();
         assertTrue(peer.mMemberId != 0);
         assertEquals(new InetSocketAddress("localhost", 1002), peer.mAddress);
-        assertEquals(Role.OBSERVER, peer.mRole);
+        assertEquals(Role.OBSERVER, peer.role());
 
         // Capture the version.
         message = gf.proposeJoin((byte) 1, new InetSocketAddress("localhost", 1003), null);
@@ -277,12 +277,12 @@ public class GroupFileTest {
         assertEquals(Role.OBSERVER, gf.localMemberRole());
 
         gf.updateRole(peer.mMemberId, Role.OBSERVER);
-        assertEquals(Role.OBSERVER, peer.mRole);
+        assertEquals(Role.OBSERVER, peer.role());
         gf.updateRole(peer.mMemberId, Role.NORMAL);
-        assertEquals(Role.NORMAL, peer.mRole);
+        assertEquals(Role.NORMAL, peer.role());
 
         gf.updateRole(peer2.mMemberId, Role.NORMAL);
-        assertEquals(Role.NORMAL, peer2.mRole);
+        assertEquals(Role.NORMAL, peer2.role());
 
         // Re-open.
         gf = GroupFile.open(null, f, new InetSocketAddress("localhost", 1001), true);
@@ -297,10 +297,10 @@ public class GroupFileTest {
         for (Peer p : allPeers) {
             if (p.equals(peer)) {
                 assertEquals(new InetSocketAddress("localhost", 1002), p.mAddress);
-                assertEquals(Role.NORMAL, p.mRole);
+                assertEquals(Role.NORMAL, p.role());
             } else {
                 assertEquals(new InetSocketAddress("localhost", 1003), p.mAddress);
-                assertEquals(Role.NORMAL, p.mRole);
+                assertEquals(Role.NORMAL, p.role());
             }
         }
     }
@@ -318,7 +318,7 @@ public class GroupFileTest {
 
         assertTrue(gf.applyUpdateRole(message));
 
-        assertEquals(Role.NORMAL, peer.mRole);
+        assertEquals(Role.NORMAL, peer.role());
 
         // Capture the version.
         message = gf.proposeUpdateRole((byte) 11, peer2.mMemberId, Role.NORMAL);
@@ -555,7 +555,7 @@ public class GroupFileTest {
         for (Peer p : gf1.allPeers()) {
             if (p.equals(p2)) {
                 assertFalse(found);
-                assertEquals(Role.OBSERVER, p.mRole);
+                assertEquals(Role.OBSERVER, p.role());
                 assertTrue(p == p2);
                 found = true;
             }

@@ -62,7 +62,7 @@ final class Peer implements Comparable<Peer> {
     final long mMemberId;
     final SocketAddress mAddress;
 
-    Role mRole;
+    private Role mRole;
 
     long mMatchPosition;
 
@@ -99,6 +99,10 @@ final class Peer implements Comparable<Peer> {
 
     Role role() {
         return (Role) cRoleHandle.getOpaque(this);
+    }
+
+    void role(Role role) {
+        cRoleHandle.setOpaque(this, role);
     }
 
     long updateGroupVersion(final long groupVersion) {
