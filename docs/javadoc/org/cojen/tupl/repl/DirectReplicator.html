@@ -312,7 +312,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <pre class="methodSignature"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a>&nbsp;restore&#8203;(<a href="https://docs.oracle.com/javase/10/docs/api/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/javase/10/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)
                   throws <a href="https://docs.oracle.com/javase/10/docs/api/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></pre>
 <div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)"><code>snapshot</code></a> from another group member,
- expected to be called only by newly joined members. New members are initially <a href="Role.html#OBSERVER"><code>obervers</code></a>, so call the start method after restoration to update the role.</div>
+ expected to be called only by newly joined members. New members are initially <a href="Role.html#RESTORING"><code>restoring</code></a>, so call the start method after restoration to update the role.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>options</code> - requested options; can pass null if none</dd>

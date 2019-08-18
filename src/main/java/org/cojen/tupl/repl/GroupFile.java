@@ -661,7 +661,7 @@ final class GroupFile extends Latch {
                     throw new IllegalArgumentException("Illegal address: " + addressStr);
                 }
                 try {
-                    peer = doAddPeer(version, address, Role.OBSERVER);
+                    peer = doAddPeer(version, address, Role.RESTORING);
                 } catch (IllegalStateException e) {
                     // Assume member is already in the group.
                 }

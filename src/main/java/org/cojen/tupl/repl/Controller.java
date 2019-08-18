@@ -74,6 +74,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int SYNC_RATE_LOW_MILLIS = 2000;
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
     private static final int COMMIT_CONFLICT_REPORT_MILLIS = 60000;
+    private static final int CONNECTING_THRESHOLD_MILLIS = 10000;
 
     // Smallest validation value is 1, but boost it to avoiding stalling too soon. If the local
     // member is the group leader and hasn't observed the commit position advancing over this
@@ -152,6 +153,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Last time that a commit conflict was reported.
     private volatile long mLastConflictReport = Long.MIN_VALUE;
+
+    // True when a task is scheduled to remove stale members.
+    private boolean mRemovingStaleMembers;
 
     /**
      * @param factory optional
@@ -1439,6 +1443,70 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
+    private void scheduleRemoveStaleMembersTask() {
+        mScheduler.schedule(this::removeStaleMembers, CONNECTING_THRESHOLD_MILLIS / 2);
+    }
+
+    private void removeStaleMembers() {
+        try {
+            doRemoveStaleMembers();
+        } catch (Throwable e) {
+            uncaught(e);
+        }
+
+        if (tryAcquireShared()) {
+            if (mLocalMode != MODE_LEADER) {
+                // Only the leader can remove members.
+                if (tryUpgrade()) {
+                    mRemovingStaleMembers = false;
+                    releaseExclusive();
+                    return;
+                }
+            }
+            releaseShared();
+        }
+
+        scheduleRemoveStaleMembersTask();
+    }
+
+    private void doRemoveStaleMembers() {
+        Set<? extends Channel> channels = mChanMan.allChannels();
+
+        if (channels.isEmpty()) {
+            return;
+        }
+
+        long now = Long.MIN_VALUE;
+
+        for (Channel channel : channels) {
+            long startedAt = channel.connectAttemptStartedAt();
+            if (startedAt == Long.MAX_VALUE) {
+                continue;
+            }
+            if (now == Long.MIN_VALUE) {
+                now = System.currentTimeMillis();
+            }
+            long duration = now - startedAt;
+            if (duration <= CONNECTING_THRESHOLD_MILLIS) {
+                continue;
+            }
+
+            Peer peer = channel.peer();
+            Role role = peer.role();
+            if (role != Role.RESTORING) {
+                // Only remove stale restoring members for now.
+            }
+
+            Consumer<byte[]> acceptor = mControlMessageAcceptor;
+            if (acceptor == null) {
+                // Cannot do anything without this.
+                return;
+            }
+
+            acceptor.accept(mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, peer.mMemberId, null));
+        }
+    }
+
     private void requestJoin(Socket s) {
         try {
             try {
@@ -1876,6 +1944,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseExclusive();
             uncaught(e);
             return;
+        }
+
+        if (!mRemovingStaleMembers) {
+            mRemovingStaleMembers = true;
+            scheduleRemoveStaleMembersTask();
         }
 
         doAffirmLeadership();

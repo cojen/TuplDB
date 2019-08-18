@@ -189,7 +189,7 @@ public class GroupFileTest {
         Peer peer = allPeers.iterator().next();
         assertTrue(peer.mMemberId != 0);
         assertEquals(new InetSocketAddress("localhost", 1002), peer.mAddress);
-        assertEquals(Role.OBSERVER, peer.role());
+        assertEquals(Role.RESTORING, peer.role());
 
         // Capture the version.
         message = gf.proposeJoin((byte) 1, new InetSocketAddress("localhost", 1003), null);

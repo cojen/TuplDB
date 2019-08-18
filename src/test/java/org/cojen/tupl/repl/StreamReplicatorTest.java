@@ -91,7 +91,9 @@ public class StreamReplicatorTest {
 
             if (i > 0) {
                 mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
-                mConfigs[i].localRole(Role.OBSERVER);
+                // Use RESTORING state instead of OBSERVER to avoid race conditions caused by
+                // control messages which update the role.
+                mConfigs[i].localRole(Role.RESTORING);
             }
 
             StreamReplicator repl = StreamReplicator.open(mConfigs[i]);

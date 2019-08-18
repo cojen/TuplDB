@@ -49,6 +49,12 @@ public enum Role {
     OBSERVER((byte) 4),
 
     /**
+     * A restoring member is an observer which just joined the group and is receiving a
+     * snapshot. If the restore fails, the member is automatically removed from the group.
+     */
+    RESTORING((byte) 5),
+
+    /**
      * Voters only provide consensus. They don't receive replicated data, they don't {@link
      * ReplicatorConfig#proxyWrites proxy writes}, and they cannot become the leader.
      *

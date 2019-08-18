@@ -46,6 +46,14 @@ interface Channel {
     }
 
     /**
+     * Returns the time at which a connection attempt was started, as milliseconds from 1970.
+     * Returns MAX_VALUE if currently connected.
+     */
+    default long connectAttemptStartedAt() {
+        return Long.MAX_VALUE;
+    }
+
+    /**
      * Called when an unknown operation was received.
      */
     void unknown(Channel from, int op);

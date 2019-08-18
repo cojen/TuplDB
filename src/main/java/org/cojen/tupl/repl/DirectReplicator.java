@@ -44,7 +44,7 @@ public interface DirectReplicator extends Replicator {
     /**
      * Start by receiving a {@link #requestSnapshot snapshot} from another group member,
      * expected to be called only by newly joined members. New members are initially {@link
-     * Role#OBSERVER obervers}, so call the start method after restoration to update the role.
+     * Role#RESTORING restoring}, so call the start method after restoration to update the role.
      *
      * @param options requested options; can pass null if none
      * @return null if no snapshot could be found and replicator hasn't started

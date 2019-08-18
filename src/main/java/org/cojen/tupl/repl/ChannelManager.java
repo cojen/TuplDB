@@ -32,11 +32,12 @@ import java.net.Socket;
 import java.net.SocketAddress;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.function.Consumer;
 import java.util.function.LongPredicate;
@@ -147,7 +148,7 @@ final class ChannelManager {
         mUncaughtHandler = uncaughtHandler;
         mPeerMap = new HashMap<>();
         mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
-        mChannels = new HashSet<>();
+        mChannels = ConcurrentHashMap.newKeySet();
         setGroupId(groupId);
     }
 
@@ -230,6 +231,10 @@ final class ChannelManager {
         checkWrites();
 
         return true;
+    }
+
+    Set<? extends Channel> allChannels() {
+        return mChannels;
     }
 
     void socketAcceptor(Consumer<Socket> acceptor) {
@@ -709,6 +714,7 @@ final class ChannelManager {
         private OutputStream mOut;
         private ChannelInputStream mIn;
         private int mReconnectDelay;
+        private volatile long mConnectAttemptStartedAt;
         private boolean mJoinFailure;
 
         // 0: not writing;  1: writing;  2+: tagged to be closed due to timeout
@@ -720,12 +726,16 @@ final class ChannelManager {
         SocketChannel(Peer peer, Channel localServer) {
             mPeer = peer;
             mLocalServer = localServer;
+            mConnectAttemptStartedAt = Long.MAX_VALUE;
         }
 
         void connect() {
             InputStream in;
             synchronized (this) {
                 in = mIn;
+                if (mConnectAttemptStartedAt == Long.MAX_VALUE) {
+                    mConnectAttemptStartedAt = System.currentTimeMillis();
+                }
             }
 
             try {
@@ -811,7 +821,7 @@ final class ChannelManager {
             connected(s);
         }
 
-        synchronized boolean connected(Socket s) {
+        private synchronized boolean connected(Socket s) {
             if (mPartitioned) {
                 closeQuietly(s);
                 return false;
@@ -835,6 +845,7 @@ final class ChannelManager {
             mOut = out;
             mIn = in;
             mReconnectDelay = 0;
+            mConnectAttemptStartedAt = Long.MAX_VALUE;
             mJoinFailure = false;
             releaseExclusive();
 
@@ -1093,6 +1104,11 @@ final class ChannelManager {
                     }
                 }
             }
+        }
+
+        @Override
+        public long connectAttemptStartedAt() {
+            return mConnectAttemptStartedAt;
         }
 
         @Override
@@ -1567,7 +1583,7 @@ final class ChannelManager {
                 return true;
             } catch (IOException e) {
                 mOut = null;
-                // Close and attempt to reconnect.
+                // Close and let inputLoop attempt to reconnect.
                 closeSocket();
                 return false;
             }
