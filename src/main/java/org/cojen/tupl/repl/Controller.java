@@ -1495,6 +1495,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             Role role = peer.role();
             if (role != Role.RESTORING) {
                 // Only remove stale restoring members for now.
+                continue;
             }
 
             Consumer<byte[]> acceptor = mControlMessageAcceptor;
