@@ -562,9 +562,15 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                 }
 
-                // Magic constant was determined empirically against the G1 collector. A higher
-                // constant increases memory thrashing.
-                long usedRate = Utils.roundUpPower2((long) Math.ceil(maxCache / 32768.0)) - 1;
+                long usedRate;
+                if (mPageDb.isDurable()) {
+                    // Magic constant was determined empirically against the G1 collector. A
+                    // higher constant increases memory thrashing.
+                    usedRate = Utils.roundUpPower2((long) Math.ceil(maxCache / 32768.0)) - 1;
+                } else {
+                    // Nothing gets evicted, so no need to ever adjust usage order.
+                    usedRate = -1;
+                }
 
                 int stripes = roundUpPower2(procCount * 4);
 

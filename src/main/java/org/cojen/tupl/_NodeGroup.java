@@ -86,7 +86,8 @@ final class _NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
      * rate value, the less likely that calling the used method does anything. The used rate
      * value should be proportional to the total cache size. For larger caches, exact MRU
      * ordering is less critical, and the cost of updating the ordering is also higher. Hence,
-     * a larger used rate value is recommended.
+     * a larger used rate value is recommended. Passing a value of -1 effectively disables node
+     * movement (probability is extremely low).
      */
     _NodeGroup(_LocalDatabase db, long usedRate, int maxSize) {
         super(PACK_SLOTS);
