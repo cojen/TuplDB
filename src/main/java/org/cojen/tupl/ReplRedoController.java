@@ -193,7 +193,7 @@ final class ReplRedoController extends ReplRedoWriter {
             // writes a reset operation to the redo log.
             long endPos = writer.confirmEnd();
             if (endPos < mCheckpointPos) {
-                cCheckpointPosHandle.setOpaque(endPos);
+                cCheckpointPosHandle.setOpaque(this, endPos);
                 mCheckpointTxnId = 0;
             }
 
