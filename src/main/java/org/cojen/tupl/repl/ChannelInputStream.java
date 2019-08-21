@@ -35,31 +35,14 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 final class ChannelInputStream extends InputStream {
-    private static final VarHandle cReadAmountHandle;
-
-    static {
-        try {
-            cReadAmountHandle =
-                MethodHandles.lookup().findVarHandle
-                (ChannelInputStream.class, "mReadAmount", long.class);
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
     private final InputStream mSource;
     byte[] mBuffer;
     int mPos;
     private int mEnd;
-    private volatile long mReadAmount;
 
     ChannelInputStream(InputStream source, int size) {
         mSource = source;
         mBuffer = new byte[size];
-    }
-
-    long resetReadAmount() {
-        return (long) cReadAmountHandle.getAndSet(this, 0);
     }
 
     byte readByte() throws IOException {
@@ -148,7 +131,6 @@ final class ChannelInputStream extends InputStream {
             if (avail <= 0) {
                 return -1;
             }
-            cReadAmountHandle.getAndAdd(this, avail);
             pos = 0;
             mEnd = avail;
         }
@@ -165,17 +147,12 @@ final class ChannelInputStream extends InputStream {
 
         if (avail <= 0) {
             if (len >= buf.length) {
-                int amt = mSource.read(b, off, len);
-                if (amt > 0) {
-                    cReadAmountHandle.getAndAdd(this, amt);
-                }
-                return amt;
+                return mSource.read(b, off, len);
             }
             avail = mSource.read(buf, 0, buf.length);
             if (avail <= 0) {
                 return -1;
             }
-            cReadAmountHandle.getAndAdd(this, avail);
             mPos = 0;
             mEnd = avail;
         }
@@ -200,13 +177,7 @@ final class ChannelInputStream extends InputStream {
             return n;
         }
 
-        long amt = mSource.skip(n);
-
-        if (amt > 0) {
-            cReadAmountHandle.getAndAdd(this, amt);
-        }
-
-        return amt;
+        return mSource.skip(n);
     }
 
     @Override
@@ -264,7 +235,6 @@ final class ChannelInputStream extends InputStream {
             if (avail <= 0) {
                 throw new EOFException();
             }
-            cReadAmountHandle.getAndAdd(this, avail);
             end += avail;
             mEnd = end;
             required -= avail;

@@ -78,7 +78,7 @@ final class ChannelManager {
 
       0:  Command length (3 bytes)  -- excludes the 8-byte command header itself
       3:  Opcode (byte)
-      4:  Bytes read delta (uint)   -- first command sends 0
+      4:  CRC (uint)  -- unused
 
     */
 
@@ -872,10 +872,6 @@ final class ChannelManager {
                 while (true) {
                     long header = in.readLongLE();
 
-                    // TODO: Process the read delta such that Channels can be ordered by
-                    // number of outstanding bytes, in a PriorityQueue.
-                    long readDelta = header >>> 32;
-
                     int opAndLength = (int) header;
                     int commandLength = (opAndLength >> 8) & 0xffffff;
                     int op = opAndLength & 0xff;
@@ -1555,21 +1551,7 @@ final class ChannelManager {
         private void prepareCommand(OutputStream out, byte[] command,
                                     int op, int offset, int length)
         {
-            ChannelInputStream in = mIn;
-            long bytesRead = in == null ? 0 : in.resetReadAmount();
-
-            if (Long.compareUnsigned(bytesRead, 1L << 32) >= 0) {
-                // Won't fit in the field, so send a bunch of nops.
-                encodeIntLE(command, offset, 0);
-                encodeIntLE(command, offset + 4, (int) ((1L << 32) - 1));
-                do {
-                    bytesRead -= ((1L << 32) - 1);
-                    writeCommand(out, command, offset, 8);
-                } while (Long.compareUnsigned(bytesRead, 1L << 32) >= 0);
-            }
-
             encodeIntLE(command, offset, (length << 8) | (byte) op);
-            encodeIntLE(command, offset + 4, (int) bytesRead);
         }
 
         /**
