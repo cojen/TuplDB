@@ -3279,8 +3279,13 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
                 return false;
             }
 
-            if (notSplitDirtyUpgrade(leaf, exclusive)) {
-                break;
+            try {
+                if (notSplitDirtyUpgrade(leaf, exclusive)) {
+                    break;
+                }
+            } catch (Throwable e) {
+                shared.release();
+                throw e;
             }
 
             exclusive = true;
