@@ -84,4 +84,8 @@ public class DatabaseException extends IOException {
             }
         }
     }
+
+    static boolean isRecoverable(Throwable e) {
+        return (e instanceof DatabaseException) && ((DatabaseException) e).isRecoverable();
+    }
 }
