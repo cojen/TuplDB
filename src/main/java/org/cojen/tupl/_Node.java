@@ -2862,8 +2862,6 @@ final class _Node extends Clutch implements _DatabaseAccess {
         final _Split split = splitChild.mSplit;
         final _Node newChild = splitChild.rebindSplitFrames(split);
 
-        splitChild.mSplit = null;
-
         //final _Node leftChild;
         final _Node rightChild;
         int newChildPos = keyPos >> 1;
@@ -2892,11 +2890,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
             childFrame = childFrame.mPrevCousin;
         }
 
-        // Note: Invocation of createInternalEntry may cause splitInternal to be called,
-        // which in turn might throw a recoverable exception. State changes can be undone
-        // by decrementing the incremented frame positions, and then by undoing the
-        // rebindSplitFrames call. However, this would create an orphaned child node.
-        // Panicking the database is the safest option.
+        // Note: Invocation of createInternalEntry may cause splitInternal to be called, which
+        // in turn might throw a recoverable exception. Left unfinished, the split will trigger
+        // a checkpoint assertion failure. Panicking the database is the safest option for now.
 
         InResult result;
         try {
@@ -2904,12 +2900,38 @@ final class _Node extends Clutch implements _DatabaseAccess {
             createInternalEntry(frame, result, tree, keyPos, split.splitKeyEncodedLength(),
                                 newChildPos << 3, true);
         } catch (Throwable e) {
-            splitChild.releaseExclusive();
-            newChild.releaseExclusive();
-            releaseExclusive();
-            panic(e);
+            // Undo the earlier changes. They were performed early because the call to
+            // createInternalEntry depends on them, even for child node bindings. A rebalance
+            // operation will access the child nodes.
+
+            try {
+                for (_CursorFrame childFrame = rightChild.mLastCursorFrame; childFrame != null; ) {
+                    childFrame.adjustParentPosition(-2);
+                    childFrame = childFrame.mPrevCousin;
+                }
+
+                for (_CursorFrame f = mLastCursorFrame; f != null; ) {
+                    int fPos = f.mNodePos;
+                    if (fPos > keyPos) {
+                        f.mNodePos = fPos - 2;
+                    }
+                    f = f.mPrevCousin;
+                }
+
+                splitChild.unrebindSplitFrames(split, newChild);
+
+                splitChild.releaseExclusive();
+                newChild.releaseExclusive();
+                releaseExclusive();
+                panic(e);
+            } catch (Throwable e2) {
+                Utils.suppress(e, e2);
+            }
+
             throw e;
         }
+
+        splitChild.mSplit = null;
 
         // Write new child id.
         p_longPutLE(result.mPage, result.mNewChildLoc, newChild.id());
@@ -3523,6 +3545,26 @@ final class _Node extends Clutch implements _DatabaseAccess {
         } catch (Throwable e) {
             sibling.releaseExclusive();
             throw e;
+        }
+    }
+
+    /**
+     * Reverses the action of the rebindSplitFrames method. Original and sibling nodes must be
+     * held exclusively.
+     */
+    private void unrebindSplitFrames(_Split split, _Node sibling) {
+        for (_CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            // Capture previous frame from linked list before changing the links.
+            _CursorFrame prev = frame.mPrevCousin;
+            split.unrebindOriginalFrame(frame);
+            frame = prev;
+        }
+
+        for (_CursorFrame frame = sibling.mLastCursorFrame; frame != null; ) {
+            // Capture previous frame from linked list before changing the links.
+            _CursorFrame prev = frame.mPrevCousin;
+            split.unrebindSiblingFrame(frame, this);
+            frame = prev;
         }
     }
 

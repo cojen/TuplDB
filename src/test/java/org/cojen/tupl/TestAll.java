@@ -137,6 +137,7 @@ public class TestAll {
             SecondaryCacheTest.class,
             CheckpointFailureTest.class,
             ShutdownTest.class,
+            SplitTest.class,
         };
 
         String[] names = new String[classes.length];
