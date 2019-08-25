@@ -2890,13 +2890,11 @@ final class _Node extends Clutch implements _DatabaseAccess {
             childFrame = childFrame.mPrevCousin;
         }
 
-        // Note: Invocation of createInternalEntry may cause splitInternal to be called, which
-        // in turn might throw a recoverable exception. Left unfinished, the split will trigger
-        // a checkpoint assertion failure. Panicking the database is the safest option for now.
-
         InResult result;
         try {
             result = new InResult();
+            // Note: Invocation of createInternalEntry may cause splitInternal to be called,
+            // which in turn might throw a recoverable exception.
             createInternalEntry(frame, result, tree, keyPos, split.splitKeyEncodedLength(),
                                 newChildPos << 3, true);
         } catch (Throwable e) {
@@ -2923,9 +2921,9 @@ final class _Node extends Clutch implements _DatabaseAccess {
                 splitChild.releaseExclusive();
                 newChild.releaseExclusive();
                 releaseExclusive();
-                panic(e);
             } catch (Throwable e2) {
                 Utils.suppress(e, e2);
+                panic(e);
             }
 
             throw e;

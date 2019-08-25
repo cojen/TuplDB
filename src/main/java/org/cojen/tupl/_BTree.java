@@ -1582,6 +1582,58 @@ class _BTree extends Tree implements View, Index {
     }
 
     /**
+     * Variant of finishSplit which must finish or else panic the database. Any recoverable
+     * exception causes a retry to be performed, indefinitely. Any other exception type panics
+     * the database.
+     *
+     * @param frame bound cursor frame
+     * @param node node which is bound to the frame, latched exclusively
+     * @return replacement node, still latched
+     */
+    final _Node finishSplitCritical(_CursorFrame frame, _Node node) throws IOException {
+        try {
+            return finishSplit(frame, node);
+        } catch (Throwable e) {
+            return finishSplitRetry(e, frame);
+        }
+    }
+
+    private _Node finishSplitRetry(Throwable e, _CursorFrame frame) {
+        boolean reported = false;
+
+        while (true) {
+            if (!DatabaseException.isRecoverable(e)) {
+                // Panic.
+                closeQuietly(mDatabase, e);
+                throw rethrow(e);
+            }
+
+            if (!reported) {
+                Throwable cause = rootCause(e);
+
+                EventListener listener = mDatabase.eventListener();
+                if (listener == null) {
+                    Utils.uncaught(cause);
+                } else {
+                    listener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
+                                    "Retrying node split due to exception: %1$s", cause);
+                }
+
+                reported = true;
+            }
+
+            Thread.yield();
+
+            try {
+                _Node node = frame.acquireExclusive();
+                return finishSplit(frame, node);
+            } catch (Throwable e2) {
+                e = e2;
+            }
+        }
+    }
+
+    /**
      * Caller must have exclusively latched the tree root node instance and the lone child node.
      *
      * @param child must not be a leaf node

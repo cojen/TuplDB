@@ -364,7 +364,7 @@ final class _BTreeValue {
                             }
                             if (node.mSplit != null) {
                                 // Releases latch if an exception is thrown.
-                                node = cursor.mTree.finishSplit(frame, node);
+                                node = cursor.mTree.finishSplitCritical(frame, node);
                             }
                             return 0;
                         } else {
@@ -1506,7 +1506,7 @@ final class _BTreeValue {
 
         if (node.mSplit != null) {
             // Releases latch if an exception is thrown.
-            tree.finishSplit(frame, node);
+            tree.finishSplitCritical(frame, node);
             // Finishing the split causes the node latch to be re-acquired, so start over.
             return -2;
         }
@@ -1581,7 +1581,7 @@ final class _BTreeValue {
 
         if (node.mSplit != null) {
             // Releases latch if an exception is thrown.
-            tree.finishSplit(frame, node);
+            tree.finishSplitCritical(frame, node);
             // Finishing the split causes the node latch to be re-acquired, so start over.
             return -2;
         }
@@ -1669,7 +1669,7 @@ final class _BTreeValue {
 
                 if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
-                    cursor.mTree.finishSplit(frame, node);
+                    cursor.mTree.finishSplitCritical(frame, node);
                 }
 
                 return;

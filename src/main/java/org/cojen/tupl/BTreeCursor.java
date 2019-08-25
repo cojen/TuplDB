@@ -3609,7 +3609,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                 } else {
                     if (node.mSplit != null) {
                         // Releases latch if an exception is thrown.
-                        node = mTree.finishSplit(leaf, node);
+                        node = mTree.finishSplitCritical(leaf, node);
                     }
                     node.releaseExclusive();
                 }
@@ -3691,7 +3691,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
         } while ((frame = frame.mPrevCousin) != null);
 
         if (node.mSplit != null) {
-            node = mTree.finishSplit(leaf, node);
+            node = mTree.finishSplitCritical(leaf, node);
         }
 
         return node;
@@ -3722,7 +3722,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                 }
                 if (node.mSplit != null) {
                     // Releases latch if an exception is thrown.
-                    node = mTree.finishSplit(leaf, node);
+                    node = mTree.finishSplitCritical(leaf, node);
                 }
             } else {
                 // This case is possible when entry was deleted concurrently without a lock.
@@ -4446,7 +4446,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
 
                 if (tloc < 0) {
                     tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen, tpos);
-                    tnode = mTree.finishSplit(tleaf, tnode);
+                    tnode = mTree.finishSplitCritical(tleaf, tnode);
                 } else {
                     p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
                 }
@@ -4505,7 +4505,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
 
                     if (tloc < 0) {
                         tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen, tpos);
-                        tnode = mTree.finishSplit(tleaf, tnode);
+                        tnode = mTree.finishSplitCritical(tleaf, tnode);
                     } else {
                         p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
                     }
@@ -5290,8 +5290,13 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                             // Finish sibling split.
                             node.releaseExclusive();
                             node = null;
-                            parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
-                            continue;
+                            try {
+                                parentNode.insertSplitChildRef
+                                    (parentFrame, mTree, pos - 2, leftNode);
+                                continue;
+                            } catch (Throwable e) {
+                                return;
+                            }
                         }
 
                         if (!node.hasKeys()) {
@@ -5334,8 +5339,13 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                             }
                             node.releaseExclusive();
                             node = null;
-                            parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
-                            continue;
+                            try {
+                                parentNode.insertSplitChildRef
+                                    (parentFrame, mTree, pos + 2, rightNode);
+                                continue;
+                            } catch (Throwable e) {
+                                return;
+                            }
                         }
 
                         rightAvail = rightNode.availableLeafBytes();
@@ -5495,8 +5505,12 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                     // Finish sibling split.
                     node.releaseExclusive();
                     node = null;
-                    parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(parentFrame, mTree, pos - 2, leftNode);
+                        continue;
+                    } catch (Throwable e) {
+                        return;
+                    }
                 }
             }
 
@@ -5521,8 +5535,12 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                     }
                     node.releaseExclusive();
                     node = null;
-                    parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
-                    continue;
+                    try {
+                        parentNode.insertSplitChildRef(parentFrame, mTree, pos + 2, rightNode);
+                        continue;
+                    } catch (Throwable e) {
+                        return;
+                    }
                 }
             }
 
