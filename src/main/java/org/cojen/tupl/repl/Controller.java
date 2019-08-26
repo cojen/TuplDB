@@ -491,8 +491,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         acquireExclusive();
         if (mLeaderReplWriter == writer) {
             mLeaderReplWriter = null;
+            checkException(writer);
         }
         releaseExclusive();
+    }
+
+    /**
+     * Caller must hold exclusive latch.
+     *
+     * @return true if local member is now a follower due to a write exception
+     */
+    private boolean checkException(ReplWriter writer) {
+        if (writer != null) {
+            Throwable e = writer.mException;
+            if (e != null) {
+                toFollower(e.toString());
+                writer.mException = null;
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -804,6 +822,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         private int mProxy;
         private long mWriteAmount;
 
+        // Set when an exception is thrown when trying to write to the local log. When the
+        // writer is closed, the local member should convert to a follower.
+        volatile Throwable mException;
+
         ReplWriter(LogWriter writer, Channel[] peerChannels, boolean selfCommit,
                    Channel[] proxyChannels)
         {
@@ -864,7 +886,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     term = writer.term();
                     position = writer.position();
 
-                    result = writer.write(prefix, data, offset, length, highestPosition);
+                    try {
+                        result = writer.write(prefix, data, offset, length, highestPosition);
+                    } catch (Throwable e) {
+                        mException = e;
+                        deactivate();
+                        throw e;
+                    }
 
                     if (!result) {
                         deactivate();
@@ -1358,6 +1386,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (writer == null) {
                 // Not the leader anymore.
+                return;
+            }
+
+            if (checkException(mLeaderReplWriter)) {
                 return;
             }
 
