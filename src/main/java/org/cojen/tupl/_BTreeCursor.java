@@ -4664,11 +4664,17 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
                         while (true) {
                             int result = _BTreeValue.compactCheck(frame, pos, highestNodeId);
 
-                            if (result < 0) {
+                            if (result < -1) {
                                 break;
                             }
 
-                            if (result > 0) {
+                            if (result > -1) {
+                                if (result > 0) {
+                                    // Skip over inline content.
+                                    pos = result;
+                                    continue;
+                                }
+
                                 node = null; // don't release in the finally block
 
                                 // Can pass null and still force the node to be dirtied because

@@ -46,8 +46,8 @@ final class _BTreeValue {
      * @param frame latched leaf, not split, never released by this method
      * @param highestNodeId defines the highest node before the compaction zone; anything
      * higher is in the compaction zone
-     * @return -1 if position is too high, 0 if no compaction required, or 1 if any nodes are
-     * in the compaction zone
+     * @return -2 if position is too high, -1 if no compaction required, 0 if any nodes are
+     * in the compaction zone, or else the inline content length to skip
      */
     static int compactCheck(final _CursorFrame frame, long pos, final long highestNodeId)
         throws IOException
@@ -57,7 +57,7 @@ final class _BTreeValue {
         int nodePos = frame.mNodePos;
         if (nodePos < 0) {
             // Value doesn't exist.
-            return -1;
+            return -2;
         }
 
         final long page = node.mPage;
@@ -68,7 +68,7 @@ final class _BTreeValue {
         int vHeader = p_byteGet(page, loc++);
         if (vHeader >= 0) {
             // Not fragmented.
-            return pos >= vHeader ? -1 : 0;
+            return pos >= vHeader ? -2 : -1;
         }
 
         int len;
@@ -80,22 +80,22 @@ final class _BTreeValue {
         } else {
             // Ghost. This case isn't expected, because _BTreeCursor.compact doesn't
             // call this method for non-fragmented values.
-            return -1;
+            return -2;
         }
 
         if ((vHeader & _Node.ENTRY_FRAGMENTED) == 0) {
             // Not fragmented. This case isn't expected, because _BTreeCursor.compact doesn't
             // call this method for non-fragmented values.
-            return pos >= len ? -1 : 0;
+            return pos >= len ? -2 : -1;
         }
 
         // Read the fragment header, as described by the _LocalDatabase.fragment method.
 
         final int fHeader = p_byteGet(page, loc++);
-        final long fLen = _LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
+        long fLen = _LocalDatabase.decodeFullFragmentedValueLength(fHeader, page, loc);
 
         if (pos >= fLen) {
-            return -1;
+            return -2;
         }
 
         loc = skipFragmentedLengthField(loc, fHeader);
@@ -103,11 +103,12 @@ final class _BTreeValue {
         if ((fHeader & 0x02) != 0) {
             // Inline content.
             final int fInlineLen = p_ushortGetLE(page, loc);
-            if (pos < fInlineLen) {
-                // Positioned within inline content.
-                return 0;
-            }
             pos -= fInlineLen;
+            if (pos < 0) {
+                // Positioned within inline content.
+                return fInlineLen;
+            }
+            fLen -= fInlineLen;
             loc = loc + 2 + fInlineLen;
         }
 
@@ -117,7 +118,7 @@ final class _BTreeValue {
             // Direct pointers.
             loc += (((int) pos) / pageSize(db, page)) * 6;
             final long fNodeId = p_uint48GetLE(page, loc);
-            return fNodeId > highestNodeId ? 1 : 0; 
+            return fNodeId > highestNodeId ? 0 : -1; 
         }
 
         // Indirect pointers.
@@ -125,7 +126,7 @@ final class _BTreeValue {
         final long inodeId = p_uint48GetLE(page, loc);
         if (inodeId == 0) {
             // Sparse value.
-            return 0;
+            return -1;
         }
 
         _Node inode = db.nodeMapLoadFragment(inodeId);
@@ -137,10 +138,10 @@ final class _BTreeValue {
             long childNodeId = p_uint48GetLE(inode.mPage, ((int) (pos / levelCap)) * 6);
             inode.releaseShared();
             if (childNodeId > highestNodeId) {
-                return 1;
+                return 0;
             }
             if (level <= 0 || childNodeId == 0) {
-                return 0;
+                return -1;
             }
             inode = db.nodeMapLoadFragment(childNodeId);
             pos %= levelCap;
