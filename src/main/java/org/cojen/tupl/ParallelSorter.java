@@ -61,7 +61,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     private int mSortTreePoolSize;
 
     // Last task added which is acting on sort trees (one root node), forming a stack. For
-    // higher levels, TreeMergers are used. Unlike TreeMergers, the sort tree merger task
+    // higher levels, BTreeMergers are used. Unlike BTreeMergers, the sort tree merger task
     // cannot be stopped. A thread can only wait for it to finish naturally.
     private Merger mLastMerger;
     private int mMergerCount;
