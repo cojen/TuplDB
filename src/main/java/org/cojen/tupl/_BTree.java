@@ -1018,7 +1018,7 @@ class _BTree extends Tree implements View, Index {
 
     /**
      * Non-transactionally deletes all entries in the tree. No other cursors or threads can be
-     * active in the tree. The root node is prepared for deletion as a side effect.
+     * active in the tree.
      *
      * @return false if stopped because database is closed
      */

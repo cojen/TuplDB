@@ -3932,7 +3932,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
             parentNode = parentFrame.acquireExclusive();
         }
 
-        Node next = mTree.mDatabase.latchChildRetainParentEx(parentNode, 0, true);
+        Node next = db.latchChildRetainParentEx(parentNode, 0, true);
 
         try {
             if (db.markDirty(mTree, next)) {
