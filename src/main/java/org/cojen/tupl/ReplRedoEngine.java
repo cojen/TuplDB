@@ -1253,7 +1253,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     private void register(BTreeCursor tc) throws IOException {
-        BTree cursorRegistry = mDatabase.openCursorRegistry();
+        BTree cursorRegistry = mDatabase.cursorRegistry();
         CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             mDatabase.registerCursor(cursorRegistry, tc);

@@ -101,7 +101,7 @@ final class PendingTxn extends LockOwner {
         }
 
         if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
-            db.fragmentedTrash().emptyTrash(mTxnId);
+            FragmentedTrash.emptyTrash(db.fragmentedTrash(), mTxnId);
         }
     }
 

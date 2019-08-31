@@ -162,7 +162,7 @@ class BTreeCursor extends AbstractValueAccessor implements Cursor {
                     return false;
                 }
 
-                BTree cursorRegistry = db.openCursorRegistry();
+                BTree cursorRegistry = db.cursorRegistry();
 
                 CommitLock.Shared shared = db.commitLock().acquireShared();
                 try {

@@ -27,19 +27,13 @@ import static org.cojen.tupl.Utils.*;
 import static java.util.Arrays.compareUnsigned;
 
 /**
- * Persisted collection of fragmented values which should be deleted. Trash is emptied after
- * transactions commit.
+ * Manages a persisted collection of fragmented values which should be deleted. Trash is
+ * emptied after transactions commit.
  *
  * @author Brian S O'Neill
  */
 final class FragmentedTrash {
-    final BTree mTrash;
-
-    /**
-     * @param trash internal index for persisting trash
-     */
-    FragmentedTrash(BTree trash) {
-        mTrash = trash;
+    private FragmentedTrash() {
     }
 
     /**
@@ -52,14 +46,14 @@ final class FragmentedTrash {
      * @param valueStart inclusive index into entry for fragmented value; excludes value header
      * @param valueLen length of value
      */
-    void add(LocalTransaction txn, long indexId,
-             /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
+    static void add(BTree trash, LocalTransaction txn, long indexId,
+                    /*P*/ byte[] entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
         byte[] payload = new byte[valueLen];
         p_copyToArray(entry, valueStart, payload, 0, valueLen);
 
-        BTreeCursor cursor = prepareEntry(txn.txnId());
+        BTreeCursor cursor = prepareEntry(trash, txn.txnId());
         byte[] key = cursor.key();
         try {
             // Write trash entry first, ensuring that the undo log entry will refer to
@@ -99,7 +93,7 @@ final class FragmentedTrash {
      * Returns a cursor ready to store a new trash entry. Caller must reset or
      * close the cursor when done.
      */
-    private BTreeCursor prepareEntry(long txnId) throws IOException {
+    private static BTreeCursor prepareEntry(BTree trash, long txnId) throws IOException {
         // Key entry format is transaction id prefix, followed by a variable
         // length integer. Integer is reverse encoded, and newer entries within
         // the transaction have lower integer values.
@@ -107,7 +101,7 @@ final class FragmentedTrash {
         byte[] prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        BTreeCursor cursor = new BTreeCursor(mTrash, Transaction.BOGUS);
+        BTreeCursor cursor = new BTreeCursor(trash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);
@@ -137,14 +131,14 @@ final class FragmentedTrash {
      *
      * @param index index to store entry into; pass null to fully delete it instead
      */
-    void remove(long txnId, BTree index, byte[] undoEntry) throws IOException {
+    static void remove(BTree trash, long txnId, BTree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
 
         /*P*/ byte[] undo = p_transfer(undoEntry);
 
         byte[] indexKey, trashKey;
         try {
-            DatabaseAccess dbAccess = mTrash.mRoot;
+            DatabaseAccess dbAccess = trash.mRoot;
             indexKey = Node.retrieveKeyAtLoc(dbAccess, undo, 0);
 
             int tidLoc = Node.keyLengthAtLoc(undo, 0);
@@ -156,7 +150,7 @@ final class FragmentedTrash {
             p_delete(undo);
         }
 
-        remove(index, indexKey, trashKey);
+        remove(trash, index, indexKey, trashKey);
     }
 
     /**
@@ -165,13 +159,15 @@ final class FragmentedTrash {
      *
      * @param index index to store entry into; pass null to fully delete it instead
      */
-    void remove(BTree index, byte[] indexKey, byte[] trashKey) throws IOException {
-        BTreeCursor trashCursor = new BTreeCursor(mTrash, Transaction.BOGUS);
+    static void remove(BTree trash, BTree index, byte[] indexKey, byte[] trashKey)
+        throws IOException
+    {
+        BTreeCursor trashCursor = new BTreeCursor(trash, Transaction.BOGUS);
         try {
             trashCursor.find(trashKey);
 
             if (index == null) {
-                deleteFragmented(mTrash.mDatabase, trashCursor);
+                deleteFragmented(trash.mDatabase, trashCursor);
             } else {
                 byte[] fragmented = trashCursor.value();
                 if (fragmented != null) {
@@ -197,14 +193,14 @@ final class FragmentedTrash {
      * Non-transactionally deletes all fragmented values for the given
      * top-level transaction.
      */
-    void emptyTrash(long txnId) throws IOException {
+    static void emptyTrash(BTree trash, long txnId) throws IOException {
         byte[] prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        LocalDatabase db = mTrash.mDatabase;
+        LocalDatabase db = trash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        BTreeCursor cursor = new BTreeCursor(mTrash, Transaction.BOGUS);
+        BTreeCursor cursor = new BTreeCursor(trash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);

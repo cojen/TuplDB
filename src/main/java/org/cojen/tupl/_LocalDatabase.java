@@ -210,7 +210,7 @@ final class _LocalDatabase extends AbstractDatabase {
     final int mMaxFragmentedEntrySize;
 
     // Fragmented values which are transactionally deleted go here.
-    private volatile _FragmentedTrash mFragmentedTrash;
+    private _BTree mFragmentedTrash;
 
     // Pre-calculated maximum capacities for inode levels.
     private final long[] mFragmentInodeLevelCaps;
@@ -700,10 +700,6 @@ final class _LocalDatabase extends AbstractDatabase {
 
             _BTree cursorRegistry = null;
             if (openMode != OPEN_TEMP) {
-                _BTree tree = openInternalTree(_BTree.FRAGMENTED_TRASH_ID, IX_FIND, config);
-                if (tree != null) {
-                    mFragmentedTrash = new _FragmentedTrash(tree);
-                }
                 cursorRegistry = openInternalTree(_BTree.CURSOR_REGISTRY_ID, IX_FIND, config);
             }
 
@@ -1266,7 +1262,7 @@ final class _LocalDatabase extends AbstractDatabase {
         if (id == _BTree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
         } else if (id == _BTree.FRAGMENTED_TRASH_ID) {
-            return fragmentedTrash().mTrash;
+            return fragmentedTrash();
         }
         return indexById(txn, id);
     }
@@ -2134,9 +2130,9 @@ final class _LocalDatabase extends AbstractDatabase {
             cursorCount += mRegistry.countCursors();
             cursorCount += mRegistryKeyMap.countCursors();
 
-            _FragmentedTrash trash = mFragmentedTrash;
+            _BTree trash = mFragmentedTrash;
             if (trash != null) {
-                cursorCount += trash.mTrash.countCursors();
+                cursorCount += trash.countCursors();
             }
 
             _BTree cursorRegistry = mCursorRegistry;
@@ -2471,14 +2467,14 @@ final class _LocalDatabase extends AbstractDatabase {
             return false;
         }
 
-        _FragmentedTrash trash = mFragmentedTrash;
+        _BTree trash = openFragmentedTrash(IX_FIND);
         if (trash != null) {
-            if (!visitor.apply(trash.mTrash)) {
+            if (!visitor.apply(trash)) {
                 return false;
             }
         }
 
-        _BTree cursorRegistry = mCursorRegistry;
+        _BTree cursorRegistry = openCursorRegistry(IX_FIND);
         if (cursorRegistry != null) {
             if (!visitor.apply(cursorRegistry)) {
                 return false;
@@ -2573,7 +2569,7 @@ final class _LocalDatabase extends AbstractDatabase {
                 // Clear out open trees with commit lock held, to prevent any trees from being
                 // opened again. Any attempt to open a tree must acquire the commit lock and
                 // then check if the database is closed.
-                final ArrayList<_TreeRef> trees;
+                final ArrayList<Tree> trees;
                 if (lock != null) {
                     lock.acquireExclusive();
                 }
@@ -2583,11 +2579,22 @@ final class _LocalDatabase extends AbstractDatabase {
                         trees = new ArrayList<>(mOpenTreesById.size());
 
                         mOpenTreesById.traverse(entry -> {
-                            trees.add(entry.value);
+                            Tree tree = entry.value.get();
+                            if (tree != null) {
+                                trees.add(tree);
+                            }
                             return true;
                         });
 
                         mOpenTrees.clear();
+
+                        trees.add(mRegistryKeyMap);
+
+                        trees.add(mFragmentedTrash);
+                        mFragmentedTrash = null;
+
+                        trees.add(mCursorRegistry);
+                        mCursorRegistry = null;
                     } finally {
                         mOpenTreesLatch.releaseExclusive();
                     }
@@ -2597,25 +2604,10 @@ final class _LocalDatabase extends AbstractDatabase {
                     }
                 }
 
-                for (_TreeRef ref : trees) {
-                    Tree tree = ref.get();
+                for (Tree tree : trees) {
                     if (tree != null) {
                         tree.forceClose();
                     }
-                }
-
-                _FragmentedTrash trash = mFragmentedTrash;
-                if (trash != null) {
-                    mFragmentedTrash = null;
-                    trash.mTrash.forceClose();
-                }
-
-                if (mCursorRegistry != null) {
-                    mCursorRegistry.forceClose();
-                }
-
-                if (mRegistryKeyMap != null) {
-                    mRegistryKeyMap.forceClose();
                 }
 
                 if (shutdown) {
@@ -2916,18 +2908,22 @@ final class _LocalDatabase extends AbstractDatabase {
     /**
      * Should be called before attempting to register a cursor, in case an exception is thrown.
      */
-    _BTree openCursorRegistry() throws IOException {
+    _BTree cursorRegistry() throws IOException {
         _BTree cursorRegistry = mCursorRegistry;
-        if (cursorRegistry == null) {
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                if ((cursorRegistry = mCursorRegistry) == null) {
-                    mCursorRegistry = cursorRegistry =
-                        openInternalTree(_BTree.CURSOR_REGISTRY_ID, IX_CREATE);
-                }
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
+        return cursorRegistry != null ? cursorRegistry : openCursorRegistry(IX_CREATE);
+    }
+
+    private _BTree openCursorRegistry(long ixOption) throws IOException {
+        _BTree cursorRegistry;
+
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            if ((cursorRegistry = mCursorRegistry) == null) {
+                mCursorRegistry = cursorRegistry =
+                    openInternalTree(_BTree.CURSOR_REGISTRY_ID, ixOption);
             }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
         }
 
         return cursorRegistry;
@@ -2963,7 +2959,7 @@ final class _LocalDatabase extends AbstractDatabase {
         try {
             byte[] cursorIdBytes = new byte[8];
             encodeLongBE(cursorIdBytes, 0, cursorId);
-            openCursorRegistry().store(Transaction.BOGUS, cursorIdBytes, null);
+            cursorRegistry().store(Transaction.BOGUS, cursorIdBytes, null);
         } catch (Throwable e) {
             // Database is borked, cleanup later.
         }
@@ -5184,21 +5180,24 @@ final class _LocalDatabase extends AbstractDatabase {
     /**
      * Obtain the trash for transactionally deleting fragmented values.
      */
-    _FragmentedTrash fragmentedTrash() throws IOException {
-        _FragmentedTrash trash = mFragmentedTrash;
-        if (trash != null) {
-            return trash;
-        }
+    _BTree fragmentedTrash() throws IOException {
+        _BTree trash = mFragmentedTrash;
+        return trash != null ? trash : openFragmentedTrash(IX_CREATE);
+    }
+
+    private _BTree openFragmentedTrash(long ixOption) throws IOException {
+        _BTree trash;
+
         mOpenTreesLatch.acquireExclusive();
         try {
-            if ((trash = mFragmentedTrash) != null) {
-                return trash;
+            if ((trash = mFragmentedTrash) == null) {
+                mFragmentedTrash = trash = openInternalTree(_BTree.FRAGMENTED_TRASH_ID, ixOption);
             }
-            _BTree tree = openInternalTree(_BTree.FRAGMENTED_TRASH_ID, IX_CREATE);
-            return mFragmentedTrash = new _FragmentedTrash(tree);
         } finally {
             mOpenTreesLatch.releaseExclusive();
         }
+
+        return trash;
     }
 
     /**

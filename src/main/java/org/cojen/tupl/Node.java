@@ -2004,8 +2004,9 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
-                    tree.mDatabase.fragmentedTrash().add
-                        (txn, tree.mId, page,
+                    FragmentedTrash.add
+                        (tree.mDatabase.fragmentedTrash(),
+                         txn, tree.mId, page,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
                     break doUndo;
@@ -2067,8 +2068,9 @@ final class Node extends Clutch implements DatabaseAccess {
 
                 if ((header & ENTRY_FRAGMENTED) != 0) {
                     int valueStartLoc = valueHeaderLoc + 2 + ((header & 0x20) >> 5);
-                    tree.mDatabase.fragmentedTrash().add
-                        (txn, tree.mId, page,
+                    FragmentedTrash.add
+                        (tree.mDatabase.fragmentedTrash(),
+                         txn, tree.mId, page,
                          entryLoc, valueHeaderLoc - entryLoc,  // keyStart, keyLen
                          valueStartLoc, loc - valueStartLoc);  // valueStart, valueLen
                     // Clearing the fragmented bit prevents the update from double-deleting the

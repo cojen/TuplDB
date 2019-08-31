@@ -280,7 +280,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
 
                     int hasState = mHasState;
                     if ((hasState & HAS_TRASH) != 0) {
-                        mDatabase.fragmentedTrash().emptyTrash(mTxnId);
+                        _FragmentedTrash.emptyTrash(mDatabase.fragmentedTrash(), mTxnId);
                         mHasState = hasState & ~HAS_TRASH;
                     }
                 }
@@ -428,7 +428,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                     mUndoLog = null;
 
                     if ((hasState & HAS_TRASH) != 0) {
-                        mDatabase.fragmentedTrash().emptyTrash(mTxnId);
+                        _FragmentedTrash.emptyTrash(mDatabase.fragmentedTrash(), mTxnId);
                         mHasState = hasState & ~HAS_TRASH;
                     }
                 }
@@ -1055,7 +1055,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
         } catch (Throwable e) {
             borked(e, false, true); // rollback = false, rethrow = true
         }
-        _BTree cursorRegistry = mDatabase.openCursorRegistry();
+        _BTree cursorRegistry = mDatabase.cursorRegistry();
         cursor.mCursorId = cursorId;
         mDatabase.registerCursor(cursorRegistry, cursor);
         return cursorId;
