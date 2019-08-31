@@ -464,6 +464,7 @@ final class PageQueue implements IntegerRef {
             } catch (IOException e) {
                 // Undo.
                 appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
+                mManager.recyclePage(newTailId);
                 throw WriteFailureException.make(e);
             }
 
