@@ -849,17 +849,15 @@ final class _UndoLog implements _DatabaseAccess {
      * @param savepoint must be less than mLength
      */
     private void doRollback(long savepoint) throws IOException {
-        byte[] opRef = new byte[1];
-        Index activeIndex = null;
-        do {
-            byte[] entry = pop(opRef, true);
-            if (entry == null) {
-                // Undo log would have to be corrupt for this case to occur.
-                break;
+        new PopAll() {
+            Index activeIndex;
+
+            @Override
+            public boolean accept(byte op, byte[] entry) throws IOException {
+                activeIndex = undo(activeIndex, op, entry);
+                return true;
             }
-            byte op = opRef[0];
-            activeIndex = undo(activeIndex, op, entry);
-        } while (savepoint < mLength);
+        }.go(true, savepoint);
     }
 
     /**
@@ -867,74 +865,72 @@ final class _UndoLog implements _DatabaseAccess {
      * to be called during recovery.
      */
     final void deleteGhosts() throws IOException {
-        byte[] opRef = new byte[1];
-        Index activeIndex = null;
+        new PopAll() {
+            Index activeIndex;
 
-        while (true) {
-            byte[] entry = pop(opRef, true);
-            if (entry == null) {
-                break;
+            @Override
+            public boolean accept(byte op, byte[] entry) throws IOException {
+                switch (op) {
+                default:
+                    throw new DatabaseException("Unknown undo log entry type: " + op);
+
+                case OP_SCOPE_ENTER:
+                case OP_SCOPE_COMMIT:
+                case OP_COMMIT:
+                case OP_COMMIT_TRUNCATE:
+                case OP_PREPARE:
+                case OP_UNCREATE:
+                case OP_UNINSERT:
+                case OP_UNUPDATE:
+                case OP_ACTIVE_KEY:
+                case OP_CUSTOM:
+                case OP_UNUPDATE_LK:
+                case OP_UNEXTEND:
+                case OP_UNALLOC:
+                case OP_UNWRITE:
+                    // Ignore.
+                    break;
+
+                case OP_INDEX:
+                    mActiveIndexId = decodeLongLE(entry, 0);
+                    activeIndex = null;
+                    break;
+
+                case OP_UNDELETE:
+                case OP_UNDELETE_FRAGMENTED:
+                    // Since transaction was committed, don't insert an entry
+                    // to undo a delete, but instead delete the ghost.
+                    byte[] key = decodeNodeKey(entry);
+                    activeIndex = doUndo(activeIndex, ix -> {
+                        _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
+                        try {
+                            cursor.deleteGhost(key);
+                        } catch (Throwable e) {
+                            throw closeOnFailure(cursor, e);
+                        }
+                    });
+                    break;
+
+                case OP_UNDELETE_LK:
+                case OP_UNDELETE_LK_FRAGMENTED:
+                    // Since transaction was committed, don't insert an entry
+                    // to undo a delete, but instead delete the ghost.
+                    key = new byte[decodeUnsignedVarInt(entry, 0)];
+                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+                    activeIndex = doUndo(activeIndex, ix -> {
+                        _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
+                        try {
+                            cursor.deleteGhost(key);
+                        } catch (Throwable e) {
+                            throw closeOnFailure(cursor, e);
+                        }
+                    });
+                    break;
+                }
+
+                return true;
             }
-
-            byte op = opRef[0];
-            switch (op) {
-            default:
-                throw new DatabaseException("Unknown undo log entry type: " + op);
-
-            case OP_SCOPE_ENTER:
-            case OP_SCOPE_COMMIT:
-            case OP_COMMIT:
-            case OP_COMMIT_TRUNCATE:
-            case OP_PREPARE:
-            case OP_UNCREATE:
-            case OP_UNINSERT:
-            case OP_UNUPDATE:
-            case OP_ACTIVE_KEY:
-            case OP_CUSTOM:
-            case OP_UNUPDATE_LK:
-            case OP_UNEXTEND:
-            case OP_UNALLOC:
-            case OP_UNWRITE:
-                // Ignore.
-                break;
-
-            case OP_INDEX:
-                mActiveIndexId = decodeLongLE(entry, 0);
-                activeIndex = null;
-                break;
-
-            case OP_UNDELETE:
-            case OP_UNDELETE_FRAGMENTED:
-                // Since transaction was committed, don't insert an entry
-                // to undo a delete, but instead delete the ghost.
-                byte[] key = decodeNodeKey(entry);
-                activeIndex = doUndo(activeIndex, ix -> {
-                    _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
-                    try {
-                        cursor.deleteGhost(key);
-                    } catch (Throwable e) {
-                        throw closeOnFailure(cursor, e);
-                    }
-                });
-                break;
-
-            case OP_UNDELETE_LK:
-            case OP_UNDELETE_LK_FRAGMENTED:
-                // Since transaction was committed, don't insert an entry
-                // to undo a delete, but instead delete the ghost.
-                key = new byte[decodeUnsignedVarInt(entry, 0)];
-                arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-                activeIndex = doUndo(activeIndex, ix -> {
-                    _BTreeCursor cursor = new _BTreeCursor((_BTree) ix, null);
-                    try {
-                        cursor.deleteGhost(key);
-                    } catch (Throwable e) {
-                        throw closeOnFailure(cursor, e);
-                    }
-                });
-                break;
-            }
-        }
+        }.go(true, 0);
     }
 
     /**
@@ -991,7 +987,7 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_UNDELETE_FRAGMENTED:
             activeIndex = doUndo(activeIndex, ix -> {
-                mDatabase.fragmentedTrash().remove(mTxnId, (_BTree) ix, entry);
+                _FragmentedTrash.remove(mDatabase.fragmentedTrash(), mTxnId, (_BTree) ix, entry);
             });
             break;
 
@@ -1007,7 +1003,7 @@ final class _UndoLog implements _DatabaseAccess {
             arraycopy(entry, tidLoc, trashKey, 8, tidLen);
 
             activeIndex = doUndo(activeIndex, ix -> {
-                mDatabase.fragmentedTrash().remove((_BTree) ix, key, trashKey);
+                _FragmentedTrash.remove(mDatabase.fragmentedTrash(), (_BTree) ix, key, trashKey);
             });
             break;
         }
@@ -1137,36 +1133,82 @@ final class _UndoLog implements _DatabaseAccess {
         }
     }
 
+    private static interface Popper {
+        /**
+         * @return false if popping should stop
+         */
+        boolean accept(byte op, byte[] entry) throws IOException;
+    }
+
     /**
-     * Caller must hold db commit lock.
-     *
-     * @param opRef element zero is filled in with the opcode
-     * @param delete true to delete nodes
-     * @return null if nothing left
+     * Implementation of Popper which processes all undo operations up to a savepoint. Any
+     * exception thrown by the accept method preserves the state of the log. That is, the
+     * failed operation isn't discarded, and it remains as the top item.
      */
-    private final byte[] pop(byte[] opRef, boolean delete) throws IOException {
+    private abstract class PopAll implements Popper {
+        /**
+         * @param delete true to delete nodes
+         * @param savepoint must be less than mLength; pass 0 to pop the entire stack
+         */
+        void go(boolean delete, long savepoint) throws IOException {
+            while (pop(delete, this) && savepoint < mLength);
+        }
+    }
+
+    /**
+     * Implementation of Popper which copies the undo entry before processing it. Any exception
+     * thrown during processing (by the user of the class) won't preserve the state of the log.
+     * As a result, this variant should only be used when checkpoints will never run, like
+     * during recovery.
+     */
+    private class PopOne implements Popper {
+        byte mOp;
+        byte[] mEntry;
+
+        @Override
+        public boolean accept(byte op, byte[] entry) throws IOException {
+            mOp = op;
+            mEntry = entry;
+            return true;
+        }
+    }
+
+    /**
+     * Caller must hold db commit lock. The given popper is called such that if it throws any
+     * exception, the operation is effectively un-popped (no state changes).
+     *
+     * @param delete true to delete nodes
+     * @param popper called at most once per call to this method
+     * @return false if nothing left
+     */
+    private final boolean pop(boolean delete, Popper popper) throws IOException {
+        final byte op;
+
         _Node node = mNode;
         if (node == null) {
             byte[] buffer = mBuffer;
             int pos;
             if (buffer == null || (pos = mBufferPos) >= buffer.length) {
-                opRef[0] = 0;
                 mLength = 0;
-                return null;
+                return false;
             }
-            if ((opRef[0] = buffer[pos++]) < PAYLOAD_OP) {
+            boolean result;
+            op = buffer[pos++];
+            if (op < PAYLOAD_OP) {
+                result = popper.accept(op, EMPTY_BYTES);
                 mBufferPos = pos;
                 mLength -= 1;
-                return EMPTY_BYTES;
+            } else {
+                int payloadLen = decodeUnsignedVarInt(buffer, pos);
+                int varIntLen = calcUnsignedVarIntLength(payloadLen);
+                pos += varIntLen;
+                byte[] entry = new byte[payloadLen];
+                arraycopy(buffer, pos, entry, 0, payloadLen);
+                result = popper.accept(op, entry);
+                mBufferPos = pos + payloadLen;
+                mLength -= 1 + varIntLen + payloadLen;
             }
-            int payloadLen = decodeUnsignedVarInt(buffer, pos);
-            int varIntLen = calcUnsignedVarIntLength(payloadLen);
-            pos += varIntLen;
-            byte[] entry = new byte[payloadLen];
-            arraycopy(buffer, pos, entry, 0, payloadLen);
-            mBufferPos = pos += payloadLen;
-            mLength -= 1 + varIntLen + payloadLen;
-            return entry;
+            return result;
         }
 
         node.acquireExclusive();
@@ -1178,47 +1220,66 @@ final class _UndoLog implements _DatabaseAccess {
             }
             if ((node = popNode(node, delete)) == null) {
                 mLength = 0;
-                return null;
+                return false;
             }
         }
 
-        if ((opRef[0] = p_byteGet(page, mNodeTopPos++)) < PAYLOAD_OP) {
+        int nodeTopPos = mNodeTopPos;
+        op = p_byteGet(page, nodeTopPos++);
+
+        if (op < PAYLOAD_OP) {
+            boolean result = popper.accept(op, EMPTY_BYTES);
+            mNodeTopPos = nodeTopPos;
             mLength -= 1;
-            if (mNodeTopPos >= pageSize(page)) {
+            if (nodeTopPos >= pageSize(page)) {
                 node = popNode(node, delete);
             }
             if (node != null) {
                 node.releaseExclusive();
             }
-            return EMPTY_BYTES;
+            return result;
         }
 
-        int payloadLen;
-        {
-            payloadLen = p_uintGetVar(page, mNodeTopPos);
-            int varIntLen = p_uintVarSize(payloadLen);
-            mNodeTopPos += varIntLen;
-            mLength -= 1 + varIntLen + payloadLen;
-        }
+        long length = mLength;
 
-        byte[] entry = new byte[payloadLen];
+        int payloadLen = p_uintGetVar(page, nodeTopPos);
+        int varIntLen = p_uintVarSize(payloadLen);
+        nodeTopPos += varIntLen;
+        length -= 1 + varIntLen + payloadLen;
+
+        final byte[] entry = new byte[payloadLen];
         int entryPos = 0;
 
         while (true) {
-            int avail = Math.min(payloadLen, pageSize(page) - mNodeTopPos);
-            p_copyToArray(page, mNodeTopPos, entry, entryPos, avail);
+            int avail = Math.min(payloadLen, pageSize(page) - nodeTopPos);
+            p_copyToArray(page, nodeTopPos, entry, entryPos, avail);
             payloadLen -= avail;
-            mNodeTopPos += avail;
+            nodeTopPos += avail;
+            entryPos += avail;
 
-            if (mNodeTopPos >= pageSize(page)) {
-                node = popNode(node, delete);
+            if (nodeTopPos >= pageSize(page)) {
+                long lowerNodeId = p_longGetLE(node.mPage, I_LOWER_NODE_ID);
+                node.releaseExclusive();
+                if (lowerNodeId == 0) {
+                    node = null;
+                    nodeTopPos = 0;
+                } else {
+                    _LocalDatabase db = mDatabase;
+                    node = db.nodeMapGetExclusive(lowerNodeId);
+                    if (node == null) {
+                        // _Node was evicted, so reload it.
+                        node = readUndoLogNode(db, lowerNodeId, 0);
+                        db.nodeMapPut(node);
+                    }
+                    nodeTopPos = node.undoTop();
+                }
             }
 
             if (payloadLen <= 0) {
                 if (node != null) {
                     node.releaseExclusive();
                 }
-                return entry;
+                break;
             }
 
             if (node == null) {
@@ -1235,11 +1296,41 @@ final class _UndoLog implements _DatabaseAccess {
                 p_byteGet(page, mNodeTopPos) == OP_COMMIT_TRUNCATE)
             {
                 node.releaseExclusive();
-                return entry;
+                break;
             }
-
-            entryPos += avail;
         }
+
+        boolean result = popper.accept(op, entry);
+
+        _Node n = mNode;
+        if (node != n) {
+            // Now pop all the nodes.
+            try {
+                n.acquireExclusive();
+                while (true) {
+                    n = popNode(n, delete);
+                    if (n == null) {
+                        if (node != null) {
+                            throw new AssertionError();
+                        }
+                        break;
+                    }
+                    if (node != null && n.id() == node.id()) {
+                        n.releaseExclusive();
+                        break;
+                    }
+                }
+            } catch (Throwable e) {
+                // Panic.
+                mDatabase.close(e);
+                throw e;
+            }
+        }
+
+        mNodeTopPos = nodeTopPos;
+        mLength = length;
+
+        return result;
     }
 
     /**
@@ -1369,30 +1460,33 @@ final class _UndoLog implements _DatabaseAccess {
                              LHashTable.Obj<_LocalTransaction> txns)
         throws IOException
     {
-        byte[] opRef = new byte[1];
-        byte[] entry;
-        while ((entry = pop(opRef, true)) != null) {
-            _UndoLog log = recoverUndoLog(opRef[0], entry);
+        new PopAll() {
+            @Override
+            public boolean accept(byte op, byte[] entry) throws IOException {
+                _UndoLog log = recoverUndoLog(op, entry);
 
-            if (debugListener != null) {
-                debugListener.notify
-                    (EventType.DEBUG,
-                     "Recovered transaction undo log: " +
-                     "txnId=%1$d, length=%2$d, bufferPos=%3$d, " +
-                     "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$d, committed=%7$s",
-                     log.mTxnId, log.mLength, log.mBufferPos,
-                     log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos, log.mActiveIndexId,
-                     log.mCommitted != 0);
+                if (debugListener != null) {
+                    debugListener.notify
+                        (EventType.DEBUG,
+                         "Recovered transaction undo log: " +
+                         "txnId=%1$d, length=%2$d, bufferPos=%3$d, " +
+                         "nodeId=%4$d, nodeTopPos=%5$d, activeIndexId=%6$d, committed=%7$s",
+                         log.mTxnId, log.mLength, log.mBufferPos,
+                         log.mNode == null ? 0 : log.mNode.id(), log.mNodeTopPos,
+                         log.mActiveIndexId, log.mCommitted != 0);
+                }
+
+                _LocalTransaction txn = log.recoverTransaction(debugListener, trace);
+
+                // Reload the _UndoLog, since recoverTransaction consumes it all.
+                txn.recoveredUndoLog(recoverUndoLog(op, entry));
+                txn.attach("recovery");
+
+                txns.insert(log.mTxnId).value = txn;
+
+                return true;
             }
-
-            _LocalTransaction txn = log.recoverTransaction(debugListener, trace);
-
-            // Reload the _UndoLog, since recoverTransaction consumes it all.
-            txn.recoveredUndoLog(recoverUndoLog(opRef[0], entry));
-            txn.attach("recovery");
-
-            txns.insert(log.mTxnId).value = txn;
-        }
+        }.go(true, 0);
     }
 
     /**
@@ -1407,7 +1501,7 @@ final class _UndoLog implements _DatabaseAccess {
             return new _LocalTransaction(mDatabase, mTxnId, 0);
         }
 
-        byte[] opRef = new byte[1];
+        PopOne popper = new PopOne();
         Scope scope = new Scope();
 
         // Scopes are recovered in the opposite order in which they were
@@ -1422,13 +1516,13 @@ final class _UndoLog implements _DatabaseAccess {
         int hasState = _LocalTransaction.HAS_TRASH;
 
         loop: while (mLength > 0) {
-            byte[] entry = pop(opRef, false);
-            if (entry == null) {
+            if (!pop(false, popper)) {
                 // Undo log would have to be corrupt for this case to occur.
                 break;
             }
 
-            byte op = opRef[0];
+            byte op = popper.mOp;
+            byte[] entry = popper.mEntry;
 
             if (trace) {
                 traceOp(debugListener, op, entry);
@@ -1773,7 +1867,16 @@ final class _UndoLog implements _DatabaseAccess {
      * @return latched, unevictable node
      */
     private static _Node readUndoLogNode(_LocalDatabase db, long nodeId) throws IOException {
-        _Node node = db.allocLatchedNode(nodeId, _NodeGroup.MODE_UNEVICTABLE);
+        return readUndoLogNode(db, nodeId, _NodeGroup.MODE_UNEVICTABLE);
+    }
+
+    /**
+     * @return latched node with given eviction mode (pass 0 for normal mode)
+     */
+    private static _Node readUndoLogNode(_LocalDatabase db, long nodeId, int mode)
+        throws IOException
+    {
+        _Node node = db.allocLatchedNode(nodeId, mode);
         try {
             node.read(db, nodeId);
             if (node.type() != _Node.TYPE_UNDO_LOG) {
