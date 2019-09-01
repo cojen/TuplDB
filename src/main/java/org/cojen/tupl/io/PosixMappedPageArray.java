@@ -133,7 +133,7 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     @Override
-    public void setPageCount(long count) {
+    public void truncatePageCount(long count) {
         mEmpty = count == 0;
     }
 

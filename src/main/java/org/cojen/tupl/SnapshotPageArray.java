@@ -85,14 +85,19 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) throws IOException {
+    public void truncatePageCount(long count) throws IOException {
         synchronized (this) {
             if (mSnapshots == null) {
-                mSource.setPageCount(count);
+                mSource.truncatePageCount(count);
                 return;
             }
         }
         throw new IllegalStateException();
+    }
+
+    @Override
+    public void expandPageCount(long count) throws IOException {
+        mSource.expandPageCount(count);
     }
 
     @Override

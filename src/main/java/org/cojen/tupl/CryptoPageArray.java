@@ -66,8 +66,13 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) throws IOException {
-        mSource.setPageCount(count);
+    public void truncatePageCount(long count) throws IOException {
+        mSource.truncatePageCount(count);
+    }
+
+    @Override
+    public void expandPageCount(long count) throws IOException {
+        mSource.expandPageCount(count);
     }
 
     @Override

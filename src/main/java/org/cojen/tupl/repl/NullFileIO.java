@@ -49,7 +49,11 @@ final class NullFileIO extends FileIO {
     }
 
     @Override
-    public void setLength(long length, LengthOption option) {
+    public void truncateLength(long length) {
+    }
+
+    @Override
+    public void expandLength(long length, LengthOption option) {
     }
 
     @Override

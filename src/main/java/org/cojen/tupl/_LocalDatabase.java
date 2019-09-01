@@ -2005,7 +2005,7 @@ final class _LocalDatabase extends AbstractDatabase {
             }
 
             dataPageArray = dataPageArray.open();
-            dataPageArray.setPageCount(0);
+            dataPageArray.truncatePageCount(0);
 
             // Delete old redo log files.
             deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);

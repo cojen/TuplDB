@@ -68,7 +68,7 @@ public class FileIOTest {
         long len = file.getTotalSpace() * 100L; 
         // setLength traps the IOException and prevents resizing / remapping. Not remapping avoids
         // the SIGBUS issue.
-        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
+        fio.expandLength(len, LengthOption.PREALLOCATE_ALWAYS);
         assertEquals(0, fio.length());
 
         fio.close();
@@ -78,11 +78,11 @@ public class FileIOTest {
     public void preallocateGrowShrink() throws Exception {
         FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE));
         for (long len = 0; len <= 50_000L; len += 5000L) {
-            fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
+            fio.expandLength(len, LengthOption.PREALLOCATE_ALWAYS);
             assertEquals(len, fio.length());
         }
         for (long len = 50_000L; len >= 0; len -= 5000L) {
-            fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
+            fio.truncateLength(len);
             assertEquals(len, fio.length());
         }
 
@@ -110,7 +110,7 @@ public class FileIOTest {
         FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE));
         long startFree = file.getFreeSpace();
 
-        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
+        fio.expandLength(len, LengthOption.PREALLOCATE_ALWAYS);
         long alloc = startFree - file.getFreeSpace();
                         
         // Free space should be reduced. Pad expectation since external events may interfere.
@@ -137,7 +137,7 @@ public class FileIOTest {
 
         FileIO fio = FileIO.open(f, EnumSet.of(OpenOption.CREATE));
         final long len = f.getTotalSpace() * 5L;
-        fio.setLength(len, LengthOption.PREALLOCATE_ALWAYS);
+        fio.expandLength(len, LengthOption.PREALLOCATE_ALWAYS);
         fio.map();
 
         ByteBuffer bb = ByteBuffer.allocateDirect(4097);

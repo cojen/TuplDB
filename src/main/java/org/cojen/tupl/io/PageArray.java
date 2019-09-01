@@ -68,13 +68,20 @@ public abstract class PageArray implements CauseCloseable {
     public abstract long getPageCount() throws IOException;
 
     /**
-     * Set the total count of pages, truncating or growing the array as necessary. Array
-     * implementation might not support setting the page count, in which case this method does
-     * nothing.
+     * Attempt to truncate the total count of pages. Array implementation might not support
+     * truncating the page count, in which case this method does nothing.
      *
      * @throws IllegalArgumentException if count is negative
      */
-    public abstract void setPageCount(long count) throws IOException;
+    public abstract void truncatePageCount(long count) throws IOException;
+
+    /**
+     * Attempt to expand the total count of pages. Array implementation might not support
+     * expanding the page count, in which case this method does nothing.
+     *
+     * @throws IllegalArgumentException if count is negative
+     */
+    public abstract void expandPageCount(long count) throws IOException;
 
     /**
      * Return maximum allowed page count, or -1 if not applicable.

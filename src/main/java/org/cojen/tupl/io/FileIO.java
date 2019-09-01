@@ -86,18 +86,24 @@ public abstract class FileIO implements CauseCloseable {
     public abstract long length() throws IOException;
 
     /**
-     * Attempt to set the length of the file. It isn't critical that the
-     * operation succeed, and so any exceptions can be suppressed.
+     * Attempt to truncate the length of the file. It isn't critical that the operation
+     * succeed, and so any exceptions can be suppressed.
      */
-    public void setLength(long length) throws IOException {
-        setLength(length, LengthOption.PREALLOCATE_NEVER);
+    public abstract void truncateLength(long length) throws IOException;
+
+    /**
+     * Attempt to expand the length of the file. It isn't critical that the operation succeed,
+     * and so any exceptions can be suppressed.
+     */
+    public void expandLength(long length) throws IOException {
+        expandLength(length, LengthOption.PREALLOCATE_NEVER);
     }
 
     /**
-     * Attempt to set the length of the file. It isn't critical that the
-     * operation succeed, and so any exceptions can be suppressed.
+     * Attempt to expand the length of the file. It isn't critical that the operation succeed,
+     * and so any exceptions can be suppressed.
      */
-    public abstract void setLength(long length, LengthOption option) throws IOException;
+    public abstract void expandLength(long length, LengthOption option) throws IOException;
 
     /**
      * @param pos zero-based position in file

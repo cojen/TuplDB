@@ -109,12 +109,25 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) throws IOException {
+    public void truncatePageCount(long count) throws IOException {
+        setPageCount(count, true);
+    }
+
+    @Override
+    public void expandPageCount(long count) throws IOException {
+        setPageCount(count, false);
+    }
+
+    private void setPageCount(long count, boolean truncate) throws IOException {
         int stripes = mArrays.length;
         // Divide among stripes, rounding up.
         count = (count + stripes - 1) / stripes;
         for (PageArray pa : mArrays) {
-            pa.setPageCount(count);
+            if (truncate) {
+                pa.truncatePageCount(count);
+            } else {
+                pa.expandPageCount(count);
+            }
         }
     }
 

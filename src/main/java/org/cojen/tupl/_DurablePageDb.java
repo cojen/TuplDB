@@ -221,7 +221,7 @@ final class _DurablePageDb extends _PageDb {
                     p_delete(header);
                 }
 
-                mPageArray.setPageCount(2);
+                mPageArray.truncatePageCount(2);
             } else {
                 // Opened an existing file.
 

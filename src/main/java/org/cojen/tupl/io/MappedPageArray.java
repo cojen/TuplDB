@@ -121,7 +121,11 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) {
+    public void truncatePageCount(long count) {
+    }
+
+    @Override
+    public void expandPageCount(long count) {
     }
 
     @Override

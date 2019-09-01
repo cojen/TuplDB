@@ -77,14 +77,24 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) throws IOException {
+    public void truncatePageCount(long count) throws IOException {
+        if (allowPageCountAdjust(count)) {
+            mFio.truncateLength(count * mPageSize);
+        }
+    }
+
+    @Override
+    public void expandPageCount(long count) throws IOException {
+        if (allowPageCountAdjust(count)) {
+            mFio.expandLength(count * mPageSize, LengthOption.PREALLOCATE_OPTIONAL);
+        }
+    }
+
+    private boolean allowPageCountAdjust(long count) {
         if (count < 0) {
             throw new IllegalArgumentException(String.valueOf(count));
         }
-        if (isReadOnly()) {
-            return;
-        }
-        mFio.setLength(count * mPageSize);
+        return !isReadOnly();
     }
 
     @Override

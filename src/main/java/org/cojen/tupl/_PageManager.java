@@ -123,7 +123,7 @@ final class _PageManager {
                 if (actualPageCount > mTotalPageCount) {
                     if (!array.isReadOnly()) {
                         // Truncate extra uncommitted pages.
-                        array.setPageCount(mTotalPageCount);
+                        array.truncatePageCount(mTotalPageCount);
                     }
                 } else if (actualPageCount < mTotalPageCount) {
                     // Not harmful -- can be caused by pre-allocated append tail node.
@@ -569,7 +569,7 @@ final class _PageManager {
         try {
             if (mTotalPageCount < mPageArray.getPageCount()) {
                 try {
-                    mPageArray.setPageCount(mTotalPageCount);
+                    mPageArray.truncatePageCount(mTotalPageCount);
                     return true;
                 } catch (IllegalStateException e) {
                     // Snapshot in progress.

@@ -2004,7 +2004,7 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 try {
-                    io.setLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
+                    io.expandLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
                 } catch (IOException e) {
                     Utils.closeQuietly(io);
                     throw e;
@@ -2131,7 +2131,7 @@ final class FileTermLog extends Latch implements TermLog {
                     file.delete();
                 }
             } else {
-                io.setLength(maxLength);
+                io.truncateLength(maxLength);
             }
         }
 

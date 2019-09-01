@@ -103,10 +103,32 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void setLength(long length, LengthOption option) throws IOException {
+    public final void truncateLength(long length) throws IOException {
+        setLength(length, true, LengthOption.PREALLOCATE_NEVER);
+    }
+
+    @Override
+    public final void expandLength(long length, LengthOption option) throws IOException {
+        setLength(length, false, option);
+    }
+
+    private void setLength(long length, boolean truncate, LengthOption option) throws IOException {
         mRemapLatch.acquireExclusive();
         try {
             final long prevLength = length();
+
+            if (truncate) {
+                if (length >= prevLength) {
+                    return;
+                }
+            } else {
+                if (length < prevLength) {
+                    return;
+                }
+                if (length == prevLength && option == LengthOption.PREALLOCATE_NEVER) {
+                    return;
+                }
+            }
 
             // Length reduction screws up the mapping on Linux, causing a hard
             // process crash when accessing anything beyond the file length.

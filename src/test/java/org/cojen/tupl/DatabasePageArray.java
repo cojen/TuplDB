@@ -74,13 +74,17 @@ class DatabasePageArray extends PageArray {
     }
 
     @Override
-    public void setPageCount(long count) throws IOException {
+    public void truncatePageCount(long count) throws IOException {
         try (Cursor c = mPages.newCursor(Transaction.BOGUS)) {
             c.autoload(false);
             for (c.findGe(keyFor(count)); c.key() != null; c.next()) {
                 c.store(null);
             }
         }
+    }
+
+    @Override
+    public void expandPageCount(long count) throws IOException {
     }
 
     @Override

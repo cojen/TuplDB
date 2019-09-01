@@ -1250,6 +1250,24 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Exits the current transaction scope, rolling back all uncommitted
  modifications made within.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#expandLength(long)">expandLength(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
+<dd>
+<div class="block">Attempt to expand the length of the file.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#expandLength(long,org.cojen.tupl.io.LengthOption)">expandLength(long, LengthOption)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
+<dd>
+<div class="block">Attempt to expand the length of the file.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#expandPageCount(long)">expandPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#expandPageCount(long)">expandPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#expandPageCount(long)">expandPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>
+<div class="block">Attempt to expand the total count of pages.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#expandPageCount(long)">expandPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
 </dl>
 <a id="I:F">
 <!--   -->
@@ -3176,24 +3194,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Set a factory for creating new server-side sockets.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#setLength(long)">setLength(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
-<dd>
-<div class="block">Attempt to set the length of the file.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#setLength(long,org.cojen.tupl.io.LengthOption)">setLength(long, LengthOption)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
-<dd>
-<div class="block">Attempt to set the length of the file.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#setPageCount(long)">setPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#setPageCount(long)">setPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#setPageCount(long)">setPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>
-<div class="block">Set the total count of pages, truncating or growing the array as necessary.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#setPageCount(long)">setPageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#SHARED">SHARED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/Database.html#shutdown()">shutdown()</a></span> - Method in interface org.cojen.tupl.<a href="org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
@@ -3512,6 +3512,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Transform or filter out the given value.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FileIO.html#truncateLength(long)">truncateLength(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
+<dd>
+<div class="block">Attempt to truncate the length of the file.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/FilePageArray.html#truncatePageCount(long)">truncatePageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/MappedPageArray.html#truncatePageCount(long)">truncatePageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/PageArray.html#truncatePageCount(long)">truncatePageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>
+<div class="block">Attempt to truncate the total count of pages.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org/cojen/tupl/io/StripedPageArray.html#truncatePageCount(long)">truncatePageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Clutch.html#tryAcquireExclusive()">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org/cojen/tupl/util/Latch.html#tryAcquireExclusive()">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
