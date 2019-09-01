@@ -489,9 +489,12 @@ final class DurablePageDb extends PageDb {
         mPageManager.addTo(stats);
         pageCount -= stats.freePages;
 
-        if (pageCount <= 0) {
+        if (pageCount < 0) {
             return 0;
         }
+
+        // Hint that the underlying file should preallocate as well.
+        mPageArray.expandPageCount(mPageArray.getPageCount() + pageCount);
 
         for (int i=0; i<pageCount; i++) {
             CommitLock.Shared shared = mCommitLock.acquireShared();
