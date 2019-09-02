@@ -232,16 +232,6 @@ final class _UndoLog implements _DatabaseAccess {
         return mNode.id();
     }
 
-    /**
-     * Returns the top node id as returned by the last call to persistReady. Caller must hold
-     * db commit lock.
-     *
-     * @return top node id or 0 if log is empty
-     */
-    long topNodeId() throws IOException {
-        return mNode == null ? 0 : mNode.id();
-    }
-
     private int pageSize(long page) {
         /*P*/ // [
         // return page.length;
@@ -1362,7 +1352,9 @@ final class _UndoLog implements _DatabaseAccess {
             _LocalDatabase db = mDatabase;
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
-            db.deleteNode(parent, false);
+            // Of course it's fine to recycle pages from master undo log itself, which is the
+            // only one with a transaction id of zero.
+            db.deleteNode(parent, mTxnId == 0);
         } else {
             parent.releaseExclusive();
         }

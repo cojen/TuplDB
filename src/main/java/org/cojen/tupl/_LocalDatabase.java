@@ -5394,12 +5394,8 @@ final class _LocalDatabase extends AbstractDatabase {
                 // Tree, but this requires more features to be added to Tree
                 // first. Specifically, large values and appending to them.
 
-                long txnId = 0;
-                final long masterUndoLogId;
-
-                if (resume) {
-                    masterUndoLogId = masterUndoLog == null ? 0 : masterUndoLog.topNodeId();
-                } else {
+                if (!resume) {
+                    long txnId = 0;
                     byte[] workspace = null;
 
                     for (_TransactionContext txnContext : mTxnContexts) {
@@ -5415,6 +5411,7 @@ final class _LocalDatabase extends AbstractDatabase {
                         }
                     }
 
+                    final long masterUndoLogId;
                     if (masterUndoLog == null) {
                         masterUndoLogId = 0;
                     } else {
@@ -5427,10 +5424,10 @@ final class _LocalDatabase extends AbstractDatabase {
 
                     // Stash it to resume after an aborted checkpoint.
                     mCommitMasterUndoLog = masterUndoLog;
-                }
 
-                p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
-                p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+                    p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
+                    p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+                }
 
                 mCommitHeader = header;
 
@@ -5441,12 +5438,31 @@ final class _LocalDatabase extends AbstractDatabase {
                 }
 
                 if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
-                    // Exception was thrown with locks still held.
+                    // Exception was thrown with locks still held, which means that the commit
+                    // state didn't change. The header might not be filled in completely, so
+                    // don't attempt to resume the checkpoint later. Fully delete the header
+                    // and truncate the master undo log.
+
                     mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
                     root.releaseShared();
                     mCommitLock.releaseExclusive();
+
                     if (redo != null) {
                         redo.checkpointAborted();
+                    }
+
+                    deleteCommitHeader();
+                    mCommitMasterUndoLog = null;
+
+                    if (masterUndoLog != null) {
+                        try {
+                            masterUndoLog.truncate();
+                        } catch (Throwable e2) {
+                            // Panic.
+                            suppress(e2, e);
+                            close(e2);
+                            throw e2;
+                        }
                     }
                 }
 
