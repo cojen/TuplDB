@@ -112,7 +112,7 @@ final class _PageManager {
                 mRegularFreeList.init(2);
                 mRecycleFreeList.init(3);
             } else {
-                mTotalPageCount = readTotalPageCount(header, offset + I_TOTAL_PAGE_COUNT);
+                mTotalPageCount = readTotalPageCount(header, offset);
 
                 if (debugListener != null) {
                     debugListener.notify(EventType.DEBUG, "TOTAL_PAGE_COUNT: %1$d",
