@@ -122,7 +122,12 @@ final class PageManager {
                 long actualPageCount = array.getPageCount();
                 if (actualPageCount > mTotalPageCount) {
                     if (!array.isReadOnly()) {
-                        // Truncate extra uncommitted pages.
+                        // Attempt to truncate extra uncommitted pages.
+                        if (mTotalPageCount < 4) {
+                            // Don't truncate to something obviously wrong.
+                            throw new CorruptDatabaseException
+                                ("Invalid total page count: " + mTotalPageCount);
+                        }
                         array.truncatePageCount(mTotalPageCount);
                     }
                 } else if (actualPageCount < mTotalPageCount) {
