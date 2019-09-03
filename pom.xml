@@ -128,8 +128,14 @@
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.8.1</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.1.1</version>
+        <version>3.1.2</version>
         <configuration>
           <archive>
             <manifestEntries>
@@ -146,14 +152,13 @@
           <configuration>
             <detectJavaApiLink>true</detectJavaApiLink>
             <links>
-              <link>https://docs.oracle.com/javase/10/docs/api</link>
+              <link>https://docs.oracle.com/en/java/javase/12/docs/api</link>
             </links>
             <author>false</author>
             <nodeprecatedlist>true</nodeprecatedlist>
             <notimestamp>true</notimestamp>
             <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
             <destDir>javadoc</destDir>
-            <additionalJOption>--no-module-directories</additionalJOption>
           </configuration>
       </plugin>
 
