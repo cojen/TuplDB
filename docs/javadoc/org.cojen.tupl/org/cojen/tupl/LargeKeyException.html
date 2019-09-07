@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10};
+var data = {"i0":10,"i1":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -204,6 +204,13 @@ extends <a href="DatabaseException.html" title="class in org.cojen.tupl">Databas
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getLength()">getLength</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+<tr class="rowColor" id="i1">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isRecoverable()">isRecoverable</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -270,10 +277,25 @@ extends <a href="DatabaseException.html" title="class in org.cojen.tupl">Databas
 <a id="getLength()">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>getLength</h4>
 <pre class="methodSignature">public&nbsp;long&nbsp;getLength()</pre>
+</li>
+</ul>
+<a id="isRecoverable()">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>isRecoverable</h4>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isRecoverable()</pre>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="DatabaseException.html#isRecoverable()">DatabaseException</a></code></span></div>
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="DatabaseException.html#isRecoverable()">isRecoverable</a></code>&nbsp;in class&nbsp;<code><a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></code></dd>
+</dl>
 </li>
 </ul>
 </li>

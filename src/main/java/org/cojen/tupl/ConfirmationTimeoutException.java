@@ -43,7 +43,7 @@ public class ConfirmationTimeoutException extends ConfirmationFailureException {
 
     @Override
     public String getMessage() {
-        return Utils.timeoutMessage(mNanosTimeout, this);
+        return timeoutMessage(mNanosTimeout);
     }
 
     @Override
@@ -61,7 +61,7 @@ public class ConfirmationTimeoutException extends ConfirmationFailureException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }

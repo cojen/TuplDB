@@ -1602,7 +1602,7 @@ class _BTree extends Tree implements View, Index {
         boolean reported = false;
 
         while (true) {
-            if (!DatabaseException.isRecoverable(e)) {
+            if (!isRecoverable(e)) {
                 // Panic.
                 closeQuietly(mDatabase, e);
                 throw rethrow(e);

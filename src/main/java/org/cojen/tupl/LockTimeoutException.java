@@ -53,7 +53,7 @@ public class LockTimeoutException extends LockFailureException {
 
     @Override
     public String getMessage() {
-        return Utils.timeoutMessage(mNanosTimeout, this);
+        return timeoutMessage(mNanosTimeout);
     }
 
     @Override

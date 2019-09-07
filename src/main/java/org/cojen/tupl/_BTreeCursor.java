@@ -3501,7 +3501,7 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
             // Release the shared lock.
             mTree.mDatabase.commitLock().unlock();
 
-            DatabaseException.rethrowIfRecoverable(e);
+            rethrowIfRecoverable(e);
             if (txn != null) {
                 txn.reset(e);
             }
@@ -3635,7 +3635,7 @@ class _BTreeCursor extends AbstractValueAccessor implements Cursor {
             // Release the shared lock.
             mTree.mDatabase.commitLock().unlock();
 
-            DatabaseException.rethrowIfRecoverable(e);
+            rethrowIfRecoverable(e);
             if (txn != null) {
                 txn.reset(e);
             }

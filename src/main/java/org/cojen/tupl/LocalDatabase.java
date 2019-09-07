@@ -1221,7 +1221,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             index = openTree(txn, treeIdBytes, name, IX_FIND);
         } catch (Throwable e) {
-            DatabaseException.rethrowIfRecoverable(e);
+            rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
             shared.release();
@@ -1407,7 +1407,7 @@ final class LocalDatabase extends AbstractDatabase {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Throwable e) {
-            DatabaseException.rethrowIfRecoverable(e);
+            rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
             txn.reset();
@@ -1918,7 +1918,7 @@ final class LocalDatabase extends AbstractDatabase {
                     try {
                         forceCheckpoint();
                     } catch (Throwable e) {
-                        DatabaseException.rethrowIfRecoverable(e);
+                        rethrowIfRecoverable(e);
                         closeQuietly(this, e);
                         throw e;
                     }
@@ -2251,7 +2251,7 @@ final class LocalDatabase extends AbstractDatabase {
                 // Retry.
                 Thread.yield();
             } catch (Throwable e) {
-                DatabaseException.rethrowIfRecoverable(e);
+                rethrowIfRecoverable(e);
                 closeQuietly(this, e);
                 throw e;
             }
@@ -2805,7 +2805,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             txn.commit();
         } catch (Throwable e) {
-            DatabaseException.rethrowIfRecoverable(e);
+            rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
         } finally {
             txn.reset();
@@ -3242,7 +3242,7 @@ final class LocalDatabase extends AbstractDatabase {
                     }
                 } catch (Throwable e) {
                     if (!critical) {
-                        DatabaseException.rethrowIfRecoverable(e);
+                        rethrowIfRecoverable(e);
                     }
                     throw closeOnFailure(this, e);
                 }
@@ -3262,7 +3262,7 @@ final class LocalDatabase extends AbstractDatabase {
                         Utils.suppress(e, e2);
                         throw closeOnFailure(this, e);
                     }
-                    DatabaseException.rethrowIfRecoverable(e);
+                    rethrowIfRecoverable(e);
                     throw closeOnFailure(this, e);
                 }
             }

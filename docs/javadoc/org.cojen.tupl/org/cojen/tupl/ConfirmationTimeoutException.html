@@ -27,7 +27,7 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10};
+var data = {"i0":10,"i1":10,"i2":10,"i3":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -214,6 +214,13 @@ extends <a href="ConfirmationFailureException.html" title="class in org.cojen.tu
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getUnit()">getUnit</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+<tr class="rowColor" id="i3">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isRecoverable()">isRecoverable</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -296,10 +303,25 @@ extends <a href="ConfirmationFailureException.html" title="class in org.cojen.tu
 <a id="getUnit()">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>getUnit</h4>
 <pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;getUnit()</pre>
+</li>
+</ul>
+<a id="isRecoverable()">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>isRecoverable</h4>
+<pre class="methodSignature">public&nbsp;boolean&nbsp;isRecoverable()</pre>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="DatabaseException.html#isRecoverable()">DatabaseException</a></code></span></div>
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="ConfirmationFailureException.html#isRecoverable()">isRecoverable</a></code>&nbsp;in class&nbsp;<code><a href="ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></code></dd>
+</dl>
 </li>
 </ul>
 </li>

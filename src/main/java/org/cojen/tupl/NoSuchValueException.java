@@ -31,7 +31,7 @@ public class NoSuchValueException extends DatabaseException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }

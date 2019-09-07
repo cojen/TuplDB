@@ -171,32 +171,6 @@ class Utils extends org.cojen.tupl.io.Utils {
         return unit;
     }
 
-    static String timeoutMessage(long nanosTimeout, DatabaseException ex) {
-        String msg;
-        if (nanosTimeout == 0) {
-            msg = "Never waited";
-        } else if (nanosTimeout < 0) {
-            msg = "Infinite wait";
-        } else {
-            StringBuilder b = new StringBuilder("Waited ");
-            appendTimeout(b, ex.getTimeout(), ex.getUnit());
-            Object att = ex.getOwnerAttachment();
-            if (att != null) {
-                appendAttachment(b, att);
-            }
-            return b.toString();
-        }
-
-        Object att = ex.getOwnerAttachment();
-        if (att != null) {
-            StringBuilder b = new StringBuilder(msg);
-            appendAttachment(b, att);
-            msg = b.toString();
-        }
-
-        return msg;
-    }
-
     static void appendTimeout(StringBuilder b, long timeout, TimeUnit unit) {
         if (timeout == 0) {
             b.append('0');
@@ -211,10 +185,6 @@ class Utils extends org.cojen.tupl.io.Utils {
             }
             b.append(unitStr);
         }
-    }
-
-    private static void appendAttachment(StringBuilder b, Object att) {
-        b.append("; owner attachment: ").append(att);
     }
 
     /**
@@ -871,6 +841,22 @@ class Utils extends org.cojen.tupl.io.Utils {
                 }
             }
         }
+    }
+
+    /**
+     * Rethrows if given a recoverable exception.
+     */
+    static void rethrowIfRecoverable(Throwable e) throws DatabaseException {
+        if (e instanceof DatabaseException) {
+            DatabaseException de = (DatabaseException) e;
+            if (de.isRecoverable()) {
+                throw de;
+            }
+        }
+    }
+
+    static boolean isRecoverable(Throwable e) {
+        return (e instanceof DatabaseException) && ((DatabaseException) e).isRecoverable();
     }
 
     static void initCause(Throwable e, Throwable cause) {

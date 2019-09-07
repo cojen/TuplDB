@@ -1266,7 +1266,7 @@ final class _LocalTransaction extends _Locker implements Transaction {
                 try {
                     rollback();
                 } catch (Throwable rollbackFailed) {
-                    if (DatabaseException.isRecoverable(borked) && (rethrow || !closed)) {
+                    if (Utils.isRecoverable(borked) && (rethrow || !closed)) {
                         // Allow application to try again later.
                         Utils.rethrow(borked);
                     }

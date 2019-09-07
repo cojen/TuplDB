@@ -30,7 +30,7 @@ public class UnmodifiableViewException extends ViewConstraintException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }

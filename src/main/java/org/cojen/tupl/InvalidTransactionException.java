@@ -41,7 +41,7 @@ public class InvalidTransactionException extends DatabaseException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }

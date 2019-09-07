@@ -48,7 +48,7 @@ public class DatabaseException extends IOException {
     /**
      * Returns false if database should be closed as a result of this exception.
      */
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return false;
     }
 
@@ -73,19 +73,33 @@ public class DatabaseException extends IOException {
         return null;
     }
 
-    /**
-     * Rethrows if given a recoverable exception.
-     */
-    static void rethrowIfRecoverable(Throwable e) throws DatabaseException {
-        if (e instanceof DatabaseException) {
-            DatabaseException de = (DatabaseException) e;
-            if (de.isRecoverable()) {
-                throw de;
+    final String timeoutMessage(long nanosTimeout) {
+        String msg;
+        if (nanosTimeout == 0) {
+            msg = "Never waited";
+        } else if (nanosTimeout < 0) {
+            msg = "Infinite wait";
+        } else {
+            StringBuilder b = new StringBuilder("Waited ");
+            Utils.appendTimeout(b, getTimeout(), getUnit());
+            Object att = getOwnerAttachment();
+            if (att != null) {
+                appendAttachment(b, att);
             }
+            return b.toString();
         }
+
+        Object att = getOwnerAttachment();
+        if (att != null) {
+            StringBuilder b = new StringBuilder(msg);
+            appendAttachment(b, att);
+            msg = b.toString();
+        }
+
+        return msg;
     }
 
-    static boolean isRecoverable(Throwable e) {
-        return (e instanceof DatabaseException) && ((DatabaseException) e).isRecoverable();
+    private static void appendAttachment(StringBuilder b, Object att) {
+        b.append("; owner attachment: ").append(att);
     }
 }

@@ -43,7 +43,7 @@ public class ConfirmationFailureException extends DatabaseException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }

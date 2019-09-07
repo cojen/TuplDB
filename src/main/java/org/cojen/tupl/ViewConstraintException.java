@@ -33,7 +33,7 @@ public class ViewConstraintException extends DatabaseException {
     }
 
     @Override
-    boolean isRecoverable() {
+    public boolean isRecoverable() {
         return true;
     }
 }
