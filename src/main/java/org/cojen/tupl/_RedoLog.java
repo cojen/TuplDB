@@ -85,8 +85,8 @@ final class _RedoLog extends _RedoWriter {
      *
      * @param logId first log id to open
      */
-    _RedoLog(DatabaseConfig config, long logId, long redoPos) throws IOException {
-        this(config.mCrypto, config.mBaseFile, config.mFileFactory, logId, redoPos, null);
+    _RedoLog(Launcher launcher, long logId, long redoPos) throws IOException {
+        this(launcher.mCrypto, launcher.mBaseFile, launcher.mFileFactory, logId, redoPos, null);
     }
 
     /**
@@ -94,10 +94,10 @@ final class _RedoLog extends _RedoWriter {
      *
      * @param context used for creating next log file; must not be null
      */
-    _RedoLog(DatabaseConfig config, _RedoLog replayed, _TransactionContext context)
+    _RedoLog(Launcher launcher, _RedoLog replayed, _TransactionContext context)
         throws IOException
     {
-        this(config.mCrypto, config.mBaseFile, config.mFileFactory,
+        this(launcher.mCrypto, launcher.mBaseFile, launcher.mFileFactory,
              replayed.mLogId, replayed.mPosition, context);
     }
 

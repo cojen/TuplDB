@@ -60,12 +60,12 @@ final class Checkpointer implements Runnable {
     /**
      * @param extraLimit maximum number of extra checkpoint threads to use
      */
-    Checkpointer(AbstractDatabase db, DatabaseConfig config, int extraLimit) {
+    Checkpointer(AbstractDatabase db, Launcher launcher, int extraLimit) {
         mSuspendCount = new AtomicInteger();
 
-        mRateNanos = config.mCheckpointRateNanos;
-        mSizeThreshold = config.mCheckpointSizeThreshold;
-        mDelayThresholdNanos = config.mCheckpointDelayThresholdNanos;
+        mRateNanos = launcher.mCheckpointRateNanos;
+        mSizeThreshold = launcher.mCheckpointSizeThreshold;
+        mDelayThresholdNanos = launcher.mCheckpointDelayThresholdNanos;
 
         if (mRateNanos < 0) {
             mRefQueue = new ReferenceQueue<>();
@@ -77,7 +77,7 @@ final class Checkpointer implements Runnable {
 
         ThreadPoolExecutor extraExecutor;
         {
-            int max = config.mMaxCheckpointThreads;
+            int max = launcher.mMaxCheckpointThreads;
             if (max < 0) {
                 max = (-max * Runtime.getRuntime().availableProcessors());
             }
@@ -88,7 +88,7 @@ final class Checkpointer implements Runnable {
                 extraExecutor = null;
             } else {
                 long timeoutNanos = Math.max
-                    (config.mCheckpointRateNanos, config.mCheckpointDelayThresholdNanos);
+                    (launcher.mCheckpointRateNanos, launcher.mCheckpointDelayThresholdNanos);
                 if (timeoutNanos < 0) {
                     // One minute default.
                     timeoutNanos = TimeUnit.MINUTES.toNanos(1);

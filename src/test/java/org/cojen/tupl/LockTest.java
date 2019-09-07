@@ -1841,7 +1841,7 @@ public class LockTest {
 
     @Test
     public void closedLocker() throws Exception {
-        LocalDatabase db = LocalDatabase.open(new DatabaseConfig());
+        LocalDatabase db = LocalDatabase.open(new Launcher());
         LockManager manager = new LockManager(db, null, -1);
 
         Locker locker = new Locker(manager);

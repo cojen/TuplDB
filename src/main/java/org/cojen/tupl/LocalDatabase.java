@@ -262,11 +262,11 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Open a database, creating it if necessary.
      */
-    static LocalDatabase open(DatabaseConfig config) throws IOException {
-        config = config.clone();
-        LocalDatabase db = new LocalDatabase(config, OPEN_REGULAR);
+    static LocalDatabase open(Launcher launcher) throws IOException {
+        launcher = launcher.clone();
+        LocalDatabase db = new LocalDatabase(launcher, OPEN_REGULAR);
         try {
-            db.finishInit(config);
+            db.finishInit(launcher);
             return db;
         } catch (Throwable e) {
             closeQuietly(db);
@@ -279,14 +279,14 @@ final class LocalDatabase extends AbstractDatabase {
      * empty one. When using a raw block device for the data file, this method
      * must be used to format it.
      */
-    static LocalDatabase destroy(DatabaseConfig config) throws IOException {
-        config = config.clone();
-        if (config.mReadOnly) {
+    static LocalDatabase destroy(Launcher launcher) throws IOException {
+        launcher = launcher.clone();
+        if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
-        LocalDatabase db = new LocalDatabase(config, OPEN_DESTROY);
+        LocalDatabase db = new LocalDatabase(launcher, OPEN_DESTROY);
         try {
-            db.finishInit(config);
+            db.finishInit(launcher);
             return db;
         } catch (Throwable e) {
             closeQuietly(db);
@@ -295,37 +295,38 @@ final class LocalDatabase extends AbstractDatabase {
     }
 
     /**
-     * @param config base file is set as a side-effect
+     * @param launcher base file is set as a side-effect
      */
-    static BTree openTemp(TempFileManager tfm, DatabaseConfig config) throws IOException {
+    static BTree openTemp(TempFileManager tfm, Launcher launcher) throws IOException {
         File file = tfm.createTempFile();
-        config.baseFile(file);
-        config.dataFile(file);
-        config.createFilePath(false);
-        config.durabilityMode(DurabilityMode.NO_FLUSH);
-        LocalDatabase db = new LocalDatabase(config, OPEN_TEMP);
+        launcher.baseFile(file);
+        launcher.dataFiles(file);
+        launcher.createFilePath(false);
+        launcher.durabilityMode(DurabilityMode.NO_FLUSH);
+        LocalDatabase db = new LocalDatabase(launcher, OPEN_TEMP);
         tfm.register(file, db);
         db.mCheckpointer.start(false);
         return db.mRegistry;
     }
 
     /**
-     * @param config unshared config
+     * @param launcher unshared launcher
      */
-    private LocalDatabase(DatabaseConfig config, int openMode) throws IOException {
-        config.mEventListener = mEventListener = SafeEventListener.makeSafe(config.mEventListener);
+    private LocalDatabase(Launcher launcher, int openMode) throws IOException {
+        launcher.mEventListener = mEventListener = 
+            SafeEventListener.makeSafe(launcher.mEventListener);
 
-        mCustomTxnHandler = config.mTxnHandler;
-        mRecoveryHandler = config.mRecoveryHandler;
+        mCustomTxnHandler = launcher.mTxnHandler;
+        mRecoveryHandler = launcher.mRecoveryHandler;
 
-        mBaseFile = config.mBaseFile;
-        mReadOnly = config.mReadOnly;
-        final File[] dataFiles = config.dataFiles();
+        mBaseFile = launcher.mBaseFile;
+        mReadOnly = launcher.mReadOnly;
+        final File[] dataFiles = launcher.dataFiles();
 
-        int pageSize = config.mPageSize;
+        int pageSize = launcher.mPageSize;
         boolean explicitPageSize = true;
         if (pageSize <= 0) {
-            config.pageSize(pageSize = DEFAULT_PAGE_SIZE);
+            launcher.pageSize(pageSize = DEFAULT_PAGE_SIZE);
             explicitPageSize = false;
         } else if (pageSize < MINIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
@@ -334,14 +335,13 @@ final class LocalDatabase extends AbstractDatabase {
             throw new IllegalArgumentException
                 ("Page size is too large: " + pageSize + " > " + MAXIMUM_PAGE_SIZE);
         } else if ((pageSize & 1) != 0) {
-            throw new IllegalArgumentException
-                ("Page size must be even: " + pageSize);
+            throw new IllegalArgumentException("Page size must be even: " + pageSize);
         }
 
         int minCache, maxCache;
         cacheSize: {
-            long minCachedBytes = Math.max(0, config.mMinCachedBytes);
-            long maxCachedBytes = Math.max(0, config.mMaxCachedBytes);
+            long minCachedBytes = Math.max(0, launcher.mMinCachedBytes);
+            long maxCachedBytes = Math.max(0, launcher.mMaxCachedBytes);
 
             if (maxCachedBytes == 0) {
                 maxCachedBytes = minCachedBytes;
@@ -364,13 +364,13 @@ final class LocalDatabase extends AbstractDatabase {
             maxCache = Math.max(MIN_CACHED_NODES, maxCache);
         }
 
-        // Update config such that info file is correct.
-        config.mMinCachedBytes = byteCountFromNodes(minCache, pageSize);
-        config.mMaxCachedBytes = byteCountFromNodes(maxCache, pageSize);
+        // Update launcher such that info file is correct.
+        launcher.mMinCachedBytes = byteCountFromNodes(minCache, pageSize);
+        launcher.mMaxCachedBytes = byteCountFromNodes(maxCache, pageSize);
 
-        mDurabilityMode = config.mDurabilityMode;
-        mDefaultLockTimeoutNanos = config.mLockTimeoutNanos;
-        mLockManager = new LockManager(this, config.mLockUpgradeRule, mDefaultLockTimeoutNanos);
+        mDurabilityMode = launcher.mDurabilityMode;
+        mDefaultLockTimeoutNanos = launcher.mLockTimeoutNanos;
+        mLockManager = new LockManager(this, launcher.mLockUpgradeRule, mDefaultLockTimeoutNanos);
         mLocalTransaction = new ThreadLocal<>();
 
         // Initialize NodeMap, the primary cache of Nodes.
@@ -391,8 +391,8 @@ final class LocalDatabase extends AbstractDatabase {
             }
         }
 
-        if (mBaseFile != null && !mReadOnly && config.mMkdirs) {
-            FileFactory factory = config.mFileFactory;
+        if (mBaseFile != null && !mReadOnly && launcher.mMkdirs) {
+            FileFactory factory = launcher.mFileFactory;
 
             final boolean baseDirectoriesCreated;
             File baseDir = mBaseFile.getParentFile();
@@ -430,7 +430,7 @@ final class LocalDatabase extends AbstractDatabase {
             } else {
                 File lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
 
-                FileFactory factory = config.mFileFactory;
+                FileFactory factory = launcher.mFileFactory;
                 if (factory != null && !mReadOnly) {
                     factory.createFile(lockFile);
                 }
@@ -445,11 +445,11 @@ final class LocalDatabase extends AbstractDatabase {
             final long cacheInitStart = System.nanoTime();
 
             // Create or retrieve optional page cache.
-            PageCache cache = config.pageCache(mEventListener);
+            PageCache cache = launcher.pageCache(mEventListener);
 
             if (cache != null) {
-                // Update config such that info file is correct.
-                config.mSecondaryCacheSize = cache.capacity();
+                // Update launcher such that info file is correct.
+                launcher.mSecondaryCacheSize = cache.capacity();
             }
 
             /*P*/ // [|
@@ -457,17 +457,17 @@ final class LocalDatabase extends AbstractDatabase {
             /*P*/ // ]
 
             EventListener debugListener = null;
-            if (config.mDebugOpen != null) {
+            if (launcher.mDebugOpen != null) {
                 debugListener = mEventListener;
             }
 
             if (dataFiles == null) {
-                PageArray dataPageArray = config.mDataPageArray;
+                PageArray dataPageArray = launcher.mDataPageArray;
                 if (dataPageArray == null) {
                     mPageDb = new NonPageDb(pageSize, cache);
                 } else {
                     dataPageArray = dataPageArray.open();
-                    Crypto crypto = config.mCrypto;
+                    Crypto crypto = launcher.mCrypto;
                     mPageDb = DurablePageDb.open
                         (debugListener, dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
                     /*P*/ // [|
@@ -476,14 +476,14 @@ final class LocalDatabase extends AbstractDatabase {
                     /*P*/ // ]
                 }
             } else {
-                EnumSet<OpenOption> options = config.createOpenOptions();
+                EnumSet<OpenOption> options = launcher.createOpenOptions();
 
                 PageDb pageDb;
                 try {
                     pageDb = DurablePageDb.open
                         (debugListener, explicitPageSize, pageSize,
-                         dataFiles, config.mFileFactory, options,
-                         cache, config.mCrypto, openMode == OPEN_DESTROY);
+                         dataFiles, launcher.mFileFactory, options,
+                         cache, launcher.mCrypto, openMode == OPEN_DESTROY);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -499,12 +499,12 @@ final class LocalDatabase extends AbstractDatabase {
             /*P*/ // ]
 
             // Actual page size might differ from configured size.
-            config.pageSize(pageSize = mPageSize = mPageDb.pageSize());
+            launcher.pageSize(pageSize = mPageSize = mPageDb.pageSize());
 
             /*P*/ // [
-            config.mDirectPageAccess = false;
+            launcher.mDirectPageAccess = false;
             /*P*/ // |
-            /*P*/ // config.mDirectPageAccess = true;
+            /*P*/ // launcher.mDirectPageAccess = true;
             /*P*/ // ]
 
             // Write info file of properties, after database has been opened and after page
@@ -512,7 +512,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (mBaseFile != null && openMode != OPEN_TEMP && !mReadOnly) {
                 File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
 
-                FileFactory factory = config.mFileFactory;
+                FileFactory factory = launcher.mFileFactory;
                 if (factory != null) {
                     factory.createFile(infoFile);
                 }
@@ -522,7 +522,7 @@ final class LocalDatabase extends AbstractDatabase {
                                             StandardCharsets.UTF_8));
 
                 try {
-                    config.writeInfo(w);
+                    launcher.writeInfo(w);
                 } finally {
                     w.close();
                 }
@@ -641,10 +641,10 @@ final class LocalDatabase extends AbstractDatabase {
             mPageDb.readExtraCommitData(header);
 
             // Also verifies the database and replication encodings.
-            Node rootNode = loadRegistryRoot(config, header);
+            Node rootNode = loadRegistryRoot(launcher, header);
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
-            if (config.mReplManager != null) {
+            if (launcher.mReplManager != null) {
                 mRegistry = new BTree.Repl(this, BTree.REGISTRY_ID, null, rootNode);
             } else {
                 mRegistry = new BTree(this, BTree.REGISTRY_ID, null, rootNode);
@@ -682,7 +682,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(BTree.REGISTRY_KEY_MAP_ID, IX_CREATE, config);
+                mRegistryKeyMap = openInternalTree(BTree.REGISTRY_KEY_MAP_ID, IX_CREATE, launcher);
                 if (debugListener != null) {
                     Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
                     try {
@@ -700,7 +700,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             BTree cursorRegistry = null;
             if (openMode != OPEN_TEMP) {
-                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, IX_FIND, config);
+                cursorRegistry = openInternalTree(BTree.CURSOR_REGISTRY_ID, IX_FIND, launcher);
             }
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
@@ -723,12 +723,12 @@ final class LocalDatabase extends AbstractDatabase {
                 mCheckpointer = null;
             } else if (openMode == OPEN_TEMP) {
                 mRedoWriter = null;
-                mCheckpointer = new Checkpointer(this, config, mNodeGroups.length);
+                mCheckpointer = new Checkpointer(this, launcher, mNodeGroups.length);
             } else {
                 if (debugListener != null) {
                     mCheckpointer = null;
                 } else {
-                    mCheckpointer = new Checkpointer(this, config, mNodeGroups.length);
+                    mCheckpointer = new Checkpointer(this, launcher, mNodeGroups.length);
                 }
 
                 // Perform recovery by examining redo and undo logs.
@@ -750,7 +750,7 @@ final class LocalDatabase extends AbstractDatabase {
                         UndoLog master = UndoLog.recoverMasterUndoLog(this, masterNodeId);
 
                         boolean trace = debugListener != null &&
-                            Boolean.TRUE.equals(config.mDebugOpen.get("traceUndo"));
+                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceUndo"));
 
                         master.recoverTransactions(debugListener, trace, txns);
                     }
@@ -800,7 +800,7 @@ final class LocalDatabase extends AbstractDatabase {
                 // necessary, but be safe.
                 VarHandle.fullFence();
 
-                ReplicationManager rm = config.mReplManager;
+                ReplicationManager rm = launcher.mReplManager;
                 if (rm != null) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.REPLICATION_DEBUG,
@@ -813,7 +813,7 @@ final class LocalDatabase extends AbstractDatabase {
                         mRedoWriter = null;
 
                         if (debugListener != null &&
-                            Boolean.TRUE.equals(config.mDebugOpen.get("traceRedo")))
+                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
                             RedoEventPrinter printer = new RedoEventPrinter
                                 (debugListener, EventType.DEBUG);
@@ -821,18 +821,18 @@ final class LocalDatabase extends AbstractDatabase {
                         }
                     } else {
                         ReplRedoEngine engine = new ReplRedoEngine
-                            (rm, config.mMaxReplicaThreads, this, txns, cursors);
+                            (rm, launcher.mMaxReplicaThreads, this, txns, cursors);
                         mRedoWriter = engine.initWriter(redoNum);
 
                         // Cannot start recovery until constructor is finished and final field
                         // values are visible to other threads. Pass the state to the caller
-                        // through the config object.
-                        config.mReplRecoveryStartNanos = recoveryStart;
-                        config.mReplInitialTxnId = redoTxnId;
+                        // through the launcher object.
+                        launcher.mReplRecoveryStartNanos = recoveryStart;
+                        launcher.mReplInitialTxnId = redoTxnId;
                     }
                 } else {
                     // Apply cache primer before applying redo logs.
-                    applyCachePrimer(config);
+                    applyCachePrimer(launcher);
 
                     final long logId = redoNum;
 
@@ -840,12 +840,12 @@ final class LocalDatabase extends AbstractDatabase {
                         mRedoWriter = null;
 
                         if (debugListener != null &&
-                            Boolean.TRUE.equals(config.mDebugOpen.get("traceRedo")))
+                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
                             RedoEventPrinter printer = new RedoEventPrinter
                                 (debugListener, EventType.DEBUG);
 
-                            RedoLog replayLog = new RedoLog(config, logId, redoPos);
+                            RedoLog replayLog = new RedoLog(launcher, logId, redoPos);
 
                             replayLog.replay
                                 (printer, debugListener, EventType.RECOVERY_APPLY_REDO_LOG,
@@ -855,14 +855,14 @@ final class LocalDatabase extends AbstractDatabase {
                         // Make sure old redo logs are deleted. Process might have exited
                         // before last checkpoint could delete them.
                         for (int i=1; i<=2; i++) {
-                            RedoLog.deleteOldFile(config.mBaseFile, logId - i);
+                            RedoLog.deleteOldFile(launcher.mBaseFile, logId - i);
                         }
 
                         boolean doCheckpoint = txns.size() != 0;
 
                         RedoLogApplier applier = new RedoLogApplier
-                            (config.mMaxReplicaThreads, this, txns, cursors);
-                        RedoLog replayLog = new RedoLog(config, logId, redoPos);
+                            (launcher.mMaxReplicaThreads, this, txns, cursors);
+                        RedoLog replayLog = new RedoLog(launcher, logId, redoPos);
 
                         // As a side-effect, log id is set one higher than last file scanned.
                         Set<File> redoFiles = replayLog.replay
@@ -886,7 +886,7 @@ final class LocalDatabase extends AbstractDatabase {
                         txnId = applier.highestTxnId(txnId);
 
                         // New redo logs begin with identifiers one higher than last scanned.
-                        mRedoWriter = new RedoLog(config, replayLog, mTxnContexts[0]);
+                        mRedoWriter = new RedoLog(launcher, replayLog, mTxnContexts[0]);
 
                         // TODO: If any exception is thrown before checkpoint is complete,
                         // delete the newly created redo log file.
@@ -916,7 +916,7 @@ final class LocalDatabase extends AbstractDatabase {
             if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
                 mTempFileManager = null;
             } else {
-                mTempFileManager = new TempFileManager(mBaseFile, config.mFileFactory);
+                mTempFileManager = new TempFileManager(mBaseFile, launcher.mFileFactory);
             }
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
@@ -928,7 +928,7 @@ final class LocalDatabase extends AbstractDatabase {
     /**
      * Post construction, allow additional threads access to the database.
      */
-    private void finishInit(DatabaseConfig config) throws IOException {
+    private void finishInit(Launcher launcher) throws IOException {
         if (mCheckpointer == null) {
             // Nothing is durable and nothing to ever clean up.
             return;
@@ -941,10 +941,10 @@ final class LocalDatabase extends AbstractDatabase {
         if (mRedoWriter instanceof ReplRedoWriter) {
             // Need to do this after mRedoWriter is assigned, ensuring that trees are opened as
             // BTree.Repl instances.
-            applyCachePrimer(config);
+            applyCachePrimer(launcher);
         }
 
-        if (config.mCachePriming && mPageDb.isDurable() && !mReadOnly) {
+        if (launcher.mCachePriming && mPageDb.isDurable() && !mReadOnly) {
             mCheckpointer.register(new ShutdownPrimer(this));
         }
 
@@ -978,7 +978,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
 
             try {
-                controller.ready(config.mReplInitialTxnId, new ReplicationManager.Accessor() {
+                controller.ready(launcher.mReplInitialTxnId, new ReplicationManager.Accessor() {
                     @Override
                     public void notify(EventType type, String message, Object... args) {
                         EventListener listener = mEventListener;
@@ -1002,7 +1002,7 @@ final class LocalDatabase extends AbstractDatabase {
                 throw e;
             }
 
-            recoveryComplete(config.mReplRecoveryStartNanos);
+            recoveryComplete(launcher.mReplRecoveryStartNanos);
         }
     }
 
@@ -1035,11 +1035,11 @@ final class LocalDatabase extends AbstractDatabase {
         }
     }
 
-    private void applyCachePrimer(DatabaseConfig config) {
+    private void applyCachePrimer(Launcher launcher) {
         if (mPageDb.isDurable()) {
             File primer = primerFile();
             try {
-                if (config.mCachePriming && primer.exists()) {
+                if (launcher.mCachePriming && primer.exists()) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.RECOVERY_CACHE_PRIMING,
                                               "Cache priming");
@@ -1987,17 +1987,17 @@ final class LocalDatabase extends AbstractDatabase {
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static Database restoreFromSnapshot(DatabaseConfig config, InputStream in) throws IOException {
-        if (config.mReadOnly) {
+    static Database restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
+        if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot restore into a read-only database");
         }
 
-        config = config.clone();
+        launcher = launcher.clone();
         PageDb restored;
 
-        File[] dataFiles = config.dataFiles();
+        File[] dataFiles = launcher.dataFiles();
         if (dataFiles == null) {
-            PageArray dataPageArray = config.mDataPageArray;
+            PageArray dataPageArray = launcher.mDataPageArray;
 
             if (dataPageArray == null) {
                 throw new UnsupportedOperationException
@@ -2008,9 +2008,9 @@ final class LocalDatabase extends AbstractDatabase {
             dataPageArray.truncatePageCount(0);
 
             // Delete old redo log files.
-            deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
+            deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, null, config.mCrypto, in);
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, null, launcher.mCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2018,24 +2018,24 @@ final class LocalDatabase extends AbstractDatabase {
             for (File f : dataFiles) {
                 // Delete old data file.
                 f.delete();
-                if (config.mMkdirs) {
+                if (launcher.mMkdirs) {
                     f.getParentFile().mkdirs();
                 }
             }
 
-            FileFactory factory = config.mFileFactory;
-            EnumSet<OpenOption> options = config.createOpenOptions();
+            FileFactory factory = launcher.mFileFactory;
+            EnumSet<OpenOption> options = launcher.createOpenOptions();
 
             // Delete old redo log files.
-            deleteNumberedFiles(config.mBaseFile, REDO_FILE_SUFFIX);
+            deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            int pageSize = config.mPageSize;
+            int pageSize = launcher.mPageSize;
             if (pageSize <= 0) {
                 pageSize = DEFAULT_PAGE_SIZE;
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, factory, options, null, config.mCrypto, in);
+                (pageSize, dataFiles, factory, options, null, launcher.mCrypto, in);
 
             try {
                 restored.close();
@@ -2044,7 +2044,7 @@ final class LocalDatabase extends AbstractDatabase {
             }
         }
 
-        return Database.open(config);
+        return launcher.open(false, null);
     }
 
     @Override
@@ -3024,10 +3024,10 @@ final class LocalDatabase extends AbstractDatabase {
      * Loads the root registry node, or creates one if store is new. Root node
      * is not eligible for eviction.
      */
-    private Node loadRegistryRoot(DatabaseConfig config, byte[] header) throws IOException {
+    private Node loadRegistryRoot(Launcher launcher, byte[] header) throws IOException {
         int version = decodeIntLE(header, I_ENCODING_VERSION);
 
-        if (config.mDebugOpen != null) {
+        if (launcher.mDebugOpen != null) {
             mEventListener.notify(EventType.DEBUG, "ENCODING_VERSION: %1$d", version);
         }
 
@@ -3043,11 +3043,11 @@ final class LocalDatabase extends AbstractDatabase {
 
             long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
 
-            if (config.mDebugOpen != null) {
+            if (launcher.mDebugOpen != null) {
                 mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
             }
 
-            ReplicationManager rm = config.mReplManager;
+            ReplicationManager rm = launcher.mReplManager;
 
             if (rm == null) {
                 if (replEncoding != 0) {
@@ -3070,7 +3070,7 @@ final class LocalDatabase extends AbstractDatabase {
 
             rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
 
-            if (config.mDebugOpen != null) {
+            if (launcher.mDebugOpen != null) {
                 mEventListener.notify(EventType.DEBUG, "ROOT_PAGE_ID: %1$d", rootId);
             }
         }
@@ -3084,7 +3084,7 @@ final class LocalDatabase extends AbstractDatabase {
         return openInternalTree(treeId, ixOption, null);
     }
 
-    private BTree openInternalTree(long treeId, long ixOption, DatabaseConfig config)
+    private BTree openInternalTree(long treeId, long ixOption, Launcher launcher)
         throws IOException
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
@@ -3107,7 +3107,7 @@ final class LocalDatabase extends AbstractDatabase {
             Node root = loadTreeRoot(treeId, rootId);
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
-            if (config != null && config.mReplManager != null) {
+            if (launcher != null && launcher.mReplManager != null) {
                 return new BTree.Repl(this, treeId, treeIdBytes, root);
             }
 
