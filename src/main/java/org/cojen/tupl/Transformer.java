@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Interface which supports filtering and transforming the entries within a {@link
  * View}. For pure filtering, consider implementing a {@link Filter} instead.

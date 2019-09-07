@@ -26,6 +26,8 @@ import java.util.Map;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.core.Launcher;
+
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;

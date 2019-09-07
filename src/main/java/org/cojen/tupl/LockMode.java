@@ -17,6 +17,11 @@
 
 package org.cojen.tupl;
 
+import java.lang.invoke.MethodHandles;
+
+import org.cojen.tupl.core.FriendAccess;
+import org.cojen.tupl.core.LockManager;
+
 /**
  * Various lock modes for use within {@link Transaction transactions}. Except
  * for {@link #UNSAFE}, all modes follow the same policy when modifying
@@ -83,6 +88,12 @@ public enum LockMode {
     final int repeatable;
 
     final boolean noReadLock;
+
+    static {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        FriendAccess.register(lookup, "repeatable", int.class);
+        FriendAccess.register(lookup, "noReadLock", boolean.class);
+    }
 
     private LockMode(int repeatable, boolean noReadLock) {
         this.repeatable = repeatable;

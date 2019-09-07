@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Thrown when a lock request by a {@link Transaction transaction} timed out
  * due to a deadlock. Deadlocks can be prevented by locking records in a
@@ -46,7 +48,12 @@ public class DeadlockException extends LockTimeoutException {
         this(nanosTimeout, attachment, guilty, null);
     }
 
-    DeadlockException(long nanosTimeout, Object attachment, boolean guilty, DeadlockSet set) {
+    /**
+     * @param nanosTimeout negative is interpreted as infinite wait
+     */
+    public DeadlockException(long nanosTimeout, Object attachment, boolean guilty,
+                             DeadlockSet set)
+    {
         super(nanosTimeout, attachment);
         mGuilty = guilty;
         mSet = set;
@@ -90,7 +97,7 @@ public class DeadlockException extends LockTimeoutException {
         b.append('.');
         if (full && mSet != null && mSet.size() != 0) {
             b.append(" Deadlock set: ");
-            mSet.appendMembers(b);
+            Utils.appendMembers(mSet, b);
         }
         return b.toString();
     }

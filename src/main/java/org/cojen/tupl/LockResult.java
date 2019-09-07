@@ -114,26 +114,11 @@ public enum LockResult {
         return mType == 3;
     }
 
-    boolean isAcquired() {
-        return mType == 2;
-    }
-
     /**
-     * Returns the lowest common owned level.
-     *
-     * {@literal UNOWNED < OWNED_SHARED < OWNED_UPGRADABLE < OWNED_EXCLUSIVE}
+     * Returns true if a lock was just acquired. Applicable to {@link #ACQUIRED} and {@link
+     * #UPGRADED}.
      */
-    LockResult commonOwned(LockResult other) {
-        if (this == UNOWNED) {
-            return this;
-        } else if (this == OWNED_SHARED) {
-            return other == UNOWNED ? other : this;
-        } else if (this == OWNED_UPGRADABLE) {
-            return (other == UNOWNED || other == OWNED_SHARED) ? other : this;
-        } else if (this == OWNED_EXCLUSIVE) {
-            return other;
-        } else {
-            throw new IllegalArgumentException();
-        }
+    public boolean isAcquired() {
+        return mType == 2;
     }
 }

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.views.SelectCombiner;
+
 /**
  * Represents an operation which combines two values that map to the same key.
  *

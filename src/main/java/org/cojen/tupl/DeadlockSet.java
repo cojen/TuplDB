@@ -17,121 +17,45 @@
 
 package org.cojen.tupl;
 
-import java.io.Serializable;
-
-import java.nio.charset.StandardCharsets;
-
 /**
  * Set of lock requests which were in a deadlock.
  *
  * @author Brian S O'Neill
  * @see DeadlockException
  */
-public final class DeadlockSet implements Serializable {
-    private static final long serialVersionUID = 1L;
-
-    private final OwnerInfo[] mInfoSet;
-
-    DeadlockSet(OwnerInfo[] infoSet) {
-        mInfoSet = infoSet;
-    }
-
+public interface DeadlockSet {
     /**
      * @return number of elements in the set
      */
-    public int size() {
-        return mInfoSet.length;
-    }
+    public int size();
 
     /**
      * @return the lock request index id at the given set position
      * @throws IndexOutOfBoundsException
      */
-    public long getIndexId(int pos) {
-        return mInfoSet[pos].mIndexId;
-    }
+    public long getIndexId(int pos);
 
     /**
      * @return the lock request index name at the given set position, possibly null
      * @throws IndexOutOfBoundsException
      */
-    public byte[] getIndexName(int pos) {
-        return mInfoSet[pos].mIndexName;
-    }
+    public byte[] getIndexName(int pos);
 
     /**
      * @return the lock request index name string at the given set position, possibly null
      * @throws IndexOutOfBoundsException
      */
-    public String getIndexNameString(int pos) {
-        return indexNameString(getIndexName(pos));
-    }
-
-    private static String indexNameString(byte[] name) {
-        if (name == null) {
-            return null;
-        }
-        return new String(name, StandardCharsets.UTF_8);
-    }
+    public String getIndexNameString(int pos);
 
     /**
      * @return the lock request key at the given set position
      * @throws IndexOutOfBoundsException
      */
-    public byte[] getKey(int pos) {
-        return mInfoSet[pos].mKey;
-    }
+    public byte[] getKey(int pos);
 
     /**
      * @return the lock owner attachment at the given set position, possibly null
      * @throws IndexOutOfBoundsException
      */
-    public Object getOwnerAttachment(int pos) {
-        return mInfoSet[pos].mAttachment;
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder b = new StringBuilder();
-        b.append('[');
-        appendMembers(b);
-        return b.append(']').toString();
-    }
-
-    void appendMembers(StringBuilder b) {
-        for (int i=0; i<mInfoSet.length; i++) {
-            OwnerInfo info = mInfoSet[i];
-            if (i > 0) {
-                b.append(", ");
-            }
-            b.append('{');
-            b.append("indexId").append(": ").append(info.mIndexId);
-            b.append(", ");
-
-            String name = indexNameString(info.mIndexName);
-            if (name != null) {
-                b.append("indexName").append(": ").append(name);
-                b.append(", ");
-            }
-
-            b.append("key").append(": ").append(Utils.toHex(info.mKey));
-
-            Object att = info.mAttachment;
-            if (att != null) {
-                b.append(", ");
-                b.append("attachment").append(": ").append(att);
-            }
-
-            b.append('}');
-        }
-    }
-
-    static class OwnerInfo implements Serializable {
-        private static final long serialVersionUID = 1L;
-
-        long mIndexId;
-        byte[] mIndexName;
-        byte[] mKey;
-        Object mAttachment;
-    }
+    public Object getOwnerAttachment(int pos);
 }

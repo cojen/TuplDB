@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Exception thrown which indicates a {@link Database database} problem not due
  * to general I/O problems.

@@ -21,6 +21,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Mapping of keys to values, ordered by key, in lexicographical
  * order. Although Java bytes are signed, they are treated as unsigned for

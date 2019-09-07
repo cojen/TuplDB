@@ -48,8 +48,8 @@ import org.cojen.tupl.ext.RecoveryHandler;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.TestUtils;
-import static org.cojen.tupl.TestUtils.fastAssertArrayEquals;
+import org.cojen.tupl.core.TestUtils;
+import static org.cojen.tupl.core.TestUtils.fastAssertArrayEquals;
 
 import org.junit.*;
 import static org.junit.Assert.*;

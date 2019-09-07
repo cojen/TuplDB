@@ -191,6 +191,13 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
                  boolean&nbsp;guilty)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
+<tr class="altColor">
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(long,java.lang.Object,boolean,org.cojen.tupl.DeadlockSet)">DeadlockException</a></span>&#8203;(long&nbsp;nanosTimeout,
+                 <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment,
+                 boolean&nbsp;guilty,
+                 <a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;set)</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -215,7 +222,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 </tr>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code><a href="DeadlockSet.html" title="class in org.cojen.tupl">DeadlockSet</a></code></td>
+<td class="colFirst"><code><a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getDeadlockSet()">getDeadlockSet</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -298,12 +305,28 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 <a id="&lt;init&gt;(long,java.lang.Object,boolean)">
 <!--   -->
 </a>
-<ul class="blockListLast">
+<ul class="blockList">
 <li class="blockList">
 <h4>DeadlockException</h4>
 <pre>public&nbsp;DeadlockException&#8203;(long&nbsp;nanosTimeout,
                          <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment,
                          boolean&nbsp;guilty)</pre>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>nanosTimeout</code> - negative is interpreted as infinite wait</dd>
+</dl>
+</li>
+</ul>
+<a id="&lt;init&gt;(long,java.lang.Object,boolean,org.cojen.tupl.DeadlockSet)">
+<!--   -->
+</a>
+<ul class="blockListLast">
+<li class="blockList">
+<h4>DeadlockException</h4>
+<pre>public&nbsp;DeadlockException&#8203;(long&nbsp;nanosTimeout,
+                         <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment,
+                         boolean&nbsp;guilty,
+                         <a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;set)</pre>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - negative is interpreted as infinite wait</dd>
@@ -340,7 +363,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 <ul class="blockList">
 <li class="blockList">
 <h4>getDeadlockSet</h4>
-<pre class="methodSignature">public&nbsp;<a href="DeadlockSet.html" title="class in org.cojen.tupl">DeadlockSet</a>&nbsp;getDeadlockSet()</pre>
+<pre class="methodSignature">public&nbsp;<a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;getDeadlockSet()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the set of lock requests which were in a deadlock</dd>

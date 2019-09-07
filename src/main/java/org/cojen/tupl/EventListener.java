@@ -19,6 +19,9 @@ package org.cojen.tupl;
 
 import java.util.logging.Level;
 
+import org.cojen.tupl.core.AllowEventListener;
+import org.cojen.tupl.core.DisallowEventListener;
+
 /**
  * Listener which receives notifications of actions being performed by the
  * database. Implementations must not suspend the calling thread or throw any

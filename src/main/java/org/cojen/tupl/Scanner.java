@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Scans through all entries in a view and passes them to a consumer. Scanner implementations
  * which perform pre-fetching can be more efficient than a {@link Cursor cursor}. Any exception
@@ -77,7 +79,7 @@ public interface Scanner extends AutoCloseable {
         if (amount == 0) {
             return key() != null;
         }
-        throw ViewUtils.fail(this, new IllegalArgumentException());
+        throw Utils.fail(this, new IllegalArgumentException());
     }
 
     /**
@@ -92,7 +94,7 @@ public interface Scanner extends AutoCloseable {
             try {
                 action.accept(key, value());
             } catch (Throwable e) {
-                throw ViewUtils.fail(this, e);
+                throw Utils.fail(this, e);
             }
             step();
         }

@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.core.LocalTransaction;
+
 /**
  * Defines a logical unit of work. Transaction instances can only be safely
  * used by one thread at a time, and they must be {@link #reset reset} when no

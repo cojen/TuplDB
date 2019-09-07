@@ -20,6 +20,8 @@ package org.cojen.tupl;
 import java.util.logging.Logger;
 import java.util.logging.LogRecord;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Event listener implementation which passes events to a {@link Logger logger}.
  *

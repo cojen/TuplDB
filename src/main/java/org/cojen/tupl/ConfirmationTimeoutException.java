@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.core.Utils;
+
 import org.cojen.tupl.ext.ReplicationManager;
 
 /**

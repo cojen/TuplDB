@@ -29,7 +29,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.TestUtils;
+import org.cojen.tupl.core.TestUtils;
 
 import static org.cojen.tupl.repl.FileStateLogTest.*;
 import static org.cojen.tupl.repl.StreamReplicator.*;

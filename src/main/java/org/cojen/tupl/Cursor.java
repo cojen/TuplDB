@@ -24,6 +24,8 @@ import java.util.Comparator;
 
 import static java.util.Arrays.compareUnsigned;
 
+import org.cojen.tupl.views.ViewUtils;
+
 /**
  * Maintains a logical position in a {@link View}. Cursor instances can only be
  * safely used by one thread at a time, and they must be {@link #reset reset}

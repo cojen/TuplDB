@@ -27,8 +27,8 @@
     catch(err) {
     }
 //-->
-var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10};
-var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
+var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6};
+var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
 var tableTab = "tableTab";
@@ -100,33 +100,18 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
-<h2 title="Class DeadlockSet" class="title">Class DeadlockSet</h2>
+<h2 title="Interface DeadlockSet" class="title">Interface DeadlockSet</h2>
 </div>
 <div class="contentContainer">
-<ul class="inheritance">
-<li><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a></li>
-<li>
-<ul class="inheritance">
-<li>org.cojen.tupl.DeadlockSet</li>
-</ul>
-</li>
-</ul>
 <div class="description">
 <ul class="blockList">
 <li class="blockList">
-<dl>
-<dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a></code></dd>
-</dl>
 <hr>
-<pre>public final class <span class="typeNameLabel">DeadlockSet</span>
-extends <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
-implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a></pre>
+<pre>public interface <span class="typeNameLabel">DeadlockSet</span></pre>
 <div class="block">Set of lock requests which were in a deadlock.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="DeadlockException.html" title="class in org.cojen.tupl"><code>DeadlockException</code></a>, 
-<a href="../../../../serialized-form.html#org.cojen.tupl.DeadlockSet">Serialized Form</a></dd>
+<dd><a href="DeadlockException.html" title="class in org.cojen.tupl"><code>DeadlockException</code></a></dd>
 </dl>
 </li>
 </ul>
@@ -142,7 +127,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 </a>
 <h3>Method Summary</h3>
 <div class="memberSummary">
-<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t4" class="tableTab" onclick="show(8);">Concrete Methods</button></div>
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button></div>
 <div id="memberSummary_tabpanel" role="tabpanel">
 <table aria-labelledby="t0">
 <tr>
@@ -181,22 +166,10 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#size()">size</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i6">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
-<td class="colLast">&nbsp;</td>
-</tr>
 </tbody>
 </table>
 </div>
 </div>
-<ul class="blockList">
-<li class="blockList"><a id="methods.inherited.from.class.java.lang.Object">
-<!--   -->
-</a>
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
-<code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></li>
-</ul>
 </li>
 </ul>
 </section>
@@ -219,7 +192,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <ul class="blockList">
 <li class="blockList">
 <h4>size</h4>
-<pre class="methodSignature">public&nbsp;int&nbsp;size()</pre>
+<pre class="methodSignature">int&nbsp;size()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>number of elements in the set</dd>
@@ -232,7 +205,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <ul class="blockList">
 <li class="blockList">
 <h4>getIndexId</h4>
-<pre class="methodSignature">public&nbsp;long&nbsp;getIndexId&#8203;(int&nbsp;pos)</pre>
+<pre class="methodSignature">long&nbsp;getIndexId&#8203;(int&nbsp;pos)</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the lock request index id at the given set position</dd>
@@ -247,7 +220,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <ul class="blockList">
 <li class="blockList">
 <h4>getIndexName</h4>
-<pre class="methodSignature">public&nbsp;byte[]&nbsp;getIndexName&#8203;(int&nbsp;pos)</pre>
+<pre class="methodSignature">byte[]&nbsp;getIndexName&#8203;(int&nbsp;pos)</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the lock request index name at the given set position, possibly null</dd>
@@ -262,7 +235,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <ul class="blockList">
 <li class="blockList">
 <h4>getIndexNameString</h4>
-<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;getIndexNameString&#8203;(int&nbsp;pos)</pre>
+<pre class="methodSignature"><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;getIndexNameString&#8203;(int&nbsp;pos)</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the lock request index name string at the given set position, possibly null</dd>
@@ -277,7 +250,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <ul class="blockList">
 <li class="blockList">
 <h4>getKey</h4>
-<pre class="methodSignature">public&nbsp;byte[]&nbsp;getKey&#8203;(int&nbsp;pos)</pre>
+<pre class="methodSignature">byte[]&nbsp;getKey&#8203;(int&nbsp;pos)</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the lock request key at the given set position</dd>
@@ -289,28 +262,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 <a id="getOwnerAttachment(int)">
 <!--   -->
 </a>
-<ul class="blockList">
+<ul class="blockListLast">
 <li class="blockList">
 <h4>getOwnerAttachment</h4>
-<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;getOwnerAttachment&#8203;(int&nbsp;pos)</pre>
+<pre class="methodSignature"><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;getOwnerAttachment&#8203;(int&nbsp;pos)</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the lock owner attachment at the given set position, possibly null</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IndexOutOfBoundsException</a></code></dd>
-</dl>
-</li>
-</ul>
-<a id="toString()">
-<!--   -->
-</a>
-<ul class="blockListLast">
-<li class="blockList">
-<h4>toString</h4>
-<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;toString()</pre>
-<dl>
-<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </li>
 </ul>

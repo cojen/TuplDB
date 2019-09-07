@@ -20,6 +20,8 @@ package org.cojen.tupl;
 import java.io.Flushable;
 import java.io.IOException;
 
+import org.cojen.tupl.core.Utils;
+
 /**
  * Scans through all entries in a view, updating them along the way. Updater implementations
  * which perform pre-fetching can be more efficient than a {@link Cursor cursor}. Any exception
@@ -66,7 +68,7 @@ public interface Updater extends Scanner, Flushable {
             try {
                 value = action.apply(key, value());
             } catch (Throwable e) {
-                throw ViewUtils.fail(this, e);
+                throw Utils.fail(this, e);
             }
             if (value != NO_UPDATE) {
                 update(value);

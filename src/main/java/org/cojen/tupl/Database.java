@@ -30,7 +30,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.io.CauseCloseable;
 
-import static org.cojen.tupl.Utils.*;
+import static org.cojen.tupl.core.Utils.*;
 
 /**
  * Primary database interface, containing a collection of transactional indexes. Call {@link
@@ -436,7 +436,7 @@ public interface Database extends CauseCloseable, Flushable {
             try {
                 return (Stats) super.clone();
             } catch (CloneNotSupportedException e) {
-                throw Utils.rethrow(e);
+                throw rethrow(e);
             }
         }
 
