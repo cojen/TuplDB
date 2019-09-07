@@ -77,7 +77,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Open a database, creating it if necessary.
      */
     public static Database open(DatabaseConfig config) throws IOException {
-        return config.open(false, null);
+        return config.mLauncher.open(false, null);
     }
 
     /**
@@ -86,7 +86,7 @@ public interface Database extends CauseCloseable, Flushable {
      * must be used to format it.
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
-        return config.open(true, null);
+        return config.mLauncher.open(true, null);
     }
 
     /**
@@ -310,7 +310,7 @@ public interface Database extends CauseCloseable, Flushable {
     public static Database restoreFromSnapshot(DatabaseConfig config, InputStream in)
         throws IOException
     {
-        return config.open(false, in);
+        return config.mLauncher.open(false, in);
     }
 
     /**

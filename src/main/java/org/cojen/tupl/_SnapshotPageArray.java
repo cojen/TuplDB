@@ -394,10 +394,11 @@ final class _SnapshotPageArray extends PageArray {
                 mCaptureBuffers[i] = p_transferPage(mCaptureBufferArrays[i], directPageSize());
             }
 
-            DatabaseConfig config = new DatabaseConfig()
-                .pageSize(pageSize).minCacheSize(pageSize * Math.max(100, slots * 16));
-            mPageCopyIndex = _LocalDatabase.openTemp(tfm, config);
-            mTempFile = config.mBaseFile;
+            Launcher launcher = new Launcher();
+            launcher.pageSize(pageSize);
+            launcher.minCacheSize(pageSize * Math.max(100, slots * 16));
+            mPageCopyIndex = _LocalDatabase.openTemp(tfm, launcher);
+            mTempFile = launcher.mBaseFile;
 
             // -2: Not yet started. -1: Started, but nothing written yet.
             mProgress = -2;

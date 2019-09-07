@@ -405,7 +405,7 @@ public class TestUtils {
                 break;
             case DIRECT_MAPPED:
                 org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
-                int pageSize = config.mPageSize;
+                int pageSize = config.mLauncher.mPageSize;
                 if (pageSize == 0) {
                     pageSize = 4096;
                 }

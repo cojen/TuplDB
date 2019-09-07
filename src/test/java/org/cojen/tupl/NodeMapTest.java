@@ -42,7 +42,7 @@ public class NodeMapTest {
 
         LocalDatabase db = LocalDatabase.open
             (new DatabaseConfig()
-             .directPageAccess(false).pageSize(page).maxCacheSize(size * page));
+             .directPageAccess(false).pageSize(page).maxCacheSize(size * page).mLauncher);
 
         for (int i=0; i<count; i++) {
             Node n = new Node(null, p_callocPage(page));
@@ -78,7 +78,7 @@ public class NodeMapTest {
 
         LocalDatabase db = LocalDatabase.open
             (new DatabaseConfig()
-             .directPageAccess(false).pageSize(page).maxCacheSize(size * page));
+             .directPageAccess(false).pageSize(page).maxCacheSize(size * page).mLauncher);
 
         Node[] nodes = new Node[count];
         for (int i=0; i<count; i++) {
