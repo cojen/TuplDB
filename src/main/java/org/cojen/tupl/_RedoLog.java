@@ -256,7 +256,7 @@ final class _RedoLog extends _RedoWriter {
         } catch (IOException e) {
             Utils.closeQuietly(fout);
             file.delete();
-            throw WriteFailureException.make(e);
+            throw WriteFailureException.from(e);
         }
 
         mNextLogId = logId;
@@ -490,7 +490,7 @@ final class _RedoLog extends _RedoWriter {
 
             return mPosition += length;
         } catch (IOException e) {
-            throw WriteFailureException.make(e);
+            throw WriteFailureException.from(e);
         }
     }
 
@@ -524,7 +524,7 @@ final class _RedoLog extends _RedoWriter {
                 mBufferPos = 0;
             }
         } catch (IOException e) {
-            throw WriteFailureException.make(e);
+            throw WriteFailureException.from(e);
         }
     }
 

@@ -25,7 +25,10 @@ package org.cojen.tupl;
 public class WriteFailureException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
-    static WriteFailureException make(Exception e) {
+    /**
+     * Wraps the given exception if necessary.
+     */
+    public static WriteFailureException from(Exception e) {
         if (e instanceof WriteFailureException) {
             return (WriteFailureException) e;
         }
