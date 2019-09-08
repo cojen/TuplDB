@@ -332,7 +332,7 @@ public class MessageReplicatorTest {
     private void largeGroupNoWaitToJoin(boolean proxy) throws Exception {
         final int count = 10;
 
-        MessageReplicator[] repls = startGroup(count, Role.STANDBY, false, proxy);
+        MessageReplicator[] repls = startGroup(count, Role.PROXY, false, proxy);
 
         Writer writer = repls[0].newWriter();
 
