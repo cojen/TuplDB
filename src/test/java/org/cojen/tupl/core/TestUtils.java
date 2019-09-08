@@ -326,6 +326,9 @@ public class TestUtils {
             match = "tupl";
             break;
         case 3:
+            match = "core";
+            break;
+        case 4:
             match = "LocalDatabase.java";
             tail = true;
             break;
