@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.PrintStream;
 
+import org.cojen.tupl.Crypto;
+
 /**
  * Debugging tool which reads and prints all the redo operations from a local log.
  *
@@ -26,12 +28,27 @@ import java.io.PrintStream;
  */
 class RedoPrinter implements RedoVisitor {
     /**
-     * @param args [0]: database base file, [1]: first log number to read from
+     * @param args [0]: base file, [1]: first log number to read from, [2]: optional crypto
+     * class; remaining args are passed to its constructor as separate parameters
      */
+    @SuppressWarnings("unchecked")
     public static void main(String[] args) throws Exception {
         java.io.File baseFile = new java.io.File(args[0]);
         long logId = Long.parseLong(args[1]);
-        new RedoLog(null, baseFile, null, logId, 0, null)
+
+        Crypto crypto = null;
+        if (args.length > 2) {
+            Class clazz = Class.forName(args[2]);
+            Class[] types = new Class[args.length - 3];
+            String[] params = new String[types.length];
+            for (int i=0; i<types.length; i++) {
+                types[i] = String.class;
+                params[i] = args[i + 3];
+            }
+            crypto = (Crypto) clazz.getConstructor(types).newInstance((Object[]) params);
+        }
+
+        new RedoLog(crypto, baseFile, null, logId, 0, null)
             .replay(new RedoPrinter(), null, null, null);
     }
 
