@@ -123,7 +123,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 extends <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
 implements <a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></pre>
 <div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm with a
- 128-bit key.</div>
+ 128-bit key. An encrypted salt-sector initialization vector <a href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
+ applied to all data pages in the main database file, where the initialization vector is
+ defined as <code>encrypt(iv=dataPageIndex, key=dataPageKey, data=dataPageSalt)</code>. The key
+ and salt values are randomly generated when the database is created, and they are stored in
+ the database header pages. The initialization vector for the header pages is randomly
+ generated each time and stored cleartext in the header page. The key given to the
+ constructor is only used for encrypting the header pages.</div>
 </li>
 </ul>
 </div>

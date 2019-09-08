@@ -40,7 +40,14 @@ import org.cojen.tupl.io.DirectAccess;
 
 /**
  * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm with a
- * 128-bit key.
+ * 128-bit key. An encrypted salt-sector initialization vector <a
+ * href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
+ * applied to all data pages in the main database file, where the initialization vector is
+ * defined as {@code encrypt(iv=dataPageIndex, key=dataPageKey, data=dataPageSalt)}. The key
+ * and salt values are randomly generated when the database is created, and they are stored in
+ * the database header pages. The initialization vector for the header pages is randomly
+ * generated each time and stored cleartext in the header page. The key given to the
+ * constructor is only used for encrypting the header pages.
  *
  * @author Brian S O'Neill
  */
