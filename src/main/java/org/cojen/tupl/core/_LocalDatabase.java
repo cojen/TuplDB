@@ -2414,11 +2414,11 @@ public final class _LocalDatabase extends CoreDatabase {
 
         scanAllIndexes(tree -> {
             Index view = tree.observableView();
-            Friends.failed(fobserver, false);
+            fobserver.failed = false;
             boolean keepGoing = tree.verifyTree(view, fobserver);
-            passedRef[0] &= !Friends.failed(fobserver);
+            passedRef[0] &= !fobserver.failed;
             if (keepGoing) {
-                keepGoing = fobserver.indexComplete(view, !Friends.failed(fobserver), null);
+                keepGoing = fobserver.indexComplete(view, !fobserver.failed, null);
             }
             return keepGoing;
         });

@@ -256,7 +256,7 @@ public class UpdaterTest extends ScannerTest {
             fastAssertArrayEquals(value, ix.load(txn, key));
         }
 
-        if (txn != null && !Friends.noReadLock(txn.lockMode())) {
+        if (txn != null && !txn.lockMode().noReadLock) {
             Transaction txn2 = mDb.newTransaction();
             for (int i=0; i<10; i++) {
                 byte[] key = ("key-" + i).getBytes();

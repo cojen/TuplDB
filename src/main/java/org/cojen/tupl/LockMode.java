@@ -17,9 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.lang.invoke.MethodHandles;
-
-import org.cojen.tupl.core.FriendAccess;
 import org.cojen.tupl.core.LockManager;
 
 /**
@@ -84,16 +81,16 @@ public enum LockMode {
      */
     UNSAFE(0, true);
 
-    /** Is 0 if not repeatable, TYPE_SHARED or TYPE_UPGRADABLE otherwise. */
-    final int repeatable;
+    /**
+     * Is 0 if not repeatable, TYPE_SHARED or TYPE_UPGRADABLE otherwise.
+     * @hidden
+     */
+    public final int repeatable;
 
-    final boolean noReadLock;
-
-    static {
-        MethodHandles.Lookup lookup = MethodHandles.lookup();
-        FriendAccess.register(lookup, "repeatable", int.class);
-        FriendAccess.register(lookup, "noReadLock", boolean.class);
-    }
+    /**
+     * @hidden
+     */
+    public final boolean noReadLock;
 
     private LockMode(int repeatable, boolean noReadLock) {
         this.repeatable = repeatable;

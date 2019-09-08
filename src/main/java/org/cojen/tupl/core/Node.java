@@ -6238,7 +6238,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
         long id = id();
         releaseShared();
-        Friends.failed(observer, true);
+        observer.failed = true;
         return observer.indexNodeFailed(id, level, message);
     }
 }

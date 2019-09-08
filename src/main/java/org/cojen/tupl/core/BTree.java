@@ -47,7 +47,6 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
 
-import static org.cojen.tupl.core.Friends.*;
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
@@ -203,7 +202,7 @@ class BTree extends Tree implements View, Index {
 
         // If lock must be acquired and retained, acquire now and skip the quick check later.
         if (local != null) {
-            int lockType = repeatable(local.lockMode());
+            int lockType = local.lockMode().repeatable;
             if (lockType != 0) {
                 int hash = LockManager.hash(mId, key);
                 local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
@@ -411,7 +410,7 @@ class BTree extends Tree implements View, Index {
 
         // If lock must be acquired and retained, acquire now and skip the quick check later.
         if (local != null) {
-            int lockType = repeatable(local.lockMode());
+            int lockType = local.lockMode().repeatable;
             if (lockType != 0) {
                 int hash = LockManager.hash(mId, key);
                 local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
@@ -602,9 +601,9 @@ class BTree extends Tree implements View, Index {
                     }
                 }
             }
-        } else if (!noReadLock(mode)) {
+        } else if (!mode.noReadLock) {
             int hash = LockManager.hash(mId, key);
-            return local.lock(repeatable(mode), mId, key, hash, local.mLockTimeoutNanos);
+            return local.lock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
         }
 
         return LockResult.UNOWNED;
@@ -845,7 +844,7 @@ class BTree extends Tree implements View, Index {
             }
             cursor.reset();
         } catch (Throwable e) {
-            failed(observer, true);
+            observer.failed = true;
             throw e;
         }
         return true;

@@ -473,7 +473,7 @@ public class EnduranceTest {
 
         VerificationObserver observer = new VerificationObserver();
         mIx.verify(observer);
-        assertFalse(Friends.failed(observer));
+        assertFalse(observer.failed);
     }
 
     interface Worker extends Runnable {

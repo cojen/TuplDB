@@ -56,9 +56,9 @@ abstract class Tree implements Index {
             observer = new VerificationObserver();
         }
         Index view = observableView();
-        Friends.failed(observer, false);
+        observer.failed = false;
         verifyTree(view, observer);
-        boolean passed = !Friends.failed(observer);
+        boolean passed = !observer.failed;
         observer.indexComplete(view, passed, null);
         return passed;
     }

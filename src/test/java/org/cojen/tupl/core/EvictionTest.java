@@ -166,7 +166,7 @@ public class EvictionTest {
         
         VerificationObserver observer = new VerificationObserver();
         ix.verify(observer);
-        assertFalse(Friends.failed(observer));
+        assertFalse(observer.failed);
     }
 
 

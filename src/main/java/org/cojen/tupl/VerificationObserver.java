@@ -17,10 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.lang.invoke.MethodHandles;
-
-import org.cojen.tupl.core.FriendAccess;
-
 /**
  * Index verification observer. Implementation does not need to be thread-safe, but instances
  * should not be shared by concurrent verifications.
@@ -36,11 +32,10 @@ public class VerificationObserver {
     /** Index height; is zero for empty indexes. */
     protected int height;
 
-    boolean failed;
-
-    static {
-        FriendAccess.register(MethodHandles.lookup(), "failed", boolean.class);
-    }
+    /**
+     * @hidden
+     */
+    public boolean failed;
 
     /**
      * Called before full index verification begins. Default implementation

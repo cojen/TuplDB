@@ -41,7 +41,6 @@ import org.cojen.tupl.VerificationObserver;
 
 import org.cojen.tupl.views.ViewUtils;
 
-import static org.cojen.tupl.core.Friends.*;
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
@@ -1651,11 +1650,11 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 lockType = 0;
             } else {
                 LockMode mode = txn.lockMode();
-                if (noReadLock(mode)) {
+                if (mode.noReadLock) {
                     node.retrieveLeafEntry(pos, this);
                     return LockResult.UNOWNED;
                 } else {
-                    lockType = repeatable(mode);
+                    lockType = mode.repeatable;
                 }
             }
 
@@ -1755,12 +1754,12 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 lockType = 0;
             } else {
                 LockMode mode = txn.lockMode();
-                if (noReadLock(mode)) {
+                if (mode.noReadLock) {
                     mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
                     result = LockResult.UNOWNED;
                     break obtainResult;
                 } else {
-                    lockType = repeatable(mode);
+                    lockType = mode.repeatable;
                 }
             }
 
@@ -1815,7 +1814,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         } else {
             LockResult result;
 
-            int lockType = repeatable(txn.lockMode());
+            int lockType = txn.lockMode().repeatable;
 
             if (lockType == 0) {
                 if ((result = txn.lockShared(mTree.mId, mKey, keyHash)) == LockResult.ACQUIRED) {
@@ -2235,11 +2234,11 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         try {
-            if (noReadLock(mode)) {
+            if (mode.noReadLock) {
                 return LockResult.UNOWNED;
             }
 
-            LockResult result = txn.tryLock(repeatable(mode), mTree.mId, mKey, mKeyHash, 0L);
+            LockResult result = txn.tryLock(mode.repeatable, mTree.mId, mKey, mKeyHash, 0L);
 
             return result.isHeld() ? result : null;
         } catch (DeadlockException e) {
@@ -2590,7 +2589,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             locker = mTree.lockSharedLocal(key, keyHash());
         } else {
             LockMode mode = txn.lockMode();
-            if (noReadLock(mode)) {
+            if (mode.noReadLock) {
                 // Not expected. Caller typically calls tryLockKey first, which would have
                 // returned UNOWNED instead of null, and doLoad won't be called.
                 result = LockResult.UNOWNED;
@@ -2607,7 +2606,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     }
                 } else {
                     result = txn.lock
-                        (repeatable(mode), mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                        (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     locker = null;
                 }
             }
@@ -2726,7 +2725,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 result = LockResult.UNOWNED;
             } else {
                 LockMode mode = txn.lockMode();
-                if (noReadLock(mode)) {
+                if (mode.noReadLock) {
                     return LockResult.UNOWNED;
                 }
                 int keyHash = keyHash();
@@ -2744,7 +2743,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     locker = txn;
                 } else {
                     result = txn.lock
-                        (repeatable(mode), mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                        (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     if (result != LockResult.ACQUIRED) {
                         return result;
                     }
@@ -2799,7 +2798,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 result = LockResult.UNOWNED;
             } else {
                 LockMode mode = txn.lockMode();
-                if (noReadLock(mode)) {
+                if (mode.noReadLock) {
                     result = LockResult.UNOWNED;
                     locker = null;
                 } else {
@@ -2819,7 +2818,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                         }
                     } else {
                         result = txn.lock
-                            (repeatable(mode), mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                            (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                         locker = null;
                     }
                 }
@@ -3176,7 +3175,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 final int hash;
                 mKeyHash = hash = LockManager.hash(mTree.mId, key);
                 result = txn.lockExclusive(mTree.mId, key, hash);
-                if (result == LockResult.ACQUIRED && repeatable(mode) != 0) {
+                if (result == LockResult.ACQUIRED && mode.repeatable != 0) {
                     // Downgrade to upgradable when no modification is made, to
                     // preserve repeatable semantics and allow upgrade later.
                     result = LockResult.UPGRADED;
@@ -4935,7 +4934,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             if (left) {
                 if (compare >= 0) {
-                    failed(observer, true);
+                    observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level, "Child keys are not less than parent key: " + parentNode))
                     {
@@ -4944,7 +4943,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
             } else if (childNode.isInternal()) {
                 if (compare <= 0) {
-                    failed(observer, true);
+                    observer.failed = true;
                     if (!observer.indexNodeFailed
                         (childId, level,
                          "Internal child keys are not greater than parent key: " + parentNode))
@@ -4953,7 +4952,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     }
                 }
             } else if (compare < 0) {
-                failed(observer, true);
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level,
                      "Child keys are not greater than or equal to parent key: " + parentNode))
@@ -4967,7 +4966,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             if ((childNode.type() & Node.LOW_EXTREMITY) != 0
                 && (parentNode.type() & Node.LOW_EXTREMITY) == 0)
             {
-                failed(observer, true);
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level, "Child is low extremity but parent is not: " + parentNode))
                 {
@@ -4978,7 +4977,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             if ((childNode.type() & Node.HIGH_EXTREMITY) != 0
                 && (parentNode.type() & Node.HIGH_EXTREMITY) == 0)
             {
-                failed(observer, true);
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level, "Child is high extremity but parent is not: " + parentNode))
                 {
@@ -4992,7 +4991,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         switch (parentNode.type()) {
         case Node.TYPE_TN_IN:
             if (childNode.isLeaf() && parentNode.id() > 1) { // stubs are never bins
-                failed(observer, true);
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level,
                      "Child is a leaf, but parent is a regular internal node: " + parentNode))
@@ -5003,7 +5002,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             break;
         case Node.TYPE_TN_BIN:
             if (!childNode.isLeaf()) {
-                failed(observer, true);
+                observer.failed = true;
                 if (!observer.indexNodeFailed
                     (childId, level,
                      "Child is not a leaf, but parent is a bottom internal node: " + parentNode))
@@ -5018,7 +5017,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             }
             // Fallthrough...
         case Node.TYPE_TN_LEAF:
-            failed(observer, true);
+            observer.failed = true;
             if (!observer.indexNodeFailed
                 (childId, level, "Child parent is a leaf node: " + parentNode))
             {
