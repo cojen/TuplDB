@@ -532,6 +532,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             TermLog termLog = mStateLog.termLogAt(position);
+
+            if (termLog == null) {
+                long commitPosition = mStateLog.captureHighest().mCommitPosition;
+                if (position > commitPosition) {
+                    throw invalidCommit(position, commitPosition);
+                }
+                if (mStateLog.isDurable(position)) {
+                    // Assume leadership change caused term to briefly vanish.
+                    return true;
+                }
+                throw new IllegalStateException("No term at position: " + position);
+            }
+
             long prevTerm = termLog.prevTermAt(position);
             long term = termLog.term();
 
@@ -542,8 +555,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (position > commitPosition) {
                 // If syncCommit returns -1, assume that the leadership changed and try again.
                 if (commitPosition >= 0) {
-                    throw new IllegalStateException
-                        ("Invalid commit position: " + position + " > " + commitPosition);
+                    throw invalidCommit(position, commitPosition);
                 }
             } else {
                 acquireShared();
@@ -596,6 +608,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         return true;
+    }
+
+    private static IllegalStateException invalidCommit(long position, long commitPosition) {
+        throw new IllegalStateException
+            ("Invalid commit position: " + position + " > " + commitPosition);
     }
 
     @Override

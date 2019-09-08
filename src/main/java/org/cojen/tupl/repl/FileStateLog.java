@@ -619,8 +619,23 @@ final class FileStateLog extends Latch implements StateLog {
         return defineTermLog(prevTerm, term, position) != null;
     }
 
+    // Must not be called if caller already holds the latch. Must call tryTermLogAt instead.
     @Override
     public TermLog termLogAt(long position) {
+        TermLog term = tryTermLogAt(position);
+
+        if (term == null) {
+            // Try again with latch held, in case all terms have been concurrently removed by
+            // the defineTermLog method, and the new one isn't inserted yet.
+            acquireShared();
+            term = tryTermLogAt(position);
+            releaseShared();
+        }
+
+        return term;
+    }
+
+    private TermLog tryTermLogAt(long position) {
         return (TermLog) mTermLogs.floor(new LKey.Finder<>(position)); // findLe
     }
 
@@ -919,7 +934,7 @@ final class FileStateLog extends Latch implements StateLog {
 
             acquireShared();
             try {
-                TermLog termLog = termLogAt(position);
+                TermLog termLog = tryTermLogAt(position);
 
                 if (termLog == null || term != termLog.term()
                     || prevTerm != termLog.prevTermAt(position))
