@@ -268,6 +268,15 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
+     * Set multiple listeners which receive notifications of actions being performed by the
+     * database. Listener implementations must be thread-safe.
+     */
+    public DatabaseConfig eventListener(EventListener... listeners) {
+        mLauncher.eventListener(listeners);
+        return this;
+    }
+
+    /**
      * Set true to ensure all writes to the main database file are immediately durable,
      * although not checkpointed. This option typically reduces overall performance, but
      * checkpoints complete more quickly. As a result, the main database file requires less
