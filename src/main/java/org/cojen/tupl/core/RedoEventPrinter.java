@@ -275,11 +275,14 @@ class RedoEventPrinter implements RedoVisitor {
     private static String valueStr(byte[] value, int offset, int length) {
         if (value == null) {
             return "null";
-        } else if (length <= MAX_VALUE) {
-            return "0x" + Utils.toHex(value, offset, length);
-        } else {
-            return "0x" + Utils.toHex(value, offset, MAX_VALUE) + "...";
         }
+        StringBuilder b = new StringBuilder().append("0x");
+        if (length <= MAX_VALUE) {
+            b.append(Utils.toHex(value, offset, length));
+        } else {
+            b.append(Utils.toHex(value, offset, MAX_VALUE)).append("...");
+        }
+        return b.append(" (length=").append(length).append(')').toString();
     }
 
     private static String toDateTime(long timestamp) {
