@@ -271,8 +271,8 @@ public class DatabaseConfig implements Cloneable, Serializable {
      * Set multiple listeners which receive notifications of actions being performed by the
      * database. Listener implementations must be thread-safe.
      */
-    public DatabaseConfig eventListener(EventListener... listeners) {
-        mLauncher.eventListener(listeners);
+    public DatabaseConfig eventListeners(EventListener... listeners) {
+        mLauncher.eventListeners(listeners);
         return this;
     }
 

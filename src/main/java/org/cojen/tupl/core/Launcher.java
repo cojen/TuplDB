@@ -204,7 +204,7 @@ public final class Launcher implements Cloneable, Serializable {
         mEventListener = listener;
     }
 
-    public void eventListener(EventListener... listeners) {
+    public void eventListeners(EventListener... listeners) {
         mEventListener = ChainedEventListener.make(listeners);
     }
 
