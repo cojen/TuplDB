@@ -325,34 +325,52 @@ abstract class DataIn extends InputStream {
      * Transfers data to the given visitor, in the form of cursorValueWrite calls.
      */
     public void cursorValueWrite(RedoVisitor visitor, long cursorId, long txnId,
-                                 long pos, int amount)
+                                 long valuePos, int amount)
         throws IOException
     {
+        // Use the buffer to minimize the number of calls to cursorValueWrite.
+
+        final byte[] buffer = mBuffer;
+        final int bufferLen = buffer.length;
+
         int avail = mEnd - mStart;
 
-        while (true) {
-            if (amount <= avail) {
-                visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, amount);
-                mStart += amount;
-                mPos += amount;
-                return;
+        if (amount > avail) {
+            if (amount > bufferLen) {
+                if (mStart != 0) {
+                    arraycopy(buffer, mStart, buffer, 0, avail);
+                    mStart = 0;
+                    mEnd = avail;
+                }
+
+                do {
+                    do {
+                        int amt = doRead(buffer, mEnd, bufferLen - mEnd);
+                        if (amt <= 0) {
+                            throw new EOFException();
+                        }
+                        mEnd += amt;
+                    } while (mEnd < bufferLen);
+
+                    visitor.cursorValueWrite(cursorId, txnId, valuePos, buffer, 0, bufferLen);
+                    mEnd = 0;
+                    mPos += bufferLen;
+                    amount -= bufferLen;
+
+                    if (amount <= 0) {
+                        return;
+                    }
+
+                    valuePos += bufferLen;
+                } while (amount > bufferLen);
             }
 
-            visitor.cursorValueWrite(cursorId, txnId, pos, mBuffer, mStart, avail);
-
-            mStart = mEnd = 0;
-            mPos += avail;
-            pos += avail;
-            amount -= avail;
-
-            avail = doRead(mBuffer, 0, mBuffer.length);
-
-            if (avail < 0) {
-                throw new EOFException();
-            }
-
-            mEnd = avail;
+            require(amount);
         }
+
+        visitor.cursorValueWrite(cursorId, txnId, valuePos, buffer, mStart, amount);
+        mStart += amount;
+        mPos += amount;
     }
 
     /**
