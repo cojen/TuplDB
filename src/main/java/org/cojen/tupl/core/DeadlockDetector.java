@@ -17,10 +17,11 @@
 
 package org.cojen.tupl.core;
 
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import org.cojen.tupl.DeadlockSet;
+import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.Index;
 
 /**
@@ -57,15 +58,19 @@ final class DeadlockDetector {
     /**
      * @param lockType type of lock requested; TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    DeadlockSet newDeadlockSet(int lockType) {
-        CoreDeadlockSet.OwnerInfo[] infoSet = new CoreDeadlockSet.OwnerInfo[mLocks.size()];
+    Set<DeadlockInfo> newDeadlockSet(int lockType) {
+        if (mLocks.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        DeadlockInfo[] infos = new CoreDeadlockInfo[mLocks.size()];
 
         final LockManager manager = mOrigin.mManager;
 
         int i = 0;
         for (Lock lock : mLocks) {
-            CoreDeadlockSet.OwnerInfo info = new CoreDeadlockSet.OwnerInfo();
-            infoSet[i] = info;
+            CoreDeadlockInfo info = new CoreDeadlockInfo();
+            infos[i++] = info;
 
             info.mIndexId = lock.mIndexId;
 
@@ -81,11 +86,9 @@ final class DeadlockDetector {
             info.mKey = key;
 
             info.mAttachment = lock.findOwnerAttachment(mOrigin, lockType);
-
-            i++;
         }
 
-        return new CoreDeadlockSet(infoSet);
+        return new DeadlockInfoSet(infos);
     }
 
     /**

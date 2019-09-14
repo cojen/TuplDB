@@ -192,10 +192,10 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(long,java.lang.Object,boolean,org.cojen.tupl.DeadlockSet)">DeadlockException</a></span>&#8203;(long&nbsp;nanosTimeout,
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(long,java.lang.Object,boolean,java.util.Set)">DeadlockException</a></span>&#8203;(long&nbsp;nanosTimeout,
                  <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment,
                  boolean&nbsp;guilty,
-                 <a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;set)</code></th>
+                 <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;&nbsp;set)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
@@ -222,7 +222,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 </tr>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code><a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getDeadlockSet()">getDeadlockSet</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -317,7 +317,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 </dl>
 </li>
 </ul>
-<a id="&lt;init&gt;(long,java.lang.Object,boolean,org.cojen.tupl.DeadlockSet)">
+<a id="&lt;init&gt;(long,java.lang.Object,boolean,java.util.Set)">
 <!--   -->
 </a>
 <ul class="blockListLast">
@@ -326,7 +326,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 <pre>public&nbsp;DeadlockException&#8203;(long&nbsp;nanosTimeout,
                          <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment,
                          boolean&nbsp;guilty,
-                         <a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;set)</pre>
+                         <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;&nbsp;set)</pre>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - negative is interpreted as infinite wait</dd>
@@ -363,7 +363,7 @@ extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">Lock
 <ul class="blockList">
 <li class="blockList">
 <h4>getDeadlockSet</h4>
-<pre class="methodSignature">public&nbsp;<a href="DeadlockSet.html" title="interface in org.cojen.tupl">DeadlockSet</a>&nbsp;getDeadlockSet()</pre>
+<pre class="methodSignature">public&nbsp;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;&nbsp;getDeadlockSet()</pre>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the set of lock requests which were in a deadlock</dd>

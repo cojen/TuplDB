@@ -17,7 +17,8 @@
 
 package org.cojen.tupl;
 
-import org.cojen.tupl.core.Utils;
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Thrown when a lock request by a {@link Transaction transaction} timed out
@@ -32,7 +33,7 @@ public class DeadlockException extends LockTimeoutException {
     private static final long serialVersionUID = 1L;
 
     private final boolean mGuilty;
-    private final DeadlockSet mSet;
+    private final Set<DeadlockInfo> mSet;
 
     /**
      * @param nanosTimeout negative is interpreted as infinite wait
@@ -52,10 +53,13 @@ public class DeadlockException extends LockTimeoutException {
      * @param nanosTimeout negative is interpreted as infinite wait
      */
     public DeadlockException(long nanosTimeout, Object attachment, boolean guilty,
-                             DeadlockSet set)
+                             Set<DeadlockInfo> set)
     {
         super(nanosTimeout, attachment);
         mGuilty = guilty;
+        if (set == null) {
+            set = Collections.emptySet();
+        }
         mSet = set;
     }
 
@@ -70,7 +74,7 @@ public class DeadlockException extends LockTimeoutException {
     /**
      * @return the set of lock requests which were in a deadlock
      */
-    public DeadlockSet getDeadlockSet() {
+    public Set<DeadlockInfo> getDeadlockSet() {
         return mSet;
     }
 
@@ -95,9 +99,8 @@ public class DeadlockException extends LockTimeoutException {
             b.append("might be innocent");
         }
         b.append('.');
-        if (full && mSet != null && mSet.size() != 0) {
-            b.append(" Deadlock set: ");
-            Utils.appendMembers(mSet, b);
+        if (full && !mSet.isEmpty()) {
+            b.append(" Deadlock set: ").append(mSet);
         }
         return b.toString();
     }

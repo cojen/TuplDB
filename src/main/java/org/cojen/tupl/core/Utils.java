@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.DeadlockSet;
 import org.cojen.tupl.DurabilityMode;
 
 /**
@@ -866,35 +865,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     public static DurabilityMode alwaysRedo(DurabilityMode mode) {
         return mode == DurabilityMode.NO_REDO ? DurabilityMode.NO_FLUSH : mode;
-    }
-
-    public static void appendMembers(DeadlockSet set, StringBuilder b) {
-        final int size = set.size();
-
-        for (int i=0; i<size; i++) {
-            if (i > 0) {
-                b.append(", ");
-            }
-            b.append('{');
-            b.append("indexId").append(": ").append(set.getIndexId(i));
-            b.append(", ");
-
-            String name = utf8(set.getIndexName(i));
-            if (name != null) {
-                b.append("indexName").append(": ").append(name);
-                b.append(", ");
-            }
-
-            b.append("key").append(": ").append(toHex(set.getKey(i)));
-
-            Object att = set.getOwnerAttachment(i);
-            if (att != null) {
-                b.append(", ");
-                b.append("attachment").append(": ").append(att);
-            }
-
-            b.append('}');
-        }
     }
 
     /**

@@ -193,7 +193,7 @@ public class DeadlockTest {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
             assertEquals("txn1", e.getOwnerAttachment());
-            assertEquals("txn1", e.getDeadlockSet().getOwnerAttachment(0));
+            assertEquals("txn1", e.getDeadlockSet().iterator().next().getOwnerAttachment());
         }
 
         // Deadlock detection works with zero timeout, except with the tryLock variant.
@@ -206,7 +206,7 @@ public class DeadlockTest {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
             assertEquals("txn1", e.getOwnerAttachment());
-            assertEquals("txn1", e.getDeadlockSet().getOwnerAttachment(0));
+            assertEquals("txn1", e.getDeadlockSet().iterator().next().getOwnerAttachment());
         }
 
         // No deadlock detected here.
@@ -281,11 +281,12 @@ public class DeadlockTest {
             assertFalse(e.isGuilty());
             assertEquals("txn1", e.getOwnerAttachment());
 
-            DeadlockSet set = e.getDeadlockSet();
+            Set<DeadlockInfo> set = e.getDeadlockSet();
             assertEquals(2, set.size());
 
-            Object att1 = set.getOwnerAttachment(0);
-            Object att2 = set.getOwnerAttachment(1);
+            Iterator<DeadlockInfo> it = set.iterator();
+            Object att1 = it.next().getOwnerAttachment();
+            Object att2 = it.next().getOwnerAttachment();
 
             assertTrue(att1 != null && att2 != null);
 
