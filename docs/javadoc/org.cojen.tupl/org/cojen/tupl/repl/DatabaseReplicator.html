@@ -108,7 +108,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public interface <span class="typeNameLabel">DatabaseReplicator</span>
 extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a>, <a href="../ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></pre>
 <div class="block">Implementation of a <a href="../ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> for supporting full <a href="../Database.html" title="interface in org.cojen.tupl">database</a> replication. Applications shouldn't interact with a <code>DatabaseReplicator</code>
- instance directly &mdash; only the database instance is permitted to interact with it.</div>
+ instance directly &mdash; only the database instance is permitted to interact with it.  The
+ recommended way of enabling replication is by passing a <a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl"><code>ReplicatorConfig</code></a> object to
+ the <a href="../DatabaseConfig.html#replicate(org.cojen.tupl.repl.ReplicatorConfig)"><code>DatabaseConfig.replicate</code></a> method.</div>
 </li>
 </ul>
 </div>

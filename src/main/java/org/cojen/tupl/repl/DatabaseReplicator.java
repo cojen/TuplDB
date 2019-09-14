@@ -27,7 +27,10 @@ import org.cojen.tupl.ext.ReplicationManager;
 /**
  * Implementation of a {@link ReplicationManager} for supporting full {@linkplain Database
  * database} replication. Applications shouldn't interact with a {@code DatabaseReplicator}
- * instance directly &mdash; only the database instance is permitted to interact with it.
+ * instance directly &mdash; only the database instance is permitted to interact with it.  The
+ * recommended way of enabling replication is by passing a {@link ReplicatorConfig} object to
+ * the {@link org.cojen.tupl.DatabaseConfig#replicate(ReplicatorConfig)
+ * DatabaseConfig.replicate} method.
  *
  * @author Brian S O'Neill
  */
