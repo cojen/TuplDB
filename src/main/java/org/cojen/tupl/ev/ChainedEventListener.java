@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.ev;
 
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -25,8 +25,8 @@ import org.cojen.tupl.EventType;
  *
  * @author Brian S O'Neill
  */
-class ChainedEventListener extends SafeEventListener {
-    static EventListener make(EventListener... listeners) {
+public class ChainedEventListener extends SafeEventListener {
+    public static EventListener make(EventListener... listeners) {
         if (listeners == null || listeners.length == 0) {
             return null;
         }

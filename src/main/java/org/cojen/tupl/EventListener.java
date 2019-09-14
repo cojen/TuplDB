@@ -19,8 +19,8 @@ package org.cojen.tupl;
 
 import java.util.logging.Level;
 
-import org.cojen.tupl.core.AllowEventListener;
-import org.cojen.tupl.core.DisallowEventListener;
+import org.cojen.tupl.ev.AllowEventListener;
+import org.cojen.tupl.ev.DisallowEventListener;
 
 /**
  * Listener which receives notifications of actions being performed by the

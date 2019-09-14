@@ -91,6 +91,8 @@ import org.cojen.tupl.UnmodifiableReplicaException;
 import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.ev.SafeEventListener;
+
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;

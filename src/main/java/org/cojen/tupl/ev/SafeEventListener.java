@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.ev;
 
 import java.util.logging.Level;
 
@@ -29,8 +29,8 @@ import org.cojen.tupl.EventType;
  *
  * @author Brian S O'Neill
  */
-class SafeEventListener implements EventListener {
-    static EventListener makeSafe(EventListener listener) {
+public class SafeEventListener implements EventListener {
+    public static EventListener makeSafe(EventListener listener) {
         return (listener == null
                 || listener instanceof SafeEventListener
                 || listener.getClass() == EventLogger.class

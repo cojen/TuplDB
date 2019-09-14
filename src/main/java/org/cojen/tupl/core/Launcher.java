@@ -44,6 +44,9 @@ import org.cojen.tupl.EventPrinter;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockUpgradeRule;
 
+import org.cojen.tupl.ev.ChainedEventListener;
+import org.cojen.tupl.ev.ReplicationEventListener;
+
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.ext.TransactionHandler;
