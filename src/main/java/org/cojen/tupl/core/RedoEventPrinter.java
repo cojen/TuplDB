@@ -19,15 +19,46 @@ package org.cojen.tupl.core;
 
 import java.nio.charset.StandardCharsets;
 
+import org.cojen.tupl.Crypto;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 
 /**
- * Debugging utility enabled by {@link DatabaseConfig#debugOpen}.
+ * Debugging utility enabled by {@link DatabaseConfig#debugOpen}. When launched from the
+ * command line, reads and prints all the redo operations from a local log.
  *
  * @author Brian S O'Neill
  */
 class RedoEventPrinter implements RedoVisitor {
+    /**
+     * @param args [0]: base file, [1]: first log number to read from, [2]: optional crypto
+     * class; remaining args are passed to its constructor as separate parameters
+     */
+    @SuppressWarnings("unchecked")
+    public static void main(String[] args) throws Exception {
+        java.io.File baseFile = new java.io.File(args[0]);
+        long logId = Long.parseLong(args[1]);
+
+        Crypto crypto = null;
+        if (args.length > 2) {
+            Class clazz = Class.forName(args[2]);
+            Class[] types = new Class[args.length - 3];
+            String[] params = new String[types.length];
+            for (int i=0; i<types.length; i++) {
+                types[i] = String.class;
+                params[i] = args[i + 3];
+            }
+            crypto = (Crypto) clazz.getConstructor(types).newInstance((Object[]) params);
+        }
+
+        EventListener listener = (type, message, messageArgs) -> {
+            System.out.println(String.format(message, messageArgs));
+        };
+
+        new RedoLog(crypto, baseFile, null, logId, 0, null)
+            .replay(new RedoEventPrinter(listener, EventType.DEBUG), null, null, null);
+    }
+
     private static final int MAX_VALUE = 1000;
 
     private final EventListener mListener;
