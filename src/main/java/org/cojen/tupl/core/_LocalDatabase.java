@@ -2591,18 +2591,19 @@ public final class _LocalDatabase extends CoreDatabase {
         }
 
         try {
-            CommitLock lock = mCommitLock;
+            final CommitLock lock = mCommitLock;
 
             if (mOpenTrees != null) {
                 // Clear out open trees with commit lock held, to prevent any trees from being
                 // opened again. Any attempt to open a tree must acquire the commit lock and
                 // then check if the database is closed.
                 final ArrayList<Tree> trees;
-                if (lock != null) {
-                    lock.acquireExclusive();
-                }
+
+                mOpenTreesLatch.acquireExclusive();
                 try {
-                    mOpenTreesLatch.acquireExclusive();
+                    if (lock != null) {
+                        lock.acquireExclusive();
+                    }
                     try {
                         trees = new ArrayList<>(mOpenTreesById.size());
 
@@ -2624,12 +2625,12 @@ public final class _LocalDatabase extends CoreDatabase {
                         trees.add(mCursorRegistry);
                         mCursorRegistry = null;
                     } finally {
-                        mOpenTreesLatch.releaseExclusive();
+                        if (lock != null) {
+                            lock.releaseExclusive();
+                        }
                     }
                 } finally {
-                    if (lock != null) {
-                        lock.releaseExclusive();
-                    }
+                    mOpenTreesLatch.releaseExclusive();
                 }
 
                 for (Tree tree : trees) {
