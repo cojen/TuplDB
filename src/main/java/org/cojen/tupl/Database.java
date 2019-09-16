@@ -28,6 +28,8 @@ import java.util.concurrent.locks.Lock;
 
 import java.nio.charset.StandardCharsets;
 
+import org.cojen.tupl.ext.CustomHandler;
+
 import org.cojen.tupl.io.CauseCloseable;
 
 import static org.cojen.tupl.core.Utils.*;
@@ -224,6 +226,16 @@ public interface Database extends CauseCloseable, Flushable {
      * {@link DatabaseConfig#durabilityMode default} is used.
      */
     public abstract Transaction newTransaction(DurabilityMode durabilityMode);
+
+    /**
+     * Returns a handler instance suitable for writing custom redo and undo operations. A
+     * corresponding recovery instance must have been provided when the database was opened,
+     * via the {@link DatabaseConfig#customHandlers customHandlers} config method.
+     *
+     * @return new writer instance
+     * @throws IllegalStateException if no recovery instance by the given name is installed
+     */
+    public abstract CustomHandler customHandler(String name) throws IOException;
 
     /**
      * Returns a new Sorter instance, which uses the given executor for running parallel

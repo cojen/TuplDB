@@ -28,9 +28,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.core.Launcher;
 
+import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
-import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
@@ -385,10 +385,11 @@ public class DatabaseConfig implements Cloneable, Serializable {
     }
 
     /**
-     * Provide a handler for custom transactional operations.
+     * Provide handlers for recovering custom transactional operations. The name assigned to
+     * each handler must be unique and never change.
      */
-    public DatabaseConfig customTransactionHandler(TransactionHandler handler) {
-        mLauncher.customTransactionHandler(handler);
+    public DatabaseConfig customHandlers(Map<String, CustomHandler> handlers) {
+        mLauncher.customHandlers(handlers);
         return this;
     }
 

@@ -30,6 +30,7 @@ import java.lang.reflect.Method;
 
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -47,9 +48,9 @@ import org.cojen.tupl.LockUpgradeRule;
 import org.cojen.tupl.ev.ChainedEventListener;
 import org.cojen.tupl.ev.ReplicationEventListener;
 
+import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
-import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
@@ -99,7 +100,7 @@ public final class Launcher implements Cloneable, Serializable {
     transient ReplicationManager mReplManager;
     int mMaxReplicaThreads;
     transient Crypto mCrypto;
-    transient TransactionHandler mTxnHandler;
+    transient Map<String, CustomHandler> mCustomHandlers;
     Map<String, ? extends Object> mDebugOpen;
 
     // Fields are set as a side-effect of constructing a replicated Database.
@@ -262,8 +263,12 @@ public final class Launcher implements Cloneable, Serializable {
         mCrypto = crypto;
     }
 
-    public void customTransactionHandler(TransactionHandler handler) {
-        mTxnHandler = handler;
+    public void customHandlers(Map<String, CustomHandler> handlers) {
+        if (handlers == null || handlers.isEmpty()) {
+            mCustomHandlers = null;
+        } else {
+            mCustomHandlers = new HashMap<>(handlers);
+        }
     }
 
     public void debugOpen(PrintStream out, Map<String, ? extends Object> properties)

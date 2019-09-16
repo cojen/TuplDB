@@ -37,8 +37,8 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.ReplicationManager;
-import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Worker;
@@ -1026,8 +1026,8 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCustom(long txnId, byte[] message) throws IOException {
-        TransactionHandler handler = customHandler();
+    public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException {
+        CustomHandler handler = mDatabase.findCustomHandler(handlerId);
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
@@ -1041,10 +1041,11 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key)
+    public boolean txnCustomLock(long txnId, int handlerId, byte[] message,
+                                 long indexId, byte[] key)
         throws IOException
     {
-        TransactionHandler handler = customHandler();
+        CustomHandler handler = mDatabase.findCustomHandler(handlerId);
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
@@ -1403,14 +1404,6 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
             mDatabase.invokeRecoveryHandler(remaining, redo);
         }
-    }
-
-    private TransactionHandler customHandler() throws DatabaseException {
-        TransactionHandler handler = mDatabase.mCustomTxnHandler;
-        if (handler == null) {
-            throw new DatabaseException("Custom transaction handler is not installed");
-        }
-        return handler;
     }
 
     void fail(Throwable e) {

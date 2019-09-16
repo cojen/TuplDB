@@ -28,39 +28,47 @@ import org.cojen.tupl.Transaction;
  * transactions, and redo operations are applied by recovery and replication.
  *
  * @author Brian S O'Neill
- * @see DatabaseConfig#customTransactionHandler DatabaseConfig.customTransactionHandler
+ * @see DatabaseConfig#customHandlers DatabaseConfig.customHandlers
+ * @see Database#customHandler Database.customHandler
  */
-public interface TransactionHandler {
+public interface CustomHandler {
     /**
      * Called once when the database is opened, immediately before recovery is performed.
      */
-    void init(Database db) throws IOException;
+    default void init(Database db) throws IOException {
+    }
 
     /**
-     * Called to apply an idempotent redo operation.
+     * Called to write or apply an idempotent redo operation.
      *
      * @param txn transaction the operation applies to; can be modified
-     * @param message message originally provided to {@link Transaction#customRedo}
+     * @param message custom message
+     * @throws NullPointerException if transaction or message is null
      */
     void redo(Transaction txn, byte[] message) throws IOException;
 
     /**
-     * Called to apply an idempotent redo operation which locked an index key. The lock ensures
-     * that redo operations are ordered with respect to other transactions which locked the
-     * same key.
+     * Called to write or apply an idempotent redo operation which locked an index key. The
+     * lock ensures that redo operations are ordered with respect to other transactions which
+     * locked the same key.
      *
      * @param txn transaction the operation applies to; can be modified
-     * @param message message originally provided to {@link Transaction#customRedo}
+     * @param message custom message
      * @param indexId non-zero index for lock acquisition
      * @param key non-null key which has been locked exclusively
+     * @throws NullPointerException if transaction or message is null
+     * @throws IllegalStateException if index and key are provided but lock isn't held
+     * @throws IllegalArgumentException if index id is zero and key is non-null
      */
     void redo(Transaction txn, byte[] message, long indexId, byte[] key)
         throws IOException;
 
     /**
-     * Called to apply an idempotent undo operation.
+     * Called to write or apply an idempotent undo operation.
      *
-     * @param message message originally provided to {@link Transaction#customUndo}
+     * @param txn transaction the operation applies to; is null when rolling back
+     * @param message custom message
+     * @throws NullPointerException if transaction or message is null
      */
-    void undo(byte[] message) throws IOException;
+    void undo(Transaction txn, byte[] message) throws IOException;
 }

@@ -230,34 +230,6 @@ public interface Transaction extends Flushable {
     LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException;
 
     /**
-     * Supply a message for a custom redo handler. Redo operations should be paired with undo
-     * operations.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param message message to pass to transaction handler
-     * @param indexId index for lock acquisition; zero if not applicable
-     * @param key key which has been locked exclusively; null if not applicable
-     * @throws IllegalStateException if no transaction handler is installed; if index and key
-     * are provided but lock isn't held
-     * @throws IllegalArgumentException if index id is zero and key is non-null
-     * @see org.cojen.tupl.ext.TransactionHandler
-     */
-    void customRedo(byte[] message, long indexId, byte[] key) throws IOException;
-
-    /**
-     * Supply a message for a custom undo handler. Undo operations should be paired with redo
-     * operations.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param message message to pass to transaction handler
-     * @throws IllegalStateException if no transaction handler is installed
-     * @see org.cojen.tupl.ext.TransactionHandler
-     */
-    void customUndo(byte[] message) throws IOException;
-
-    /**
      * Returns true if the current transaction scope is nested.
      */
     boolean isNested();

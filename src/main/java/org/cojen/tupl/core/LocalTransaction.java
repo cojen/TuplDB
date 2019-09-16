@@ -733,11 +733,9 @@ public final class LocalTransaction extends Locker implements Transaction {
         return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
     }
 
-    @Override
-    public final void customRedo(byte[] message, long indexId, byte[] key) throws IOException {
-        if (mDatabase.mCustomTxnHandler == null) {
-            throw new IllegalStateException("Custom transaction handler is not installed");
-        }
+    public final void customRedo(int handlerId, byte[] message, long indexId, byte[] key)
+        throws IOException
+    {
         check();
 
         if (mRedo == null) {
@@ -770,27 +768,22 @@ public final class LocalTransaction extends Locker implements Transaction {
             if (key != null) {
                 throw new IllegalArgumentException("Key cannot be used if indexId is zero");
             }
-            mContext.redoCustom(mRedo, txnId, message);
+            mContext.redoCustom(mRedo, txnId, handlerId, message);
         } else {
             LockResult result = lockCheck(indexId, key);
             if (result != LockResult.OWNED_EXCLUSIVE) {
                 throw new IllegalStateException("Lock isn't owned exclusively: " + result);
             }
-            mContext.redoCustomLock(mRedo, txnId, message, indexId, key);
+            mContext.redoCustomLock(mRedo, txnId, handlerId, message, indexId, key);
         }
     }
 
-    @Override
-    public final void customUndo(byte[] message) throws IOException {
-        if (mDatabase.mCustomTxnHandler == null) {
-            throw new IllegalStateException("Custom transaction handler is not installed");
-        }
-
+    final void customUndo(int handlerId, byte[] message) throws IOException {
         check();
 
         final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
-            undoLog().pushCustom(message);
+            undoLog().pushCustom(handlerId, message);
         } catch (Throwable e) {
             borked(e, true, true); // rollback = true, rethrow = true
         } finally {

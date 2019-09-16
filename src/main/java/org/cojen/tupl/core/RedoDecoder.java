@@ -594,13 +594,15 @@ abstract class RedoDecoder {
                 break;
 
             case (OP_TXN_CUSTOM & 0xff):
+                int handlerId;
                 try {
                     txnId = readTxnId(in);
+                    handlerId = in.readUnsignedVarInt();
                     message = in.readBytes();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.txnCustom(txnId, message)) {
+                if (!verifyTerminator(in) || !visitor.txnCustom(txnId, handlerId, message)) {
                     return false;
                 }
                 break;
@@ -608,6 +610,7 @@ abstract class RedoDecoder {
             case (OP_TXN_CUSTOM_LOCK & 0xff):
                 try {
                     txnId = readTxnId(in);
+                    handlerId = in.readUnsignedVarInt();
                     indexId = in.readLongLE();
                     key = in.readBytes();
                     message = in.readBytes();
@@ -615,7 +618,7 @@ abstract class RedoDecoder {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.txnCustomLock(txnId, message, indexId, key))
+                    || !visitor.txnCustomLock(txnId, handlerId, message, indexId, key))
                 {
                     return false;
                 }

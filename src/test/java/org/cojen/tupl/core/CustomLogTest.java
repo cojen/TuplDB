@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.ext.TransactionHandler;
+import org.cojen.tupl.ext.CustomHandler;
 
 import static org.cojen.tupl.core.TestUtils.*;
 
@@ -50,33 +50,55 @@ public class CustomLogTest {
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
         mDb = null;
+        mWriteHandler = null;
+        mWriteHandler2 = null;
     }
 
     protected Database newTempDatabase() throws Exception {
+        mRecoveryHandler = new Handler();
+        mRecoveryHandler2 = new Handler();
+
         mConfig = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
-            .customTransactionHandler(mHandler = new Handler());
-        return TestUtils.newTempDatabase(getClass(), mConfig);
+            .customHandlers(Map.of("TestHandler", mRecoveryHandler,
+                                   "TestHandler2", mRecoveryHandler2));
+
+        return open();
+    }
+
+    protected Database open() throws Exception {
+        mDb = TestUtils.newTempDatabase(getClass(), mConfig);
+        mWriteHandler = mDb.customHandler("TestHandler");
+        mWriteHandler2 = mDb.customHandler("TestHandler2");
+        return mDb;
+    }
+
+    protected Database reopen() throws Exception {
+        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        mWriteHandler = mDb.customHandler("TestHandler");
+        mWriteHandler2 = mDb.customHandler("TestHandler2");
+        return mDb;
     }
 
     protected DatabaseConfig mConfig;
     protected Database mDb;
-    protected Handler mHandler;
+    protected Handler mRecoveryHandler, mRecoveryHandler2;
+    protected CustomHandler mWriteHandler, mWriteHandler2;
 
     @Test
     public void exceptions() throws Exception {
         Transaction txn = mDb.newTransaction();
 
         try {
-            txn.customRedo(null, 0, null);
+            mWriteHandler.redo(txn, null, 0, null);
             fail();
         } catch (NullPointerException e) {
             // Expected when message is null.
         }
 
         try {
-            txn.customRedo(null, 123, null);
+            mWriteHandler.redo(txn, null, 123, null);
             fail();
         } catch (NullPointerException e) {
             // Expected when key is null.
@@ -86,17 +108,45 @@ public class CustomLogTest {
         txn.lockExclusive(123, key);
 
         try {
-            txn.customRedo(null, 123, key);
+            mWriteHandler.redo(txn, null, 123, key);
             fail();
         } catch (NullPointerException e) {
             // Expected when message is null.
         }
 
         try {
-            txn.customRedo(null, 0, key);
+            mWriteHandler.redo(txn, null, 0, key);
             fail();
         } catch (IllegalArgumentException e) {
             // Expected when index is zero and key isn't null.
+        }
+
+        try {
+            mWriteHandler.redo(null, key);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+        }
+
+        try {
+            mWriteHandler.redo(Transaction.BOGUS, key);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+        }
+
+        try {
+            mWriteHandler.undo(null, key);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+        }
+
+        try {
+            mWriteHandler.undo(Transaction.BOGUS, key);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
         }
 
         txn.reset();
@@ -105,17 +155,25 @@ public class CustomLogTest {
         txn = db.newTransaction();
 
         try {
-            txn.customRedo(null, 0, null);
+            mWriteHandler.redo(txn, null, 0, null);
             fail();
         } catch (IllegalStateException e) {
-            // Expected when no handler is installed.
+            // Wrong database instance.
         }
 
         try {
-            txn.customUndo(null);
+            mWriteHandler.undo(txn, null);
             fail();
         } catch (IllegalStateException e) {
-            // Expected when no handler is installed.
+            // Wrong database instance.
+        }
+
+        try {
+            mDb.customHandler("foo");
+            fail();
+        } catch (IllegalStateException e) {
+            // Not installed.
+            assertTrue(e.getMessage().indexOf("foo") > 0);
         }
     }
 
@@ -128,29 +186,36 @@ public class CustomLogTest {
     public void rollbackNoRedo() throws Exception {
         teardown();
         mConfig.baseFile(null);
-        rollback(Database.open(mConfig));
+        rollback(open());
     }
 
     private void rollback(Database db) throws IOException {
         byte[] message1 = "hello".getBytes();
         byte[] message2 = "world".getBytes();
+        byte[] message3 = "hello!".getBytes();
 
         Transaction txn = db.newTransaction();
-        txn.customUndo(message1);
-        txn.customRedo(message1, 0, null);
-        txn.customUndo(message2);
-        txn.customRedo(message2, 0, null);
+        mWriteHandler.undo(txn, message1);
+        mWriteHandler.redo(txn, message1, 0, null);
+        mWriteHandler.undo(txn, message2);
+        mWriteHandler.redo(txn, message2, 0, null);
+        mWriteHandler2.undo(txn, message3);
 
-        assertTrue(mHandler.mRedoMessages.isEmpty());
-        assertTrue(mHandler.mUndoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mRedoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mUndoMessages.isEmpty());
+        assertTrue(mRecoveryHandler2.mRedoMessages.isEmpty());
+        assertTrue(mRecoveryHandler2.mUndoMessages.isEmpty());
 
         txn.exit();
 
-        assertTrue(mHandler.mRedoMessages.isEmpty());
-        assertEquals(2, mHandler.mUndoMessages.size());
+        assertTrue(mRecoveryHandler.mRedoMessages.isEmpty());
+        assertEquals(2, mRecoveryHandler.mUndoMessages.size());
+        assertTrue(mRecoveryHandler2.mRedoMessages.isEmpty());
+        assertEquals(1, mRecoveryHandler2.mUndoMessages.size());
 
-        assertArrayEquals(message2, mHandler.mUndoMessages.get(0));
-        assertArrayEquals(message1, mHandler.mUndoMessages.get(1));
+        assertArrayEquals(message2, mRecoveryHandler.mUndoMessages.get(0));
+        assertArrayEquals(message1, mRecoveryHandler.mUndoMessages.get(1));
+        assertArrayEquals(message3, mRecoveryHandler2.mUndoMessages.get(0));
     }
 
     @Test
@@ -158,42 +223,62 @@ public class CustomLogTest {
         byte[] message = "hello".getBytes();
 
         Transaction txn = mDb.newTransaction();
-        txn.customUndo(message);
-        txn.customRedo(message, 0, null);
+        mWriteHandler.undo(txn, message);
+        mWriteHandler.redo(txn, message, 0, null);
 
-        assertTrue(mHandler.mRedoMessages.isEmpty());
-        assertTrue(mHandler.mUndoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mRedoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mUndoMessages.isEmpty());
 
         txn.commit();
 
-        assertTrue(mHandler.mRedoMessages.isEmpty());
-        assertTrue(mHandler.mUndoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mRedoMessages.isEmpty());
+        assertTrue(mRecoveryHandler.mUndoMessages.isEmpty());
     }
 
     @Test
     public void recover() throws Exception {
         byte[] message1 = "hello".getBytes();
         byte[] message2 = "world".getBytes();
+        byte[] message3 = "hello!".getBytes();
         byte[] key = "key".getBytes();
 
         Transaction txn = mDb.newTransaction();
-        txn.customUndo(message1);
-        txn.customRedo(message1, 0, null);
-        txn.customUndo(message2);
+        mWriteHandler.undo(txn, message1);
+        mWriteHandler.redo(txn, message1, 0, null);
+        mWriteHandler.undo(txn, message2);
         txn.lockExclusive(1234, key);
-        txn.customRedo(message2, 1234, key);
+        mWriteHandler.redo(txn, message2, 1234, key);
+        mWriteHandler2.redo(txn, message3);
         txn.commit();
 
-        mDb = reopenTempDatabase(getClass(), mDb, mConfig);
+        reopen();
 
-        assertEquals(2, mHandler.mRedoMessages.size());
-        assertTrue(mHandler.mUndoMessages.isEmpty());
+        assertEquals(2, mRecoveryHandler.mRedoMessages.size());
+        assertTrue(mRecoveryHandler.mUndoMessages.isEmpty());
+        assertEquals(1, mRecoveryHandler2.mRedoMessages.size());
+        assertTrue(mRecoveryHandler2.mUndoMessages.isEmpty());
 
-        assertArrayEquals(message1, mHandler.mRedoMessages.get(0));
-        assertArrayEquals(message2, mHandler.mRedoMessages.get(1));
+        assertArrayEquals(message1, mRecoveryHandler.mRedoMessages.get(0));
+        assertArrayEquals(message2, mRecoveryHandler.mRedoMessages.get(1));
+        assertArrayEquals(message3, mRecoveryHandler2.mRedoMessages.get(0));
 
-        assertEquals(1234, mHandler.mRedoIndexId);
-        assertArrayEquals(key, mHandler.mRedoKey);
+        assertEquals(1234, mRecoveryHandler.mRedoIndexId);
+        assertArrayEquals(key, mRecoveryHandler.mRedoKey);
+    }
+
+    @Test
+    public void recoverNoHandlers() throws Exception {
+        Transaction txn = mDb.newTransaction();
+        mWriteHandler.redo(txn, "hello".getBytes());
+        txn.commit();
+
+        mConfig.customHandlers(null);
+        try {
+            reopen();
+        } catch (IllegalStateException e) {
+            // Not installed.
+            assertTrue(e.getMessage().indexOf("TestHandler") > 0);
+        }
     }
 
     @Test
@@ -205,15 +290,15 @@ public class CustomLogTest {
         Index ix = mDb.openIndex("test");
         ix.store(txn, "key".getBytes(), "value".getBytes());
 
-        txn.customUndo(message);
-        txn.customRedo(message, 0, null);
+        mWriteHandler.undo(txn, message);
+        mWriteHandler.redo(txn, message, 0, null);
         txn.commit();
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
-        assertEquals(1, mHandler.mRedoMessages.size());
+        assertEquals(1, mRecoveryHandler.mRedoMessages.size());
 
-        assertArrayEquals(message, mHandler.mRedoMessages.get(0));
+        assertArrayEquals(message, mRecoveryHandler.mRedoMessages.get(0));
 
         ix = mDb.openIndex("test");
         assertArrayEquals("value".getBytes(), ix.load(null, "key".getBytes()));
@@ -230,13 +315,13 @@ public class CustomLogTest {
         Index ix = mDb.openIndex("test");
         ix.store(txn, "key".getBytes(), "value".getBytes());
 
-        txn.customUndo(message);
-        txn.customRedo(message, 0, null);
+        mWriteHandler.undo(txn, message);
+        mWriteHandler.redo(txn, message, 0, null);
 
         mDb.checkpoint();
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
-        assertEquals(0, mHandler.mRedoMessages.size());
+        assertEquals(0, mRecoveryHandler.mRedoMessages.size());
 
         ix = mDb.openIndex("test");
         assertNull(ix.load(null, "key".getBytes()));
@@ -247,24 +332,20 @@ public class CustomLogTest {
         Transaction txn = mDb.newTransaction();
         txn.enter();
         byte[] message = "hello".getBytes();
-        txn.customRedo(message, 0, null);
+        mWriteHandler.redo(txn, message, 0, null);
         txn.commitAll();
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
-        assertEquals(1, mHandler.mRedoMessages.size());
-        assertArrayEquals(message, mHandler.mRedoMessages.get(0));
+        assertEquals(1, mRecoveryHandler.mRedoMessages.size());
+        assertArrayEquals(message, mRecoveryHandler.mRedoMessages.get(0));
     }
 
-    class Handler implements TransactionHandler {
+    class Handler implements CustomHandler {
         List<byte[]> mRedoMessages = new ArrayList<>();
         long mRedoIndexId;
         byte[] mRedoKey;
 
         List<byte[]> mUndoMessages = new ArrayList<>();
-
-        @Override
-        public void init(Database db) {
-        }
 
         @Override
         public void redo(Transaction txn, byte[] message) throws IOException {
@@ -281,7 +362,7 @@ public class CustomLogTest {
         }
 
         @Override
-        public void undo(byte[] message) throws IOException {
+        public void undo(Transaction txn, byte[] message) throws IOException {
             mUndoMessages.add(message);
         }
     }

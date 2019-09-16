@@ -269,16 +269,18 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnCustom(long txnId, byte[] message) {
-        mListener.notify(mType, "Redo %1$s: txnId=%2$d, message=%3$s",
-                         "txnCustom", txnId, valueStr(message));
+    public boolean txnCustom(long txnId, int handlerId, byte[] message) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d message=%4$s",
+                         "txnCustom", txnId, handlerId, valueStr(message));
         return true;
     }
 
     @Override
-    public boolean txnCustomLock(long txnId, byte[] message, long indexId, byte[] key) {
-        mListener.notify(mType, "Redo %1$s: txnId=%2$d, message=%3$s, key=%4$s",
-                         "txnCustomLock", txnId, valueStr(message), keyStr(key));
+    public boolean txnCustomLock(long txnId, int handlerId, byte[] message,
+                                 long indexId, byte[] key)
+    {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d message=%4$s, key=%5$s",
+                         "txnCustomLock", txnId, handlerId, valueStr(message), keyStr(key));
         return true;
     }
 

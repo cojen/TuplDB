@@ -93,9 +93,9 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.ev.SafeEventListener;
 
+import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
-import org.cojen.tupl.ext.TransactionHandler;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
@@ -164,8 +164,6 @@ public final class LocalDatabase extends CoreDatabase {
     private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
     final EventListener mEventListener;
-
-    final TransactionHandler mCustomTxnHandler;
 
     final RecoveryHandler mRecoveryHandler;
     private LHashTable.Obj<LocalTransaction> mRecoveredTransactions;
@@ -265,6 +263,11 @@ public final class LocalDatabase extends CoreDatabase {
     // Maps registered cursor ids to index ids.
     private BTree mCursorRegistry;
 
+    // Maps custom handler names to/from ids.
+    private BTree mCustomHandlerRegistry;
+    private final Map<String, CustomHandler> mCustomHandlers;
+    private final LHashTable.Obj<CustomHandler> mCustomHandlersById;
+
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
 
@@ -344,7 +347,14 @@ public final class LocalDatabase extends CoreDatabase {
         launcher.mEventListener = mEventListener = 
             SafeEventListener.makeSafe(launcher.mEventListener);
 
-        mCustomTxnHandler = launcher.mTxnHandler;
+        mCustomHandlers = launcher.mCustomHandlers;
+
+        if (mCustomHandlers == null || mCustomHandlers.isEmpty()) {
+            mCustomHandlersById = null;
+        } else {
+            mCustomHandlersById = new LHashTable.Obj<>(mCustomHandlers.size());
+        }
+
         mRecoveryHandler = launcher.mRecoveryHandler;
 
         mBaseFile = launcher.mBaseFile;
@@ -812,14 +822,18 @@ public final class LocalDatabase extends CoreDatabase {
                     cursorRegistry.forceClose();
                 }
 
-                if (mCustomTxnHandler != null) {
-                    // Although the handler shouldn't access the database yet, be safe and call
-                    // this method at the point that the database is mostly functional. All
-                    // other custom methods will be called soon as well.
-                    mCustomTxnHandler.init(this);
+                if (mCustomHandlers != null) {
+                    for (CustomHandler handler : mCustomHandlers.values()) {
+                        // Although the handlers shouldn't access the database yet, be safe and
+                        // call this method at the point that the database is mostly
+                        // functional. All other custom methods will be called soon as well.
+                        if (handler != mRecoveryHandler) {
+                            handler.init(this);
+                        }
+                    }
                 }
 
-                if (mRecoveryHandler != null && mRecoveryHandler != mCustomTxnHandler) {
+                if (mRecoveryHandler != null) {
                     mRecoveryHandler.init(this);
                 }
 
@@ -1287,12 +1301,22 @@ public final class LocalDatabase extends CoreDatabase {
      * Allows access to internal indexes which can use the redo log.
      */
     Index anyIndexById(Transaction txn, long id) throws IOException {
+        return BTree.isInternal(id) ? internalIndex(id) : indexById(txn, id);
+    }
+
+    /**
+     * @param id must be an internal index
+     */
+    private Index internalIndex(long id) throws IOException {
         if (id == BTree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
         } else if (id == BTree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash();
+        } else if (id == BTree.CUSTOM_HANDLER_REGISTRY_ID) {
+            return customHandlerRegistry();
+        } else {
+            throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
         }
-        return indexById(txn, id);
     }
 
     @Override
@@ -1845,7 +1869,7 @@ public final class LocalDatabase extends CoreDatabase {
             (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
-    private LocalTransaction newAlwaysRedoTransaction() {
+    LocalTransaction newAlwaysRedoTransaction() {
         return doNewTransaction(alwaysRedo(mDurabilityMode));
     }
 
@@ -1933,6 +1957,148 @@ public final class LocalDatabase extends CoreDatabase {
         for (TransactionContext context : mTxnContexts) {
             context.discardRedoWriter(expect);
         }
+    }
+
+    @Override
+    public CustomHandler customHandler(String name) throws IOException {
+        final byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
+        final byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, nameBytes);
+        final BTree handlerRegistry = customHandlerRegistry();
+
+        byte[] idBytes = handlerRegistry.load(null, nameKey);
+
+        if (idBytes == null) define: {
+            // Throws IllegalStateException if not found.
+            findCustomHandler(name);
+
+            // Assume first use, so define a new handler id.
+
+            LocalTransaction txn = newAlwaysRedoTransaction();
+            try (Cursor nameCursor = handlerRegistry.newCursor(txn)) {
+                nameCursor.find(nameKey);
+                idBytes = nameCursor.value();
+
+                if (idBytes != null) {
+                    // Found it on the second try.
+                    break define;
+                }
+
+                final View byId = handlerRegistry.viewPrefix(new byte[] {KEY_TYPE_INDEX_ID}, 1);
+
+                try (Cursor idCursor = byId.newCursor(txn)) {
+                    idCursor.autoload(false);
+                    while (true) {
+                        idCursor.last();
+                        int lastId = idCursor.key() == null ? 0 : decodeIntBE(idCursor.key(), 0);
+                        idBytes = new byte[4];
+                        encodeIntBE(idBytes, 0, lastId + 1);
+                        idCursor.findNearby(idBytes);
+                        if (idCursor.value() == null) {
+                            idCursor.store(nameBytes);
+                            break;
+                        }
+                    }
+                }
+
+                nameCursor.commit(idBytes);
+            } finally {
+                txn.reset();
+            }
+        }
+
+        return new CustomWriter(this, decodeIntBE(idBytes, 0));
+    }
+
+    /**
+     * @return the recovery handler instance
+     * @throws IllegalStateException if not installed
+     */
+    private CustomHandler findCustomHandler(String name) {
+        CustomHandler handler;
+        if (mCustomHandlers == null || (handler = mCustomHandlers.get(name)) == null) {
+            throw new IllegalStateException("No installed custom handler is named \"" + name + '"');
+        }
+        return handler;
+    }
+
+    /**
+     * @return the recovery handler instance
+     * @throws CorruptDatabaseException if name isn't found
+     * @throws IllegalStateException if not installed
+     */
+    CustomHandler findCustomHandler(int handlerId) throws IOException {
+        long scrambledId = scramble(handlerId);
+
+        if (mCustomHandlersById != null) {
+            CustomHandler handler;
+            synchronized (mCustomHandlersById) {
+                handler = mCustomHandlersById.getValue(scrambledId);
+            }
+            if (handler != null) {
+                return handler;
+            }
+        }
+
+        String name = findCustomHandlerName(handlerId);
+        if (name == null) {
+            throw new CorruptDatabaseException
+                ("Unable to find custom handler name for id " + handlerId);
+        }
+
+        CustomHandler handler = findCustomHandler(name);
+
+        synchronized (mCustomHandlers) {
+            mCustomHandlersById.insert(scrambledId).value = handler;
+        }
+
+        return handler;
+    }
+
+    /**
+     * @return null if not found
+     */
+    String findCustomHandlerName(int handlerId) throws IOException {
+        BTree registry = customHandlerRegistry();
+        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, handlerId);
+        byte[] nameBytes = registry.load(null, idKey);
+
+        if (nameBytes == null) {
+            // Possible race condition with creation of the handler entry by another
+            // transaction during recovery. Try again with an upgradable lock, which will wait
+            // for the entry lock.
+            Transaction txn = newNoRedoTransaction();
+            try {
+                nameBytes = registry.load(txn, idKey);
+            } finally {
+                txn.reset();
+            }
+        }
+
+        return nameBytes == null ? null : new String(nameBytes, StandardCharsets.UTF_8);
+    }
+
+    private BTree customHandlerRegistry() throws IOException {
+        BTree handlerRegistry = mCustomHandlerRegistry;
+        return handlerRegistry != null ? handlerRegistry : openCustomHandlerRegistry(IX_CREATE);
+    }
+
+    /**
+     * @param ixOption IX_FIND or IX_CREATE
+     */
+    private BTree openCustomHandlerRegistry(long ixOption) throws IOException {
+        BTree handlerRegistry;
+
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            if ((handlerRegistry = mCustomHandlerRegistry) == null) {
+                mCustomHandlerRegistry = handlerRegistry =
+                    openInternalTree(BTree.CUSTOM_HANDLER_REGISTRY_ID, ixOption);
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        return handlerRegistry;
     }
 
     @Override
@@ -2167,6 +2333,11 @@ public final class LocalDatabase extends CoreDatabase {
             if (cursorRegistry != null) {
                 // Count the cursors which are actively registering cursors. Sounds confusing.
                 cursorCount += cursorRegistry.countCursors();
+            }
+
+            BTree handlerRegistry = mCustomHandlerRegistry;
+            if (handlerRegistry != null) {
+                cursorCount += handlerRegistry.countCursors();
             }
 
             stats.openIndexes = openTreesCount;
@@ -2509,6 +2680,13 @@ public final class LocalDatabase extends CoreDatabase {
             }
         }
 
+        BTree handlerRegistry = openCustomHandlerRegistry(IX_FIND);
+        if (handlerRegistry != null) {
+            if (!visitor.apply(handlerRegistry)) {
+                return false;
+            }
+        }
+
         Cursor all = indexRegistryByName().newCursor(null);
         try {
             for (all.first(); all.key() != null; all.next()) {
@@ -2624,6 +2802,9 @@ public final class LocalDatabase extends CoreDatabase {
 
                         trees.add(mCursorRegistry);
                         mCursorRegistry = null;
+
+                        trees.add(mCustomHandlerRegistry);
+                        mCustomHandlerRegistry = null;
                     } finally {
                         if (lock != null) {
                             lock.releaseExclusive();
@@ -2942,6 +3123,9 @@ public final class LocalDatabase extends CoreDatabase {
         return cursorRegistry != null ? cursorRegistry : openCursorRegistry(IX_CREATE);
     }
 
+    /**
+     * @param ixOption IX_FIND or IX_CREATE
+     */
     private BTree openCursorRegistry(long ixOption) throws IOException {
         BTree cursorRegistry;
 
@@ -3517,6 +3701,13 @@ public final class LocalDatabase extends CoreDatabase {
         byte[] key = new byte[1 + payload.length];
         key[0] = type;
         arraycopy(payload, 0, key, 1, payload.length);
+        return key;
+    }
+
+    private static byte[] newKey(byte type, int payload) {
+        byte[] key = new byte[1 + 4];
+        key[0] = type;
+        encodeIntBE(key, 1, payload);
         return key;
     }
 
@@ -5214,6 +5405,9 @@ public final class LocalDatabase extends CoreDatabase {
         return trash != null ? trash : openFragmentedTrash(IX_CREATE);
     }
 
+    /**
+     * @param ixOption IX_FIND or IX_CREATE
+     */
     private BTree openFragmentedTrash(long ixOption) throws IOException {
         BTree trash;
 

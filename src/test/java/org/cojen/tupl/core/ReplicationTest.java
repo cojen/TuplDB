@@ -20,6 +20,7 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -29,7 +30,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.ext.TransactionHandler;
+import org.cojen.tupl.ext.CustomHandler;
 
 import static org.cojen.tupl.core.TestUtils.*;
 
@@ -59,18 +60,19 @@ public class ReplicationTest {
         DatabaseConfig config = new DatabaseConfig()
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
-            .customTransactionHandler(mLeaderHandler)
+            .customHandlers(Map.of("TestHandler", mLeaderHandler))
             .replicate(mLeaderMan);
 
         config = decorate(config);
 
         mLeader = newTempDatabase(getClass(), config);
 
-        config.customTransactionHandler(mReplicaHandler);
+        config.customHandlers(Map.of("TestHandler", mReplicaHandler));
         config.replicate(mReplicaMan);
         mReplica = newTempDatabase(getClass(), config);
 
         mLeaderMan.waitForLeadership();
+        mLeaderWriter = mLeader.customHandler("TestHandler");
     }
 
     @After
@@ -85,6 +87,7 @@ public class ReplicationTest {
     private SocketReplicationManager mReplicaMan, mLeaderMan;
     private Database mReplica, mLeader;
     private Handler mReplicaHandler, mLeaderHandler;
+    private CustomHandler mLeaderWriter;
 
     @Test
     public void hello() throws Exception {
@@ -506,7 +509,7 @@ public class ReplicationTest {
         // Send a custom message.
 
         Transaction ltxn = mLeader.newTransaction();
-        ltxn.customRedo("hello".getBytes(), 0, null);
+        mLeaderWriter.redo(ltxn, "hello".getBytes(), 0, null);
         ltxn.commit();
         fence();
 
@@ -515,7 +518,7 @@ public class ReplicationTest {
         // Again with stronger durability.
 
         ltxn = mLeader.newTransaction(DurabilityMode.SYNC);
-        ltxn.customRedo("hello!!!".getBytes(), 0, null);
+        mLeaderWriter.redo(ltxn, "hello!!!".getBytes(), 0, null);
         ltxn.commit();
         fence();
 
@@ -530,14 +533,14 @@ public class ReplicationTest {
         Transaction ltxn = mLeader.newTransaction();
 
         try {
-            ltxn.customRedo("hello".getBytes(), lix.getId(), "key".getBytes());
+            mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.getId(), "key".getBytes());
             fail();
         } catch (IllegalStateException e) {
             // Expected because lock isn't held.
         }
         
         ltxn.lockExclusive(lix.getId(), "key".getBytes());
-        ltxn.customRedo("hello".getBytes(), lix.getId(), "key".getBytes());
+        mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.getId(), "key".getBytes());
 
         ltxn.flush();
         fence();
@@ -1139,14 +1142,10 @@ public class ReplicationTest {
         mReplicaMan.waitForControl(pos, message);
     }
 
-    private static class Handler implements TransactionHandler {
+    private static class Handler implements CustomHandler {
         volatile byte[] mMessage;
         volatile long mIndexId;
         volatile byte[] mKey;
-
-        @Override
-        public void init(Database db) {
-        }
 
         @Override
         public void redo(Transaction txn, byte[] message) {
@@ -1161,7 +1160,7 @@ public class ReplicationTest {
         }
 
         @Override
-        public void undo(byte[] message) {
+        public void undo(Transaction txn, byte[] message) {
         }
     }
 }

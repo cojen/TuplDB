@@ -661,18 +661,5 @@ public class TransactionTest {
         }
 
         txn = mDb.newTransaction();
-
-        try {
-            txn.customRedo("hello".getBytes(), 0, null);
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
-        try {
-            txn.customUndo("hello".getBytes());
-            fail();
-        } catch (IllegalStateException e) {
-        }
-
     }
 }

@@ -246,9 +246,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
 </tr>
 <tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)">customTransactionHandler</a></span>&#8203;(<a href="ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a>&nbsp;handler)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customHandlers(java.util.Map)">customHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="colLast">
-<div class="block">Provide a handler for custom transactional operations.</div>
+<div class="block">Provide handlers for recovering custom transactional operations.</div>
 </td>
 </tr>
 <tr class="altColor" id="i10">
@@ -862,14 +862,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base
  content.</div>
 </li>
 </ul>
-<a id="customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)">
+<a id="customHandlers(java.util.Map)">
 <!--   -->
 </a>
 <ul class="blockList">
 <li class="blockList">
-<h4>customTransactionHandler</h4>
-<pre class="methodSignature">public&nbsp;<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;customTransactionHandler&#8203;(<a href="ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a>&nbsp;handler)</pre>
-<div class="block">Provide a handler for custom transactional operations.</div>
+<h4>customHandlers</h4>
+<pre class="methodSignature">public&nbsp;<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;customHandlers&#8203;(<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/12/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</pre>
+<div class="block">Provide handlers for recovering custom transactional operations. The name assigned to
+ each handler must be unique and never change.</div>
 </li>
 </ul>
 <a id="debugOpen(java.io.PrintStream,java.util.Map)">

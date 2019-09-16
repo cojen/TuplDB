@@ -759,17 +759,17 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the amount of cursors which are in a non-reset state.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#customRedo(byte%5B%5D,long,byte%5B%5D)">customRedo(byte[], long, byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#customHandler(java.lang.String)">customHandler(String)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Supply a message for a custom redo handler.</div>
+<div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#customTransactionHandler(org.cojen.tupl.ext.TransactionHandler)">customTransactionHandler(TransactionHandler)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">CustomHandler</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>
-<div class="block">Provide a handler for custom transactional operations.</div>
+<div class="block">Handler for custom transactional operations.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#customUndo(byte%5B%5D)">customUndo(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#customHandlers(java.util.Map)">customHandlers(Map&lt;String, CustomHandler&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
-<div class="block">Supply a message for a custom undo handler.</div>
+<div class="block">Provide handlers for recovering custom transactional operations.</div>
 </dd>
 </dl>
 <a id="I:D">
@@ -1728,11 +1728,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns an <a href="org.cojen.tupl/org/cojen/tupl/UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
  index names to identifiers.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></dt>
 <dd>
 <div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
 <dd>
 <div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </dd>
@@ -2980,13 +2980,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Handler for recovered transactions which were prepared, but aren't finished yet.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></dt>
 <dd>
-<div class="block">Called to apply an idempotent redo operation.</div>
+<div class="block">Called to write or apply an idempotent redo operation.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo(Transaction, byte[], long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo(Transaction, byte[], long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></dt>
 <dd>
-<div class="block">Called to apply an idempotent redo operation which locked an index key.</div>
+<div class="block">Called to write or apply an idempotent redo operation which locked an index key.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html#ref(long,int)">ref(long, int)</a></span> - Static method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>
@@ -3516,10 +3516,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns the amount of fully-established transactions which are in a non-reset
  state.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">TransactionHandler</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
-<dd>
-<div class="block">Handler for custom transactional operations.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#transactionsCreated()">transactionsCreated()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>
 <div class="block">Returns the total amount of fully-established transactions created over the life of
@@ -3664,9 +3660,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Rule which always attempts an upgrade, potentially causing a <a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl"><code>deadlock</code></a> if multiple transactions are making the same attempt.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html#undo(byte%5B%5D)">undo(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/TransactionHandler.html" title="interface in org.cojen.tupl.ext">TransactionHandler</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html#undo(org.cojen.tupl.Transaction,byte%5B%5D)">undo(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></dt>
 <dd>
-<div class="block">Called to apply an idempotent undo operation.</div>
+<div class="block">Called to write or apply an idempotent undo operation.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#UNLATCHED">UNLATCHED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>

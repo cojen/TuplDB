@@ -63,7 +63,8 @@ class _BTree extends Tree implements View, Index {
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
         CURSOR_REGISTRY_ID = 2,
-        FRAGMENTED_TRASH_ID = 3;
+        FRAGMENTED_TRASH_ID = 3,
+        CUSTOM_HANDLER_REGISTRY_ID = 4;
 
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;

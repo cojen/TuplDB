@@ -38,8 +38,6 @@ import org.cojen.tupl.Transaction;
 import static org.cojen.tupl.core.DirectPageOps.*;
 import static org.cojen.tupl.core.Utils.*;
 
-import org.cojen.tupl.ext.TransactionHandler;
-
 /**
  * Specialized stack used to record compensating actions for rolling back transactions. _UndoLog
  * instances are created on a per-transaction basis -- they're not shared.
@@ -135,7 +133,7 @@ final class _UndoLog implements _DatabaseAccess {
     // Payload is a key for ValueAccessor operations.
     static final byte OP_ACTIVE_KEY = (byte) 23;
 
-    // Payload is custom message.
+    // Payload is custom handler id and message.
     static final byte OP_CUSTOM = (byte) 24;
 
     private static final int LK_ADJUST = 5;
@@ -390,8 +388,11 @@ final class _UndoLog implements _DatabaseAccess {
     /**
      * Caller must hold db commit lock.
      */
-    void pushCustom(byte[] message) throws IOException {
-        doPush(OP_CUSTOM, message);
+    void pushCustom(int handlerId, byte[] message) throws IOException {
+        byte[] payload = new byte[calcUnsignedVarIntLength(handlerId) + message.length];
+        int pos = encodeUnsignedVarInt(payload, 0, handlerId);
+        arraycopy(message, 0, payload, pos, message.length);
+        doPush(OP_CUSTOM, payload);
     }
 
     /**
@@ -1007,11 +1008,11 @@ final class _UndoLog implements _DatabaseAccess {
         }
 
         case OP_CUSTOM:
-            TransactionHandler handler = mDatabase.mCustomTxnHandler;
-            if (handler == null) {
-                throw new DatabaseException("Custom transaction handler is not installed");
-            }
-            handler.undo(entry);
+            int handlerId = decodeUnsignedVarInt(entry, 0);
+            int messageLoc = calcUnsignedVarIntLength(handlerId);
+            byte[] message = new byte[entry.length - messageLoc];
+            arraycopy(entry, messageLoc, message, 0, message.length);
+            mDatabase.findCustomHandler(handlerId).undo(null, message);
             break;
 
         case OP_ACTIVE_KEY:
@@ -1719,7 +1720,11 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_CUSTOM:
             opStr = "CUSTOM";
-            payloadStr = "entry=0x" + toHex(entry);
+            int handlerId = decodeUnsignedVarInt(entry, 0);
+            int messageLoc = calcUnsignedVarIntLength(handlerId);
+            String handlerName = mDatabase.findCustomHandlerName(handlerId);
+            payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName +
+                ", message=0x" + toHex(entry, messageLoc, entry.length - messageLoc);
             break;
 
         case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
