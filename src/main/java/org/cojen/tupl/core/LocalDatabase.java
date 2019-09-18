@@ -4860,7 +4860,7 @@ public final class LocalDatabase extends CoreDatabase {
                                 Node node = allocDirtyFragmentNode();
                                 try {
                                     encodeInt48LE(newValue, poffset, node.id());
-                                    /*P*/ byte[] page = node.mPage;
+                                    var page = node.mPage;
                                     if (pageCount > 1) {
                                         p_copyFromArray(value, voffset, page, 0, pageSize);
                                     } else {
@@ -4981,7 +4981,7 @@ public final class LocalDatabase extends CoreDatabase {
                                           byte[] value, int voffset, long vlength)
         throws IOException
     {
-        /*P*/ byte[] page = inode.mPage;
+        var page = inode.mPage;
         level--;
         long levelCap = levelCap(level);
 
@@ -4996,7 +4996,7 @@ public final class LocalDatabase extends CoreDatabase {
 
                 int len = (int) Math.min(levelCap, vlength);
                 if (level <= 0) {
-                    /*P*/ byte[] childPage = childNode.mPage;
+                    var childPage = childNode.mPage;
                     p_copyFromArray(value, voffset, childPage, 0, len);
                     // Zero fill the rest, making it easier to extend later.
                     p_clear(childPage, len, pageSize(childPage));
@@ -5148,7 +5148,7 @@ public final class LocalDatabase extends CoreDatabase {
                     Node node = nodeMapLoadFragment(nodeId);
                     pagesRead++;
                     try {
-                        /*P*/ byte[] page = node.mPage;
+                        var page = node.mPage;
                         pLen = Math.min((int) vLen, pageSize(page));
                         if (value != null) {
                             p_copyToArray(page, 0, value, vOff, pLen);
@@ -5192,7 +5192,7 @@ public final class LocalDatabase extends CoreDatabase {
         try {
             long pagesRead = 0;
 
-            /*P*/ byte[] page = inode.mPage;
+            var page = inode.mPage;
             level--;
             long levelCap = levelCap(level);
 
@@ -5297,7 +5297,7 @@ public final class LocalDatabase extends CoreDatabase {
     private void deleteMultilevelFragments(int level, Node inode, long vlength)
         throws IOException
     {
-        /*P*/ byte[] page = inode.mPage;
+        var page = inode.mPage;
         level--;
         long levelCap = levelCap(level);
 
@@ -5488,7 +5488,7 @@ public final class LocalDatabase extends CoreDatabase {
 
             final Node root = mRegistry.mRoot;
 
-            /*P*/ byte[] header = mCommitHeader;
+            var header = mCommitHeader;
 
             long nowNanos = System.nanoTime();
 

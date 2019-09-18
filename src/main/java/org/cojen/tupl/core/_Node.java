@@ -346,7 +346,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         }
         /*P*/ // ]
 
-        long page = mPage;
+        var page = mPage;
         if (page != p_closedTreePage()) {
             p_delete(page);
             closeRoot();
@@ -747,7 +747,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     private void readFields() throws IllegalStateException {
-        long page = mPage;
+        var page = mPage;
 
         byte type = p_byteGet(page, 0);
 
@@ -781,7 +781,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * Caller must hold any latch, which is not released, even if an exception is thrown.
      */
     void write(_PageDb db) throws WriteFailureException {
-        long page = prepareWrite();
+        var page = prepareWrite();
         try {
             db.writePage(id(), page);
         } catch (IOException e) {
@@ -794,7 +794,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new AssertionError("Cannot write partially split node");
         }
 
-        long page = mPage;
+        var page = mPage;
 
         /*P*/ // [
         // if (type() != TYPE_FRAGMENT) {
@@ -858,8 +858,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     // Try to move to a secondary cache.
                     pageDb.cachePage(id, mPage);
                 } else {
-                    long page = prepareWrite();
-                    long newPage = pageDb.evictPage(id, page);
+                    var page = prepareWrite();
+                    var newPage = pageDb.evictPage(id, page);
                     if (newPage != page) {
                         mPage = newPage;
                     }
@@ -1236,7 +1236,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param highPos 2-based search vector position (inclusive)
      */
     int countNonGhostKeys(int lowPos, int highPos) {
-        final long page = mPage;
+        final var page = mPage;
 
         int count = 0;
         for (int i = lowPos; i <= highPos; i += 2) {
@@ -1276,7 +1276,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return 2-based insertion pos, which is negative if key not found
      */
     int binarySearch(byte[] key) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         final int keyLen = key.length;
         final int startPos = searchVecStart();
         int lowPos = startPos;
@@ -1373,7 +1373,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             midPos = highPos;
         }
 
-        final long page = mPage;
+        final var page = mPage;
         final int keyLen = key.length;
 
         int lowMatch = 0;
@@ -1468,7 +1468,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     int compareKey(int pos, byte[] rightKey) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         int keyLen = p_byteGet(page, loc++);
         if (keyLen >= 0) {
@@ -1492,8 +1492,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param rightLoc absolute location of right key
      */
     static int compareKeys(_Node left, int leftLoc, _Node right, int rightLoc) throws IOException {
-        final long leftPage = left.mPage;
-        final long rightPage = right.mPage;
+        final var leftPage = left.mPage;
+        final var rightPage = right.mPage;
 
         int leftLen = p_byteGet(leftPage, leftLoc++);
         int rightLen = p_byteGet(rightPage, rightLoc++);
@@ -1564,7 +1564,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveKeyStats(int pos, long[] stats) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
 
         int keyLen = p_byteGet(page, loc++);
@@ -1587,7 +1587,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     byte[] retrieveKey(int pos) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         return retrieveKeyAtLoc(this, page, p_ushortGetLE(page, searchVecStart() + pos));
     }
 
@@ -1654,7 +1654,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param limitMode positive for LE behavior, negative for GE behavior
      */
     byte[] retrieveKeyCmp(int pos, byte[] limitKey, int limitMode) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         int keyLen = p_byteGet(page, loc++);
         if (keyLen >= 0) {
@@ -1767,7 +1767,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @see Utils#midKey
      */
     private byte[] midKey(int lowPos, byte[] highKey) throws IOException {
-        final long lowPage = mPage;
+        final var lowPage = mPage;
         int lowLoc = p_ushortGetLE(lowPage, searchVecStart() + lowPos);
         int lowKeyLen = p_byteGet(lowPage, lowLoc);
         if (lowKeyLen < 0) {
@@ -1784,7 +1784,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @see Utils#midKey
      */
     private byte[] midKey(byte[] lowKey, int highPos) throws IOException {
-        final long highPage = mPage;
+        final var highPage = mPage;
         int highLoc = p_ushortGetLE(highPage, searchVecStart() + highPos);
         int highKeyLen = p_byteGet(highPage, highLoc);
         if (highKeyLen < 0) {
@@ -1801,7 +1801,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @see Utils#midKey
      */
     byte[] midKey(int lowPos, _Node highNode, int highPos) throws IOException {
-        final long lowPage = mPage;
+        final var lowPage = mPage;
         int lowLoc = p_ushortGetLE(lowPage, searchVecStart() + lowPos);
         int lowKeyLen = p_byteGet(lowPage, lowLoc);
         if (lowKeyLen < 0) {
@@ -1812,7 +1812,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         lowLoc++;
         lowKeyLen++;
 
-        final long highPage = highNode.mPage;
+        final var highPage = highNode.mPage;
         int highLoc = p_ushortGetLE(highPage, highNode.searchVecStart() + highPos);
         int highKeyLen = p_byteGet(highPage, highLoc);
         if (highKeyLen < 0) {
@@ -1829,7 +1829,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return Cursor.NOT_LOADED if value exists, null if ghost
      */
     byte[] hasLeafValue(int pos) {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
         return p_byteGet(page, loc) == -1 ? null : Cursor.NOT_LOADED;
@@ -1840,7 +1840,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param stats {@literal [0]: full length, [1]: number of pages (>0 if fragmented)}
      */
     void retrieveLeafValueStats(int pos, long[] stats) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
 
@@ -1876,7 +1876,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return null if ghost
      */
     byte[] retrieveLeafValue(int pos) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
         return retrieveLeafValueAtLoc(this, page, loc);
@@ -1921,7 +1921,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param cursor key and value are updated
      */
     void retrieveLeafEntry(int pos, _BTreeCursor cursor) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         int header = p_byteGet(page, loc++);
 
@@ -1958,7 +1958,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     boolean isFragmentedLeafValue(int pos) {
-        final long page = mPage;
+        final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
         int header = p_byteGet(page, loc);
@@ -1982,7 +1982,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         // Allocate early, in case out of memory.
         _GhostFrame frame = new _GhostFrame();
 
-        final long page = mPage;
+        final var page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
         int loc = entryLoc;
 
@@ -2045,7 +2045,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     void txnPreUpdateLeafEntry(_LocalTransaction txn, _BTree tree, byte[] key, int pos)
         throws IOException
     {
-        final long page = mPage;
+        final var page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
         int loc = entryLoc;
 
@@ -2319,7 +2319,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
     void cleanupFragments(Throwable cause, byte[] fragmented) {
         if (fragmented != null) {
-            long copy = p_transfer(fragmented);
+            var copy = p_transfer(fragmented);
             try {
                 getDatabase().deleteFragments(copy, 0, fragmented.length);
             } catch (Throwable e) {
@@ -2344,7 +2344,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int leftSpace = searchVecStart - leftSegTail();
         int rightSpace = rightSegTail() - searchVecEnd - 1;
 
-        final long page = mPage;
+        final var page = mPage;
 
         int entryLoc;
         alloc: {
@@ -2484,7 +2484,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     private int tryRebalanceLeafLeft(_BTree tree, _CursorFrame parentFrame,
                                      int pos, int insertLen, int minAmount)
     {
-        final long rightPage = mPage;
+        final var rightPage = mPage;
 
         int moveAmount = 0;
         final int lastSearchVecLoc;
@@ -2675,7 +2675,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     private int tryRebalanceLeafRight(_BTree tree, _CursorFrame parentFrame,
                                       int pos, int insertLen, int minAmount)
     {
-        final long leftPage = mPage;
+        final var leftPage = mPage;
 
         int moveAmount = 0;
         final int firstSearchVecLoc;
@@ -2990,7 +2990,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int rightSpace = rightSegTail() - searchVecEnd
             - ((searchVecEnd - searchVecStart) << 2) - 17;
 
-        long page = mPage;
+        var page = mPage;
 
         int entryLoc;
         alloc: {
@@ -3188,8 +3188,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
             return 0;
         }
 
-        final long parentPage = parent.mPage;
-        final long rightPage = mPage;
+        final var parentPage = parent.mPage;
+        final var rightPage = mPage;
 
         int rightShrink = 0;
         int leftGrowth = 0;
@@ -3376,8 +3376,8 @@ final class _Node extends Clutch implements _DatabaseAccess {
             return false;
         }
 
-        final long parentPage = parent.mPage;
-        final long leftPage = mPage;
+        final var parentPage = parent.mPage;
+        final var leftPage = mPage;
 
         int leftShrink = 0;
         int rightGrowth = 0;
@@ -3584,7 +3584,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     void updateLeafValue(_CursorFrame frame, _BTree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
-        long page = mPage;
+        var page = mPage;
         final int searchVecStart = searchVecStart();
 
         final int start;
@@ -3872,7 +3872,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
                     break makeRoom;
                 }
 
-                long page = mPage;
+                var page = mPage;
                 p_copy(page, searchVecStart, page, newSearchVecStart, vecLen + childIdsLen);
 
                 pos += newSearchVecStart;
@@ -3911,7 +3911,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param pos position as provided by binarySearch; must be positive
      */
     void deleteLeafEntry(int pos) throws IOException {
-        long page = mPage;
+        var page = mPage;
         int startLoc = p_ushortGetLE(page, searchVecStart() + pos);
         int endLoc = doDeleteLeafEntry(page, startLoc);
         finishDeleteLeafEntry(pos, startLoc, endLoc);
@@ -4005,7 +4005,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * Finish the delete by only adjusting the search vector.
      */
     private void doFinishDeleteLeafEntry(int pos) {
-        long page = mPage;
+        var page = mPage;
         int searchVecStart = searchVecStart();
         int searchVecEnd = searchVecEnd();
 
@@ -4058,7 +4058,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     {
         tree.mDatabase.prepareToDelete(rightNode);
 
-        final long rightPage = rightNode.mPage;
+        final var rightPage = rightNode.mPage;
         final int searchVecEnd = rightNode.searchVecEnd();
         final int leftEndPos = leftNode.highestLeafPos() + 2;
 
@@ -4112,7 +4112,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             (null, result, tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
 
         // Copy child id associated with parent key.
-        final long rightPage = rightNode.mPage;
+        final var rightPage = rightNode.mPage;
         int rightChildIdsLoc = rightNode.searchVecEnd() + 2;
         p_copy(rightPage, rightChildIdsLoc, result.mPage, result.mNewChildLoc, 8);
         rightChildIdsLoc += 8;
@@ -4199,7 +4199,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param childPos two-based position
      */
     private void deleteChildRef(int childPos) {
-        final long page = mPage;
+        final var page = mPage;
         int keyPos = childPos == 0 ? 0 : (childPos - 2);
         int searchVecStart = searchVecStart();
 
@@ -4260,7 +4260,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
     }
 
     private void doRootDelete(_BTree tree, _Node child, _Node stub) throws IOException {
-        long oldRootPage = mPage;
+        var oldRootPage = mPage;
 
         /*P*/ // [
         // mPage = child.mPage;
@@ -4481,7 +4481,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
     private void copyToLeafEntry(byte[] okey, byte[] akey, int vfrag, byte[] value, int entryLoc) {
-        final long page = mPage;
+        final var page = mPage;
         int vloc = okey == akey ? encodeNormalKey(akey, page, entryLoc)
             : encodeFragmentedKey(akey, page, entryLoc);
         copyToLeafValue(page, vfrag, value, vloc);
@@ -4530,7 +4530,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @return location for newly allocated entry, already pointed to by search vector
      */
     private int compactLeaf(int encodedLen, int pos, boolean forInsert) {
-        long page = mPage;
+        var page = mPage;
 
         int searchVecLoc = searchVecStart();
         // Size of search vector, possibly with new entry.
@@ -4553,7 +4553,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        long dest = mGroup.acquireSparePage();
+        var dest = mGroup.acquireSparePage();
 
         /*P*/ // [|
         p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
@@ -4636,7 +4636,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             throw new AssertionError("Node is already split");
         }
 
-        long page = mPage;
+        var page = mPage;
 
         if (page == p_closedTreePage()) {
             // _Node is a closed tree root.
@@ -4646,7 +4646,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         _Node newNode = tree.mDatabase.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
-        long newPage = newNode.mPage;
+        var newPage = newNode.mPage;
 
         /*P*/ // [
         // newNode.garbage(0);
@@ -4673,7 +4673,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         newNode.searchVecStart(newSearchVecStart);
         newNode.searchVecEnd(newSearchVecStart);
 
-        final long spage = snode.mPage;
+        final var spage = snode.mPage;
         final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
         p_copy(spage, sloc, newPage, TN_HEADER_SIZE, encodedLen);
         p_shortPutLE(newPage, pageSize(newPage) - 2, TN_HEADER_SIZE);
@@ -4706,7 +4706,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         // attempt to properly center the new search vector. Instead, minimize
         // fragmentation to ensure that split is successful.
 
-        long page = mPage;
+        var page = mPage;
 
         if (page == p_closedTreePage()) {
             // _Node is a closed tree root.
@@ -4716,7 +4716,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         _Node newNode = tree.mDatabase.allocDirtyNode(_NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
 
-        long newPage = newNode.mPage;
+        var newPage = newNode.mPage;
 
         /*P*/ // [
         // newNode.garbage(0);
@@ -5209,7 +5209,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         db.nodeMapPut(newNode);
 
-        final long newPage = newNode.mPage;
+        final var newPage = newNode.mPage;
 
         /*P*/ // [
         // newNode.garbage(0);
@@ -5217,7 +5217,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         p_intPutLE(newPage, 0, 0); // set type (fixed later), reserved byte, and garbage
         /*P*/ // ]
 
-        final long page = mPage;
+        final var page = mPage;
 
         final int searchVecStart = searchVecStart();
         final int searchVecEnd = searchVecEnd();
@@ -5571,7 +5571,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * MIN_VALUE if updating
      */
     private void compactInternal(InResult result, int encodedLen, int keyPos, int childPos) {
-        long page = mPage;
+        var page = mPage;
 
         int searchVecLoc = searchVecStart();
         keyPos += searchVecLoc;
@@ -5592,7 +5592,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         int newLoc = 0;
         final int searchVecEnd = searchVecEnd();
 
-        long dest = mGroup.acquireSparePage();
+        var dest = mGroup.acquireSparePage();
 
         /*P*/ // [|
         p_intPutLE(dest, 0, type() & 0xff); // set type, reserved byte, and garbage
@@ -5742,7 +5742,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
             try {
                 while (true) {
-                    long page = node.mPage;
+                    var page = node.mPage;
                     int tail = node.leftSegTail();
 
                     int start;
@@ -5803,7 +5803,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
 
         // Now finish the sort, reversing the heap order.
 
-        final long page = mPage;
+        final var page = mPage;
         final int start = searchVecStart();
 
         int lastHighLoc = -1;
@@ -5831,7 +5831,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * @param halfPos {@literal (endPos >>> 1) & ~1}
      */
     private void siftDownLeaf(int pos, int endPos, int halfPos) throws IOException {
-        final long page = mPage;
+        final var page = mPage;
         final int start = searchVecStart();
         int loc = p_ushortGetLE(page, start + pos);
 
@@ -5909,7 +5909,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
      * Deletes the first entry, and leaves the garbage field alone.
      */
     void deleteFirstSortLeafEntry() throws IOException {
-        long page = mPage;
+        var page = mPage;
         int start = searchVecStart();
         doDeleteLeafEntry(page, p_ushortGetLE(page, start));
         searchVecStart(start + 2);
@@ -6075,7 +6075,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
             return verifyFailed(level, observer, "Not a tree node: " + type);
         }
 
-        final long page = mPage;
+        final var page = mPage;
 
         if (!fix) {
             if (leftSegTail() < TN_HEADER_SIZE) {

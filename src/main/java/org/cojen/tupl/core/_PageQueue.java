@@ -319,7 +319,7 @@ final class _PageQueue implements IntegerRef {
 
             mRemovePageCount--;
 
-            final long head = mRemoveHead;
+            final var head = mRemoveHead;
             if (mRemoveHeadOffset < pageSize(head)) {
                 // Pass this as an IntegerRef to mRemoveHeadOffset.
                 long delta = p_ulongGetVar(head, this);
@@ -372,7 +372,7 @@ final class _PageQueue implements IntegerRef {
         if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
-        long head = mRemoveHead;
+        var head = mRemoveHead;
         mManager.pageArray().readPage(id, head);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
@@ -452,7 +452,7 @@ final class _PageQueue implements IntegerRef {
             long newTailId = mManager.allocPage(mAllocMode);
             long firstPageId = appendHeap.remove();
 
-            long tailBuf = mAppendTail;
+            var tailBuf = mAppendTail;
             p_longPutBE(tailBuf, I_NEXT_NODE_ID, newTailId);
             p_longPutBE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
 
@@ -587,7 +587,7 @@ final class _PageQueue implements IntegerRef {
 
         if (nodeId != 0) {
             PageArray pa = mManager.pageArray();
-            long node = p_clonePage(mRemoveHead, pa.directPageSize());
+            var node = p_clonePage(mRemoveHead, pa.directPageSize());
             try {
                 long pageId = mRemoveHeadFirstPageId;
                 IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();

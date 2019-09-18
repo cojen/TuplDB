@@ -4453,7 +4453,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             _Node tnode = notSplitDirty(tleaf);
 
             try {
-                final long spage = source.mPage;
+                final var spage = source.mPage;
                 final int sloc = p_ushortGetLE(spage, source.searchVecStart());
                 final int encodedLen = _Node.leafEntryLengthAtLoc(spage, sloc);
 
@@ -4512,7 +4512,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 final int spos = sleaf.mNodePos;
 
                 try {
-                    final long spage = snode.mPage;
+                    final var spage = snode.mPage;
                     final int sloc = p_ushortGetLE(spage, snode.searchVecStart() + spos);
                     final int encodedLen = _Node.leafEntryLengthAtLoc(spage, sloc);
 
@@ -5610,7 +5610,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             rightAvail = nodeAvail;
         }
 
-        long parentPage = parentNode.mPage;
+        var parentPage = parentNode.mPage;
         int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.searchVecStart() + leftPos);
         int parentEntryLen = _Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen

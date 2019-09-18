@@ -137,7 +137,7 @@ final class _FragmentedTrash {
     static void remove(_BTree trash, long txnId, _BTree index, byte[] undoEntry) throws IOException {
         // Extract the index and trash keys.
 
-        long undo = p_transfer(undoEntry);
+        var undo = p_transfer(undoEntry);
 
         byte[] indexKey, trashKey;
         try {
@@ -236,7 +236,7 @@ final class _FragmentedTrash {
         if (value == null) {
             return false;
         } else {
-            long fragmented = p_transfer(value);
+            var fragmented = p_transfer(value);
             try {
                 db.deleteFragments(fragmented, 0, value.length);
                 cursor.store(null);

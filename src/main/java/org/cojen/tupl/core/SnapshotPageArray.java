@@ -443,7 +443,7 @@ final class SnapshotPageArray extends PageArray {
 
             final byte[] pageBufferArray = new byte[pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
-            final /*P*/ byte[] pageBuffer = p_transferPage(pageBufferArray, directPageSize());
+            final var pageBuffer = p_transferPage(pageBufferArray, directPageSize());
 
             final LocalDatabase cache = mNodeCache;
             final long count = mSnapshotPageCount;
@@ -555,7 +555,7 @@ final class SnapshotPageArray extends PageArray {
                     try {
                         byte[] bufferArray = mCaptureBufferArrays[slot];
                         if (bufferArray != null) {
-                            /*P*/ byte[] buffer = mCaptureBuffers[slot];
+                            var buffer = mCaptureBuffers[slot];
                             mRawPageArray.readPage(index, buffer);
                             c.commit(p_copyIfNotArray(buffer, bufferArray));
                         }

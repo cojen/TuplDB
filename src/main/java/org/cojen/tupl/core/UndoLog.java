@@ -223,7 +223,7 @@ final class UndoLog implements DatabaseAccess {
             int pos = mBufferPos;
             int size = buffer.length - pos;
             mNode = node = allocUnevictableNode(0);
-            /*P*/ byte[] page = node.mPage;
+            var page = node.mPage;
             int newPos = pageSize(page) - size;
             p_copyFromArray(buffer, pos, page, newPos, size);
             // Set pointer to top entry.
@@ -324,7 +324,7 @@ final class UndoLog implements DatabaseAccess {
         if ((payload[off] & 0xc0) == 0xc0) {
             // Key is fragmented and cannot be stored as-is, so expand it fully and switch to
             // using the "LK" op variant.
-            /*P*/ byte[] copy = p_transfer(payload);
+            var copy = p_transfer(payload);
             try {
                 payload = Node.expandKeyAtLoc(this, copy, off, len, op != OP_UNDELETE_FRAGMENTED);
             } finally {
@@ -624,7 +624,7 @@ final class UndoLog implements DatabaseAccess {
                     } else {
                         // Required capacity is large, so just use a node.
                         mNode = node = allocUnevictableNode(0);
-                        /*P*/ byte[] page = node.mPage;
+                        var page = node.mPage;
                         int newPos = pageSize(page) - size;
                         p_copyFromArray(buffer, pos, page, newPos, size);
                         // Set pointer to top entry.
@@ -651,7 +651,7 @@ final class UndoLog implements DatabaseAccess {
         int available = pos - HEADER_SIZE;
         if (available >= encodedLen) {
             pos -= encodedLen;
-            /*P*/ byte[] page = node.mPage;
+            var page = node.mPage;
             p_bytePut(page, pos, op);
             if (op >= PAYLOAD_OP) {
                 int payloadPos = p_uintPutVar(page, pos + 1, pLen + len) + pLen;
@@ -671,7 +671,7 @@ final class UndoLog implements DatabaseAccess {
             pos -= amt;
             available -= amt;
             remaining -= amt;
-            /*P*/ byte[] page = node.mPage;
+            var page = node.mPage;
             p_copyFromArray(payload, off + remaining, page, pos, amt);
 
             if (remaining <= 0 && available >= (encodedLen - len)) {
@@ -1056,7 +1056,7 @@ final class UndoLog implements DatabaseAccess {
 
     private byte[] decodeNodeKey(byte[] entry) throws IOException {
         byte[] key;
-        /*P*/ byte[] pentry = p_transfer(entry);
+        var pentry = p_transfer(entry);
         try {
             key = Node.retrieveKeyAtLoc(this, pentry, 0);
         } finally {
@@ -1067,7 +1067,7 @@ final class UndoLog implements DatabaseAccess {
 
     private byte[][] decodeNodeKeyValuePair(byte[] entry) throws IOException {
         byte[][] pair;
-        /*P*/ byte[] pentry = p_transfer(entry);
+        var pentry = p_transfer(entry);
         try {
             pair = Node.retrieveKeyValueAtLoc(this, pentry, 0);
         } finally {
@@ -1120,7 +1120,7 @@ final class UndoLog implements DatabaseAccess {
 
         node.acquireExclusive();
         while (true) {
-            /*P*/ byte[] page = node.mPage;
+            var page = node.mPage;
             if (mNodeTopPos < pageSize(page)) {
                 byte op = p_byteGet(page, mNodeTopPos);
                 node.releaseExclusive();

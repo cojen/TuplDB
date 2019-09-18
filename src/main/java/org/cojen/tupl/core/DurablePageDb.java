@@ -216,7 +216,7 @@ final class DurablePageDb extends PageDb {
                 mCommitNumber = -1;
 
                 // Commit twice to ensure both headers have valid data.
-                /*P*/ byte[] header = p_callocPage(mPageArray.directPageSize());
+                var header = p_callocPage(mPageArray.directPageSize());
                 try {
                     mCommitLock.acquireExclusive();
                     try {
@@ -237,8 +237,8 @@ final class DurablePageDb extends PageDb {
                 // header sync completed. Pages cannot be safely recycled without this.
                 mPageArray.sync(false);
 
-                /*P*/ byte[] header0 = p_null();
-                /*P*/ byte[] header1 = p_null();
+                var header0 = p_null();
+                var header1 = p_null();
 
                 try {
                     final /*P*/ byte[] header;
@@ -705,7 +705,7 @@ final class DurablePageDb extends PageDb {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
-            /*P*/ byte[] header = p_allocPage(directPageSize());
+            var header = p_allocPage(directPageSize());
             try {
                 mPageArray.readPage(mCommitNumber & 1, header, 0, MINIMUM_PAGE_SIZE);
                 pageCount = PageManager.readTotalPageCount(header, I_MANAGER_HEADER);
@@ -839,7 +839,7 @@ final class DurablePageDb extends PageDb {
             }
         }
 
-        /*P*/ byte[] bufferPage = p_transferPage(buffer, pa.directPageSize());
+        var bufferPage = p_transferPage(buffer, pa.directPageSize());
 
         try {
             // Write header and ensure that the incomplete restore state is persisted.
@@ -956,7 +956,7 @@ final class DurablePageDb extends PageDb {
     }
 
     private /*P*/ byte[] readHeader(int id) throws IOException {
-        /*P*/ byte[] header = p_allocPage(directPageSize());
+        var header = p_allocPage(directPageSize());
 
         try {
             try {

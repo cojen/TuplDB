@@ -62,7 +62,7 @@ final class _BTreeValue {
             return -2;
         }
 
-        final long page = node.mPage;
+        final var page = node.mPage;
         int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
         // Skip the key.
         loc += _Node.keyLengthAtLoc(page, loc);
@@ -207,7 +207,7 @@ final class _BTreeValue {
                 }
             }
 
-            long page = node.mPage;
+            var page = node.mPage;
             int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
 
             final int kHeaderLoc = loc;
@@ -733,7 +733,7 @@ final class _BTreeValue {
                                 if (db.markFragmentDirty(fNode)) {
                                     p_int48PutLE(page, loc, fNode.id());
                                 }
-                                long fNodePage = fNode.mPage;
+                                var fNodePage = fNode.mPage;
                                 if (txn != null) {
                                     txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                     pos, fNodePage, fNodeOff, amt);
@@ -907,7 +907,7 @@ final class _BTreeValue {
                             }
 
                             for (_Node upper : newNodes) {
-                                long upage = upper.mPage;
+                                var upage = upper.mPage;
                                 p_int48PutLE(upage, 0, inode.id());
                                 inode.releaseExclusive();
                                 // Zero-fill the rest.
@@ -993,7 +993,7 @@ final class _BTreeValue {
                                 p_int48PutLE(page, loc, fNode.id());
 
                                 // Now write to the new page, zero-filling the gaps.
-                                long fNodePage = fNode.mPage;
+                                var fNodePage = fNode.mPage;
                                 p_clear(fNodePage, 0, fNodeOff);
                                 p_copyFromArray(b, bOff, fNodePage, fNodeOff, amt);
                                 p_clear(fNodePage, fNodeOff + amt, pageSize);
@@ -1058,7 +1058,7 @@ final class _BTreeValue {
         _LocalDatabase db = inode.getDatabase();
 
         start: while (true) {
-            long page = inode.mPage;
+            var page = inode.mPage;
             level--;
             long levelCap = db.levelCap(level);
 
@@ -1170,7 +1170,7 @@ final class _BTreeValue {
         _LocalDatabase db = inode.getDatabase();
 
         start: while (true) {
-            long page = inode.mPage;
+            var page = inode.mPage;
             level--;
             long levelCap = db.levelCap(level);
 
@@ -1306,7 +1306,7 @@ final class _BTreeValue {
     {
         _LocalDatabase db = inode.getDatabase();
 
-        long page = inode.mPage;
+        var page = inode.mPage;
         level--;
         long levelCap = db.levelCap(level);
 
@@ -1357,7 +1357,7 @@ final class _BTreeValue {
                             p_int48PutLE(page, poffset, childNode.id());
                         }
                         if (level <= 0) {
-                            long childPage = childNode.mPage;
+                            var childPage = childNode.mPage;
                             if (txn != null) {
                                 txn.pushUnwrite(cursor.mTree.mId, cursor.mKey,
                                                 pos, childPage, (int) ppos, (int) len);
@@ -1482,7 +1482,7 @@ final class _BTreeValue {
         try {
             final int igrowth = (int) growth;
             final byte[] newValue = new byte[vLen + igrowth];
-            final long page = node.mPage;
+            final var page = node.mPage;
 
             // Update the header with the new field size.
             int fHeader = p_byteGet(page, fHeaderLoc);
@@ -1570,7 +1570,7 @@ final class _BTreeValue {
 
         try {
             final byte[] newValue = new byte[vLen + (int) growth];
-            final long page = node.mPage;
+            final var page = node.mPage;
             p_copyToArray(page, fHeaderLoc, newValue, 0, vLen);
 
             // Clear the fragmented bit so that the update method doesn't delete the pages.
@@ -1619,7 +1619,7 @@ final class _BTreeValue {
         throws IOException
     {
         final _Node node = frame.mNode;
-        final long page = node.mPage;
+        final var page = node.mPage;
 
         int loc = fHeaderLoc;
         final int fHeader = p_byteGet(page, loc++);
@@ -1731,7 +1731,7 @@ final class _BTreeValue {
                     throw releaseExclusive(node, e);
                 }
 
-                long ipage = inode.mPage;
+                var ipage = inode.mPage;
                 p_copy(page, loc, ipage, 0, tailLen);
                 // Zero-fill the rest.
                 p_clear(ipage, tailLen, pageSize);
@@ -1827,7 +1827,7 @@ final class _BTreeValue {
                     dstNode.releaseExclusive();
                 }
             } else {
-                long fPage = fNode.mPage;
+                var fPage = fNode.mPage;
                 if (dstNode != null) {
                     p_copy(fPage, pageSize - amount, dstNode.mPage, 0, amount);
                     dstNode.releaseExclusive();

@@ -253,7 +253,7 @@ class BTree extends Tree implements View, Index {
         int keyHash;
 
         search: try {
-            final /*P*/ byte[] page = node.mPage;
+            final var page = node.mPage;
             final int keyLen = key.length;
             int lowPos = node.searchVecStart();
             int highPos = node.searchVecEnd();
@@ -1199,7 +1199,7 @@ class BTree extends Tree implements View, Index {
                 } else {
                     // See BTreeCursor.mergeInternal method.
 
-                    /*P*/ byte[] rootPage = rootNode.mPage;
+                    var rootPage = rootNode.mPage;
                     int rootEntryLoc = p_ushortGetLE(rootPage, rootNode.searchVecStart());
                     int rootEntryLen = Node.keyLengthAtLoc(rootPage, rootEntryLoc);
 
