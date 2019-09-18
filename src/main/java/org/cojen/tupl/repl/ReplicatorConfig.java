@@ -18,7 +18,6 @@
 package org.cojen.tupl.repl;
 
 import java.io.File;
-import java.io.Serializable;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -46,9 +45,7 @@ import org.cojen.tupl.io.Utils;
  * @see MessageReplicator#open MessageReplicator.open
  * @see DatabaseReplicator#open DatabaseReplicator.open
  */
-public class ReplicatorConfig implements Cloneable, Serializable {
-    private static final long serialVersionUID = 1L;
-
+public class ReplicatorConfig implements Cloneable {
     File mBaseFile;
     boolean mMkdirs;
     long mGroupToken;
@@ -58,9 +55,9 @@ public class ReplicatorConfig implements Cloneable, Serializable {
     Role mLocalRole;
     Set<SocketAddress> mSeeds;
     boolean mProxyWrites;
-    transient BiConsumer<Level, String> mEventListener;
-    transient SocketFactory mSocketFactory;
-    transient ServerSocketFactory mServerSocketFactory;
+    BiConsumer<Level, String> mEventListener;
+    SocketFactory mSocketFactory;
+    ServerSocketFactory mServerSocketFactory;
 
     public ReplicatorConfig() {
         createFilePath(true);

@@ -20,7 +20,6 @@ package org.cojen.tupl;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.Serializable;
 
 import java.util.Map;
 
@@ -43,7 +42,7 @@ import org.cojen.tupl.repl.ReplicatorConfig;
  *
  * @author Brian S O'Neill
  */
-public class DatabaseConfig implements Cloneable, Serializable {
+public class DatabaseConfig implements Cloneable {
     private static final long serialVersionUID = 1L;
 
     // Contains all the actual configuration options.

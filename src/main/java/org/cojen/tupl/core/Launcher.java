@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.Serializable;
 
 import java.lang.reflect.Method;
 
@@ -66,9 +65,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-public final class Launcher implements Cloneable, Serializable {
-    private static final long serialVersionUID = 1L;
-
+public final class Launcher implements Cloneable {
     private static volatile Method cDirectOpen;
     private static volatile Method cDirectDestroy;
     private static volatile Method cDirectRestore;
@@ -77,11 +74,11 @@ public final class Launcher implements Cloneable, Serializable {
     boolean mMkdirs;
     File[] mDataFiles;
     boolean mMapDataFiles;
-    transient PageArray mDataPageArray;
+    PageArray mDataPageArray;
     FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
-    transient RecoveryHandler mRecoveryHandler;
+    RecoveryHandler mRecoveryHandler;
     long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
@@ -90,22 +87,24 @@ public final class Launcher implements Cloneable, Serializable {
     long mCheckpointSizeThreshold;
     long mCheckpointDelayThresholdNanos;
     int mMaxCheckpointThreads;
-    transient EventListener mEventListener;
+    EventListener mEventListener;
     boolean mFileSync;
     boolean mReadOnly;
     int mPageSize;
     Boolean mDirectPageAccess;
     boolean mCachePriming;
     ReplicatorConfig mReplConfig;
-    transient ReplicationManager mReplManager;
+    ReplicationManager mReplManager;
     int mMaxReplicaThreads;
-    transient Crypto mCrypto;
-    transient Map<String, CustomHandler> mCustomHandlers;
+    Crypto mCrypto;
+    Map<String, CustomHandler> mCustomHandlers;
+
+    // Set only when calling debugOpen, and then it's discarded.
     Map<String, ? extends Object> mDebugOpen;
 
-    // Fields are set as a side-effect of constructing a replicated Database.
-    transient long mReplRecoveryStartNanos;
-    transient long mReplInitialTxnId;
+    // These fields are set as a side-effect of constructing a replicated Database.
+    long mReplRecoveryStartNanos;
+    long mReplInitialTxnId;
 
     public Launcher() {
         createFilePath(true);
