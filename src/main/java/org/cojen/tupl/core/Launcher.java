@@ -319,11 +319,6 @@ public final class Launcher implements Cloneable, Serializable {
         }
 
         return new StripedPageCache(size, mPageSize);
-
-        // Note: The page cache could be shared with other Database instances, if they have the
-        // same page size. The upper 2 bytes of the page id are unused, and so the cache can be
-        // shared up to 65536 times. A closed database can free up its slot if all of its
-        // lingering cache entries are explicitly removed.
     }
 
     /**
