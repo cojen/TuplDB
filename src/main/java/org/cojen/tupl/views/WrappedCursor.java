@@ -15,13 +15,19 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.views;
 
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
 import java.util.Comparator;
+
+import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Ordering;
+import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UnmodifiableViewException;
 
 /**
  * Abstract wrapper around another cursor. Subclass must implement the {@link #copy copy}
@@ -30,10 +36,10 @@ import java.util.Comparator;
  *
  * @author Brian S O'Neill
  */
-public abstract class WrappedCursor<C extends Cursor> implements Cursor {
-    protected final C source;
+abstract class WrappedCursor implements Cursor {
+    protected final Cursor source;
 
-    protected WrappedCursor(C source) {
+    protected WrappedCursor(Cursor source) {
         this.source = source;
     }
 

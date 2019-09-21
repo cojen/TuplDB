@@ -18,14 +18,13 @@
 package org.cojen.tupl.views;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.WrappedCursor;
 
 /**
  * Cursor implementation vended by {@link UnmodifiableView}.
  *
  * @author Brian S O'Neill
  */
-final class UnmodifiableCursor extends WrappedCursor<Cursor> {
+final class UnmodifiableCursor extends WrappedCursor {
     UnmodifiableCursor(Cursor source) {
         super(source);
     }

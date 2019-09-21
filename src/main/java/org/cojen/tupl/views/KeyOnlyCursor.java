@@ -25,14 +25,13 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.NoSuchValueException;
 import org.cojen.tupl.ViewConstraintException;
-import org.cojen.tupl.WrappedCursor;
 
 /**
  * Cursor implementation vended by {@link KeyOnlyView}.
  *
  * @author Brian S O'Neill
  */
-final class KeyOnlyCursor extends WrappedCursor<Cursor> {
+final class KeyOnlyCursor extends WrappedCursor {
     KeyOnlyCursor(Cursor source) {
         super(source);
         source.autoload(false);
