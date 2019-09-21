@@ -262,7 +262,7 @@ public final class Launcher implements Cloneable {
         mCrypto = crypto;
     }
 
-    public void customHandlers(Map<String, CustomHandler> handlers) {
+    public void customHandlers(Map<String, ? extends CustomHandler> handlers) {
         if (handlers == null || handlers.isEmpty()) {
             mCustomHandlers = null;
         } else {

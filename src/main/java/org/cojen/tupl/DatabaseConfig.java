@@ -387,7 +387,7 @@ public class DatabaseConfig implements Cloneable {
      * Provide handlers for recovering custom transactional operations. The name assigned to
      * each handler must be unique and never change.
      */
-    public DatabaseConfig customHandlers(Map<String, CustomHandler> handlers) {
+    public DatabaseConfig customHandlers(Map<String, ? extends CustomHandler> handlers) {
         mLauncher.customHandlers(handlers);
         return this;
     }
