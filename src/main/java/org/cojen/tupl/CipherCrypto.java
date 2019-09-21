@@ -47,7 +47,7 @@ import org.cojen.tupl.io.DirectAccess;
  * and salt values are randomly generated when the database is created, and they are stored in
  * the database header pages. The initialization vector for the header pages is randomly
  * generated each time and stored cleartext in the header page. The key given to the
- * constructor is only used for encrypting the header pages.
+ * constructor is used for encrypting the header pages and any redo log files.
  *
  * @author Brian S O'Neill
  */
@@ -66,7 +66,6 @@ public class CipherCrypto implements Crypto {
 
     private volatile byte[] mDataIvSalt;
     private volatile SecretKey mDataKey;
-
 
     /**
      * Construct with a new key, available from the {@link #secretKey secretKey} method.
@@ -331,7 +330,9 @@ public class CipherCrypto implements Crypto {
         byte[] iv = new byte[cipher.getBlockSize()];
         Utils.encodeLongLE(iv, 0, pageIndex);
         initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, new IvParameterSpec(iv));
-        return new IvParameterSpec(cipher.doFinal(salt));
+        byte[] fin = cipher.doFinal(salt);
+        // The length of the initialization vector is limited by the cipher block size.
+        return new IvParameterSpec(fin, 0, iv.length);
     }
 
     @Override
@@ -341,7 +342,7 @@ public class CipherCrypto implements Crypto {
         Cipher cipher = newStreamCipher();
         initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
         byte[] iv = cipher.getIV();
-        checkBlockLength(iv);
+        checkBlockLength(iv, 256);
         out.write((byte) (iv.length - 1));
         out.write(iv);
         return new CipherOutputStream(out, cipher);
@@ -393,7 +394,9 @@ public class CipherCrypto implements Crypto {
     }
 
     /**
-     * Returns 128 bits by default; override to use any size supported by the algorithm.
+     * Returns 128 bits by default; override to use any size supported by the algorithm. In
+     * general, this method is only called when creating a new database. Afterwards, the key
+     * size cannot change and this method won't be called again.
      */
     protected int keySize() {
         return 128;
@@ -401,7 +404,9 @@ public class CipherCrypto implements Crypto {
 
     /**
      * Called to generate a key, using the {@link #algorithm algorithm} and {@link #keySize key
-     * size} of this instance.
+     * size} of this instance. In general, this method is only called when creating a new
+     * database. Afterwards, the generated keys cannot change and this method won't be called
+     * again.
      */
     protected SecretKey generateKey() throws GeneralSecurityException {
         KeyGenerator gen = KeyGenerator.getInstance(algorithm());
@@ -472,7 +477,11 @@ public class CipherCrypto implements Crypto {
     }
 
     private static void checkBlockLength(byte[] bytes) throws GeneralSecurityException {
-        if (bytes.length == 0 || bytes.length > 256) {
+        checkBlockLength(bytes, 64); // header encoding limit; see encryptPage method
+    }
+
+    private static void checkBlockLength(byte[] bytes, int max) throws GeneralSecurityException {
+        if (bytes.length == 0 || bytes.length > max) {
             throw new GeneralSecurityException
                 ("Unsupported block length: " + bytes.length);
         }

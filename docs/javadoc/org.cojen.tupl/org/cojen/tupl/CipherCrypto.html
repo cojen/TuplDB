@@ -111,7 +111,7 @@ implements <a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a><
  and salt values are randomly generated when the database is created, and they are stored in
  the database header pages. The initialization vector for the header pages is randomly
  generated each time and stored cleartext in the header page. The key given to the
- constructor is only used for encrypting the header pages.</div>
+ constructor is used for encrypting the header pages and any redo log files.</div>
 </section>
 <section class="summary">
 <ul class="blockList">
@@ -608,7 +608,9 @@ int&nbsp;dstOffset)</span>
 <section class="detail">
 <h3><a id="keySize()">keySize</a></h3>
 <div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">keySize</span>()</div>
-<div class="block">Returns 128 bits by default; override to use any size supported by the algorithm.</div>
+<div class="block">Returns 128 bits by default; override to use any size supported by the algorithm. In
+ general, this method is only called when creating a new database. Afterwards, the key
+ size cannot change and this method won't be called again.</div>
 </section>
 </li>
 <li class="blockList">
@@ -617,7 +619,9 @@ int&nbsp;dstOffset)</span>
 <div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></span>&nbsp;<span class="memberName">generateKey</span>()
                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
 <div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and <a href="#keySize()"><code>key
- size</code></a> of this instance.</div>
+ size</code></a> of this instance. In general, this method is only called when creating a new
+ database. Afterwards, the generated keys cannot change and this method won't be called
+ again.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
