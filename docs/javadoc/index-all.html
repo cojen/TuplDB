@@ -384,20 +384,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl"><span class="typeNameLink">CipherCrypto</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm with a
- 128-bit key.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E()">CipherCrypto()</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
-<dd>
-<div class="block">Construct with a new key, available from the <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#secretKey()"><code>secretKey</code></a> method.</div>
+<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E(byte%5B%5D)">CipherCrypto(byte[])</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>.</div>
+<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>, although
+ additional keys might need to be generated.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E(javax.crypto.SecretKey)">CipherCrypto(SecretKey)</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E(int)">CipherCrypto(int)</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Construct with an existing key.</div>
+<div class="block">Construct with a new key, available from the <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#secretKey()"><code>secretKey</code></a> method.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E(javax.crypto.SecretKey,int)">CipherCrypto(SecretKey, int)</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
+<dd>
+<div class="block">Construct with an existing key, although additional keys might need to be generated.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#clear()">clear()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
@@ -1396,10 +1396,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </a>
 <h2 class="title">G</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#generateKey()">generateKey()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#generateKey(int)">generateKey(int)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to generate a key, using the <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a> and <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#keySize()"><code>key
- size</code></a> of this instance.</div>
+<div class="block">Called to generate a key, using the <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a> and the given key size
+ (bits).</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html#getAddress(java.nio.Buffer)">getAddress(Buffer)</a></span> - Static method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>&nbsp;</dd>
@@ -1868,10 +1868,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the estimated amount of bytes occupied by keys in the index.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#keySize()">keySize()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
-<dd>
-<div class="block">Returns 128 bits by default; override to use any size supported by the algorithm.</div>
-</dd>
 </dl>
 <a id="I:L">
 <!--   -->
@@ -2134,7 +2130,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dl>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#main(java.lang.String%5B%5D)">main(String[])</a></span> - Static method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Generates and prints a new key.</div>
+<div class="block">Generates and prints a new 128-bit key.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/RemoveMember.html#main(java.lang.String%5B%5D)">main(String[])</a></span> - Static method in class org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/RemoveMember.html" title="class in org.cojen.tupl.repl">RemoveMember</a></dt>
 <dd>&nbsp;</dd>
@@ -2236,8 +2232,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#newPageCipher()">newPageCipher()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting database pages,
- using the fixed instance <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a>.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting regular database
+ pages, using the fixed instance <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/DirectReplicator.html#newReader(long,boolean)">newReader(long, boolean)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></dt>
 <dd>
@@ -2262,8 +2258,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#newStreamCipher()">newStreamCipher()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
- the fixed instance <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a>.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting header pages and
+ redo logs, using the fixed instance <a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#algorithm()"><code>algorithm</code></a>.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#newTemporaryIndex()">newTemporaryIndex()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -3046,7 +3042,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Set the size of the secondary off-heap cache, which is empty by default.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#secretKey()">secretKey()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
-<dd>&nbsp;</dd>
+<dd>
+<div class="block">Provides access to the generated secret key.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html#senderAddress()">senderAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
 <dd>
 <div class="block">Member address which is sending the snapshot.</div>

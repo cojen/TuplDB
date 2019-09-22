@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":9,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":9,"i17":9};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":9,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":9,"i16":9};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -104,14 +104,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public class <span class="typeNameLabel">CipherCrypto</span>
 extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
 implements <a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a></pre>
-<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm with a
- 128-bit key. An encrypted salt-sector initialization vector <a href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
+<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm. An
+ encrypted salt-sector initialization vector <a href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
  applied to all data pages in the main database file, where the initialization vector is
  defined as <code>encrypt(iv=dataPageIndex, key=dataPageKey, data=dataPageSalt)</code>. The key
  and salt values are randomly generated when the database is created, and they are stored in
  the database header pages. The initialization vector for the header pages is randomly
- generated each time and stored cleartext in the header page. The key given to the
- constructor is used for encrypting the header pages and any redo log files.</div>
+ generated each time and is stored cleartext in the header pages. The secret key given to the
+ constructor is used for encrypting header pages, and for any redo log files.</div>
 </section>
 <section class="summary">
 <ul class="blockList">
@@ -132,21 +132,23 @@ implements <a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a><
 </thead>
 <tbody>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">CipherCrypto</a></span>()</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(byte%5B%5D)">CipherCrypto</a></span>&#8203;(byte[]&nbsp;encodedKey)</code></th>
+<td class="colLast">
+<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>, although
+ additional keys might need to be generated.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(int)">CipherCrypto</a></span>&#8203;(int&nbsp;keySize)</code></th>
 <td class="colLast">
 <div class="block">Construct with a new key, available from the <a href="#secretKey()"><code>secretKey</code></a> method.</div>
 </td>
 </tr>
-<tr class="rowColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(byte%5B%5D)">CipherCrypto</a></span>&#8203;(byte[]&nbsp;encodedKey)</code></th>
-<td class="colLast">
-<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>.</div>
-</td>
-</tr>
 <tr class="altColor">
-<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(javax.crypto.SecretKey)">CipherCrypto</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(javax.crypto.SecretKey,int)">CipherCrypto</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key,
+int&nbsp;keySize)</code></th>
 <td class="colLast">
-<div class="block">Construct with an existing key.</div>
+<div class="block">Construct with an existing key, although additional keys might need to be generated.</div>
 </td>
 </tr>
 </tbody>
@@ -233,10 +235,10 @@ int&nbsp;dstOffset)</code></th>
 </tr>
 <tr class="rowColor" id="i5">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#generateKey()">generateKey</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#generateKey(int)">generateKey</a></span>&#8203;(int&nbsp;keySize)</code></th>
 <td class="colLast">
-<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and <a href="#keySize()"><code>key
- size</code></a> of this instance.</div>
+<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and the given key size
+ (bits).</div>
 </td>
 </tr>
 <tr class="altColor" id="i6">
@@ -261,27 +263,20 @@ int&nbsp;opmode,
 </td>
 </tr>
 <tr class="altColor" id="i8">
-<td class="colFirst"><code>protected int</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#keySize()">keySize</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns 128 bits by default; override to use any size supported by the algorithm.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i9">
 <td class="colFirst"><code>static void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#main(java.lang.String%5B%5D)">main</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)</code></th>
 <td class="colLast">
-<div class="block">Generates and prints a new key.</div>
+<div class="block">Generates and prints a new 128-bit key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newCipher(java.lang.String)">newCipher</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;transformation)</code></th>
 <td class="colLast">
 <div class="block">Called to instantiate all <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> instances, with the given transformation.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
@@ -289,7 +284,7 @@ int&nbsp;opmode,
 <div class="block">Called to wrap an InputStream for supporting decryption.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
@@ -297,35 +292,37 @@ int&nbsp;opmode,
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newPageCipher()">newPageCipher</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting database pages,
- using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting regular database
+ pages, using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>protected <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newStreamCipher()">newStreamCipher</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
- the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting header pages and
+ redo logs, using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>.</div>
+</td>
+</tr>
+<tr class="altColor" id="i14">
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#secretKey()">secretKey</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Provides access to the generated secret key.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i15">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#secretKey()">secretKey</a></span>()</code></th>
-<td class="colLast">&nbsp;</td>
-</tr>
-<tr class="altColor" id="i16">
 <td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString(byte%5B%5D)">toString</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Returns a String with a parseable Java byte array declaration.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString(javax.crypto.SecretKey)">toString</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</code></th>
 <td class="colLast">
@@ -361,11 +358,13 @@ int&nbsp;opmode,
 <ul class="blockList">
 <li class="blockList">
 <section class="detail">
-<h3><a id="&lt;init&gt;()">CipherCrypto</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">CipherCrypto</span>()
+<h3><a id="&lt;init&gt;(int)">CipherCrypto</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">CipherCrypto</span>&#8203;(<span class="arguments">int&nbsp;keySize)</span>
              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
 <div class="block">Construct with a new key, available from the <a href="#secretKey()"><code>secretKey</code></a> method.</div>
 <dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>keySize</code> - key size in bits (with AES: 128, 192, or 256)</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
@@ -376,7 +375,9 @@ int&nbsp;opmode,
 <h3><a id="&lt;init&gt;(byte[])">CipherCrypto</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">CipherCrypto</span>&#8203;(<span class="arguments">byte[]&nbsp;encodedKey)</span>
              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
-<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>.</div>
+<div class="block">Construct with an existing key, which is wrapped with <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/spec/SecretKeySpec.html?is-external=true" title="class or interface in javax.crypto.spec" class="externalLink"><code>SecretKeySpec</code></a>, although
+ additional keys might need to be generated. The key size must be permitted by the
+ underlying algorithm, which for AES must be 128, 192, or 256 bits (16, 24, or 32 bytes).</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
@@ -385,11 +386,14 @@ int&nbsp;opmode,
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="&lt;init&gt;(javax.crypto.SecretKey)">CipherCrypto</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">CipherCrypto</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key)</span>
+<h3><a id="&lt;init&gt;(javax.crypto.SecretKey,int)">CipherCrypto</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">CipherCrypto</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a>&nbsp;key,
+int&nbsp;keySize)</span>
              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
-<div class="block">Construct with an existing key.</div>
+<div class="block">Construct with an existing key, although additional keys might need to be generated.</div>
 <dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>keySize</code> - key size in bits for additional keys (with AES: 128, 192, or 256)</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
 </dl>
@@ -410,7 +414,8 @@ int&nbsp;opmode,
 <h3><a id="main(java.lang.String[])">main</a></h3>
 <div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">main</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>[]&nbsp;args)</span>
                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink">Exception</a></span></div>
-<div class="block">Generates and prints a new key.</div>
+<div class="block">Generates and prints a new 128-bit key. Pass an argument to specify an alternate key
+ size.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink">Exception</a></code></dd>
@@ -421,6 +426,7 @@ int&nbsp;opmode,
 <section class="detail">
 <h3><a id="secretKey()">secretKey</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></span>&nbsp;<span class="memberName">secretKey</span>()</div>
+<div class="block">Provides access to the generated secret key.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if key was passed into the constructor</dd>
@@ -606,22 +612,12 @@ int&nbsp;dstOffset)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="keySize()">keySize</a></h3>
-<div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">keySize</span>()</div>
-<div class="block">Returns 128 bits by default; override to use any size supported by the algorithm. In
- general, this method is only called when creating a new database. Afterwards, the key
- size cannot change and this method won't be called again.</div>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="generateKey()">generateKey</a></h3>
-<div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></span>&nbsp;<span class="memberName">generateKey</span>()
+<h3><a id="generateKey(int)">generateKey</a></h3>
+<div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/SecretKey.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">SecretKey</a></span>&nbsp;<span class="memberName">generateKey</span>&#8203;(<span class="arguments">int&nbsp;keySize)</span>
                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
-<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and <a href="#keySize()"><code>key
- size</code></a> of this instance. In general, this method is only called when creating a new
- database. Afterwards, the generated keys cannot change and this method won't be called
- again.</div>
+<div class="block">Called to generate a key, using the <a href="#algorithm()"><code>algorithm</code></a> and the given key size
+ (bits). In general, this method is only called when creating a new database. Afterwards,
+ the generated keys cannot change, and this method won't be called again.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
@@ -645,9 +641,9 @@ int&nbsp;dstOffset)</span>
 <h3><a id="newPageCipher()">newPageCipher</a></h3>
 <div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></span>&nbsp;<span class="memberName">newPageCipher</span>()
                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting database pages,
- using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Mode applied is CTR, with no
- padding.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting regular database
+ pages, using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Default mode applied is
+ CTR, with no padding.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>
@@ -659,8 +655,9 @@ int&nbsp;dstOffset)</span>
 <h3><a id="newStreamCipher()">newStreamCipher</a></h3>
 <div class="memberSignature"><span class="modifiers">protected</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink">Cipher</a></span>&nbsp;<span class="memberName">newStreamCipher</span>()
                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></span></div>
-<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting redo logs, using
- the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Mode applied is CTR, with no padding.</div>
+<div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> for encrypting and decrypting header pages and
+ redo logs, using the fixed instance <a href="#algorithm()"><code>algorithm</code></a>. Default mode applied
+ is CTR, with no padding.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a></code></dd>

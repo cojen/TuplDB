@@ -24,6 +24,8 @@ import java.io.OutputStream;
 
 import java.security.GeneralSecurityException;
 
+import java.util.Objects;
+
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
@@ -39,78 +41,83 @@ import org.cojen.tupl.core.Utils;
 import org.cojen.tupl.io.DirectAccess;
 
 /**
- * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm with a
- * 128-bit key. An encrypted salt-sector initialization vector <a
+ * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm. An
+ * encrypted salt-sector initialization vector <a
  * href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
  * applied to all data pages in the main database file, where the initialization vector is
  * defined as {@code encrypt(iv=dataPageIndex, key=dataPageKey, data=dataPageSalt)}. The key
  * and salt values are randomly generated when the database is created, and they are stored in
  * the database header pages. The initialization vector for the header pages is randomly
- * generated each time and stored cleartext in the header page. The key given to the
- * constructor is used for encrypting the header pages and any redo log files.
+ * generated each time and is stored cleartext in the header pages. The secret key given to the
+ * constructor is used for encrypting header pages, and for any redo log files.
  *
  * @author Brian S O'Neill
  */
 public class CipherCrypto implements Crypto {
     /**
-     * Generates and prints a new key.
+     * Generates and prints a new 128-bit key. Pass an argument to specify an alternate key
+     * size.
      */
     public static void main(String[] args) throws Exception {
-        System.out.println(toString(new CipherCrypto().secretKey()));
+        int keySize = 128;
+        if (args.length != 0) {
+            keySize = Integer.parseInt(args[0]);
+        }
+        System.out.println(toString(new CipherCrypto(keySize).secretKey()));
     }
 
     private final ThreadLocal<Cipher> mHeaderPageCipher = new ThreadLocal<>();
     private final ThreadLocal<Cipher> mDataPageCipher = new ThreadLocal<>();
     private final SecretKey mRootKey;
-    private final boolean mIsNewKey;
+    private final int mKeySize;
 
     private volatile byte[] mDataIvSalt;
     private volatile SecretKey mDataKey;
 
     /**
      * Construct with a new key, available from the {@link #secretKey secretKey} method.
+     *
+     * @param keySize key size in bits (with AES: 128, 192, or 256)
      */
-    public CipherCrypto() throws GeneralSecurityException {
-        this(null, null);
+    public CipherCrypto(int keySize) throws GeneralSecurityException {
+        mKeySize = check(keySize);
+        mRootKey = generateKey(keySize);
     }
 
     /**
-     * Construct with an existing key, which is wrapped with {@link SecretKeySpec}.
+     * Construct with an existing key, which is wrapped with {@link SecretKeySpec}, although
+     * additional keys might need to be generated. The key size must be permitted by the
+     * underlying algorithm, which for AES must be 128, 192, or 256 bits (16, 24, or 32 bytes).
      */
     public CipherCrypto(byte[] encodedKey) throws GeneralSecurityException {
-        this(null, encodedKey);
+        mKeySize = check(encodedKey.length * 8) | 0x8000_0000;
+        mRootKey = new SecretKeySpec(encodedKey, algorithm());
     }
 
     /**
-     * Construct with an existing key.
+     * Construct with an existing key, although additional keys might need to be generated.
+     *
+     * @param keySize key size in bits for additional keys (with AES: 128, 192, or 256)
      */
-    public CipherCrypto(SecretKey key) throws GeneralSecurityException {
-        this(key, null);
+    public CipherCrypto(SecretKey key, int keySize) throws GeneralSecurityException {
+        mKeySize = check(keySize) | 0x8000_0000;
+        mRootKey = Objects.requireNonNull(key);
     }
 
-    private CipherCrypto(SecretKey key, byte[] encodedKey) throws GeneralSecurityException {
-        boolean isNewKey;
-        initKey: {
-            if (key == null) {
-                if (encodedKey == null) {
-                    key = generateKey();
-                    isNewKey = true;
-                    break initKey;
-                }
-                key = new SecretKeySpec(encodedKey, algorithm());
-            }
-            isNewKey = false;
+    private static int check(int keySize) {
+        if (keySize <= 0) {
+            throw new IllegalArgumentException("Illegal key size: " + keySize);
         }
-
-        mRootKey = key;
-        mIsNewKey = isNewKey;
+        return keySize;
     }
 
     /**
+     * Provides access to the generated secret key.
+     *
      * @throws IllegalStateException if key was passed into the constructor
      */
     public SecretKey secretKey() {
-        if (!mIsNewKey) {
+        if (mKeySize < 0) {
             throw new IllegalStateException("Unavailable");
         }
         return mRootKey;
@@ -227,8 +234,9 @@ public class CipherCrypto implements Crypto {
     private void createDataKeyIfNecessary() throws GeneralSecurityException {
         synchronized (mRootKey) {
             if (mDataIvSalt == null) {
-                byte[] dataIvSalt = generateKey().getEncoded();
-                SecretKey dataKey = generateKey();
+                int keySize = mKeySize & 0x7fff_ffff;
+                byte[] dataIvSalt = generateKey(keySize).getEncoded();
+                SecretKey dataKey = generateKey(keySize);
                 checkBlockLength(dataIvSalt);
                 checkBlockLength(dataKey.getEncoded());
                 mDataIvSalt = dataIvSalt;
@@ -394,23 +402,13 @@ public class CipherCrypto implements Crypto {
     }
 
     /**
-     * Returns 128 bits by default; override to use any size supported by the algorithm. In
-     * general, this method is only called when creating a new database. Afterwards, the key
-     * size cannot change and this method won't be called again.
+     * Called to generate a key, using the {@link #algorithm algorithm} and the given key size
+     * (bits). In general, this method is only called when creating a new database. Afterwards,
+     * the generated keys cannot change, and this method won't be called again.
      */
-    protected int keySize() {
-        return 128;
-    }
-
-    /**
-     * Called to generate a key, using the {@link #algorithm algorithm} and {@link #keySize key
-     * size} of this instance. In general, this method is only called when creating a new
-     * database. Afterwards, the generated keys cannot change and this method won't be called
-     * again.
-     */
-    protected SecretKey generateKey() throws GeneralSecurityException {
+    protected SecretKey generateKey(int keySize) throws GeneralSecurityException {
         KeyGenerator gen = KeyGenerator.getInstance(algorithm());
-        gen.init(keySize());
+        gen.init(keySize);
         return gen.generateKey();
     }
 
@@ -422,17 +420,18 @@ public class CipherCrypto implements Crypto {
     }
 
     /**
-     * Called to instantiate a {@link Cipher} for encrypting and decrypting database pages,
-     * using the fixed instance {@link #algorithm algorithm}. Mode applied is CTR, with no
-     * padding.
+     * Called to instantiate a {@link Cipher} for encrypting and decrypting regular database
+     * pages, using the fixed instance {@link #algorithm algorithm}. Default mode applied is
+     * CTR, with no padding.
      */
     protected Cipher newPageCipher() throws GeneralSecurityException {
         return newCipher(algorithm() + "/CTR/NoPadding");
     }
 
     /**
-     * Called to instantiate a {@link Cipher} for encrypting and decrypting redo logs, using
-     * the fixed instance {@link #algorithm algorithm}. Mode applied is CTR, with no padding.
+     * Called to instantiate a {@link Cipher} for encrypting and decrypting header pages and
+     * redo logs, using the fixed instance {@link #algorithm algorithm}. Default mode applied
+     * is CTR, with no padding.
      */
     protected Cipher newStreamCipher() throws GeneralSecurityException {
         return newCipher(algorithm() + "/CTR/NoPadding");
