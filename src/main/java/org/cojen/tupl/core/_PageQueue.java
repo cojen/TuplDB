@@ -182,13 +182,19 @@ final class _PageQueue implements IntegerRef {
         if (mAggressive) {
             throw new IllegalStateException();
         }
+
         // Needs to share the same lock as the regular free list to avoid deadlocks. The
         // reserve list might append to the regular list when deleting nodes, and the regular
         // list might append to the reserve list when doing the same thing. Neither will ever
         // call into the recycle list, since free list nodes cannot safely be recycled.
         // Allocate as non-aggressive, preventing page manager from raiding pages that were
         // deleted instead of recycled. Full reclamation is possible only after a checkpoint.
-        return new _PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
+        _PageQueue queue = new _PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
+
+        // All nodes must be deleted when compaction aborts and the reserve list is raided.
+        queue.mReserveReclaimUpperBound = Long.MAX_VALUE;
+
+        return queue;
     }
 
     /**
