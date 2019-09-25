@@ -17,6 +17,8 @@
 
 package org.cojen.tupl;
 
+import java.io.Serializable;
+
 import org.cojen.tupl.core.Utils;
 
 /**
@@ -25,7 +27,7 @@ import org.cojen.tupl.core.Utils;
  * @author Brian S O'Neill
  * @see DeadlockException
  */
-public interface DeadlockInfo {
+public interface DeadlockInfo extends Serializable {
     /**
      * @return the lock request index id
      */
