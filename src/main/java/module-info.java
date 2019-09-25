@@ -1,4 +1,7 @@
 
+/**
+ * See {@link org.cojen.tupl.Database} to get started with Tupl.
+ */
 module org.cojen.tupl {
     exports org.cojen.tupl;
     exports org.cojen.tupl.ext;
