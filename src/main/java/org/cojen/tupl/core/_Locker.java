@@ -148,7 +148,7 @@ class _Locker extends _LockOwner {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
+     * locks. If return value is {@link LockResult#isAlreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -178,7 +178,7 @@ class _Locker extends _LockOwner {
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#alreadyOwned owned}, transaction
+     * locks. If return value is {@link LockResult#isAlreadyOwned owned}, transaction
      * already owns a strong enough lock, and no extra unlock should be
      * performed.
      *
@@ -209,7 +209,7 @@ class _Locker extends _LockOwner {
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#alreadyOwned owned}, transaction already owns a strong enough
+     * LockResult#isAlreadyOwned owned}, transaction already owns a strong enough
      * lock, and no extra unlock should be performed. If {@link
      * LockResult#ILLEGAL ILLEGAL} is returned, transaction holds a shared
      * lock, which cannot be upgraded.
@@ -240,7 +240,7 @@ class _Locker extends _LockOwner {
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
      * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#alreadyOwned owned}, transaction already owns a strong enough
+     * LockResult#isAlreadyOwned owned}, transaction already owns a strong enough
      * lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
@@ -267,7 +267,7 @@ class _Locker extends _LockOwner {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#alreadyOwned
+     * additional locks. If return value is {@link LockResult#isAlreadyOwned
      * owned}, transaction already owns exclusive lock, and no extra unlock
      * should be performed. If {@link LockResult#ILLEGAL ILLEGAL} is returned,
      * transaction holds a shared lock, which cannot be upgraded.
@@ -297,7 +297,7 @@ class _Locker extends _LockOwner {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#alreadyOwned owned},
+     * additional locks. If return value is {@link LockResult#isAlreadyOwned owned},
      * transaction already owns exclusive lock, and no extra unlock should be
      * performed.
      *

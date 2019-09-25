@@ -224,16 +224,16 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#alreadyOwned()">alreadyOwned</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isAcquired()">isAcquired</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns true if lock was already owned when requested.</div>
+<div class="block">Returns true if a lock was just acquired.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
 <td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isAcquired()">isAcquired</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isAlreadyOwned()">isAlreadyOwned</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns true if a lock was just acquired.</div>
+<div class="block">Returns true if lock was already owned when requested.</div>
 </td>
 </tr>
 <tr class="altColor" id="i2">
@@ -431,8 +431,8 @@ not permitted.)</div>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="alreadyOwned()">alreadyOwned</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">alreadyOwned</span>()</div>
+<h3><a id="isAlreadyOwned()">isAlreadyOwned</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">isAlreadyOwned</span>()</div>
 <div class="block">Returns true if lock was already owned when requested. Applicable to <a href="#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, and <a href="#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a>.</div>
 </section>
 </li>
