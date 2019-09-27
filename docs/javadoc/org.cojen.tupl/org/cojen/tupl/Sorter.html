@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -130,13 +130,23 @@ byte[]&nbsp;value)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addBatch(byte%5B%5D%5B%5D,int,int)">addBatch</a></span>&#8203;(byte[][]&nbsp;kvPairs,
+int&nbsp;offset,
+int&nbsp;size)</code></th>
+<td class="colLast">
+<div class="block">Add a batch of entries into the sorter, which can be more efficient than adding each
+ entry separately.</div>
+</td>
+</tr>
+<tr class="altColor" id="i2">
 <td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finish()">finish</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScan()">finishScan</a></span>()</code></th>
 <td class="colLast">
@@ -144,14 +154,14 @@ byte[]&nbsp;value)</code></th>
  as it goes.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScanReverse()">finishScanReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Same as <a href="#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#progress()">progress</a></span>()</code></th>
 <td class="colLast">
@@ -159,7 +169,7 @@ byte[]&nbsp;value)</code></th>
  sort results are being finished.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
@@ -193,6 +203,29 @@ byte[]&nbsp;value)</span>
  last one added is kept. After a sorter is fully finished or reset, no entries exist in
  the sorter, and new entries can be added for another sort.</div>
 <dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="addBatch(byte[][],int,int)">addBatch</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">addBatch</span>&#8203;(<span class="arguments">byte[][]&nbsp;kvPairs,
+int&nbsp;offset,
+int&nbsp;size)</span>
+       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Add a batch of entries into the sorter, which can be more efficient than adding each
+ entry separately. If multiple entries are added with matching keys, only the last one
+ added is kept. After a sorter is fully finished or reset, no entries exist in the
+ sorter, and new entries can be added for another sort.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>kvPairs</code> - alternating key-value pairs</dd>
+<dd><code>offset</code> - offset into key-value pair array</dd>
+<dd><code>size</code> - batch size (number of key-value pairs)</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>

@@ -38,6 +38,20 @@ public interface Sorter {
     public void add(byte[] key, byte[] value) throws IOException;
 
     /**
+     * Add a batch of entries into the sorter, which can be more efficient than adding each
+     * entry separately. If multiple entries are added with matching keys, only the last one
+     * added is kept. After a sorter is fully finished or reset, no entries exist in the
+     * sorter, and new entries can be added for another sort.
+     *
+     * @param kvPairs alternating key-value pairs
+     * @param offset offset into key-value pair array
+     * @param size batch size (number of key-value pairs)
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public void addBatch(byte[][] kvPairs, int offset, int size) throws IOException;
+
+    /**
      * Finish sorting the entries, and return a temporary index with the results.
      *
      * @throws IllegalStateException if sort is finishing in another thread

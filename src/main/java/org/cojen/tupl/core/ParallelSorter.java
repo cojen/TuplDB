@@ -160,6 +160,68 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
+    public synchronized void addBatch(byte[][] kvPairs, int offset, int size) throws IOException {
+        if (size <= 0) {
+            return;
+        }
+
+        final LocalDatabase db = mDatabase;
+        final CommitLock commitLock = db.commitLock();
+
+        while (true) {
+            CommitLock.Shared shared = commitLock.acquireShared();
+
+            Node node;
+            try {
+                if (mSortTreesSize == 0) {
+                    BTree sortTree = allocSortTree();
+                    (mSortTrees = new BTree[MIN_SORT_TREES])[0] = sortTree;
+                    mSortTreesSize = 1;
+                    node = sortTree.mRoot;
+                } else {
+                    BTree sortTree = mSortTrees[mSortTreesSize - 1];
+                    node = latchRootDirty(sortTree);
+                }
+            } catch (Throwable e) {
+                shared.release();
+                exception(e);
+                throw e;
+            }
+
+            while (true) {
+                try {
+                    byte[] key = kvPairs[offset++];
+                    byte[] value = kvPairs[offset++];
+                    node = Node.appendToSortLeaf(node, db, key, value, this);
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    shared.release();
+                    exception(e);
+                    throw e;
+                }
+
+                size--;
+
+                if (mSortTreesSize >= MAX_SORT_TREES || commitLock.hasQueuedThreads()) {
+                    node.releaseExclusive();
+                    shared.release();
+                    if (mSortTreesSize >= MAX_SORT_TREES) {
+                        mergeSortTrees();
+                    }
+                    if (size <= 0) {
+                        return;
+                    }
+                    break;
+                } else if (size <= 0) {
+                    node.releaseExclusive();
+                    shared.release();
+                    return;
+                }
+            }
+        }
+    }
+
+    @Override
     public BTree finish() throws IOException {
         try {
             BTree tree = doFinish(null);

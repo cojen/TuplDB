@@ -115,36 +115,42 @@ public class SorterTest {
     public void noSortTrees() throws Exception {
         // Tests special cases where no sort trees need to be merged. Counts were determined
         // experimentally.
-        sortMany(12232, 10_000_000, null); // numLevelTrees == 1
-        sortMany(23955, 10_000_000, null); // numLevelTrees == 2
+        sortMany(12232, 10_000_000, null, false); // numLevelTrees == 1
+        sortMany(23955, 10_000_000, null, false); // numLevelTrees == 2
     }
 
     @Test
     public void sortMany() throws Exception {
         // count = 1_000_000, range = 2_000_000
-        sortMany(1_000_000, 2_000_000, null);
+        sortMany(1_000_000, 2_000_000, null, false);
     }
 
     @Test
     public void sortManyMore() throws Exception {
         // count = 10_000_000, range = 2_000_000_000 (fewer duplicates)
-        sortMany(10_000_000, 2_000_000_000, null);
+        sortMany(10_000_000, 2_000_000_000, null, false);
     }
 
     @Test
     public void sortRecycle() throws Exception {
         // count = 2000, range = 10_000
-        Sorter s = sortMany(2_000, 10_000, null);
+        Sorter s = sortMany(2_000, 10_000, null, false);
         // count = 10_000, range = 100_000
-        s = sortMany(10_000, 100_000, s);
+        s = sortMany(10_000, 100_000, s, false);
         // count = 1_000_000, range = 2_000_000
-        sortMany(1_000_000, 2_000_000, s);
+        sortMany(1_000_000, 2_000_000, s, false);
+    }
+
+    @Test
+    public void sortBatch() throws Exception {
+        // count = 1_000_000, range = 2_000_000
+        sortMany(1_000_000, 2_000_000, null, true);
     }
 
     /**
      * @param s non-null to use recycled instance
      */
-    private Sorter sortMany(int count, int range, Sorter s) throws Exception {
+    private Sorter sortMany(int count, int range, Sorter s, boolean batch) throws Exception {
         final long seed = 123 + count + range;
         Random rnd = new Random(seed);
 
@@ -152,10 +158,29 @@ public class SorterTest {
             s = mDatabase.newSorter(null);
         }
 
+        byte[][] kvPairs = null;
+        int kvOffset = 0;
+        if (batch) {
+            kvPairs = new byte[1000][];
+        }
+
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextInt(range)).getBytes();
             byte[] value = ("value-" + i).getBytes();
-            s.add(key, value);
+            if (kvPairs == null) {
+                s.add(key, value);
+            } else {
+                kvPairs[kvOffset++] = key;
+                kvPairs[kvOffset++] = value;
+                if (kvOffset >= kvPairs.length) {
+                    s.addBatch(kvPairs, 0, kvPairs.length / 2);
+                    kvOffset = 0;
+                }
+            }
+        }
+
+        if (kvPairs != null) {
+            s.addBatch(kvPairs, 0, kvOffset / 2);
         }
 
         Index ix = s.finish();
