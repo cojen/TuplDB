@@ -1402,14 +1402,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
 
         if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
-            mDecodeLatch.acquireExclusive();
-            try {
-                if (redo == mController.txnRedoWriter()) {
-                    mDatabase.invokeRecoveryHandler(remaining, redo);
-                }
-            } finally {
-                mDecodeLatch.releaseExclusive();
-            }
+            mDatabase.invokeRecoveryHandler(remaining, redo);
         }
     }
 
