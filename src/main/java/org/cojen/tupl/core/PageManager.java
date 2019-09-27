@@ -475,7 +475,7 @@ final class PageManager {
         target = list.getRemoveScanTarget();
         mRemoveLock.unlock();
 
-        CommitLock.Shared shared = commitLock.acquireShared();
+        final CommitLock.Shared shared = commitLock.acquireShared();
         try {
             while (mCompacting) {
                 mRemoveLock.lock();
@@ -493,7 +493,7 @@ final class PageManager {
                 }
                 if (commitLock.hasQueuedThreads()) {
                     shared.release();
-                    shared = commitLock.acquireShared();
+                    commitLock.acquireShared(shared);
                 }
             }
         } finally {

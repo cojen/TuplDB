@@ -780,7 +780,7 @@ final class _UndoLog implements _DatabaseAccess {
     /**
      * Truncate all log entries. Caller must hold db commit lock.
      */
-    final CommitLock.Shared doTruncate(CommitLock commitLock, CommitLock.Shared shared)
+    final CommitLock.Shared doTruncate(CommitLock commitLock, final CommitLock.Shared shared)
         throws IOException
     {
         if (mLength > 0) {
@@ -814,7 +814,7 @@ final class _UndoLog implements _DatabaseAccess {
                         // anything to the log. The key isn't needed to complete truncation.
                         mActiveKey = null;
                         shared.release();
-                        shared = commitLock.acquireShared();
+                        commitLock.acquireShared(shared);
                     }
                 }
             }

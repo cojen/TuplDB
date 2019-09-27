@@ -116,8 +116,13 @@ final class CommitLock implements Lock {
      * @return shared object to unlock
      */
     Shared acquireShared() {
-        mSharedAcquire.increment();
         Shared shared = mShared.get();
+        acquireShared(shared);
+        return shared;
+    }
+
+    void acquireShared(Shared shared) {
+        mSharedAcquire.increment();
         if (mExclusiveThread != null && shared.count == 0) {
             releaseShared();
             mFullLatch.acquireShared();
@@ -128,7 +133,6 @@ final class CommitLock implements Lock {
             }
         }
         shared.count++;
-        return shared;
     }
 
     /**

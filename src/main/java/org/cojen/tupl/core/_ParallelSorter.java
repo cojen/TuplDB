@@ -167,10 +167,9 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
 
         final _LocalDatabase db = mDatabase;
         final CommitLock commitLock = db.commitLock();
+        final CommitLock.Shared shared = commitLock.acquireShared();
 
         while (true) {
-            CommitLock.Shared shared = commitLock.acquireShared();
-
             _Node node;
             try {
                 if (mSortTreesSize == 0) {
@@ -211,6 +210,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
                     if (size <= 0) {
                         return;
                     }
+                    commitLock.acquireShared(shared);
                     break;
                 } else if (size <= 0) {
                     node.releaseExclusive();
