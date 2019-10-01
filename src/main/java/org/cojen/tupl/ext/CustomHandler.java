@@ -25,11 +25,12 @@ import org.cojen.tupl.Transaction;
 
 /**
  * Handler for custom transactional operations. Undo operations are applied to roll back
- * transactions, and redo operations are applied by recovery and replication.
+ * transactions, and redo operations are applied by recovery and replication. A companion
+ * instance for writing custom operations is provided by the {@link Database#customHandler
+ * Database.customHandler} method.
  *
  * @author Brian S O'Neill
  * @see DatabaseConfig#customHandlers DatabaseConfig.customHandlers
- * @see Database#customHandler Database.customHandler
  */
 public interface CustomHandler {
     /**
@@ -68,7 +69,8 @@ public interface CustomHandler {
      *
      * @param txn transaction the operation applies to; is null when rolling back
      * @param message custom message
-     * @throws NullPointerException if transaction or message is null
+     * @throws NullPointerException if transaction or message is null; applicable to writer
+     * instance only
      */
     void undo(Transaction txn, byte[] message) throws IOException;
 }

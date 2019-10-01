@@ -96,11 +96,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <hr>
 <pre>public interface <span class="typeNameLabel">CustomHandler</span></pre>
 <div class="block">Handler for custom transactional operations. Undo operations are applied to roll back
- transactions, and redo operations are applied by recovery and replication.</div>
+ transactions, and redo operations are applied by recovery and replication. A companion
+ instance for writing custom operations is provided by the <a href="../Database.html#customHandler(java.lang.String)"><code>Database.customHandler</code></a> method.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
-<dd><a href="../DatabaseConfig.html#customHandlers(java.util.Map)"><code>DatabaseConfig.customHandlers</code></a>, 
-<a href="../Database.html#customHandler(java.lang.String)"><code>Database.customHandler</code></a></dd>
+<dd><a href="../DatabaseConfig.html#customHandlers(java.util.Map)"><code>DatabaseConfig.customHandlers</code></a></dd>
 </dl>
 </section>
 <section class="summary">
@@ -239,7 +239,8 @@ byte[]&nbsp;message)</span>
 <dd><code>txn</code> - transaction the operation applies to; is null when rolling back</dd>
 <dd><code>message</code> - custom message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transaction or message is null; applicable to writer
+ instance only</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>

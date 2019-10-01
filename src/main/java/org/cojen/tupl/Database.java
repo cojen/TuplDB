@@ -195,7 +195,9 @@ public interface Database extends CauseCloseable, Flushable {
 
     /**
      * Creates a new unnamed temporary index. Temporary indexes never get written to the redo
-     * log, and they are deleted when the database is re-opened.
+     * log, and they are deleted when the database is re-opened. Temporary indexes should be
+     * explicitly {@linkplain #deleteIndex deleted} when no longer needed, rather than waiting
+     * until the database is re-opened.
      */
     public abstract Index newTemporaryIndex() throws IOException;
 

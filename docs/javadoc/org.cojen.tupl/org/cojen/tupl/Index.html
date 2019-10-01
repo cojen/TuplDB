@@ -169,7 +169,7 @@ byte[]&nbsp;highKey)</code></th>
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>.</div>
+<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl">unmodifiable</a>.</div>
 </td>
 </tr>
 <tr class="altColor" id="i2">
@@ -333,7 +333,8 @@ byte[]&nbsp;highKey)</span>
 <h3><a id="close()">close</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">close</span>()
     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>. The underlying index is still valid and can be re-opened.
+<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl">unmodifiable</a>. The underlying index is still valid and can be
+ re-opened, unless it's a <a href="Database.html#newTemporaryIndex()">temporary</a> index.
 
  <p>In general, indexes should not be closed if they are referenced by active
  transactions. Although closing the index is safe, the transaction might re-open it.</div>
