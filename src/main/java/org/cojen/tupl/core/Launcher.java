@@ -456,33 +456,43 @@ public final class Launcher implements Cloneable {
         }
     }
 
-    public final Database open(boolean destroy, InputStream restore) throws IOException {
-        boolean openedReplicator = false;
-
-        if (mReplConfig != null && mReplManager == null
-            && mBaseFile != null && !mBaseFile.isDirectory())
+    /**
+     * @return true if mReplManager was assigned a new replicator
+     */
+    private boolean openReplicator() throws IOException {
+        if (mReplManager != null || mReplConfig == null
+            || mBaseFile == null || mBaseFile.isDirectory())
         {
-            if (mEventListener != null) {
-                mReplConfig.eventListener(new ReplicationEventListener(mEventListener));
-            }
-            mReplConfig.baseFilePath(mBaseFile.getPath() + ".repl");
-            mReplConfig.createFilePath(mMkdirs);
-            mReplManager = DatabaseReplicator.open(mReplConfig);
-            openedReplicator = true;
+            return false;
         }
 
+        ReplicatorConfig replConfig = mReplConfig.clone();
+
+        if (mEventListener != null) {
+            replConfig.eventListener(new ReplicationEventListener(mEventListener));
+        }
+
+        replConfig.baseFilePath(mBaseFile.getPath() + ".repl");
+        replConfig.createFilePath(mMkdirs);
+
+        mReplManager = DatabaseReplicator.open(replConfig);
+
+        return true;
+    }
+
+    public final Database open(boolean destroy, InputStream restore) throws IOException {
+        Launcher launcher = clone();
+        boolean openedReplicator = launcher.openReplicator();
         try {
-            return doOpen(destroy, restore);
+            return launcher.doOpen(destroy, restore);
         } catch (Throwable e) {
             if (openedReplicator) {
                 try {
-                    mReplManager.close();
+                    launcher.mReplManager.close();
                 } catch (Throwable e2) {
                     suppress(e, e2);
                 }
-                mReplManager = null;
             }
-
             throw e;
         }
     }

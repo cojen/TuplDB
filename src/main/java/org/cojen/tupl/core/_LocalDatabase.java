@@ -294,7 +294,6 @@ public final class _LocalDatabase extends CoreDatabase {
      * Open a database, creating it if necessary.
      */
     static _LocalDatabase open(Launcher launcher) throws IOException {
-        launcher = launcher.clone();
         _LocalDatabase db = new _LocalDatabase(launcher, OPEN_REGULAR);
         try {
             db.finishInit(launcher);
@@ -311,7 +310,6 @@ public final class _LocalDatabase extends CoreDatabase {
      * must be used to format it.
      */
     static _LocalDatabase destroy(Launcher launcher) throws IOException {
-        launcher = launcher.clone();
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
@@ -2186,7 +2184,6 @@ public final class _LocalDatabase extends CoreDatabase {
             throw new IllegalArgumentException("Cannot restore into a read-only database");
         }
 
-        launcher = launcher.clone();
         _PageDb restored;
 
         File[] dataFiles = launcher.dataFiles();

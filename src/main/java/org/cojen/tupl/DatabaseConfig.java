@@ -325,8 +325,8 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Enable replication using the given configuration. The base file and event listener are
-     * set automatically for the given config object, when the database is opened.
+     * Enable replication using the given configuration. When the database is opened, the given
+     * config object is cloned and the base file and event listener are assigned to it.
      */
     public DatabaseConfig replicate(ReplicatorConfig config) {
         mLauncher.replicate(config);
