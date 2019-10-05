@@ -570,8 +570,10 @@ public final class Launcher implements Cloneable {
         if (mDirectPageAccess == Boolean.FALSE) {
             return null;
         }
+        String name = getClass().getName();
+        name = name.substring(0, name.lastIndexOf('.') + 1) + "_LocalDatabase";
         try {
-            return Class.forName("org.cojen.tupl.core._LocalDatabase");
+            return Class.forName(name);
         } catch (Exception e) {
             handleDirectException(e);
             return null;
