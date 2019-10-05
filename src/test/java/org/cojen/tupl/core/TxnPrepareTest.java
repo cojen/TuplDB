@@ -522,4 +522,93 @@ public class TxnPrepareTest {
         ix = db.openIndex("test");
         fastAssertArrayEquals("world".getBytes(), ix.load(null, key));
     }
+
+    @Test
+    public void postPrepareRollback() throws Exception {
+        // Verify that changes after prepare are rolled back by recovery.
+
+       BlockingQueue<Transaction> recoveredQueue = new LinkedBlockingQueue<>();
+
+        RecoveryHandler handler = new RecoveryHandler() {
+            @Override
+            public void init(Database db) {
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                recoveredQueue.add(txn);
+            }
+        };
+
+        byte[][] keys = new byte[3][];
+        byte[][] values = new byte[keys.length][];
+
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = ("key-" + i).getBytes();
+            values[i] = ("value-" + i).getBytes();
+        }
+
+        DatabaseConfig config = newConfig(handler).lockTimeout(1, TimeUnit.SECONDS);
+        Database db = newTempDatabase(config);
+
+        {
+            Index ix = db.openIndex("test");
+
+            Transaction txn = db.newTransaction();
+            ix.store(txn, keys[0], values[0]);
+            txn.prepare();
+            ix.store(txn, keys[1], values[1]);
+            txn.prepare();
+            ix.store(txn, keys[2], values[2]);
+
+            db.checkpoint();
+        }
+
+        Transaction txn = null;
+        Index ix = null;
+
+        // Recover twice to verify that prepare undo operation isn't lost.
+        for (int q=0; q<2; q++) {
+            db = reopenTempDatabase(getClass(), db, config);
+            ix = db.openIndex("test");
+
+            txn = recoveredQueue.take();
+            assertTrue(recoveredQueue.isEmpty());
+
+            // All locks should still be held. The last key could probably be released too, but
+            // in the current implementation this is tricky. See comments in the
+            // LocalTransaction rollbackToPrepare method.
+            for (int i=0; i<keys.length; i++) {
+                try {
+                    ix.load(null, keys[i]);
+                    if (q > 0 && i == keys.length - 1) {
+                        // As a side effect of rollback and opening again is that all redo
+                        // operations to recover the locks are gone.
+                    } else {
+                        fail();
+                    }
+                } catch (LockTimeoutException e) {
+                }
+            }
+
+            // The recovered transaction should own the locks.
+            for (int i=0; i<keys.length; i++) {
+                byte[] value = ix.load(txn, keys[i]);
+                if (i < keys.length - 1) {
+                    fastAssertArrayEquals(values[i], value);
+                } else {
+                    // This one got rolled back.
+                    assertNull(value);
+                }
+            }
+
+            db.checkpoint();
+        }
+
+        txn.reset();
+
+        for (int i=0; i<keys.length; i++) {
+            assertNull(ix.load(null, keys[i]));
+        }
+    }
 }

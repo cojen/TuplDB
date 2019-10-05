@@ -124,6 +124,7 @@ public final class LocalTransaction extends Locker implements Transaction {
     // Used by recovery, before passing transaction to a recovery handler.
     final void recoverPrepared(RedoWriter redo, DurabilityMode durabilityMode,
                                LockMode lockMode, long timeoutNanos)
+        throws IOException
     {
         // When recovered from the undo log only, the commit state won't be set. Set it
         // explicitly now, in order for commit and rollback operations to actually work.
@@ -134,6 +135,8 @@ public final class LocalTransaction extends Locker implements Transaction {
         mDurabilityMode = durabilityMode;
         mLockTimeoutNanos = timeoutNanos;
         mAttachment = null;
+
+        rollbackToPrepare(true);
     }
 
     @Override
@@ -950,13 +953,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
 
         try {
-            if ((mHasState & HAS_PREPARE) == 0) {
-                pushUndoPrepare();
-            }
-
-            // Although it might seem like a good idea to not bother writing the redo message
-            // if the HAS_PREPARE flag is already set, writing it each time makes the prepare
-            // method also useful for performing checked flush operations.
+            pushUndoPrepare();
 
             long commitPos = mContext.redoPrepare(mRedo, txnId(), mDurabilityMode);
             if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
@@ -976,12 +973,43 @@ public final class LocalTransaction extends Locker implements Transaction {
         check();
 
         try {
-            if ((mHasState & HAS_PREPARE) == 0) {
-                pushUndoPrepare();
-                mHasState |= HAS_PREPARE;
-            }
+            pushUndoPrepare();
+            mHasState |= HAS_PREPARE;
         } catch (Throwable e) {
             borked(e, true, true); // rollback = true, rethrow = true
+        }
+    }
+
+    /**
+     * Rollback the transaction to the last encountered prepare operation.
+     *
+     * @param redo pass false when called by replica (ReplRedoEngine)
+     */
+    final void rollbackToPrepare(boolean redo) throws IOException {
+        check();
+
+        if ((mHasState & HAS_PREPARE) == 0) {
+            throw new IllegalStateException("Transaction isn't prepared");
+        }
+
+        try {
+            while (isNested()) {
+                exit();
+            }
+
+            if (redo) {
+                mContext.redoRollbackToPrepare(mRedo, mTxnId);
+            }
+
+            mUndoLog.rollbackToPrepare();
+
+            // Ideally, all locks acquired since the prepare should be released too, but this
+            // cannot be done reliably without a scope. Automatically entering a scope when
+            // prepare is called is messy. The application can enter a scope manually if it
+            // wants any additional locks to be released, but in practice it's likely that the
+            // same locks will be acquired again.
+        } catch (Throwable e) {
+            borked(e, false, true); // rollback = false, rethrow = true
         }
     }
 
@@ -1385,7 +1413,8 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * Rethrows the given exception or a replacement, unless the database is closed.
+     * Rethrows the given exception or a replacement, unless the database is closed. A rollback
+     * is attempted only if specified and if the transaction isn't prepared for 2PC.
      *
      * @param rollback rollback should only be performed by operations which don't hold tree
      * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
@@ -1399,6 +1428,12 @@ public final class LocalTransaction extends Locker implements Transaction {
         // other cases permits an application to fully rollback later when reset or exit is
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
+
+        // Can't let a prepared transaction ever rollback due to an unexpected failure, since
+        // this can result in an inconsistency with respect to later recovery actions.
+        if ((mHasState & HAS_PREPARE) != 0) {
+            rollback = false;
+        }
 
         boolean closed = mDatabase == null ? false : mDatabase.isClosed();
 

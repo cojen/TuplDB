@@ -1108,8 +1108,18 @@ public final class _LocalDatabase extends CoreDatabase {
 
         txns.traverse(entry -> {
             _LocalTransaction txn = entry.value;
-            txn.recoverPrepared
-                (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+
+            try {
+                txn.recoverPrepared
+                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+            } catch (UnmodifiableReplicaException e) {
+                // No point in continuing with recovery if no longer the leader.
+                return true;
+            } catch (Throwable e) {
+                // Panic.
+                closeQuietly(this, e);
+                return true;
+            }
 
             try {
                 handler.recover(txn);

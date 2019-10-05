@@ -466,6 +466,10 @@ public interface Transaction extends Flushable {
      * handler is invoked, it can continue the transaction workflow, by loading the previously
      * stored state.
      *
+     * <p>When passed to a recovery handler, the transaction will have rolled back to the last
+     * prepare operation. To ensure that post-prepare operations are recoverable, call prepare
+     * again.
+     *
      * @throws IllegalStateException if not in a top-level scope or if transaction isn't in a
      * state for supporting two-phase commit
      * @throws UnmodifiableReplicaException if transaction cannot replicate

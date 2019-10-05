@@ -23,8 +23,8 @@ package org.cojen.tupl.core;
  * @author Brian S O'Neill
  */
 class RedoOps {
-    // Note: When updating the opcodes, be sure to update RedoDecoder, TransactionContext, and
-    // RedoWriter.
+    // Note: When updating the opcodes, be sure to update RedoDecoder, RedoVisitor, and
+    // TransactionContext.
 
     static final byte
         /** no operands */
@@ -148,6 +148,9 @@ class RedoOps {
 
         /** cursorId: delta, txnId: delta, pos: varLong, length: varLong */
         OP_CURSOR_VALUE_CLEAR = 47,
+
+        /** txnId: delta */
+        OP_TXN_ROLLBACK_TO_PREPARE = 48,
 
         /** txnId: delta, handlerId: varInt, dataLength: varInt, data: bytes */
         OP_TXN_CUSTOM = (byte) 128,

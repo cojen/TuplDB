@@ -325,6 +325,22 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
+    void redoRollbackToPrepare(RedoWriter redo, long txnId) throws IOException {
+        // See comments in redoRollback method.
+        DurabilityMode mode = redo.opWriteCheck(DurabilityMode.NO_FLUSH);
+
+        mode = redo.opWriteCheck(mode);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_TXN_ROLLBACK_TO_PREPARE, txnId);
+            redoWriteTerminator(redo);
+            redoFlushCommit(mode);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     void redoEnter(RedoWriter redo, long txnId) throws IOException {
         redo.opWriteCheck(null);
 

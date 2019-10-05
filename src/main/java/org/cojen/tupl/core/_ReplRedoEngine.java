@@ -459,6 +459,19 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean txnRollbackToPrepare(long txnId) throws IOException {
+        TxnEntry te = getTxnEntry(txnId);
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                te.mTxn.rollbackToPrepare(false);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
     public boolean txnEnter(long txnId) throws IOException {
         long scrambledTxnId = mix(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);

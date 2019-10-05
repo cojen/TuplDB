@@ -1046,7 +1046,11 @@ byte[]&nbsp;key)</span></div>
  keyed by the transaction <a href="#getId()"><code>identifier</code></a>. This state should be stored into
  indexes of the same database, and within this transaction as well. When the recovery
  handler is invoked, it can continue the transaction workflow, by loading the previously
- stored state.</div>
+ stored state.
+
+ <p>When passed to a recovery handler, the transaction will have rolled back to the last
+ prepare operation. To ensure that post-prepare operations are recoverable, call prepare
+ again.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if not in a top-level scope or if transaction isn't in a

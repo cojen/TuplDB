@@ -873,6 +873,38 @@ final class UndoLog implements DatabaseAccess {
         }.go(true, savepoint);
     }
 
+    final void rollbackToPrepare() throws IOException {
+        // RTP: "Rollback To Prepare" helper class.
+        class RTP extends IOException implements Popper {
+            Index activeIndex;
+
+            @Override
+            public boolean accept(byte op, byte[] entry) throws IOException {
+                if (op == OP_PREPARE) {
+                    // Found the prepare operation, but don't pop it.
+                    throw this;
+                }
+                activeIndex = undo(activeIndex, op, entry);
+                return true;
+            }
+
+            // Disable stack trace capture, since it's not required.
+            @Override
+            public Throwable fillInStackTrace() {
+                return this;
+            }
+        };
+
+        RTP rtp = new RTP();
+
+        try {
+            while (pop(true, rtp));
+            throw new IllegalStateException("Prepare operation not found");
+        } catch (RTP r) {
+            // Expected.
+        }
+    }
+
     /**
      * Truncate all log entries, and delete any ghosts that were created. Only
      * to be called during recovery.
