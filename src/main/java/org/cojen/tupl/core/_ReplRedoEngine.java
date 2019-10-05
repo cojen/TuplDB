@@ -194,7 +194,15 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        doReset(false);
+        final LHashTable.Obj<_LocalTransaction> remaining = doReset(false);
+
+        if (remaining != null) {
+            remaining.traverse(entry -> {
+                mTransactions.insert(entry.key).mTxn = entry.value;
+                return false;
+            });
+        }
+
         return true;
     }
 
@@ -245,16 +253,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        if (remaining == null || remaining.size() == 0) {
-            return null;
-        }
-
-        remaining.traverse(entry -> {
-            mTransactions.insert(entry.key).mTxn = entry.value;
-            return false;
-        });
-
-        return remaining;
+        return remaining == null || remaining.size() == 0 ? null : remaining;
     }
 
     /**

@@ -133,6 +133,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         mLockMode = lockMode;
         mDurabilityMode = durabilityMode;
         mLockTimeoutNanos = timeoutNanos;
+        mAttachment = null;
     }
 
     @Override
