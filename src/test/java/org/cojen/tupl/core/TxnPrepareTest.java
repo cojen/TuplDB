@@ -78,12 +78,7 @@ public class TxnPrepareTest {
         } catch (IllegalStateException e) {
         }
 
-        RecoveryHandler handler = new RecoveryHandler() {
-            public void init(Database db) {}
-            public void recover(Transaction txn) {}
-        };
-
-        Database db = newTempDatabase(newConfig(handler));
+        Database db = newTempDatabase(newConfig(new NonHandler()));
 
         Transaction txn = db.newTransaction();
         txn.durabilityMode(DurabilityMode.NO_REDO);
@@ -91,6 +86,26 @@ public class TxnPrepareTest {
             txn.prepare();
             fail();
         } catch (IllegalStateException e) {
+        }
+    }
+
+    static class NonHandler implements RecoveryHandler {
+        @Override
+        public void init(Database db) {}
+        @Override
+        public void recover(Transaction txn) {}
+    }
+
+    @Test
+    public void topLevelOnly() throws Exception {
+        Database db = newTempDatabase(newConfig(new NonHandler()));
+        Transaction txn = db.newTransaction();
+        txn.enter();
+        try {
+            txn.prepare();
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("nested") > 0);
         }
     }
 

@@ -932,6 +932,10 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             throw new IllegalStateException("Cannot prepare a no-redo transaction");
         }
 
+        if (mParentScope != null) {
+            throw new IllegalStateException("Cannot prepare within a nested scope");
+        }
+
         try {
             if ((mHasState & HAS_PREPARE) == 0) {
                 pushUndoPrepare();
