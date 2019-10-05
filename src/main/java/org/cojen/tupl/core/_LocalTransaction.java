@@ -551,13 +551,19 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             ParentScope parentScope = mParentScope;
             if (parentScope == null) {
+                int hasState = mHasState;
                 try {
-                    int hasState = mHasState;
                     if ((hasState & HAS_SCOPE) != 0) {
-                        mContext.redoRollbackFinal(mRedo, mTxnId);
+                        long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
+                        if ((hasState & HAS_PREPARE) != 0) {
+                            mRedo.txnCommitSync(this, commitPos);
+                        }
                     }
                     mHasState = 0;
                 } catch (UnmodifiableReplicaException e) {
+                    if ((hasState & HAS_PREPARE) != 0) {
+                        throw e;
+                    }
                     // Suppress and let undo proceed.
                 }
 
@@ -642,10 +648,16 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
         try {
             if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
-                mContext.redoRollbackFinal(mRedo, mTxnId);
+                long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
+                if ((hasState & HAS_PREPARE) != 0) {
+                    mRedo.txnCommitSync(this, commitPos);
+                }
             }
             mHasState = 0;
         } catch (UnmodifiableReplicaException e) {
+            if ((hasState & HAS_PREPARE) != 0) {
+                throw e;
+            }
             // Suppress and let undo proceed.
         }
 
