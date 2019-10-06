@@ -31,6 +31,7 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.*;
 
 import org.cojen.tupl.ext.CustomHandler;
+import org.cojen.tupl.ext.RecoveryHandler;
 
 import static org.cojen.tupl.core.TestUtils.*;
 
@@ -61,6 +62,7 @@ public class ReplicationTest {
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customHandlers(Map.of("TestHandler", mLeaderHandler))
+            .recoveryHandler(mLeaderHandler)
             .replicate(mLeaderMan);
 
         config = decorate(config);
@@ -68,6 +70,7 @@ public class ReplicationTest {
         mLeader = newTempDatabase(getClass(), config);
 
         config.customHandlers(Map.of("TestHandler", mReplicaHandler));
+        config.recoveryHandler(null);
         config.replicate(mReplicaMan);
         mReplica = newTempDatabase(getClass(), config);
 
@@ -1250,6 +1253,43 @@ public class ReplicationTest {
         assertNull(rix.load(null, "hello".getBytes()));
     }
 
+    @Test
+    public void prepareRollback() throws Exception {
+        // Tests that a prepared transaction cannot be immediately rolled back when leadership
+        // is lost.
+
+        Index ix = mLeader.openIndex("test");
+        fence();
+        Index rix = mReplica.openIndex("test");
+
+        Transaction txn = mLeader.newTransaction();
+        byte[] key = "hello".getBytes();
+        ix.store(txn, key, "world".getBytes());
+        txn.prepare();
+        fence();
+
+        mLeaderMan.disableWrites();
+
+        try {
+            txn.exit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // Expected.
+        }
+
+        try {
+            ix.load(null, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Lock is still held.
+        }
+
+        fastAssertArrayEquals("world".getBytes(), ix.load(Transaction.BOGUS, key));
+
+        // Transaction shouldn't be borked.
+        txn.check();
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */
@@ -1259,7 +1299,7 @@ public class ReplicationTest {
         mReplicaMan.waitForControl(pos, message);
     }
 
-    private static class Handler implements CustomHandler {
+    private static class Handler implements CustomHandler, RecoveryHandler {
         volatile byte[] mMessage;
         volatile long mIndexId;
         volatile byte[] mKey;
@@ -1278,6 +1318,14 @@ public class ReplicationTest {
 
         @Override
         public void undo(Transaction txn, byte[] message) {
+        }
+
+        @Override
+        public void init(Database db) {
+        }
+
+        @Override
+        public void recover(Transaction txn) {
         }
     }
 }

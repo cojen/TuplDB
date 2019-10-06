@@ -163,6 +163,29 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     public void disableWrites() {
+        // Create a dummy replica stream that simply blocks until closed.
+        mReader = new InputStream() {
+            private boolean mClosed;
+
+            @Override
+            public synchronized int read() throws IOException {
+                while (!mClosed) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                }
+                throw new IOException("Closed");
+            }
+
+            @Override
+            public synchronized void close() {
+                mClosed = true;
+                notify();
+            }
+        };
+
         mWriter.mDisabled = true;
     }
 
@@ -243,11 +266,9 @@ class SocketReplicationManager implements ReplicationManager {
         }
 
         @Override
-        public boolean confirm(long position, long timeoutNanos)
-            throws ConfirmationFailureException, InterruptedIOException
-        {
+        public boolean confirm(long position, long timeoutNanos) throws InterruptedIOException {
             if (mDisabled) {
-                throw new ConfirmationFailureException();
+                return false;
             }
 
             try {
@@ -257,7 +278,7 @@ class SocketReplicationManager implements ReplicationManager {
                             wait();
                         }
                         if (mDisabled) {
-                            throw new ConfirmationFailureException();
+                            return false;
                         }
                     }
                 }
