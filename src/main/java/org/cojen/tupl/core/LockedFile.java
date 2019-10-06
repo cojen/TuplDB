@@ -18,6 +18,7 @@
 package org.cojen.tupl.core;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -49,9 +50,15 @@ final class LockedFile implements Closeable {
 
         try {
             raf = new RandomAccessFile(file, readOnly ? "r" : "rw");
-            lock = raf.getChannel().tryLock(0, Long.MAX_VALUE, readOnly);
+            lock = raf.getChannel().tryLock(8, Long.MAX_VALUE - 8, readOnly);
             if (lock == null) {
-                throw new DatabaseException("Database is open and locked by another process");
+                String message = "Database is open and locked by another process";
+                try {
+                    message = message + ": " + raf.readLong();
+                } catch (EOFException e) {
+                    // Ignore.
+                }
+                throw new DatabaseException(message);
             }
         } catch (FileNotFoundException e) {
             if (readOnly) {
@@ -61,11 +68,15 @@ final class LockedFile implements Closeable {
                 throw e;
             }
         } catch (OverlappingFileLockException e) {
-            throw new DatabaseException("Database is already open by current process");
+            throw new DatabaseException("Database is already open in the current process");
         }
 
         mRaf = raf;
         mLock = lock;
+
+        if (raf != null) {
+            raf.writeLong(ProcessHandle.current().pid());
+        }
     }
 
     @Override
