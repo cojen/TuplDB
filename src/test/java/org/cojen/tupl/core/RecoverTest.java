@@ -998,7 +998,7 @@ public class RecoverTest {
 
     @Test
     public void lostRollback() throws Exception {
-        // A transaction which auto-resets due to an exception must alway issue a rollback
+        // A transaction which auto-resets due to an exception must always issue a rollback
         // operation into the redo log.
 
         byte[] k1 = "key1".getBytes();

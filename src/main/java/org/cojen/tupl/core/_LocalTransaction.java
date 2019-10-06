@@ -229,9 +229,9 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             check(borked);
         }
 
-        try {
-            ParentScope parentScope = mParentScope;
-            if (parentScope == null) {
+        ParentScope parentScope = mParentScope;
+        if (parentScope == null) {
+            try {
                 _UndoLog undo = mUndoLog;
                 if (undo == null) {
                     int hasState = mHasState;
@@ -300,7 +300,11 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 }
 
                 mTxnId = 0;
-            } else {
+            } catch (Throwable e) {
+                borked(e, true, true); // rollback = true, rethrow = true
+            }
+        } else {
+            try {
                 int hasState = mHasState;
                 if ((hasState & HAS_COMMIT) != 0) {
                     mContext.redoCommit(mRedo, mTxnId);
@@ -314,9 +318,9 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 if (undo != null) {
                     mSavepoint = undo.scopeCommit();
                 }
+            } catch (Throwable e) {
+                borked(e);
             }
-        } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
         }
     }
 
@@ -366,12 +370,12 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             throw e;
         }
 
-        try {
-            int hasState = mHasState;
-            byte[] key = cursor.mKey;
+        int hasState = mHasState;
+        byte[] key = cursor.mKey;
 
-            ParentScope parentScope = mParentScope;
-            if (parentScope == null) {
+        ParentScope parentScope = mParentScope;
+        if (parentScope == null) {
+            try {
                 long commitPos;
                 try {
                     cursor.storeNoRedo(undoTxn, value);
@@ -448,7 +452,11 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 }
 
                 mTxnId = 0;
-            } else {
+            } catch (Throwable e) {
+                borked(e, true, true); // rollback = true, rethrow = true
+            }
+        } else {
+            try {
                 try {
                     // Always undo when inside a scope.
                     cursor.storeNoRedo(this, value);
@@ -504,9 +512,9 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 if (undo != null) {
                     mSavepoint = undo.scopeCommit();
                 }
+            } catch (Throwable e) {
+                borked(e);
             }
-        } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
         }
     }
 
@@ -540,7 +548,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             // Scope and commit states are set upon first actual use of this scope.
             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
+            borked(e);
         }
     }
 
@@ -551,9 +559,9 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             return;
         }
 
-        try {
-            ParentScope parentScope = mParentScope;
-            if (parentScope == null) {
+        ParentScope parentScope = mParentScope;
+        if (parentScope == null) {
+            try {
                 int hasState = mHasState;
                 try {
                     if ((hasState & HAS_SCOPE) != 0) {
@@ -585,7 +593,11 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 }
 
                 mTxnId = 0;
-            } else {
+            } catch (Throwable e) {
+                borked(e, true, false); // rollback = true, rethrow = false
+            }
+        } else {
+            try {
                 try {
                     int hasState = mHasState;
                     if ((hasState & HAS_SCOPE) != 0) {
@@ -609,9 +621,9 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 // Use 'or' assignment to keep HAS_TRASH and HAS_PREPARE state.
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
+            } catch (Throwable e) {
+                borked(e, false, false); // rollback = false, rethrow = false
             }
-        } catch (Throwable e) {
-            borked(e, true, false); // rollback = true, rethrow = false
         }
     }
 
@@ -823,7 +835,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             try {
                 undoLog().pushLock(undoOp, indexId, key);
             } catch (Throwable e) {
-                borked(e, false, true); // rollback = false, rethrow = true
+                borked(e);
             } finally {
                 shared.release();
             }
@@ -919,7 +931,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushCustom(handlerId, message);
         } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
+            borked(e);
         } finally {
             shared.release();
         }
@@ -960,7 +972,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 mRedo.txnCommitSync(this, commitPos);
             }
         } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
+            borked(e);
         }
 
         mHasState |= HAS_PREPARE;
@@ -976,7 +988,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             pushUndoPrepare();
             mHasState |= HAS_PREPARE;
         } catch (Throwable e) {
-            borked(e, true, true); // rollback = true, rethrow = true
+            borked(e);
         }
     }
 
@@ -1009,7 +1021,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             // wants any additional locks to be released, but in practice it's likely that the
             // same locks will be acquired again.
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1089,7 +1101,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 }
             }
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1131,7 +1143,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
             mHasState = hasState | (HAS_SCOPE | HAS_COMMIT);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1147,7 +1159,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         if (mRedo != null) try {
             return mContext.redoStoreNoLockAutoCommit(mRedo, indexId, key, value, mDurabilityMode);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
 
         return 0;
@@ -1226,7 +1238,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             mContext.redoCursorRegister(mRedo, cursorId, cursor.mTree.mId);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
         _BTree cursorRegistry = mDatabase.cursorRegistry();
         cursor.mCursorId = cursorId;
@@ -1289,7 +1301,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 mContext.redoCursorValueClear(mRedo, cursorId, txnId, pos, len);
             }
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1310,7 +1322,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushNodeEncoded(indexId, op, payload, off, len);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1322,7 +1334,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushUninsert(indexId, key);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1338,7 +1350,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushNodeEncoded(indexId, _UndoLog.OP_UNDELETE_FRAGMENTED, payload, off, len);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1350,7 +1362,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushUncreate(indexId, key);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1362,7 +1374,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushUnextend(mSavepoint, indexId, key, length);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1374,7 +1386,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushUnalloc(indexId, key, pos, length);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1388,7 +1400,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         try {
             undoLog().pushUnwrite(indexId, key, pos, b, off, len);
         } catch (Throwable e) {
-            borked(e, false, true); // rollback = false, rethrow = true
+            borked(e);
         }
     }
 
@@ -1413,27 +1425,28 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     /**
+     * Always rethrows the given exception or a replacement. No rollback is performed.
+     */
+    final void borked(Throwable borked) {
+        borked(borked, false, true); // rollback = false, rethrow = true
+    }
+
+    /**
      * Rethrows the given exception or a replacement, unless the database is closed. A rollback
      * is attempted only if specified and if the transaction isn't prepared for 2PC.
      *
      * @param rollback rollback should only be performed by operations which don't hold tree
      * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
      * apply compensating actions against the tree nodes.
-     * @param rethrow true to always throw an exception; false to suppress rethrowing if
-     * database is known to be closed
+     * @param rethrow pass true to always throw an exception; pass false to suppress rethrowing
+     * if database is known to be closed
      */
-    final void borked(Throwable borked, boolean rollback, boolean rethrow) {
+    private void borked(Throwable borked, boolean rollback, boolean rethrow) {
         // Note: The mBorked field is set only if the database is closed or if some action in
         // this method altered the state of the transaction. Leaving the field alone in all
         // other cases permits an application to fully rollback later when reset or exit is
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
-
-        // Can't let a prepared transaction ever rollback due to an unexpected failure, since
-        // this can result in an inconsistency with respect to later recovery actions.
-        if ((mHasState & HAS_PREPARE) != 0) {
-            rollback = false;
-        }
 
         boolean closed = mDatabase == null ? false : mDatabase.isClosed();
 
@@ -1441,6 +1454,10 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             if (closed) {
                 Utils.initCause(borked, mDatabase.closedCause());
                 mBorked = borked;
+            } else if ((mHasState & HAS_PREPARE) != 0) {
+                // Can't let a prepared transaction ever rollback due to an unexpected failure,
+                // since this can result in an inconsistency with respect to later recovery
+                // actions.
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.
                 try {
