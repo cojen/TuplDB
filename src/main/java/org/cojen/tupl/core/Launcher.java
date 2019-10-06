@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.lang.management.ManagementFactory;
-
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
@@ -31,7 +28,6 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
@@ -380,74 +376,6 @@ public final class Launcher implements Cloneable {
             options.add(OpenOption.CREATE);
         }
         return options;
-    }
-
-    void writeInfo(BufferedWriter w) throws IOException {
-        String pid = ManagementFactory.getRuntimeMXBean().getName();
-        String user;
-        try {
-            user = System.getProperty("user.name");
-        } catch (SecurityException e) {
-            user = null;
-        }
-
-        Map<String, String> props = new TreeMap<>();
-
-        if (pid != null) {
-            set(props, "lastOpenedByProcess", pid);
-        }
-        if (user != null) {
-            set(props, "lastOpenedByUser", user);
-        }
-
-        set(props, "baseFile", mBaseFile);
-        set(props, "createFilePath", mMkdirs);
-        set(props, "mapDataFiles", mMapDataFiles);
-
-        if (mDataFiles != null && mDataFiles.length > 0) {
-            if (mDataFiles.length == 1) {
-                set(props, "dataFile", mDataFiles[0]);
-            } else {
-                StringBuilder b = new StringBuilder();
-                b.append('[');
-                for (int i=0; i<mDataFiles.length; i++) {
-                    if (i > 0) {
-                        b.append(", ");
-                    }
-                    b.append(mDataFiles[i]);
-                }
-                b.append(']');
-                set(props, "dataFiles", b);
-            }
-        }
-
-        set(props, "minCacheSize", mMinCachedBytes);
-        set(props, "maxCacheSize", mMaxCachedBytes);
-        set(props, "secondaryCacheSize", mSecondaryCacheSize);
-        set(props, "durabilityMode", mDurabilityMode);
-        set(props, "lockTimeoutNanos", mLockTimeoutNanos);
-        set(props, "checkpointRateNanos", mCheckpointRateNanos);
-        set(props, "checkpointSizeThreshold", mCheckpointSizeThreshold);
-        set(props, "checkpointDelayThresholdNanos", mCheckpointDelayThresholdNanos);
-        set(props, "syncWrites", mFileSync);
-        set(props, "pageSize", mPageSize);
-        set(props, "directPageAccess", mDirectPageAccess);
-        set(props, "cachePriming", mCachePriming);
-
-        w.write('#');
-        w.write(Database.class.getName());
-        w.newLine();
-
-        w.write('#');
-        w.write(java.time.ZonedDateTime.now().toString());
-        w.newLine();
-
-        for (Map.Entry<String, String> line : props.entrySet()) {
-            w.write(line.getKey());
-            w.write('=');
-            w.write(line.getValue());
-            w.newLine();
-        }
     }
 
     private static void set(Map<String, String> props, String name, Object value) {

@@ -180,7 +180,6 @@ public class TestUtils {
 
     private static void deleteDbFiles(File baseFile) {
         deleteDbFile(baseFile, ".db");
-        deleteDbFile(baseFile, ".info");
         deleteDbFile(baseFile, ".lock");
         deleteDbFile(baseFile, ".primer");
         try {

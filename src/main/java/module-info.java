@@ -11,7 +11,6 @@ module org.cojen.tupl {
     exports org.cojen.tupl.util;
 
     requires transitive java.logging;
-    requires transitive java.management;
 
     requires transitive jdk.unsupported;
 

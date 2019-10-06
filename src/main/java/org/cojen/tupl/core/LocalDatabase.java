@@ -19,7 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -30,7 +29,6 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -122,7 +120,6 @@ public final class LocalDatabase extends CoreDatabase {
 
     private static final long PRIMER_MAGIC_NUMBER = 4943712973215968399L;
 
-    private static final String INFO_FILE_SUFFIX = ".info";
     private static final String LOCK_FILE_SUFFIX = ".lock";
     static final String PRIMER_FILE_SUFFIX = ".primer";
     static final String REDO_FILE_SUFFIX = ".redo.";
@@ -542,27 +539,6 @@ public final class LocalDatabase extends CoreDatabase {
             /*P*/ // |
             /*P*/ // launcher.mDirectPageAccess = true;
             /*P*/ // ]
-
-            // Write info file of properties, after database has been opened and after page
-            // size is truly known.
-            if (mBaseFile != null && openMode != OPEN_TEMP && !mReadOnly) {
-                File infoFile = new File(mBaseFile.getPath() + INFO_FILE_SUFFIX);
-
-                FileFactory factory = launcher.mFileFactory;
-                if (factory != null) {
-                    factory.createFile(infoFile);
-                }
-
-                BufferedWriter w = new BufferedWriter
-                    (new OutputStreamWriter(new FileOutputStream(infoFile),
-                                            StandardCharsets.UTF_8));
-
-                try {
-                    launcher.writeInfo(w);
-                } finally {
-                    w.close();
-                }
-            }
 
             mCommitLock = mPageDb.commitLock();
 
@@ -2865,7 +2841,6 @@ public final class LocalDatabase extends CoreDatabase {
 
                 if (shutdown && mBaseFile != null && !mReadOnly) {
                     deleteRedoLogFiles();
-                    new File(mBaseFile.getPath() + INFO_FILE_SUFFIX).delete();
                     ex = closeQuietly(ex, mLockFile, cause);
                     new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX).delete();
                 } else {

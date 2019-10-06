@@ -61,7 +61,6 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * <ul>
  * <li><code>/var/lib/tupl/myapp.db</code> &ndash; primary data file
- * <li><code>/var/lib/tupl/myapp.info</code> &ndash; text file describing the database configuration
  * <li><code>/var/lib/tupl/myapp.lock</code> &ndash; lock file to ensure that at most one process can have the database open
  * <li><code>/var/lib/tupl/myapp.redo.0</code> &ndash; first transaction redo log file
  * </ul>
