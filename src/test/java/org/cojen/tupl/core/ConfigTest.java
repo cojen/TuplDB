@@ -95,7 +95,7 @@ public class ConfigTest {
         try {
             Database.open(config);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
             // Must have a base file.
         }
 
@@ -105,7 +105,7 @@ public class ConfigTest {
         try {
             Database.open(config);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
             // Base file cannot be a directory.
         }
 
@@ -115,7 +115,7 @@ public class ConfigTest {
         try {
             Database.open(config);
             fail();
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalStateException e) {
             // Data file cannot be a directory.
         }
     }

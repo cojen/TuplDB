@@ -137,7 +137,7 @@ public final class Launcher implements Cloneable {
         if (array != null) {
             int expected = mDataPageArray.pageSize();
             if (mPageSize != 0 && mPageSize != expected) {
-                throw new IllegalArgumentException
+                throw new IllegalStateException
                     ("Page size doesn't match data page array: " + mPageSize + " != " + expected);
             }
             mDataFiles = null;
@@ -221,7 +221,7 @@ public final class Launcher implements Cloneable {
         if (mDataPageArray != null) {
             int expected = mDataPageArray.pageSize();
             if (expected != size) {
-                throw new IllegalArgumentException
+                throw new IllegalStateException
                     ("Page size doesn't match data page array: " + size + " != " + expected);
             }
         }
@@ -324,7 +324,7 @@ public final class Launcher implements Cloneable {
         if (mReplManager != null) {
             long encoding = mReplManager.encoding();
             if (encoding == 0) {
-                throw new IllegalArgumentException
+                throw new IllegalStateException
                     ("Illegal replication manager encoding: " + encoding);
             }
         }
@@ -332,14 +332,14 @@ public final class Launcher implements Cloneable {
         File[] dataFiles = mDataFiles;
         if (mBaseFile == null) {
             if (dataFiles != null && dataFiles.length > 0) {
-                throw new IllegalArgumentException
+                throw new IllegalStateException
                     ("Cannot specify data files when no base file is provided");
             }
             return null;
         }
 
         if (mBaseFile.isDirectory()) {
-            throw new IllegalArgumentException("Base file is a directory: " + mBaseFile);
+            throw new IllegalStateException("Base file is a directory: " + mBaseFile);
         }
 
         if (mDataPageArray != null) {
@@ -353,7 +353,7 @@ public final class Launcher implements Cloneable {
 
         for (File dataFile : dataFiles) {
             if (dataFile.isDirectory()) {
-                throw new IllegalArgumentException("Data file is a directory: " + dataFile);
+                throw new IllegalStateException("Data file is a directory: " + dataFile);
             }
         }
 
