@@ -384,6 +384,123 @@ public class ReplicationTest {
     }
 
     @Test
+    public void explicitLock() throws Exception {
+        // Verifies that explicit lock acquisitions are replicated.
+
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] k3 = "k3".getBytes();
+
+        Index ix = mLeader.openIndex("test");
+        Transaction txn = mLeader.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockShared(txn, k1));
+        assertEquals(LockResult.ACQUIRED, ix.lockUpgradable(txn, k2));
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn, k3));
+
+        txn.flush();
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+        Transaction rtxn = mReplica.newTransaction();
+
+        // Shared lock isn't replicated.
+        assertEquals(LockResult.ACQUIRED, rix.lockExclusive(rtxn, k1));
+
+        assertEquals(LockResult.ACQUIRED, rix.lockShared(rtxn, k2));
+        rtxn.unlock();
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockUpgradable(rtxn, k2, 0));
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k3, 0));
+
+        assertEquals(LockResult.UPGRADED, ix.lockExclusive(txn, k2));
+
+        txn.flush();
+        fence();
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k2, 0));
+
+        txn.exit();
+        fence();
+
+        assertEquals(LockResult.OWNED_EXCLUSIVE, rix.lockExclusive(rtxn, k1));
+        assertEquals(LockResult.ACQUIRED, rix.lockExclusive(rtxn, k2));
+        assertEquals(LockResult.ACQUIRED, rix.lockExclusive(rtxn, k3));
+    }
+
+    @Test
+    public void explicitLockScoped() throws Exception {
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] k3 = "k3".getBytes();
+
+        Index ix = mLeader.openIndex("test");
+        Transaction txn = mLeader.newTransaction();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn, k1));
+        txn.enter();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn, k2));
+        txn.enter();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn, k3));
+
+        txn.flush();
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+        Transaction rtxn = mReplica.newTransaction();
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k1, 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k2, 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k3, 0));
+
+        txn.exit();
+        fence();
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k1, 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k2, 0));
+        assertEquals(LockResult.ACQUIRED, rix.lockShared(rtxn, k3));
+
+        txn.exit();
+        fence();
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k1, 0));
+        assertEquals(LockResult.ACQUIRED, rix.tryLockShared(rtxn, k2, 0));
+        assertEquals(LockResult.OWNED_SHARED, rix.lockShared(rtxn, k3));
+
+        txn.exit();
+        fence();
+
+        assertEquals(LockResult.ACQUIRED, rix.tryLockShared(rtxn, k1, 0));
+        assertEquals(LockResult.OWNED_SHARED, rix.lockShared(rtxn, k2));
+        assertEquals(LockResult.OWNED_SHARED, rix.lockShared(rtxn, k3));
+    }
+
+    @Test
+    public void explicitLockScoped2() throws Exception {
+        // Create a bunch of empty parent scopes first and then commit.
+
+        byte[] k1 = "k1".getBytes();
+
+        Index ix = mLeader.openIndex("test");
+        Transaction txn = mLeader.newTransaction();
+        txn.enter();
+        txn.enter();
+        txn.enter();
+        assertEquals(LockResult.ACQUIRED, ix.lockExclusive(txn, k1));
+
+        txn.flush();
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+        Transaction rtxn = mReplica.newTransaction();
+
+        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k1, 0));
+
+        txn.commitAll();
+        fence();
+
+        assertEquals(LockResult.ACQUIRED, rix.tryLockShared(rtxn, k1, 0));
+    }
+
+    @Test
     public void readUncommitted() throws Exception {
         // Verifies that a replica can read an uncommitted change.
 

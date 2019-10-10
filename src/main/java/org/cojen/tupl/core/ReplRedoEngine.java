@@ -960,7 +960,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockSharedNoPush(indexId, key);
 
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         if (lock != null) {
             runTask(te, new LockPushTask(txn, lock));
         }
@@ -978,7 +978,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         if (lock != null) {
             runTask(te, new LockPushTask(txn, lock));
         }
@@ -1012,7 +1012,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         // TODO: Can acquire exclusive at first, but must know what push mode to use (0 or 1)
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
                 if (lock != null) {
