@@ -761,7 +761,8 @@ byte[]&nbsp;key)</span>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">tryLockShared</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
-                  throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></span></div>
+                  throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
 <div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
  locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction
  already owns a strong enough lock, and no extra unlock should be
@@ -778,6 +779,7 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -814,7 +816,8 @@ long&nbsp;nanosTimeout)</span>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">tryLockUpgradable</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
-                      throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></span></div>
+                      throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
 <div class="block">Attempts to acquire an upgradable lock for the given key, denying
  exclusive and additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns a strong enough
  lock, and no extra unlock should be performed. If <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a> is returned, transaction holds a shared
@@ -830,6 +833,7 @@ long&nbsp;nanosTimeout)</span>
 <dd><a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -864,7 +868,8 @@ long&nbsp;nanosTimeout)</span>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">tryLockExclusive</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
-                     throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></span></div>
+                     throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
 <div class="block">Attempts to acquire an exclusive lock for the given key, denying any
  additional locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns exclusive lock, and no extra unlock
  should be performed. If <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a> is returned,
@@ -880,6 +885,7 @@ long&nbsp;nanosTimeout)</span>
 <dd><a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>

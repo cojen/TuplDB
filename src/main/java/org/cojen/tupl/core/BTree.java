@@ -30,7 +30,6 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -612,7 +611,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockShared(mId, key, nanosTimeout);
     }
@@ -624,7 +623,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockUpgradable(mId, key, nanosTimeout);
     }
@@ -638,7 +637,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockExclusive(mId, key, nanosTimeout);
     }

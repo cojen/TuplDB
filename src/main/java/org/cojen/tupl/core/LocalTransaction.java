@@ -21,7 +21,6 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
-import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.InvalidTransactionException;
@@ -727,7 +726,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return super.doTryLockShared(indexId, key, nanosTimeout);
     }
@@ -746,7 +745,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return super.doTryLockUpgradable(indexId, key, nanosTimeout);
     }
@@ -777,7 +776,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return super.doTryLockExclusive(indexId, key, nanosTimeout);
     }

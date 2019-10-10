@@ -932,6 +932,7 @@ byte[]&nbsp;key)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                           throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks. Lock is
  retained until the end of the transaction or scope.
@@ -951,6 +952,7 @@ long&nbsp;nanosTimeout)</span>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -989,6 +991,7 @@ byte[]&nbsp;key)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                               throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks. Lock is retained until the end of the transaction or scope.
@@ -1007,6 +1010,7 @@ long&nbsp;nanosTimeout)</span>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -1044,6 +1048,7 @@ byte[]&nbsp;key)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                              throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
+<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Explicitly acquire an exclusive lock for the given key, denying any additional
  locks. Lock is retained until the end of the transaction or scope.
@@ -1062,6 +1067,7 @@ long&nbsp;nanosTimeout)</span>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
+<dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
 </li>

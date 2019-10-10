@@ -259,7 +259,7 @@ public interface Transaction extends Flushable {
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException;
+        throws DeadlockException, LockFailureException;
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
@@ -304,7 +304,7 @@ public interface Transaction extends Flushable {
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException;
+        throws DeadlockException, LockFailureException;
 
     /**
      * Attempts to acquire an upgradable lock for the given key, denying
@@ -346,7 +346,7 @@ public interface Transaction extends Flushable {
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
     LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
-        throws DeadlockException;
+        throws DeadlockException, LockFailureException;
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any

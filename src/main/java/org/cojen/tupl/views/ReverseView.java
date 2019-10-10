@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
@@ -131,7 +130,7 @@ public final class ReverseView implements View {
 
     @Override
     public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         return mSource.tryLockShared(txn, key, nanosTimeout);
     }
@@ -145,7 +144,7 @@ public final class ReverseView implements View {
 
     @Override
     public LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         return mSource.tryLockUpgradable(txn, key, nanosTimeout);
     }
@@ -159,7 +158,7 @@ public final class ReverseView implements View {
 
     @Override
     public LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         return mSource.tryLockExclusive(txn, key, nanosTimeout);
     }

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
@@ -283,7 +282,7 @@ public final class TransformedView implements View {
 
     @Override
     public final LockResult tryLockShared(Transaction txn, byte[] tkey, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
         if (key != null) {
@@ -305,7 +304,7 @@ public final class TransformedView implements View {
 
     @Override
     public final LockResult tryLockUpgradable(Transaction txn, byte[] tkey, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
         if (key != null) {
@@ -327,7 +326,7 @@ public final class TransformedView implements View {
 
     @Override
     public final LockResult tryLockExclusive(Transaction txn, byte[] tkey, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
         if (key != null) {
