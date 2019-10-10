@@ -109,7 +109,7 @@ class Locker extends LockOwner {
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    final LockResult tryLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doTryLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
         LockResult result = manager().getLockHT(hash)
@@ -135,7 +135,7 @@ class Locker extends LockOwner {
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    final LockResult lock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
         LockResult result = manager().getLockHT(hash)
@@ -164,16 +164,16 @@ class Locker extends LockOwner {
      * @throws IllegalStateException if too many shared locks
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doTryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_SHARED, indexId, key, hash(indexId, key), nanosTimeout);
+        return doTryLock(TYPE_SHARED, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult tryLockShared(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doTryLockShared(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_SHARED, indexId, key, hash, nanosTimeout);
+        return doTryLock(TYPE_SHARED, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -194,16 +194,16 @@ class Locker extends LockOwner {
      * @throws LockFailureException if interrupted or timed out
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doLockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_SHARED, indexId, key, hash(indexId, key), nanosTimeout);
+        return doLock(TYPE_SHARED, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult lockShared(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doLockShared(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_SHARED, indexId, key, hash, nanosTimeout);
+        return doLock(TYPE_SHARED, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -225,16 +225,16 @@ class Locker extends LockOwner {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doTryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), nanosTimeout);
+        return doTryLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult tryLockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doTryLockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
+        return doTryLock(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -253,16 +253,16 @@ class Locker extends LockOwner {
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), nanosTimeout);
+        return doLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult lockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doLockUpgradable(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
+        return doLock(TYPE_UPGRADABLE, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -283,16 +283,16 @@ class Locker extends LockOwner {
      * OWNED_EXCLUSIVE}
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doTryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), nanosTimeout);
+        return doTryLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult tryLockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doTryLockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        return tryLock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
+        return doTryLock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -310,16 +310,16 @@ class Locker extends LockOwner {
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
      * @throws DeadlockException if deadlock was detected after waiting full timeout
      */
-    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
+    final LockResult doLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), nanosTimeout);
+        return doLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), nanosTimeout);
     }
 
-    final LockResult lockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
+    final LockResult doLockExclusive(long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        return lock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
+        return doLock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
     }
 
     /**
@@ -347,7 +347,7 @@ class Locker extends LockOwner {
      * Acquire a shared lock, with infinite timeout, but don't push the lock into the owned
      * lock stack. Returns the lock which was acquired, or null if already owned.
      */
-    final Lock lockSharedNoPush(long indexId, byte[] key) throws LockFailureException {
+    final Lock doLockSharedNoPush(long indexId, byte[] key) throws LockFailureException {
         int hash = hash(indexId, key);
         LockManager.LockHT ht = mManager.getLockHT(hash);
 
@@ -373,7 +373,7 @@ class Locker extends LockOwner {
      * Acquire an upgradable lock, with infinite timeout, but don't push the lock into the
      * owned lock stack. Returns the lock which was acquired, or null if already owned.
      */
-    final Lock lockUpgradableNoPush(long indexId, byte[] key) throws LockFailureException {
+    final Lock doLockUpgradableNoPush(long indexId, byte[] key) throws LockFailureException {
         int hash = hash(indexId, key);
         LockManager.LockHT ht = mManager.getLockHT(hash);
 

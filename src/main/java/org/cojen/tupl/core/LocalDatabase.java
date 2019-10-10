@@ -1356,15 +1356,15 @@ public final class LocalDatabase extends CoreDatabase {
             txn = newNoRedoTransaction(redoTxnId);
             try {
                 txn.lockTimeout(-1, null);
-                txn.lockExclusive(mRegistryKeyMap.mId, idKey);
-                txn.lockExclusive(mRegistryKeyMap.mId, trashIdKey);
+                txn.doLockExclusive(mRegistryKeyMap.mId, idKey);
+                txn.doLockExclusive(mRegistryKeyMap.mId, trashIdKey);
                 // Lock in a consistent order, avoiding deadlocks.
                 if (Arrays.compareUnsigned(oldNameKey, newNameKey) <= 0) {
-                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
-                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
+                    txn.doLockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                    txn.doLockExclusive(mRegistryKeyMap.mId, newNameKey);
                 } else {
-                    txn.lockExclusive(mRegistryKeyMap.mId, newNameKey);
-                    txn.lockExclusive(mRegistryKeyMap.mId, oldNameKey);
+                    txn.doLockExclusive(mRegistryKeyMap.mId, newNameKey);
+                    txn.doLockExclusive(mRegistryKeyMap.mId, oldNameKey);
                 }
             } catch (Throwable e) {
                 txn.reset();

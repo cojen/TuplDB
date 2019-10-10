@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.InvalidTransactionException;
@@ -708,29 +709,77 @@ public final class LocalTransaction extends Locker implements Transaction {
         return b.append('}').toString();
     }
 
-    @Override
-    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
-        return super.lockShared(indexId, key, mLockTimeoutNanos);
+    final LockResult doLockShared(long indexId, byte[] key, int hash) throws LockFailureException {
+        return super.doLockShared(indexId, key, hash, mLockTimeoutNanos);
     }
 
-    final LockResult lockShared(long indexId, byte[] key, int hash) throws LockFailureException {
-        return super.lockShared(indexId, key, hash, mLockTimeoutNanos);
+    @Override
+    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
+        return lockShared(indexId, key, mLockTimeoutNanos);
+    }
+
+    @Override
+    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        return super.doLockShared(indexId, key, nanosTimeout);
+    }
+
+    @Override
+    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return super.doTryLockShared(indexId, key, nanosTimeout);
     }
 
     @Override
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
+        return lockUpgradable(indexId, key, mLockTimeoutNanos);
+    }
+
+    @Override
+    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        return super.doLockUpgradable(indexId, key, nanosTimeout);
+    }
+
+    @Override
+    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return super.doTryLockUpgradable(indexId, key, nanosTimeout);
+    }
+
+    final LockResult doLockExclusive(long indexId, byte[] key)
+        throws LockFailureException
+    {
+        return super.doLockExclusive(indexId, key, mLockTimeoutNanos);
+    }
+
+    final LockResult doLockExclusive(long indexId, byte[] key, int hash)
+        throws LockFailureException
+    {
+        return super.doLockExclusive(indexId, key, hash, mLockTimeoutNanos);
     }
 
     @Override
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        return super.lockExclusive(indexId, key, mLockTimeoutNanos);
+        return lockExclusive(indexId, key, mLockTimeoutNanos);
     }
 
-    final LockResult lockExclusive(long indexId, byte[] key, int hash)
+    @Override
+    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
+        return super.doLockExclusive(indexId, key, nanosTimeout);
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+        throws DeadlockException
+    {
+        return super.doTryLockExclusive(indexId, key, nanosTimeout);
     }
 
     public final void customRedo(int handlerId, byte[] message, long indexId, byte[] key)

@@ -1678,7 +1678,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     }
                 }
 
-                LockResult result = txn.tryLock(lockType, mTree.mId, mKey, keyHash, 0L);
+                LockResult result = txn.doTryLock(lockType, mTree.mId, mKey, keyHash, 0L);
 
                 if (result.isHeld()) {
                     mValue = mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
@@ -1776,7 +1776,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
                 break obtainResult;
             } else {
-                result = txn.tryLock(lockType, mTree.mId, mKey, keyHash, 0L);
+                result = txn.doTryLock(lockType, mTree.mId, mKey, keyHash, 0L);
             }
 
             if (result.isHeld()) {
@@ -1817,11 +1817,11 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             int lockType = txn.lockMode().repeatable;
 
             if (lockType == 0) {
-                if ((result = txn.lockShared(mTree.mId, mKey, keyHash)) == LockResult.ACQUIRED) {
+                if ((result = txn.doLockShared(mTree.mId, mKey, keyHash)) == LockResult.ACQUIRED) {
                     result = LockResult.UNOWNED;
                 }
             } else {
-                result = txn.lock(lockType, mTree.mId, mKey, keyHash, txn.mLockTimeoutNanos);
+                result = txn.doLock(lockType, mTree.mId, mKey, keyHash, txn.mLockTimeoutNanos);
             }
 
             if (copyIfExists() != null) {
@@ -2238,7 +2238,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 return LockResult.UNOWNED;
             }
 
-            LockResult result = txn.tryLock(mode.repeatable, mTree.mId, mKey, mKeyHash, 0L);
+            LockResult result = txn.doTryLock(mode.repeatable, mTree.mId, mKey, mKeyHash, 0L);
 
             return result.isHeld() ? result : null;
         } catch (DeadlockException e) {
@@ -2597,7 +2597,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else {
                 int keyHash = keyHash();
                 if (mode == LockMode.READ_COMMITTED) {
-                    result = txn.lockShared(mTree.mId, key, keyHash);
+                    result = txn.doLockShared(mTree.mId, key, keyHash);
                     if (result == LockResult.ACQUIRED) {
                         result = LockResult.UNOWNED;
                         locker = txn;
@@ -2605,7 +2605,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                         locker = null;
                     }
                 } else {
-                    result = txn.lock
+                    result = txn.doLock
                         (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     locker = null;
                 }
@@ -2733,7 +2733,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     if (tryLockLoad(txn, key, keyHash, mKeyOnly, leaf)) {
                         return LockResult.UNOWNED;
                     }
-                    result = txn.lockShared(mTree.mId, key, keyHash);
+                    result = txn.doLockShared(mTree.mId, key, keyHash);
                     if (result != LockResult.ACQUIRED) {
                         // Not expected. If the transaction already owned the lock, then
                         // the tryLockLoad call earler would have returned true.
@@ -2742,7 +2742,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     result = LockResult.UNOWNED;
                     locker = txn;
                 } else {
-                    result = txn.lock
+                    result = txn.doLock
                         (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     if (result != LockResult.ACQUIRED) {
                         return result;
@@ -2807,7 +2807,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                         if (tryLockLoad(txn, key, keyHash, false, leaf)) {
                             return LockResult.UNOWNED;
                         }
-                        result = txn.lockShared(mTree.mId, key, keyHash);
+                        result = txn.doLockShared(mTree.mId, key, keyHash);
                         if (result == LockResult.ACQUIRED) {
                             result = LockResult.UNOWNED;
                             locker = txn;
@@ -2817,7 +2817,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                             locker = null;
                         }
                     } else {
-                        result = txn.lock
+                        result = txn.doLock
                             (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                         locker = null;
                     }
@@ -2905,7 +2905,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         ViewUtils.positionCheck(key);
         try {
             if (mTxn.lockMode() != LockMode.UNSAFE) {
-                mTxn.lockExclusive(mTree.mId, key, keyHash());
+                mTxn.doLockExclusive(mTree.mId, key, keyHash());
             }
             if (allowRedo()) {
                 storeAndMaybeRedo(mTxn, value);
@@ -2933,7 +2933,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 LocalDatabase db = mTree.mDatabase;
                 txn = db.threadLocalTransaction(alwaysRedo(db.mDurabilityMode));
                 try {
-                    txn.lockExclusive(mTree.mId, key, keyHash());
+                    txn.doLockExclusive(mTree.mId, key, keyHash());
                     txn.storeCommit(txn, this, value);
                     return;
                 } catch (Throwable e) {
@@ -2973,7 +2973,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         try {
             store: {
                 if (mTxn.lockMode() != LockMode.UNSAFE) {
-                    mTxn.lockExclusive(mTree.mId, key, keyHash());
+                    mTxn.doLockExclusive(mTree.mId, key, keyHash());
                     if (allowRedo() && mTxn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         mTxn.storeCommit(requireTransaction() ? mTxn : LocalTransaction.BOGUS,
                                          this, value);
@@ -3023,7 +3023,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else {
                 final int hash = LockManager.hash(mTree.mId, key);
                 mKeyHash = hash;
-                mTxn.lockExclusive(mTree.mId, key, hash);
+                mTxn.doLockExclusive(mTree.mId, key, hash);
             }
             return doFindAndStore(mTxn, key, value);
         } catch (Throwable e) {
@@ -3052,7 +3052,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 LocalDatabase db = mTree.mDatabase;
                 txn = db.threadLocalTransaction(alwaysRedo(db.mDurabilityMode));
                 try {
-                    txn.lockExclusive(mTree.mId, key, hash);
+                    txn.doLockExclusive(mTree.mId, key, hash);
                     byte[] result = doFindAndStore(txn, key, value);
                     txn.commit();
                     return result;
@@ -3145,7 +3145,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     LocalDatabase db = mTree.mDatabase;
                     txn = db.threadLocalTransaction(alwaysRedo(db.mDurabilityMode));
                     try {
-                        txn.lockExclusive(mTree.mId, key, hash);
+                        txn.doLockExclusive(mTree.mId, key, hash);
                         boolean result = doFindAndModify(txn, key, oldValue, newValue);
                         txn.commit();
                         return result;
@@ -3174,7 +3174,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else {
                 final int hash;
                 mKeyHash = hash = LockManager.hash(mTree.mId, key);
-                result = txn.lockExclusive(mTree.mId, key, hash);
+                result = txn.doLockExclusive(mTree.mId, key, hash);
                 if (result == LockResult.ACQUIRED && mode.repeatable != 0) {
                     // Downgrade to upgradable when no modification is made, to
                     // preserve repeatable semantics and allow upgrade later.
@@ -4294,7 +4294,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         LocalTransaction undoTxn = null;
 
         if (mTxn.lockMode() != LockMode.UNSAFE) {
-            mTxn.lockExclusive(mTree.mId, key, keyHash());
+            mTxn.doLockExclusive(mTree.mId, key, keyHash());
             undoTxn = mTxn;
         }
 
@@ -4338,7 +4338,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 txn = db.threadLocalTransaction(durabilityMode);
                 txn.mLockMode = LockMode.UNSAFE; // no undo
                 // Manually lock the key.
-                txn.lockExclusive(mTree.mId, key, keyHash());
+                txn.doLockExclusive(mTree.mId, key, keyHash());
             }
         }
 
