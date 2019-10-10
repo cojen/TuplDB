@@ -59,7 +59,7 @@ public class DeadlockTest {
 
         // Current thread locks k0, and helps cause the deadlock.
         Locker locker = new Locker(mManager);
-        locker.lockShared(1, keys[0], timeout);
+        locker.doLockShared(1, keys[0], timeout);
 
         // Victim thread.
         Task victim = new Task() {
@@ -68,9 +68,9 @@ public class DeadlockTest {
                     Locker locker = new Locker(mManager);
                     try {
                         // Lock k2 has does not participate in deadlock.
-                        locker.lockExclusive(1, keys[2], timeout / 2);
+                        locker.doLockExclusive(1, keys[2], timeout / 2);
                         try {
-                            locker.lockExclusive(1, keys[0], timeout / 2);
+                            locker.doLockExclusive(1, keys[0], timeout / 2);
                             fail();
                         } catch (DeadlockException e) {
                             // Deadlock observed, but this thread didn't create it.
@@ -89,9 +89,9 @@ public class DeadlockTest {
                     Locker locker = new Locker(mManager);
                     try {
                         // Lock k1 and then k0, which is the opposite order of main thread.
-                        locker.lockShared(1, keys[1], timeout);
+                        locker.doLockShared(1, keys[1], timeout);
                         try {
-                            locker.lockExclusive(1, keys[0], timeout);
+                            locker.doLockExclusive(1, keys[0], timeout);
                             fail();
                         } catch (DeadlockException e) {
                             // This thread helped create the deadlock.
@@ -109,7 +109,7 @@ public class DeadlockTest {
         // Lock k1, creating a deadlock. Timeout is longer, and so deadlock
         // will not be detected here.
         try {
-            locker.lockExclusive(1, keys[1], timeout * 2);
+            locker.doLockExclusive(1, keys[1], timeout * 2);
         } finally {
             locker.scopeUnlockAll();
         }
@@ -143,7 +143,7 @@ public class DeadlockTest {
                     Locker locker = new Locker(mManager);
                     try {
                         for (byte[] key : mKeys) {
-                            locker.lockUpgradable(1, key, mTimeout);
+                            locker.doLockUpgradable(1, key, mTimeout);
                             sleep(100);
                         }
                     } finally {

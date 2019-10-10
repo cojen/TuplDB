@@ -30,7 +30,6 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -206,7 +205,7 @@ class BTree extends Tree implements View, Index {
             int lockType = local.lockMode().repeatable;
             if (lockType != 0) {
                 int hash = LockManager.hash(mId, key);
-                local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
+                local.doLock(lockType, mId, key, hash, local.mLockTimeoutNanos);
             }
         }
 
@@ -374,7 +373,7 @@ class BTree extends Tree implements View, Index {
             Locker locker;
             if (local == null) {
                 locker = lockSharedLocal(key, keyHash);
-            } else if (local.lockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
+            } else if (local.doLockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
                 locker = local;
             } else {
                 // Transaction already had the lock for some reason, so don't release it.
@@ -414,7 +413,7 @@ class BTree extends Tree implements View, Index {
             int lockType = local.lockMode().repeatable;
             if (lockType != 0) {
                 int hash = LockManager.hash(mId, key);
-                local.lock(lockType, mId, key, hash, local.mLockTimeoutNanos);
+                local.doLock(lockType, mId, key, hash, local.mLockTimeoutNanos);
             }
         }
 
@@ -490,7 +489,7 @@ class BTree extends Tree implements View, Index {
             Locker locker;
             if (local == null) {
                 locker = lockSharedLocal(key, keyHash);
-            } else if (local.lockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
+            } else if (local.doLockShared(mId, key, keyHash) == LockResult.ACQUIRED) {
                 locker = local;
             } else {
                 // Transaction already had the lock for some reason, so don't release it.
@@ -596,7 +595,7 @@ class BTree extends Tree implements View, Index {
                 if (local == null) {
                     lockSharedLocal(key, hash).unlock();
                 } else {
-                    LockResult result = local.lock(0, mId, key, hash, local.mLockTimeoutNanos);
+                    LockResult result = local.doLock(0, mId, key, hash, local.mLockTimeoutNanos);
                     if (result == LockResult.ACQUIRED) {
                         local.unlock();
                     }
@@ -604,7 +603,7 @@ class BTree extends Tree implements View, Index {
             }
         } else if (!mode.noReadLock) {
             int hash = LockManager.hash(mId, key);
-            return local.lock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
+            return local.doLock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
         }
 
         return LockResult.UNOWNED;
@@ -612,7 +611,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockShared(mId, key, nanosTimeout);
     }
@@ -624,7 +623,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockUpgradable(mId, key, nanosTimeout);
     }
@@ -638,7 +637,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException
+        throws LockFailureException
     {
         return check(txn).tryLockExclusive(mId, key, nanosTimeout);
     }

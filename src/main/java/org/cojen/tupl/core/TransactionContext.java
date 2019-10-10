@@ -397,6 +397,27 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
+    /**
+     * @param op OP_TXN_LOCK_SHARED, OP_TXN_LOCK_UPGRADABLE, or OP_TXN_LOCK_EXCLUSIVE
+     */
+    void redoLock(RedoWriter redo, byte op, long txnId, long indexId, byte[] key)
+        throws IOException
+    {
+        keyCheck(key);
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, op, txnId);
+            redoWriteLongLE(indexId);
+            redoWriteUnsignedVarInt(key.length);
+            redoWriteBytes(key, true);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     void redoStore(RedoWriter redo, byte op, long txnId, long indexId,
                    byte[] key, byte[] value)
         throws IOException

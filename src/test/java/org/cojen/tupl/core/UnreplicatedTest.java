@@ -189,4 +189,24 @@ public class UnreplicatedTest {
         // Transaction should rollback when commit fails.
         fastAssertArrayEquals("value1".getBytes(), ix.load(txn, "key1".getBytes()));
     }
+
+    @Test
+    public void noLockReplicate() throws Exception {
+        Transaction txn = mDb.newTransaction();
+
+        byte[] key1 = "key-1".getBytes();
+        assertEquals(LockResult.ACQUIRED, txn.lockShared(123, key1));
+        assertEquals(LockResult.OWNED_SHARED, txn.lockCheck(123, key1));
+
+        byte[] key2 = "key-2".getBytes();
+        assertEquals(LockResult.ACQUIRED, txn.lockUpgradable(123, key2));
+        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(123, key2));
+
+        byte[] key3 = "key-3".getBytes();
+        assertEquals(LockResult.ACQUIRED, txn.lockExclusive(123, key3));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(123, key3));
+
+        assertEquals(LockResult.UPGRADED, txn.lockExclusive(123, key2));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(123, key2));
+    }
 }

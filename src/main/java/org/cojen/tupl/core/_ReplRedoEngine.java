@@ -327,13 +327,13 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
             }
         };
 
-        locker.tryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
+        locker.doTryLockUpgradable(indexId, key, INFINITE_TIMEOUT);
 
         runTaskAnywhere(new Worker.Task() {
             public void run() throws IOException {
                 try {
                     // Full exclusive lock is required.
-                    locker.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                    locker.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
 
                     doStore(Transaction.BOGUS, indexId, key, value);
                 } finally {
@@ -572,7 +572,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -597,7 +597,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -619,7 +619,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -649,7 +649,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         Worker.Task task = new Worker.Task() {
             public void run() throws IOException {
@@ -658,7 +658,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                 }
                 // Manually lock and store with a bogus transaction to avoid creating an
                 // unnecessary undo log entry.
-                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                txn.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
                 doStore(Transaction.BOGUS, indexId, key, value);
                 txn.commitAll();
             }
@@ -746,7 +746,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
-        _Lock lock = txn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(ce.mCursor.mTree.mId, key);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -783,7 +783,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
-        _Lock lock = txn.lockUpgradableNoPush(ce.mCursor.mTree.mId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(ce.mCursor.mTree.mId, key);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -811,7 +811,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+        _Lock lock = txn.doLockUpgradableNoPush(tc.mTree.mId, ce.mKey);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -855,7 +855,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+        _Lock lock = txn.doLockUpgradableNoPush(tc.mTree.mId, ce.mKey);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -894,7 +894,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _BTreeCursor tc = ce.mCursor;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(tc.mTree.mId, ce.mKey);
+        _Lock lock = txn.doLockUpgradableNoPush(tc.mTree.mId, ce.mKey);
 
         runCursorTask(ce, te, new Worker.Task() {
             public void run() throws IOException {
@@ -958,9 +958,9 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockSharedNoPush(indexId, key);
+        _Lock lock = txn.doLockSharedNoPush(indexId, key);
 
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         if (lock != null) {
             runTask(te, new LockPushTask(txn, lock));
         }
@@ -976,9 +976,9 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         if (lock != null) {
             runTask(te, new LockPushTask(txn, lock));
         }
@@ -1009,16 +1009,16 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         // TODO: Can acquire exclusive at first, but must know what push mode to use (0 or 1)
-        // TODO: No need to run special task if transaction was just created.
+        // TODO: No need to run special task if worker isn't assigned yet
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
                 if (lock != null) {
                     txn.push(lock);
                 }
-                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                txn.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
             }
         });
 
@@ -1050,7 +1050,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
         _LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        _Lock lock = txn.lockUpgradableNoPush(indexId, key);
+        _Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
@@ -1058,7 +1058,7 @@ class _ReplRedoEngine implements RedoVisitor, ThreadFactory {
                     txn.push(lock);
                 }
 
-                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
+                txn.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
 
                 handler.redo(txn, message, indexId, key);
             }

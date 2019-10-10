@@ -448,7 +448,7 @@ final class _SnapshotPageArray extends PageArray {
             final _LocalDatabase cache = mNodeCache;
             final long count = mSnapshotPageCount;
 
-            Transaction txn = mPageCopyIndex.mDatabase.newTransaction();
+            _LocalTransaction txn = (_LocalTransaction) mPageCopyIndex.mDatabase.newTransaction();
             try {
                 // Disable writes to the undo log and fragmented value trash.
                 txn.lockMode(LockMode.UNSAFE);
@@ -458,7 +458,7 @@ final class _SnapshotPageArray extends PageArray {
                     for (long index = 0; index < count; index++) {
                         byte[] key = new byte[8];
                         encodeLongBE(key, 0, index);
-                        txn.lockExclusive(mPageCopyIndex.getId(), key);
+                        txn.doLockExclusive(mPageCopyIndex.getId(), key);
 
                         c.findNearby(key);
                         byte[] value = c.value();

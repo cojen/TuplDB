@@ -44,7 +44,7 @@ public final class LocalTransaction extends Locker implements Transaction {
     public static final LocalTransaction BOGUS = new LocalTransaction();
 
     static final int
-        HAS_SCOPE   = 1, // When set, scope has been entered but not logged.
+        HAS_SCOPE   = 1, // When set, scope has been entered and logged.
         HAS_COMMIT  = 2, // When set, transaction has committable changes.
         HAS_TRASH   = 4, /* When set, fragmented values are in the trash and must be
                             fully deleted after committing the top-level scope. */
@@ -355,7 +355,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
             if (txnId == 0) {
-                txnId = assignTransactionId();
+                txnId = doAssignTransactionId();
             }
         } catch (Throwable e) {
             shared.release();
@@ -708,29 +708,136 @@ public final class LocalTransaction extends Locker implements Transaction {
         return b.append('}').toString();
     }
 
-    @Override
-    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
-        return super.lockShared(indexId, key, mLockTimeoutNanos);
+    final LockResult doLockShared(long indexId, byte[] key, int hash) throws LockFailureException {
+        return super.doLockShared(indexId, key, hash, mLockTimeoutNanos);
     }
 
-    final LockResult lockShared(long indexId, byte[] key, int hash) throws LockFailureException {
-        return super.lockShared(indexId, key, hash, mLockTimeoutNanos);
+    @Override
+    public final LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
+        // Don't replicate shared lock acquisitions. Shared lock replication with a non-strict
+        // LockUpgradeRule can cause replica deadlocks when the lock is upgraded due to
+        // out-of-order transaction processing. A shared lock just prevents other transactions
+        // from making modifications, but replicas cannot make modifications anyhow.
+        return lockShared(indexId, key, mLockTimeoutNanos);
+    }
+
+    @Override
+    public final LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        // See comments in lockShared method above.
+        return doLockShared(indexId, key, nanosTimeout);
+    }
+
+    @Override
+    public final LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        // See comments in lockShared method above.
+        return doTryLockShared(indexId, key, nanosTimeout);
     }
 
     @Override
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        return super.lockUpgradable(indexId, key, mLockTimeoutNanos);
+        return lockUpgradable(indexId, key, mLockTimeoutNanos);
+    }
+
+    @Override
+    public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        return redoLock(doLockUpgradable(indexId, key, nanosTimeout),
+                        OP_TXN_LOCK_UPGRADABLE, indexId, key);
+    }
+
+    @Override
+    public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        return redoLock(doTryLockUpgradable(indexId, key, nanosTimeout),
+                        OP_TXN_LOCK_UPGRADABLE, indexId, key);
+    }
+
+    final LockResult doLockExclusive(long indexId, byte[] key)
+        throws LockFailureException
+    {
+        return doLockExclusive(indexId, key, mLockTimeoutNanos);
+    }
+
+    final LockResult doLockExclusive(long indexId, byte[] key, int hash)
+        throws LockFailureException
+    {
+        return doLockExclusive(indexId, key, hash, mLockTimeoutNanos);
     }
 
     @Override
     public final LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        return super.lockExclusive(indexId, key, mLockTimeoutNanos);
+        return lockExclusive(indexId, key, mLockTimeoutNanos);
     }
 
-    final LockResult lockExclusive(long indexId, byte[] key, int hash)
+    @Override
+    public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return super.lockExclusive(indexId, key, hash, mLockTimeoutNanos);
+        return redoLock(doLockExclusive(indexId, key, nanosTimeout),
+                        OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+    }
+
+    @Override
+    public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException
+    {
+        return redoLock(doTryLockExclusive(indexId, key, nanosTimeout),
+                        OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+    }
+
+    private LockResult redoLock(LockResult result, byte op, long indexId, byte[] key)
+        throws LockFailureException
+
+    {
+        if (result.isAcquired() && mRedo != null && mDurabilityMode != DurabilityMode.NO_REDO) {
+            try {
+                long txnId = mTxnId;
+
+                if (txnId == 0) {
+                    txnId = assignTransactionId();
+                }
+
+                int hasState = mHasState;
+                if ((hasState & HAS_SCOPE) == 0) {
+                    ParentScope parentScope = mParentScope;
+                    if (parentScope != null) {
+                        setScopeState(parentScope);
+                    }
+                    mContext.redoEnter(mRedo, txnId);
+                    mHasState = hasState | HAS_SCOPE;
+                }
+
+                mContext.redoLock(mRedo, op, txnId, indexId, key);
+            } catch (Throwable e) {
+                if (e instanceof UnmodifiableReplicaException || mDatabase.isClosed()) {
+                    // Keep the lock for now and fail later instead of throwing an odd
+                    // exception when attempting to acquire a lock. The transaction won't be
+                    // able to commit anyhow, and by then an exception will be thrown again.
+                } else {
+                    LockFailureException fail = new LockFailureException(rootCause(e));
+
+                    try {
+                        if (result == LockResult.UPGRADED) {
+                            unlockToUpgradable();
+                        } else {
+                            unlock();
+                        }
+                    } catch (Exception e2) {
+                        suppress(fail, e2);
+                    }
+
+                    throw fail;
+                }
+            }
+        }
+
+        return result;
     }
 
     public final void customRedo(int handlerId, byte[] message, long indexId, byte[] key)
@@ -745,12 +852,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         long txnId = mTxnId;
 
         if (txnId == 0) {
-            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-            try {
-                txnId = assignTransactionId();
-            } finally {
-                shared.release();
-            }
+            txnId = assignTransactionId();
         }
 
         int hasState = mHasState;
@@ -796,12 +898,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         long txnId = mTxnId;
 
         if (txnId == 0 && mRedo != null) {
-            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-            try {
-                txnId = assignTransactionId();
-            } finally {
-                shared.release();
-            }
+            txnId = assignTransactionId();
         }
 
         return txnId < 0 ? 0 : txnId;
@@ -901,7 +998,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         long txnId = mTxnId;
 
         if (txnId == 0) {
-            txnId = assignTransactionId();
+            txnId = doAssignTransactionId();
         }
 
         try {
@@ -946,7 +1043,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         long txnId = mTxnId;
 
         if (txnId == 0) {
-            txnId = assignTransactionId();
+            txnId = doAssignTransactionId();
         }
 
         try {
@@ -1030,12 +1127,24 @@ public final class LocalTransaction extends Locker implements Transaction {
     /**
      * Caller must hold commit lock and have verified that current transaction id is 0.
      */
-    private long assignTransactionId() {
+    private long doAssignTransactionId() {
         long txnId = mContext.nextTransactionId();
         // Replicas set the high bit to ensure no identifier conflict with the leader.
         txnId = mRedo.adjustTransactionId(txnId);
         mTxnId = txnId;
         return txnId;
+    }
+
+    /**
+     * Caller must have verified that current transaction id is 0.
+     */
+    private long assignTransactionId() {
+        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            return doAssignTransactionId();
+        } finally {
+            shared.release();
+        }
     }
 
     /**
@@ -1083,7 +1192,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         long txnId = mTxnId;
 
         if (txnId == 0) {
-            txnId = assignTransactionId();
+            txnId = doAssignTransactionId();
         }
 
         try {

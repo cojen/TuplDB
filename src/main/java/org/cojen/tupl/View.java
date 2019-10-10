@@ -536,7 +536,7 @@ public interface View {
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws DeadlockException, LockFailureException, ViewConstraintException
     {
         return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockShared);
     }
@@ -584,7 +584,7 @@ public interface View {
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws DeadlockException, LockFailureException, ViewConstraintException
     {
         return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockUpgradable);
     }
@@ -630,7 +630,7 @@ public interface View {
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
-        throws DeadlockException, ViewConstraintException
+        throws DeadlockException, LockFailureException, ViewConstraintException
     {
         return ViewUtils.tryLock(txn, key, nanosTimeout, this::lockExclusive);
     }
