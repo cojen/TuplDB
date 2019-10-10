@@ -489,7 +489,11 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <h3><a id="mapDataFiles(boolean)">mapDataFiles</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">mapDataFiles</span>&#8203;(<span class="arguments">boolean&nbsp;mapped)</span></div>
 <div class="block">Enable memory mapping of the data files. Not recommended for 32-bit platforms or for
- databases which don't fit entirely in main memory.</div>
+ databases which don't fit entirely in main memory. Memory mapped files tend to exhibit
+ poor performance when they don't fit in main memory.
+
+ <p>If the data file is fixed in size, consider calling <a href="#dataPageArray(org.cojen.tupl.io.PageArray)"><code>dataPageArray</code></a> with <a href="io/MappedPageArray.html" title="class in org.cojen.tupl.io"><code>MappedPageArray</code></a> for best memory mapping performance. Combine
+ with <a href="io/StripedPageArray.html" title="class in org.cojen.tupl.io"><code>StripedPageArray</code></a> when using multiple data files.</div>
 </section>
 </li>
 <li class="blockList">

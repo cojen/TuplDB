@@ -32,8 +32,10 @@ import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
+import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.StripedPageArray;
 
 import org.cojen.tupl.repl.ReplicatorConfig;
 
@@ -112,7 +114,12 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Enable memory mapping of the data files. Not recommended for 32-bit platforms or for
-     * databases which don't fit entirely in main memory.
+     * databases which don't fit entirely in main memory. Memory mapped files tend to exhibit
+     * poor performance when they don't fit in main memory.
+     *
+     * <p>If the data file is fixed in size, consider calling {@link #dataPageArray
+     * dataPageArray} with {@link MappedPageArray} for best memory mapping performance. Combine
+     * with {@link StripedPageArray} when using multiple data files.
      */
     public DatabaseConfig mapDataFiles(boolean mapped) {
         mLauncher.mapDataFiles(mapped);
