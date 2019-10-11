@@ -1011,8 +1011,7 @@ class ReplRedoEngine implements RedoVisitor, ThreadFactory {
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
-        // TODO: Can acquire exclusive at first, but must know what push mode to use (0 or 1)
-        // TODO: No need to run special task if worker isn't assigned yet
+        // Run a task in case the exclusive request must wait.
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
                 if (lock != null) {
