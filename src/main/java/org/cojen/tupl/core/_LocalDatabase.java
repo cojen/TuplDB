@@ -657,9 +657,9 @@ public final class _LocalDatabase extends CoreDatabase {
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
             if (launcher.mReplManager != null) {
-                mRegistry = new _BTree.Repl(this, _BTree.REGISTRY_ID, null, rootNode);
+                mRegistry = new _BTree.Repl(this, Tree.REGISTRY_ID, null, rootNode);
             } else {
-                mRegistry = new _BTree(this, _BTree.REGISTRY_ID, null, rootNode);
+                mRegistry = new _BTree(this, Tree.REGISTRY_ID, null, rootNode);
             }
 
             mOpenTreesLatch = new Latch();
@@ -694,7 +694,7 @@ public final class _LocalDatabase extends CoreDatabase {
             if (openMode == OPEN_TEMP) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(_BTree.REGISTRY_KEY_MAP_ID, IX_CREATE, launcher);
+                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, IX_CREATE, launcher);
                 if (debugListener != null) {
                     Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
                     try {
@@ -712,7 +712,7 @@ public final class _LocalDatabase extends CoreDatabase {
 
             _BTree cursorRegistry = null;
             if (openMode != OPEN_TEMP) {
-                cursorRegistry = openInternalTree(_BTree.CURSOR_REGISTRY_ID, IX_FIND, launcher);
+                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, IX_FIND, launcher);
             }
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
@@ -1193,7 +1193,7 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     Index indexById(Transaction txn, long id) throws IOException {
-        if (_BTree.isInternal(id)) {
+        if (Tree.isInternal(id)) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
 
@@ -1275,18 +1275,18 @@ public final class _LocalDatabase extends CoreDatabase {
      * Allows access to internal indexes which can use the redo log.
      */
     Index anyIndexById(Transaction txn, long id) throws IOException {
-        return _BTree.isInternal(id) ? internalIndex(id) : indexById(txn, id);
+        return Tree.isInternal(id) ? internalIndex(id) : indexById(txn, id);
     }
 
     /**
      * @param id must be an internal index
      */
     private Index internalIndex(long id) throws IOException {
-        if (id == _BTree.REGISTRY_KEY_MAP_ID) {
+        if (id == Tree.REGISTRY_KEY_MAP_ID) {
             return mRegistryKeyMap;
-        } else if (id == _BTree.FRAGMENTED_TRASH_ID) {
+        } else if (id == Tree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash();
-        } else if (id == _BTree.CUSTOM_HANDLER_REGISTRY_ID) {
+        } else if (id == Tree.CUSTOM_HANDLER_REGISTRY_ID) {
             return customHandlerRegistry();
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
@@ -1334,7 +1334,7 @@ public final class _LocalDatabase extends CoreDatabase {
                 throw new ClosedIndexException();
             }
 
-            if (_BTree.isInternal(tree.mId)) {
+            if (Tree.isInternal(tree.mId)) {
                 throw new IllegalStateException("Cannot rename an internal index");
             }
 
@@ -2066,7 +2066,7 @@ public final class _LocalDatabase extends CoreDatabase {
         try {
             if ((handlerRegistry = mCustomHandlerRegistry) == null) {
                 mCustomHandlerRegistry = handlerRegistry =
-                    openInternalTree(_BTree.CUSTOM_HANDLER_REGISTRY_ID, ixOption);
+                    openInternalTree(Tree.CUSTOM_HANDLER_REGISTRY_ID, ixOption);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -2229,7 +2229,7 @@ public final class _LocalDatabase extends CoreDatabase {
 
         for (_TreeRef treeRef : mOpenTrees.values()) {
             Tree tree = treeRef.get();
-            if (tree != null && !_BTree.isInternal(tree.getId())) {
+            if (tree != null && !Tree.isInternal(tree.getId())) {
                 tree.writeCachePrimer(dout);
             }
         }
@@ -3105,7 +3105,7 @@ public final class _LocalDatabase extends CoreDatabase {
         try {
             if ((cursorRegistry = mCursorRegistry) == null) {
                 mCursorRegistry = cursorRegistry =
-                    openInternalTree(_BTree.CURSOR_REGISTRY_ID, ixOption);
+                    openInternalTree(Tree.CURSOR_REGISTRY_ID, ixOption);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -3577,7 +3577,7 @@ public final class _LocalDatabase extends CoreDatabase {
             long treeId;
             do {
                 treeId = scramble((nextTreeId++) ^ treeIdMask);
-            } while (_BTree.isInternal(treeId));
+            } while (Tree.isInternal(treeId));
 
             encodeLongLE(nextTreeIdBytes, 0, nextTreeId);
             mRegistryKeyMap.store(txn, key, nextTreeIdBytes);
@@ -5386,7 +5386,7 @@ public final class _LocalDatabase extends CoreDatabase {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((trash = mFragmentedTrash) == null) {
-                mFragmentedTrash = trash = openInternalTree(_BTree.FRAGMENTED_TRASH_ID, ixOption);
+                mFragmentedTrash = trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, ixOption);
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();

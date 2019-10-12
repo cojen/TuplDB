@@ -37,6 +37,18 @@ import org.cojen.tupl.views.ViewUtils;
  * @author Brian S O'Neill
  */
 abstract class Tree implements Index {
+    // Reserved internal index ids.
+    static final int
+        REGISTRY_ID = 0,
+        REGISTRY_KEY_MAP_ID = 1,
+        CURSOR_REGISTRY_ID = 2,
+        FRAGMENTED_TRASH_ID = 3,
+        CUSTOM_HANDLER_REGISTRY_ID = 4;
+
+    static boolean isInternal(long id) {
+        return (id & ~0xff) == 0;
+    }
+
     /**
      * Returns a view which can be passed to an observer. Internal trees are returned as
      * unmodifiable.
