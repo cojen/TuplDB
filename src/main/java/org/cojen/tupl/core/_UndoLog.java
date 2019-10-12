@@ -1275,9 +1275,6 @@ final class _UndoLog implements _DatabaseAccess {
             }
 
             if (payloadLen <= 0) {
-                if (node != null) {
-                    node.releaseExclusive();
-                }
                 break;
             }
 
@@ -1294,27 +1291,36 @@ final class _UndoLog implements _DatabaseAccess {
             if (mNodeTopPos == pageSize(page) - 1 &&
                 p_byteGet(page, mNodeTopPos) == OP_COMMIT_TRUNCATE)
             {
-                node.releaseExclusive();
                 break;
             }
+        }
+
+        // At this point, the node variable refers to the top node which must remain after the
+        // consumed nodes are popped. It can be null if all nodes must be popped. Capture the
+        // id to stop at before releasing the latch, after which it can be evicted and change.
+
+        long nodeId = 0;
+        if (node != null) {
+            nodeId = node.id();
+            node.releaseExclusive();
         }
 
         boolean result = popper.accept(op, entry);
 
         _Node n = mNode;
         if (node != n) {
-            // Now pop all the nodes.
+            // Now pop as many nodes as necessary.
             try {
                 n.acquireExclusive();
                 while (true) {
                     n = popNode(n, delete);
                     if (n == null) {
-                        if (node != null) {
+                        if (nodeId != 0) {
                             throw new AssertionError();
                         }
                         break;
                     }
-                    if (node != null && n.id() == node.id()) {
+                    if (n.id() == nodeId) {
                         n.releaseExclusive();
                         break;
                     }
