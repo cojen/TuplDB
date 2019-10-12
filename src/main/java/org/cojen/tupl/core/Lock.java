@@ -117,9 +117,6 @@ final class Lock {
             } else if (count != 0 && isSharedLockOwner(locker)) {
                 return OWNED_SHARED;
             } else {
-                if ((count & 0x7fffffff) >= 0x7ffffffe) {
-                    throw new IllegalStateException("Too many shared locks held");
-                }
                 addSharedLockOwner(count, locker);
                 return ACQUIRED;
             }
@@ -147,11 +144,7 @@ final class Lock {
         }
 
         if (w >= 1) {
-            int count = mLockCount;
-            if ((count & 0x7fffffff) >= 0x7ffffffe) {
-                throw new IllegalStateException("Too many shared locks held");
-            }
-            addSharedLockOwner(count, locker);
+            addSharedLockOwner(mLockCount, locker);
             locker.mWaitingFor = null;
             return ACQUIRED;
         } else if (w == 0) {
@@ -429,16 +422,12 @@ final class Lock {
             int count = mLockCount;
 
             if (count != ~0) {
-                // Unlocking upgradable lock into shared.
-                if ((count &= 0x7fffffff) >= 0x7ffffffe) {
-                    // Retain upgradable lock when this happens.
-                    // mLockCount = count;
-                    throw new IllegalStateException("Too many shared locks held");
-                }
-                addSharedLockOwner(count, locker);
+                // Unlocking upgradable lock into shared. Retain upgradable lock if too many
+                // shared locks are held (IllegalStateException is thrown).
+                addSharedLockOwner(count & 0x7fffffff, locker);
             } else {
                 // Unlocking exclusive lock into shared.
-                addSharedLockOwner(0, locker);
+                doAddSharedLockOwner(1, locker);
                 LatchCondition queueSX = mQueueSX;
                 if (queueSX != null) {
                     if (queueU != null) {
@@ -673,13 +662,19 @@ final class Lock {
     }
 
     private void addSharedLockOwner(int count, LockOwner locker) {
-        count++;
+        if ((count & 0x7fffffff) >= 0x7ffffffe) {
+            throw new IllegalStateException("Too many shared locks held");
+        }
+        doAddSharedLockOwner(count + 1, locker);
+    }
+
+    private void doAddSharedLockOwner(int newCount, LockOwner locker) {
         Object sharedObj = mSharedLockOwnersObj;
         if (sharedObj == null) {
             mSharedLockOwnersObj = locker;
         } else if (sharedObj instanceof LockOwnerHTEntry[]) {
             LockOwnerHTEntry[] entries = (LockOwnerHTEntry[]) sharedObj;
-            lockerHTadd(entries, count & 0x7fffffff, locker);
+            lockerHTadd(entries, newCount & 0x7fffffff, locker);
         } else {
             // Initial capacity of must be a power of 2.
             LockOwnerHTEntry[] entries = new LockOwnerHTEntry[8];
@@ -687,7 +682,7 @@ final class Lock {
             lockerHTadd(entries, locker);
             mSharedLockOwnersObj = entries;
         }
-        mLockCount = count;
+        mLockCount = newCount;
     }
 
     private static boolean lockerHTcontains(LockOwnerHTEntry[] entries, LockOwner locker) {
