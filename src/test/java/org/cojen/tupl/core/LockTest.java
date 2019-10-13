@@ -2089,6 +2089,49 @@ public class LockTest {
     }
 
     @Test
+    public void unlockCombineTooMuch() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
+
+
+        locker.doLockShared(0, k2, -1);
+        locker.unlockCombine();
+        locker.unlockCombine();
+        locker.unlockCombine();
+
+        locker.unlock();
+
+        try {
+            locker.unlock();
+            fail();
+        } catch (IllegalStateException e) {
+            // No locks held.
+        }
+    }
+
+    @Test
+    public void unlockCombineCrossScope() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
+        locker.scopeEnter();
+
+        locker.unlockCombine();
+
+        locker.doLockShared(0, k2, -1);
+        locker.unlockCombine();
+        locker.unlockCombine();
+        locker.unlockCombine();
+
+        try {
+            locker.unlock();
+            fail();
+        } catch (IllegalStateException e) {
+        }
+    }
+
+    @Test
     public void unlockDowngradeBlockOfOne() throws Exception {
         Locker locker = new Locker(mManager);
 

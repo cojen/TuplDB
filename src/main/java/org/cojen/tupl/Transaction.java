@@ -439,8 +439,8 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
-     * combining an acquire with an upgrade
+     * @throws IllegalStateException if no locks held, or if combining an acquire with an
+     * upgrade
      */
     void unlockCombine();
 

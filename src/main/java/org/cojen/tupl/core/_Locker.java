@@ -561,8 +561,8 @@ class _Locker extends _LockOwner {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
-     * combining an acquire with an upgrade
+     * @throws IllegalStateException if no locks held, or if combining an acquire with an
+     * upgrade
      */
     public final void unlockCombine() {
         Object tailObj = mTailBlock;
@@ -571,12 +571,9 @@ class _Locker extends _LockOwner {
         }
         if (tailObj instanceof _Lock) {
             ParentScope parent = mParentScope;
-            if (parent != null && parent.mTailBlock == tailObj) {
-                throw new IllegalStateException("Cannot cross a scope boundary");
-            }
             // Group of one, so nothing to do.
         } else {
-            Block.unlockCombine((Block) tailObj, this);
+            Block.unlockCombine((Block) tailObj);
         }
     }
 
@@ -938,7 +935,7 @@ class _Locker extends _LockOwner {
             }
         }
 
-        static void unlockCombine(Block block, _Locker locker) {
+        static void unlockCombine(Block block) {
             while (true) {
                 // Find the combine position, by searching backwards for a zero bit.
 
@@ -972,6 +969,11 @@ class _Locker extends _LockOwner {
 
                 if (((upgrades ^ prevMask) & mask) != 0) {
                     throw new IllegalStateException("Cannot combine an acquire with an upgrade");
+                }
+
+                if (mask < 0 && block.mPrev == null) {
+                    // Nothing left to combine with.
+                    return;
                 }
 
                 block.mUnlockGroup |= mask;
