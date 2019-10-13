@@ -164,6 +164,12 @@ final class _UndoLog implements _DatabaseAccess {
     // id, length, node id, and top entry offset.
     private static final byte OP_LOG_REF_C = (byte) 33;
 
+    // Payload is key to delete to recover an exclusive lock.
+    static final byte OP_LOCK_EXCLUSIVE = 34;
+
+    // Payload is key to delete to recover an upgradable lock.
+    static final byte OP_LOCK_UPGRADABLE = 35;
+
     private final _LocalDatabase mDatabase;
     private final long mTxnId;
 
@@ -504,6 +510,14 @@ final class _UndoLog implements _DatabaseAccess {
         pushUnwrite(indexId, key, pos, b, 0, len);
     }
     /*P*/ // ]
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    final void pushLock(byte op, long indexId, byte[] key) throws IOException {
+        setActiveIndexId(indexId);
+        doPush(op, key);
+    }
 
     /**
      * @return true if active index and key already match
@@ -887,6 +901,8 @@ final class _UndoLog implements _DatabaseAccess {
                 case OP_UNEXTEND:
                 case OP_UNALLOC:
                 case OP_UNWRITE:
+                case OP_LOCK_EXCLUSIVE:
+                case OP_LOCK_UPGRADABLE:
                     // Ignore.
                     break;
 
@@ -947,6 +963,8 @@ final class _UndoLog implements _DatabaseAccess {
         case OP_COMMIT:
         case OP_COMMIT_TRUNCATE:
         case OP_PREPARE:
+        case OP_LOCK_EXCLUSIVE:
+        case OP_LOCK_UPGRADABLE:
             // Only needed by recovery.
             break;
 
@@ -1577,14 +1595,19 @@ final class _UndoLog implements _DatabaseAccess {
                 break;
 
             case OP_UNINSERT:
-                scope.addLock(mActiveIndexId, entry);
+            case OP_LOCK_EXCLUSIVE:
+                scope.addExclusiveLock(mActiveIndexId, entry);
+                break;
+
+            case OP_LOCK_UPGRADABLE:
+                scope.addUpgradableLock(mActiveIndexId, entry);
                 break;
 
             case OP_UNUPDATE:
             case OP_UNDELETE:
             case OP_UNDELETE_FRAGMENTED: {
                 byte[] key = decodeNodeKey(entry);
-                _Lock lock = scope.addLock(mActiveIndexId, key);
+                _Lock lock = scope.addExclusiveLock(mActiveIndexId, key);
                 if (op != OP_UNUPDATE) {
                     // Indicate that a ghost must be deleted when the transaction is
                     // committed. When the frame is uninitialized, the _Node.deleteGhost
@@ -1599,7 +1622,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_UNDELETE_LK_FRAGMENTED: {
                 byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
                 arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-                _Lock lock = scope.addLock(mActiveIndexId, key);
+                _Lock lock = scope.addExclusiveLock(mActiveIndexId, key);
                 if (op != OP_UNUPDATE_LK) {
                     // Indicate that a ghost must be deleted when the transaction is
                     // committed. When the frame is uninitialized, the _Node.deleteGhost
@@ -1621,7 +1644,7 @@ final class _UndoLog implements _DatabaseAccess {
             case OP_UNALLOC:
             case OP_UNWRITE:
                 if (mActiveKey != null) {
-                    scope.addLock(mActiveIndexId, mActiveKey);
+                    scope.addExclusiveLock(mActiveIndexId, mActiveKey);
                     // Avoid creating a huge list of redundant _Lock objects.
                     mActiveKey = null;
                 }
@@ -1778,6 +1801,16 @@ final class _UndoLog implements _DatabaseAccess {
             int off = offsetRef.get();
             payloadStr = "pos=" + pos + ", value=0x" + toHex(entry, off, entry.length - off);
             break;
+
+        case OP_LOCK_UPGRADABLE:
+            opStr = "LOCK_UPGRADABLE";
+            payloadStr = "key=0x" + toHex(entry) + " (" + utf8(entry) + ')';
+            break;
+
+        case OP_LOCK_EXCLUSIVE:
+            opStr = "LOCK_EXCLUSIVE";
+            payloadStr = "key=0x" + toHex(entry) + " (" + utf8(entry) + ')';
+            break;
         }
 
         if (payloadStr == null) {
@@ -1801,12 +1834,21 @@ final class _UndoLog implements _DatabaseAccess {
         Scope() {
         }
 
-        _Lock addLock(long indexId, byte[] key) {
+        _Lock addExclusiveLock(long indexId, byte[] key) {
+            return addLock(indexId, key, ~0);
+        }
+
+        _Lock addUpgradableLock(long indexId, byte[] key) {
+            return addLock(indexId, key, 1 << 31);
+        }
+
+        _Lock addLock(long indexId, byte[] key, int lockCount) {
             _Lock lock = new _Lock();
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = _LockManager.hash(indexId, key);
             lock.mLockManagerNext = mTopLock;
+            lock.mLockCount = lockCount;
             mTopLock = lock;
             return lock;
         }

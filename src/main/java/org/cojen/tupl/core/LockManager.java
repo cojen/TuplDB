@@ -458,7 +458,11 @@ public final class LockManager {
                 int index = hash & (entries.length - 1);
                 for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
                     if (e.matches(lock.mIndexId, lock.mKey, hash)) {
-                        // Lock already exists, but make sure any ghost frame is preserved.
+                        // Lock already exists, but make sure lock upgrades are captured
+                        // and any ghost frame is preserved.
+                        if (lock.mLockCount == ~0) {
+                            e.mLockCount = ~0;
+                        }
                         Object ghost = lock.getSharedLockOwner();
                         if (ghost instanceof GhostFrame) {
                             e.setGhostFrame((GhostFrame) ghost);
@@ -473,7 +477,6 @@ public final class LockManager {
                 }
 
                 lock.mLockManagerNext = entries[index];
-                lock.mLockCount = ~0;
                 lock.mOwner = locker;
 
                 // Fence so that the isAvailable method doesn't observe a broken chain.

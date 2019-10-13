@@ -746,16 +746,16 @@ public final class LocalTransaction extends Locker implements Transaction {
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return redoLock(doLockUpgradable(indexId, key, nanosTimeout),
-                        OP_TXN_LOCK_UPGRADABLE, indexId, key);
+        return logLock(doLockUpgradable(indexId, key, nanosTimeout),
+                       UndoLog.OP_LOCK_UPGRADABLE, OP_TXN_LOCK_UPGRADABLE, indexId, key);
     }
 
     @Override
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return redoLock(doTryLockUpgradable(indexId, key, nanosTimeout),
-                        OP_TXN_LOCK_UPGRADABLE, indexId, key);
+        return logLock(doTryLockUpgradable(indexId, key, nanosTimeout),
+                       UndoLog.OP_LOCK_UPGRADABLE, OP_TXN_LOCK_UPGRADABLE, indexId, key);
     }
 
     final LockResult doLockExclusive(long indexId, byte[] key)
@@ -779,24 +779,40 @@ public final class LocalTransaction extends Locker implements Transaction {
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return redoLock(doLockExclusive(indexId, key, nanosTimeout),
-                        OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+        return logLock(doLockExclusive(indexId, key, nanosTimeout),
+                       UndoLog.OP_LOCK_EXCLUSIVE, OP_TXN_LOCK_EXCLUSIVE, indexId, key);
     }
 
     @Override
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return redoLock(doTryLockExclusive(indexId, key, nanosTimeout),
-                        OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+        return logLock(doTryLockExclusive(indexId, key, nanosTimeout),
+                       UndoLog.OP_LOCK_EXCLUSIVE, OP_TXN_LOCK_EXCLUSIVE, indexId, key);
     }
 
-    private LockResult redoLock(LockResult result, byte op, long indexId, byte[] key)
+    private LockResult logLock(LockResult result, byte undoOp, byte redoOp,
+                               long indexId, byte[] key)
         throws LockFailureException
 
     {
-        if (result.isAcquired() && mRedo != null && mDurabilityMode != DurabilityMode.NO_REDO) {
+        if (!result.isAcquired()) {
+            return result;
+        }
+
+        try {
+            check();
+
+            final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
             try {
+                undoLog().pushLock(undoOp, indexId, key);
+            } catch (Throwable e) {
+                borked(e, false, true); // rollback = false, rethrow = true
+            } finally {
+                shared.release();
+            }
+
+            if (mRedo != null && mDurabilityMode != DurabilityMode.NO_REDO) {
                 long txnId = mTxnId;
 
                 if (txnId == 0) {
@@ -813,27 +829,27 @@ public final class LocalTransaction extends Locker implements Transaction {
                     mHasState = hasState | HAS_SCOPE;
                 }
 
-                mContext.redoLock(mRedo, op, txnId, indexId, key);
-            } catch (Throwable e) {
-                if (e instanceof UnmodifiableReplicaException || mDatabase.isClosed()) {
-                    // Keep the lock for now and fail later instead of throwing an odd
-                    // exception when attempting to acquire a lock. The transaction won't be
-                    // able to commit anyhow, and by then an exception will be thrown again.
-                } else {
-                    LockFailureException fail = new LockFailureException(rootCause(e));
+                mContext.redoLock(mRedo, redoOp, txnId, indexId, key);
+            }
+        } catch (Throwable e) {
+            if (e instanceof UnmodifiableReplicaException || mDatabase.isClosed()) {
+                // Keep the lock for now and fail later instead of throwing an odd
+                // exception when attempting to acquire a lock. The transaction won't be
+                // able to commit anyhow, and by then an exception will be thrown again.
+            } else {
+                LockFailureException fail = new LockFailureException(rootCause(e));
 
-                    try {
-                        if (result == LockResult.UPGRADED) {
-                            unlockToUpgradable();
-                        } else {
-                            unlock();
-                        }
-                    } catch (Exception e2) {
-                        suppress(fail, e2);
+                try {
+                    if (result == LockResult.UPGRADED) {
+                        unlockToUpgradable();
+                    } else {
+                        unlock();
                     }
-
-                    throw fail;
+                } catch (Exception e2) {
+                    suppress(fail, e2);
                 }
+
+                throw fail;
             }
         }
 

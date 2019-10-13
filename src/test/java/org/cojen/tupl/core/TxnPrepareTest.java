@@ -429,6 +429,39 @@ public class TxnPrepareTest {
             fail();
         } catch (LockTimeoutException e) {
         }
+
+        t1.reset();
+        t2.reset();
+
+        // Explicit locks should be recovered.
+        Transaction txn7 = db.newTransaction();
+        ix.lockUpgradable(txn7, "key-7".getBytes());
+        ix.lockUpgradable(txn7, "key-8".getBytes());
+        ix.lockExclusive(txn7, "key-9".getBytes());
+        ix.lockExclusive(txn7, "key-8".getBytes());
+        txn7.prepare();
+        db.checkpoint();
+
+        db = reopenTempDatabase(getClass(), db, config);
+        ix = db.openIndex("test");
+
+        Transaction t7 = recovered.take();
+        assertEquals(t7.getId(), txn7.getId());
+
+        assertEquals(LockResult.OWNED_UPGRADABLE, t7.lockCheck(ix.getId(), "key-7".getBytes()));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-8".getBytes()));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+
+        Transaction txn8 = db.newTransaction();
+        assertEquals(LockResult.TIMED_OUT_LOCK,
+                     txn8.tryLockExclusive(ix.getId(), "key-7".getBytes(), 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK,
+                     txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK,
+                     txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+        txn8.reset();
+
+        t7.reset();
     }
 
     @Test
