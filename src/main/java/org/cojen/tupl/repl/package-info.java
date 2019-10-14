@@ -18,8 +18,8 @@
 /**
  * General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
  * intended for supporting fully replicated {@linkplain org.cojen.tupl.Database databases}.
- * Use {@link org.cojen.tupl.repl.DatabaseReplicator DatabaseReplicator} for enabling database
- * replication. Applications can use {@link org.cojen.tupl.repl.MessageReplicator
+ * Use the {@link org.cojen.tupl.DatabaseConfig#replicate(ReplicatorConfig)} method for enabling
+ * database replication. Applications can use {@link org.cojen.tupl.repl.MessageReplicator
  * MessageReplicator} or {@link org.cojen.tupl.repl.StreamReplicator StreamReplicator} for
  * direct replication.
  */

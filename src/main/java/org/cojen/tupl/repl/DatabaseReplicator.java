@@ -33,6 +33,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  * DatabaseConfig.replicate} method.
  *
  * @author Brian S O'Neill
+ * @hidden
  */
 public interface DatabaseReplicator extends Replicator, ReplicationManager {
     /**
