@@ -36,7 +36,10 @@ public interface RecoveryHandler {
     void init(Database db) throws IOException;
 
     /**
-     * Called for each recovered transaction.
+     * Called for each recovered transaction. Exclusive locks acquired by the transaction are
+     * always recovered, whether they were acquired explicitly or automatically. Shared and
+     * upgradable locks are not recovered, except for upgradable locks which were explicitly
+     * acquired.
      */
     void recover(Transaction txn) throws IOException;
 }

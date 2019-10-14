@@ -169,7 +169,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <h3><a id="recover(org.cojen.tupl.Transaction)">recover</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">recover</span>&#8203;(<span class="arguments"><a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Called for each recovered transaction.</div>
+<div class="block">Called for each recovered transaction. Exclusive locks acquired by the transaction are
+ always recovered, whether they were acquired explicitly or automatically. Shared and
+ upgradable locks are not recovered, except for upgradable locks which were explicitly
+ acquired.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
