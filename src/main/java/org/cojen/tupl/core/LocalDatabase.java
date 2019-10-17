@@ -2670,6 +2670,8 @@ public final class LocalDatabase extends CoreDatabase {
             }
         }
 
+        // Note that temporary indexes aren't scanned. Some operations performed on them (the
+        // sorter) aren't thread-safe, and so verification and compaction cannot examine them.
         Cursor all = indexRegistryByName().newCursor(null);
         try {
             for (all.first(); all.key() != null; all.next()) {
