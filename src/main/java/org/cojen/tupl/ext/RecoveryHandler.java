@@ -38,8 +38,7 @@ public interface RecoveryHandler {
     /**
      * Called for each recovered transaction. Exclusive locks acquired by the transaction are
      * always recovered, whether they were acquired explicitly or automatically. Shared and
-     * upgradable locks are not recovered, except for upgradable locks which were explicitly
-     * acquired.
+     * upgradable locks are not recovered.
      */
     void recover(Transaction txn) throws IOException;
 }

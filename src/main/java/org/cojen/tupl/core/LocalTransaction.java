@@ -767,6 +767,13 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
+        // Don't replicate upgradable lock acquisitions. Because locks are only created by the
+        // leader, replication of upgradable locks isn't necessary to prevent deadlocks. If the
+        // leader was able acquire upgradable locks and make changes, the replica only needs to
+        // acquire upgradable locks to ensure the deadlock-free sequence is applied.
+        // Also, if upgradable locks were replicated, then unlocking them should also be
+        // replicated to prevent deadlocks due to lingering locks on the replica. Unlocking
+        // upgradable locks is a common filtering pattern, so don't add overhead.
         return lockUpgradable(indexId, key, mLockTimeoutNanos);
     }
 
@@ -774,16 +781,16 @@ public final class LocalTransaction extends Locker implements Transaction {
     public final LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return logLock(doLockUpgradable(indexId, key, nanosTimeout),
-                       UndoLog.OP_LOCK_UPGRADABLE, OP_TXN_LOCK_UPGRADABLE, indexId, key);
+        // See comments in lockUpgradable method above.
+        return doLockUpgradable(indexId, key, nanosTimeout);
     }
 
     @Override
     public final LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return logLock(doTryLockUpgradable(indexId, key, nanosTimeout),
-                       UndoLog.OP_LOCK_UPGRADABLE, OP_TXN_LOCK_UPGRADABLE, indexId, key);
+        // See comments in lockUpgradable method above.
+        return doTryLockUpgradable(indexId, key, nanosTimeout);
     }
 
     final LockResult doLockExclusive(long indexId, byte[] key)

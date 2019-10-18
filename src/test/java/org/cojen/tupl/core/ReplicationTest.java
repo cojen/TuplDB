@@ -409,9 +409,9 @@ public class ReplicationTest {
         // Shared lock isn't replicated.
         assertEquals(LockResult.ACQUIRED, rix.lockExclusive(rtxn, k1));
 
-        assertEquals(LockResult.ACQUIRED, rix.lockShared(rtxn, k2));
+        // Upgradable lock isn't replicated.
+        assertEquals(LockResult.ACQUIRED, rix.tryLockUpgradable(rtxn, k2, 0));
         rtxn.unlock();
-        assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockUpgradable(rtxn, k2, 0));
 
         assertEquals(LockResult.TIMED_OUT_LOCK, rix.tryLockShared(rtxn, k3, 0));
 
