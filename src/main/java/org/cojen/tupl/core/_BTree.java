@@ -384,7 +384,7 @@ class _BTree extends Tree implements View, Index {
                 }
             } finally {
                 if (locker != null) {
-                    locker.unlock();
+                    locker.doUnlock();
                 }
             }
         } finally {
@@ -492,7 +492,7 @@ class _BTree extends Tree implements View, Index {
                 return result;
             } finally {
                 if (locker != null) {
-                    locker.unlock();
+                    locker.doUnlock();
                 }
             }
         } finally {
@@ -581,11 +581,11 @@ class _BTree extends Tree implements View, Index {
             if (!isLockAvailable(local, key, hash)) {
                 // Acquire and release.
                 if (local == null) {
-                    lockSharedLocal(key, hash).unlock();
+                    lockSharedLocal(key, hash).doUnlock();
                 } else {
                     LockResult result = local.doLock(0, mId, key, hash, local.mLockTimeoutNanos);
                     if (result == LockResult.ACQUIRED) {
-                        local.unlock();
+                        local.doUnlock();
                     }
                 }
             }

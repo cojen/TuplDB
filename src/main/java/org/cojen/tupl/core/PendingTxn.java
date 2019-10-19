@@ -128,14 +128,14 @@ final class PendingTxn extends LockOwner {
         Lock first = mFirst;
         if (first != null) {
             LockManager manager = db.mLockManager;
-            manager.unlock(this, first);
+            manager.doUnlock(this, first);
             Lock[] rest = mRest;
             if (rest != null) {
                 for (Lock lock : rest) {
                     if (lock == null) {
                         return;
                     }
-                    manager.unlock(this, lock);
+                    manager.doUnlock(this, lock);
                 }
             }
         }

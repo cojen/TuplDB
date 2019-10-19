@@ -876,7 +876,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
                 try {
                     if (result == LockResult.UPGRADED) {
-                        unlockToUpgradable();
+                        doUnlockToUpgradable();
                     } else {
                         unlock();
                     }

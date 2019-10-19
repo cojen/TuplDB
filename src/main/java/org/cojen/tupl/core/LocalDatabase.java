@@ -1233,7 +1233,7 @@ public final class LocalDatabase extends CoreDatabase {
                 try {
                     name = mRegistryKeyMap.load(Transaction.BOGUS, idKey);
                 } finally {
-                    locker.unlock();
+                    locker.doUnlock();
                 }
             }
 

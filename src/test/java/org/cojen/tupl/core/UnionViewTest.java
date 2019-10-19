@@ -96,7 +96,7 @@ public class UnionViewTest {
             // Verify that lock is held by updater.
             for (int i=0; i<indexes.length; i++) {
                 Index ix = indexes[i];
-                assertEquals(LockResult.TIMED_OUT_LOCK, txn.tryLockExclusive(ix.getId(), key, 0));
+                assertEquals(LockResult.TIMED_OUT_LOCK, txn.tryLockUpgradable(ix.getId(), key, 0));
             }
 
             boolean more;
@@ -111,7 +111,7 @@ public class UnionViewTest {
             // Verify that lock is released by updater.
             for (int i=0; i<indexes.length; i++) {
                 Index ix = indexes[i];
-                assertEquals(LockResult.ACQUIRED, txn.tryLockExclusive(ix.getId(), key, 0));
+                assertEquals(LockResult.ACQUIRED, txn.tryLockUpgradable(ix.getId(), key, 0));
                 txn.unlock();
             }
 
@@ -127,7 +127,7 @@ public class UnionViewTest {
             Index ix = indexes[i];
             for (j=0; j<keyCount; j++) {
                 byte[] key = ("key-" + j).getBytes();
-                assertEquals(LockResult.ACQUIRED, txn.tryLockExclusive(ix.getId(), key, 0));
+                assertEquals(LockResult.ACQUIRED, txn.tryLockUpgradable(ix.getId(), key, 0));
             }
         }
 

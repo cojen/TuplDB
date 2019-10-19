@@ -142,6 +142,17 @@ public final class LockManager {
         }
     }
 
+    final void doUnlock(LockOwner locker, Lock lock) {
+        LockHT ht = getLockHT(lock.mHashCode);
+        ht.acquireExclusive();
+        try {
+            lock.doUnlock(locker, ht);
+        } catch (Throwable e) {
+            ht.releaseExclusive();
+            throw e;
+        }
+    }
+
     final void unlockToShared(LockOwner locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
@@ -153,11 +164,22 @@ public final class LockManager {
         }
     }
 
-    final void unlockToUpgradable(LockOwner locker, Lock lock) {
+    final void doUnlockToShared(LockOwner locker, Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            lock.unlockToUpgradable(locker, ht);
+            lock.doUnlockToShared(locker, ht);
+        } catch (Throwable e) {
+            ht.releaseExclusive();
+            throw e;
+        }
+    }
+
+    final void doUnlockToUpgradable(LockOwner locker, Lock lock) {
+        LockHT ht = getLockHT(lock.mHashCode);
+        ht.acquireExclusive();
+        try {
+            lock.doUnlockToUpgradable(locker, ht);
         } catch (Throwable e) {
             ht.releaseExclusive();
             throw e;

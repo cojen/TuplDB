@@ -1930,7 +1930,7 @@ public class CursorTest {
     private static Thread delayedUnlock(Transaction txn) {
         return startAndWaitUntilBlocked(new Thread(() -> {
             sleep(1000);
-            txn.unlock();
+            txn.reset(null);
         }));
     }
 

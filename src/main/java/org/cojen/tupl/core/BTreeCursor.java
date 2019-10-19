@@ -1809,7 +1809,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                     return LockResult.UNOWNED;
                 }
             } finally {
-                locker.unlock();
+                locker.doUnlock();
             }
         } else {
             LockResult result;
@@ -1826,13 +1826,13 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             if (copyIfExists() != null) {
                 if (result == LockResult.UNOWNED) {
-                    txn.unlock();
+                    txn.doUnlock();
                 }
                 return result;
             }
 
             if (result == LockResult.UNOWNED || result == LockResult.ACQUIRED) {
-                txn.unlock();
+                txn.doUnlock();
             }
         }
 
@@ -1910,7 +1910,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
-                txn.unlock();
+                txn.doUnlock();
             }
             return next(txn, mFrame);
         }
@@ -1928,7 +1928,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             return result;
         } else {
             if (result == LockResult.ACQUIRED) {
-                txn.unlock();
+                txn.doUnlock();
             }
             return previous(txn, mFrame);
         }
@@ -2336,7 +2336,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                         // Skip over ghosts. Attempting to lock ghosts in the
                         // first place is correct behavior, avoiding bias.
                         if (result == LockResult.ACQUIRED) {
-                            txn.unlock();
+                            txn.doUnlock();
                         }
 
                         frame = frameSharedNotSplit();
@@ -2631,7 +2631,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             return result;
         } finally {
             if (locker != null) {
-                locker.unlock();
+                locker.doUnlock();
             }
         }
     }
@@ -2772,7 +2772,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             return result;
         } finally {
             if (locker != null) {
-                locker.unlock();
+                locker.doUnlock();
             }
         }
     }
@@ -2844,7 +2844,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             return result;
         } finally {
             if (locker != null) {
-                locker.unlock();
+                locker.doUnlock();
             }
         }
     }
@@ -2947,7 +2947,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             try {
                 storeAndMaybeRedo(txn, value);
             } finally {
-                locker.unlock();
+                locker.doUnlock();
             }
         } catch (Throwable e) {
             throw handleException(e, false);
@@ -3067,7 +3067,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             try {
                 return doFindAndStore(txn, key, value);
             } finally {
-                locker.unlock();
+                locker.doUnlock();
             }
         } catch (Throwable e) {
             throw handleException(e, false); // no reset on safe exception
@@ -3160,7 +3160,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 try {
                     return doFindAndModify(txn, key, oldValue, newValue);
                 } finally {
-                    locker.unlock();
+                    locker.doUnlock();
                 }
             }
 
@@ -3189,9 +3189,9 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             } catch (Throwable e) {
                 try {
                     if (result == LockResult.ACQUIRED) {
-                        txn.unlock();
+                        txn.doUnlock();
                     } else if (result == LockResult.UPGRADED) {
-                        txn.unlockToUpgradable();
+                        txn.doUnlockToUpgradable();
                     }
                 } catch (Throwable e2) {
                     // Assume transaction is invalid now.
@@ -3201,9 +3201,9 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
             }
 
             if (result == LockResult.ACQUIRED) {
-                txn.unlock();
+                txn.doUnlock();
             } else if (result == LockResult.UPGRADED) {
-                txn.unlockToUpgradable();
+                txn.doUnlockToUpgradable();
             }
 
             return false;

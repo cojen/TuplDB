@@ -406,8 +406,8 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
-     * unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if unlocking an exclusive lock, or if
+     * crossing a scope boundary, or if unlocking a non-immediate upgrade
      */
     void unlock();
 
@@ -418,21 +418,11 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
-     * too many shared locks, or if unlocking a non-immediate upgrade
+     * @throws IllegalStateException if no locks held, or if unlocking an exclusive lock, or if
+     * crossing a scope boundary, or if too many shared locks, or if unlocking a non-immediate
+     * upgrade
      */
     void unlockToShared();
-
-    /**
-     * Releases the last lock or group acquired or upgraded, within the current scope,
-     * retaining an upgradable lock.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @throws IllegalStateException if no locks held, or if crossing a scope boundary, or if
-     * last lock is shared
-     */
-    void unlockToUpgradable();
 
     /**
      * Combines the last lock acquired or upgraded into a group which can be unlocked together.
