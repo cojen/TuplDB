@@ -1018,7 +1018,8 @@ byte[]&nbsp;key)</span></div>
               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
  committing the transaction. A recovery <a href="DatabaseConfig.html#recoveryHandler(org.cojen.tupl.ext.RecoveryHandler)"><code>handler</code></a>
- must be installed, and the transaction must be <a href="#check()"><code>valid</code></a>.
+ must be installed, and the transaction must be <a href="#check()"><code>valid</code></a>. As a side-effect of
+ calling this method, all non-exclusive locks held by the transaction are released.
 
  <p>Prior to calling prepare, applications are expected to have stored additional state,
  keyed by the transaction <a href="#getId()"><code>identifier</code></a>. This state should be stored into

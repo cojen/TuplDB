@@ -711,8 +711,41 @@ class Locker extends LockOwner {
     }
 
     /**
-     * Transfers all exclusive locks held by this Locker, for the top scope only. All other
-     * locks are released.
+     * Releases all non-exclusive locks held by this locker and breaks apart all combined
+     * locks. Assumes that no parent scope exists.
+     */
+    final void unlockNonExclusive() {
+        Object tailObj = mTailBlock;
+        if (tailObj instanceof Lock) {
+            Lock lock = (Lock) tailObj;
+            if (lock.mLockCount != ~0) {
+                mManager.doUnlock(this, lock);
+                mTailBlock = null;
+            }
+        } else {
+            Block tail = (Block) tailObj;
+            if (tail != null) {
+                Block last = null;
+                do {
+                    if (tail.unlockNonExclusive(this) == 0) {
+                        tail = tail.pop();
+                        if (last == null) {
+                            mTailBlock = tail;
+                        } else {
+                            last.mPrev = tail;
+                        }
+                    } else {
+                        last = tail;
+                        tail = tail.peek();
+                    }
+                } while (tail != null);
+            }
+        }
+    }
+
+    /**
+     * Transfers all exclusive locks held by this Locker and releases all others. Assumes that
+     * no parent scope exists.
      */
     final PendingTxn transferExclusive() {
         PendingTxn pending;
@@ -1141,6 +1174,42 @@ class Locker extends LockOwner {
                 mUpgrades = upgrades & ~(~0L >>> size);
                 mSize = size;
             }
+        }
+
+        /**
+         * @return remaining size; caller MUST pop and discard the block if zero
+         */
+        int unlockNonExclusive(Locker locker) {
+            final Lock[] locks = mLocks;
+            final LockManager manager = locker.mManager;
+            final int size = mSize;
+
+            long upgrades = mUpgrades;
+            int newSize = 0;
+
+            for (int i=0; i<size; i++) {
+                Lock lock = locks[i];
+                if (lock.mLockCount != ~0) {
+                    manager.doUnlock(locker, lock);
+                } else if (upgrades >= 0) { // don't track lock twice if it was upgraded
+                    if (newSize != i) {
+                        locks[newSize] = lock;
+                    }
+                    newSize++;
+                }
+                upgrades <<= 1;
+            }
+
+            if (newSize != size) {
+                for (int i=newSize; i<size; i++) {
+                    locks[i] = null;
+                }
+                mUpgrades = 0;
+                mSize = newSize;
+                mUnlockGroup = 0;
+            }
+
+            return newSize;
         }
 
         /**

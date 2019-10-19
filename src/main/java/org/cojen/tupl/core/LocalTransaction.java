@@ -978,6 +978,8 @@ public final class LocalTransaction extends Locker implements Transaction {
             if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
                 mRedo.txnCommitSync(this, commitPos);
             }
+
+            unlockNonExclusive();
         } catch (Throwable e) {
             borked(e);
         }

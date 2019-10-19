@@ -448,7 +448,8 @@ public interface Transaction extends Flushable {
     /**
      * Prepares a transaction for finishing a two-phase commit, to be called before fully
      * committing the transaction. A recovery {@link DatabaseConfig#recoveryHandler handler}
-     * must be installed, and the transaction must be {@link #check valid}.
+     * must be installed, and the transaction must be {@link #check valid}. As a side-effect of
+     * calling this method, all non-exclusive locks held by the transaction are released.
      *
      * <p>Prior to calling prepare, applications are expected to have stored additional state,
      * keyed by the transaction {@link #getId identifier}. This state should be stored into
