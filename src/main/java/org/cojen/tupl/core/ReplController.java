@@ -35,17 +35,17 @@ import org.cojen.tupl.util.LatchCondition;
  * Controller is used for checkpoints and as a non-functional writer when in replica mode.
  *
  * @author Brian S O'Neill
- * @see ReplRedoEngine
+ * @see ReplEngine
  */
 /*P*/
-final class ReplRedoController extends ReplRedoWriter {
+final class ReplController extends ReplWriter {
     private static final VarHandle cCheckpointPosHandle;
 
     static {
         try {
             cCheckpointPosHandle =
                 MethodHandles.lookup().findVarHandle
-                (ReplRedoController.class, "mCheckpointPos", long.class);
+                (ReplController.class, "mCheckpointPos", long.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -56,17 +56,17 @@ final class ReplRedoController extends ReplRedoWriter {
     // Only used during startup.
     private LatchCondition mLeaderNotifyCondition;
 
-    private volatile ReplRedoWriter mTxnRedoWriter;
+    private volatile ReplWriter mTxnRedoWriter;
     private volatile boolean mSwitchingToReplica;
 
     // These fields capture the state of the last written commit at the start of a checkpoint.
-    private ReplRedoWriter mCheckpointRedoWriter;
+    private ReplWriter mCheckpointRedoWriter;
     private long mCheckpointPos;
     private long mCheckpointTxnId;
 
     private long mCheckpointNum;
 
-    ReplRedoController(ReplRedoEngine engine) {
+    ReplController(ReplEngine engine) {
         super(engine, null);
         mManager = engine.mManager;
         // Use this instance for replica mode.
@@ -141,7 +141,7 @@ final class ReplRedoController extends ReplRedoWriter {
     void checkpointSwitch(TransactionContext[] contexts) throws IOException {
         mCheckpointNum++;
 
-        ReplRedoWriter redo = mTxnRedoWriter;
+        ReplWriter redo = mTxnRedoWriter;
         mCheckpointRedoWriter = redo;
 
         // Only capture new checkpoint state if previous attempt succeeded.
@@ -189,7 +189,7 @@ final class ReplRedoController extends ReplRedoWriter {
     void checkpointFlushed() throws IOException {
         // Attempt to confirm the log position which was captured by the checkpoint switch.
 
-        ReplRedoWriter redo = mCheckpointRedoWriter;
+        ReplWriter redo = mCheckpointRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer != null && !writer.confirm(mCheckpointPos)) {
@@ -273,11 +273,11 @@ final class ReplRedoController extends ReplRedoWriter {
     }
 
     /**
-     * Called by ReplRedoEngine when local instance has become the leader.
+     * Called by ReplEngine when local instance has become the leader.
      *
      * @return new leader redo writer, or null if failed
      */
-    ReplRedoWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
+    ReplWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
         acquireExclusive();
         try {
             if (mLeaderNotifyCondition != null) {
@@ -298,7 +298,7 @@ final class ReplRedoController extends ReplRedoWriter {
                 return null;
             }
 
-            ReplRedoWriter redo = new ReplRedoWriter(mEngine, writer);
+            ReplWriter redo = new ReplWriter(mEngine, writer);
             redo.start();
             TransactionContext context = mEngine.mDatabase.anyTransactionContext();
 
@@ -331,7 +331,7 @@ final class ReplRedoController extends ReplRedoWriter {
         }
     }
 
-    // Also called by ReplRedoWriter, sometimes with the latch held.
+    // Also called by ReplWriter, sometimes with the latch held.
     UnmodifiableReplicaException nowUnmodifiable(ReplicationManager.Writer expect)
         throws DatabaseException
     {
@@ -343,13 +343,13 @@ final class ReplRedoController extends ReplRedoWriter {
     void switchToReplica(ReplicationManager.Writer expect) {
         if (shouldSwitchToReplica(expect) != null) {
             // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
-            // ReplRedoWriter while latched, which is an inconsistent order.
+            // ReplWriter while latched, which is an inconsistent order.
             new Thread(() -> doSwitchToReplica(expect)).start();
         }
     }
 
     private void doSwitchToReplica(ReplicationManager.Writer expect) {
-        ReplRedoWriter redo;
+        ReplWriter redo;
 
         acquireExclusive();
         try {
@@ -391,7 +391,7 @@ final class ReplRedoController extends ReplRedoWriter {
     /**
      * @return null if shouldn't switch; mTxnRedoWriter otherwise
      */
-    private ReplRedoWriter shouldSwitchToReplica(ReplicationManager.Writer expect) {
+    private ReplWriter shouldSwitchToReplica(ReplicationManager.Writer expect) {
         if (mSwitchingToReplica) {
             // Another thread is doing it.
             return null;
@@ -402,7 +402,7 @@ final class ReplRedoController extends ReplRedoWriter {
             return null;
         }
 
-        ReplRedoWriter redo = mTxnRedoWriter;
+        ReplWriter redo = mTxnRedoWriter;
         ReplicationManager.Writer writer = redo.mReplWriter;
 
         if (writer == null || writer != expect) {

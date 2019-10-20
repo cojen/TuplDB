@@ -34,7 +34,7 @@ import org.cojen.tupl.util.Latch;
  */
 /*P*/
 abstract class _RedoWriter extends Latch implements Closeable, Flushable {
-    // Only access while latched. Is accessed by _TransactionContext and _ReplRedoWriter.
+    // Only access while latched. Is accessed by _TransactionContext and _ReplWriter.
     long mLastTxnId;
 
     volatile Throwable mCloseCause;

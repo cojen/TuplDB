@@ -1004,7 +1004,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Rollback the transaction to the last encountered prepare operation.
      *
-     * @param redo pass false when called by replica (_ReplRedoEngine)
+     * @param redo pass false when called by replica (_ReplEngine)
      */
     final void rollbackToPrepare(boolean redo) throws IOException {
         check();

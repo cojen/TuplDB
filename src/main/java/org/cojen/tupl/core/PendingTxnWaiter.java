@@ -21,7 +21,7 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 
 /**
- * Used by {@link ReplRedoWriter} to queue up transactions which commit asynchronously.
+ * Used by {@link ReplWriter} to queue up transactions which commit asynchronously.
  *
  * @author Brian S O'Neill
  */
@@ -31,7 +31,7 @@ final class PendingTxnWaiter extends Thread {
 
     static final int PENDING = 1, DO_COMMIT = 2, DO_ROLLBACK = 3, EXITED = 4;
 
-    private final ReplRedoWriter mWriter;
+    private final ReplWriter mWriter;
 
     private PendingTxn mBehind;
     private PendingTxn mAhead;
@@ -39,7 +39,7 @@ final class PendingTxnWaiter extends Thread {
     private long mFlipPos;
     private boolean mExited;
 
-    PendingTxnWaiter(ReplRedoWriter writer) {
+    PendingTxnWaiter(ReplWriter writer) {
         mFlipPos = -1;
         mWriter = writer;
     }

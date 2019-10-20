@@ -833,10 +833,10 @@ public final class LocalDatabase extends CoreDatabase {
                         {
                             RedoEventPrinter printer = new RedoEventPrinter
                                 (debugListener, EventType.DEBUG);
-                            new ReplRedoDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
+                            new ReplDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
                         }
                     } else {
-                        ReplRedoEngine engine = new ReplRedoEngine
+                        ReplEngine engine = new ReplEngine
                             (rm, launcher.mMaxReplicaThreads, this, txns, cursors);
                         mRedoWriter = engine.initWriter(redoNum);
 
@@ -954,7 +954,7 @@ public final class LocalDatabase extends CoreDatabase {
         mCheckpointer.register(new RedoClose(this));
         mCheckpointer.register(mTempFileManager);
 
-        if (mRedoWriter instanceof ReplRedoWriter) {
+        if (mRedoWriter instanceof ReplWriter) {
             // Need to do this after mRedoWriter is assigned, ensuring that trees are opened as
             // BTree.Repl instances.
             applyCachePrimer(launcher);
@@ -979,14 +979,14 @@ public final class LocalDatabase extends CoreDatabase {
 
         LHashTable.Obj<LocalTransaction> txns = mRecoveredTransactions;
 
-        if (!(mRedoWriter instanceof ReplRedoController)) {
+        if (!(mRedoWriter instanceof ReplController)) {
             if (txns != null) {
                 new Thread(() -> invokeRecoveryHandler(txns, mRedoWriter)).start();
                 mRecoveredTransactions = null;
             }
         } else {
             // Start replication and recovery.
-            ReplRedoController controller = (ReplRedoController) mRedoWriter;
+            ReplController controller = (ReplController) mRedoWriter;
             assert txns == null;
 
             if (mEventListener != null) {
@@ -1038,7 +1038,7 @@ public final class LocalDatabase extends CoreDatabase {
             redo.commitSync(context, commitPos);
 
             try {
-                ((ReplRedoController) mRedoWriter).mManager.control(commitPos, message);
+                ((ReplController) mRedoWriter).mManager.control(commitPos, message);
             } catch (Throwable e) {
                 // Panic.
                 closeQuietly(this, e);
@@ -2728,7 +2728,7 @@ public final class LocalDatabase extends CoreDatabase {
 
             if (mCheckpointLock.tryLock()) {
                 lockedCheckpointer = true;
-            } else if (cause == null && !(mRedoWriter instanceof ReplRedoController)) {
+            } else if (cause == null && !(mRedoWriter instanceof ReplController)) {
                 // Only attempt lock if not panicked and not replicated. If panicked, other
                 // locks might be held and so acquiring checkpoint lock might deadlock.
                 // Replicated databases might stall indefinitely when checkpointing.
@@ -3408,7 +3408,7 @@ public final class LocalDatabase extends CoreDatabase {
                     try {
                         idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
 
-                        if (mRedoWriter instanceof ReplRedoController) {
+                        if (mRedoWriter instanceof ReplController) {
                             // Confirmation is required when replicated.
                             createTxn = newTransaction(DurabilityMode.SYNC);
                         } else {
@@ -3532,7 +3532,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     private BTree newBTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
         BTree tree;
-        if (mRedoWriter instanceof ReplRedoWriter) {
+        if (mRedoWriter instanceof ReplWriter) {
             // Always need an explcit transaction when using auto-commit, to ensure that
             // rollback is possible.
             tree = new BTree.Repl(this, id, idBytes, root);
@@ -5513,7 +5513,7 @@ public final class LocalDatabase extends CoreDatabase {
                     root.releaseShared();
                 }
 
-                if (!full && mRedoWriter != null && (mRedoWriter instanceof ReplRedoController)) {
+                if (!full && mRedoWriter != null && (mRedoWriter instanceof ReplController)) {
                     if (mRedoWriter.shouldCheckpoint(1)) {
                         // Clean up the replication log.
                         full = true;

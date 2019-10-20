@@ -1182,7 +1182,7 @@ public class RecoverTest {
                 break;
             }
             // Wait for background thread which is switching to replica mode to finish. See the
-            // ReplRedoController.switchToReplica method.
+            // ReplController.switchToReplica method.
             sleep(1);
         }
         ix.store(txn, "key1".getBytes(), "val1".getBytes());

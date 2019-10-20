@@ -24,16 +24,16 @@ import org.cojen.tupl.ext.ReplicationManager;
 import org.cojen.tupl.util.Latch;
 
 /**
- * RedoDecoder used by {@link ReplRedoEngine}, the replication system.
+ * RedoDecoder used by {@link ReplEngine}, the replication system.
  *
  * @author Brian S O'Neill
  */
-final class ReplRedoDecoder extends RedoDecoder {
+final class ReplDecoder extends RedoDecoder {
     volatile boolean mDeactivated;
 
-    ReplRedoDecoder(ReplicationManager manager,
-                    long initialPosition, long initialTxnId,
-                    Latch decodeLatch)
+    ReplDecoder(ReplicationManager manager,
+                long initialPosition, long initialTxnId,
+                Latch decodeLatch)
     {
         super(false, initialTxnId, new In(initialPosition, manager), decodeLatch);
     }

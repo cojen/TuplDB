@@ -25,13 +25,13 @@ import org.cojen.tupl.ext.ReplicationManager;
 
 /**
  * Used to apply recovered transactions from the redo log, when database isn't replictated.
- * This class extends ReplRedoEngine because it applies transactions using multiple threads,
+ * This class extends ReplEngine because it applies transactions using multiple threads,
  * but it's replication features aren't used.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-final class RedoLogApplier extends ReplRedoEngine implements ReplicationManager {
+final class RedoLogApplier extends ReplEngine implements ReplicationManager {
     private long mHighestTxnId;
 
     /**
@@ -96,7 +96,7 @@ final class RedoLogApplier extends ReplRedoEngine implements ReplicationManager 
     }
 
     // Implement all of the abstract ReplicationManager methods instead of passing null for the
-    // ReplicationManager instance to the ReplRedoEngine. It would instead need to have checks
+    // ReplicationManager instance to the ReplEngine. It would instead need to have checks
     // for a null ReplicationManager. These methods aren't expected to be called anyhow.
 
     @Override
