@@ -498,8 +498,8 @@ class Locker extends LockOwner {
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mTailBlock = null;
             mManager.unlock(this, (Lock) tailObj);
+            mTailBlock = null;
         } else {
             Block.unlockLast((Block) tailObj, this);
         }
@@ -525,8 +525,8 @@ class Locker extends LockOwner {
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mTailBlock = null;
             mManager.doUnlock(this, (Lock) tailObj);
+            mTailBlock = null;
         } else {
             Block.doUnlockLast((Block) tailObj, this);
         }

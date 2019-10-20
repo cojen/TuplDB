@@ -95,6 +95,8 @@ public class LockTest {
     private LockManager mManager;
     private ExecutorService mExecutor;
 
+    private Thread mScheduledUnlock;
+
     @Before
     public void setup() {
         mManager = new LockManager(null, null, -1);
@@ -435,10 +437,12 @@ public class LockTest {
         scheduleUnlock(locker, 1000);
         assertEquals(UPGRADED, locker2.doTryLockExclusive(0, k1, MEDIUM_TIMEOUT));
         assertEquals(OWNED_EXCLUSIVE, locker2.doTryLockExclusive(0, k1, -1));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockShared(0, k1, SHORT_TIMEOUT));
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockUpgradable(0, k1, SHORT_TIMEOUT));
         scheduleUnlockToUpgradable(locker2, 1000);
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(OWNED_UPGRADABLE, locker2.doTryLockUpgradable(0, k1, -1));
 
         locker.scopeExitAll();
@@ -779,6 +783,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockExclusive(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockShared(0, k1, 0));
         locker2.doUnlock();
         assertTrue(System.nanoTime() >= end);
@@ -787,6 +792,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockExclusive(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockUpgradable(0, k1, 0));
         locker2.doUnlock();
         assertTrue(System.nanoTime() >= end);
@@ -795,6 +801,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockExclusive(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockUpgradable(0, k1, 0));
         locker2.doUnlock();
         assertTrue(System.nanoTime() >= end);
@@ -805,6 +812,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockUpgradable(0, k1, 0));
         locker2.doUnlock();
         assertTrue(System.nanoTime() >= end);
@@ -813,6 +821,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         end = scheduleUnlockToShared(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(OWNED_SHARED, locker.doTryLockShared(0, k1, 0));
         locker2.doUnlock();
         locker.doUnlock();
@@ -822,6 +831,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(TIMED_OUT_LOCK, locker.doTryLockUpgradable(0, k1, 0));
         locker2.doUnlock();
         assertTrue(System.nanoTime() >= end);
@@ -830,6 +840,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlockToShared(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(OWNED_SHARED, locker.doTryLockShared(0, k1, 0));
         locker2.doUnlock();
         locker.doUnlock();
@@ -841,6 +852,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlock(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, 0));
         locker.doUnlock();
         locker2.doUnlock();
@@ -850,6 +862,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlockToShared(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(OWNED_SHARED, locker.doTryLockShared(0, k1, 0));
         locker.doUnlock();
         locker2.doUnlock();
@@ -859,6 +872,7 @@ public class LockTest {
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         end = scheduleUnlockToUpgradable(locker, 1000);
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k1, MEDIUM_TIMEOUT));
+        mScheduledUnlock.join();
         assertEquals(OWNED_UPGRADABLE, locker.doTryLockShared(0, k1, 0));
         locker.doUnlock();
         locker2.doUnlock();
@@ -2461,21 +2475,34 @@ public class LockTest {
         }
     }
 
-    private long scheduleUnlock(final Locker locker, final long delayMillis) {
+    private long scheduleUnlock(final Locker locker, final long delayMillis)
+        throws InterruptedException
+    {
         return schedule(locker, delayMillis, 0);
     }
 
-    private long scheduleUnlockToShared(final Locker locker, final long delayMillis) {
+    private long scheduleUnlockToShared(final Locker locker, final long delayMillis)
+        throws InterruptedException
+    {
         return schedule(locker, delayMillis, 1);
     }
 
-    private long scheduleUnlockToUpgradable(final Locker locker, final long delayMillis) {
+    private long scheduleUnlockToUpgradable(final Locker locker, final long delayMillis)
+        throws InterruptedException
+    {
         return schedule(locker, delayMillis, 2);
     }
 
-    private long schedule(final Locker locker, final long delayMillis, final int type) {
+    private long schedule(final Locker locker, final long delayMillis, final int type)
+        throws InterruptedException
+    {
+        if (mScheduledUnlock != null) {
+            mScheduledUnlock.join();
+        }
+
         long end = System.nanoTime() + delayMillis * ONE_MILLIS_IN_NANOS;
-        new Thread(() -> {
+
+        Thread t = new Thread(() -> {
             LockTest.sleep(delayMillis);
             switch (type) {
             default:
@@ -2488,7 +2515,11 @@ public class LockTest {
                 locker.doUnlockToUpgradable();
                 break;
             }
-        }).start();
+        });
+
+        mScheduledUnlock = t;
+        t.start();
+
         return end;
     }
 
