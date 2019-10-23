@@ -385,24 +385,20 @@ final class _Lock {
             mOwner = null;
             mLockCount = 0;
             LatchCondition queueSX = mQueueSX;
-            if (queueSX == null) {
-                if (queueU == null) {
-                    // _Lock is now completely unused.
-                    ht.remove(this);
-                } else {
-                    // Signal at most one upgradable lock waiter.
-                    queueU.signal(ht);
+            if (queueU != null) {
+                // Signal at most one upgradable lock waiter.
+                queueU.signal(ht);
+                if (queueSX == null) {
+                    return;
                 }
-            } else {
-                if (queueU != null) {
-                    // Signal at most one upgradable lock waiter, and keep the latch.
-                    queueU.signal(ht);
-                }
-                // Signal first shared lock waiter. Queue doesn't contain any exclusive
-                // lock waiters, because they would need to acquire upgradable lock first,
-                // which was held.
-                queueSX.signal(ht);
+            } else if (queueSX == null) {
+                // _Lock is now completely unused.
+                ht.remove(this);
+                return;
             }
+            // Signal at most one shared lock waiter. There aren't any exclusive lock waiters,
+            // because they would need to acquire the upgradable lock first, which was held.
+            queueSX.signal(ht);
         }
     }
 
