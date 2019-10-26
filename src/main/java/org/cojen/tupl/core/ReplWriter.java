@@ -97,6 +97,11 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
+    final boolean failover() throws IOException {
+        return mEngine.mManager.failover();
+    }
+
+    @Override
     public final void commitSync(TransactionContext context, long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {

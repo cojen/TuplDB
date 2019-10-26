@@ -29,6 +29,10 @@ import java.io.OutputStream;
  * @author Brian S O'Neill
  */
 interface Channel {
+    default boolean isConnected() {
+        return true;
+    }
+
     default Peer peer() {
         return null;
     }
@@ -76,6 +80,11 @@ interface Channel {
      * @return false if not sent or processed
      */
     boolean requestVoteReply(Channel from, long term);
+
+    /**
+     * @return false if not sent or processed
+     */
+    boolean forceElection(Channel from);
 
     /**
      * Query for all the terms which are defined over the given range.

@@ -115,7 +115,7 @@ public class MessageReplicatorTest {
 
             readyCheck: {
                 for (int trial=0; trial<100; trial++) {
-                    Thread.sleep(100);
+                    TestUtils.sleep(100);
 
                     if (i == 0) {
                         // Wait to become leader.
@@ -366,6 +366,84 @@ public class MessageReplicatorTest {
 
                 TestUtils.fastAssertArrayEquals(message, actual);
             }
+        }
+    }
+
+    @Test
+    public void explicitFailover() throws Exception {
+        MessageReplicator[] repls = startGroup(3, Role.NORMAL, true, false);
+        assertTrue(repls.length == 3);
+
+        Writer writer = repls[0].newWriter();
+
+        Reader[] readers = new Reader[repls.length];
+        for (int i=0; i<readers.length; i++) {
+            readers[i] = repls[i].newReader(0, true);
+        }
+
+        byte[][] messages = {"hello".getBytes(), "world!".getBytes()};
+
+        for (byte[] message : messages) {
+            assertTrue(writer.writeMessage(message));
+            long highPosition = writer.position();
+            assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+
+            for (Reader r : readers) {
+                TestUtils.fastAssertArrayEquals(message, r.readMessage());
+            }
+        }
+
+        for (int i=1; i<repls.length; i++) {
+            // Replicas aren't leaders, so failover should do nothing.
+            assertTrue(repls[i].failover());
+        }
+
+        // Now do the actual failover.
+        assertTrue(repls[0].failover());
+
+        // Writes to the old leader immediately fail.
+        byte[] message = "failover".getBytes();
+        assertFalse(writer.writeMessage(message));
+        writer.close();
+
+        // Try to find the new leader.
+        writer = null;
+        int writerSlot = -1;
+
+        find: {
+            Writer[] writers = new Writer[repls.length];
+
+            for (int i=0; i<10; i++) {
+                for (int j=0; j<repls.length; j++) {
+                    MessageReplicator repl = repls[j];
+                    Writer w = writers[j];
+                    if (w == null) {
+                        writers[j] = w = repl.newWriter();
+                    }
+                    if (w != null && w.writeMessage(message)) {
+                        writer = w;
+                        writerSlot = j;
+                        break find;
+                    }
+                }
+
+                TestUtils.sleep(1000);
+            }
+        }
+
+        assertNotNull(writer);
+        assertNotEquals(0, writerSlot);
+
+        long highPosition = writer.position();
+        assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+
+        for (int i=0; i<readers.length; i++) {
+            readers[i].close();
+            readers[i] = repls[i].newReader(readers[i].position(), true);
+        }
+
+        for (Reader r : readers) {
+            TestUtils.fastAssertArrayEquals(message, r.readMessage());
         }
     }
 }

@@ -397,8 +397,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             acquireExclusive();
             if (mCandidateChannels.length == 0) {
                 // Lone member can become leader immediately.
-                mElectionValidated = Integer.MIN_VALUE;
-                doElectionTask();
+                forceElection(); // releases exclusive latch as a side-effect
             } else {
                 mElectionValidated = 1;
                 releaseExclusive();
@@ -613,6 +612,58 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static IllegalStateException invalidCommit(long position, long commitPosition) {
         throw new IllegalStateException
             ("Invalid commit position: " + position + " > " + commitPosition);
+    }
+
+    @Override
+    public boolean failover() {
+        Channel peerChan;
+
+        acquireExclusive();
+        try {
+            // If already a replica return true. If an interim leader, also return true because
+            // new writes cannot be accepted. Externally, it's acting like a replica.
+            if (mLocalMode == MODE_FOLLOWER || mLocalRole == Role.STANDBY) {
+                return true;
+            }
+
+            // Randomly select a peer to become the new leader.
+
+            select: {
+                final int len = mCandidateChannels.length;
+                Channel foundOne = null;
+
+                if (len > 0) {
+                    int offset = ThreadLocalRandom.current().nextInt(len);
+                    for (int i=0; i<len; i++) {
+                        peerChan = mCandidateChannels[(i + offset) % len];
+                        if (peerChan.peer().role() == Role.NORMAL) {
+                            if (foundOne == null) {
+                                foundOne = peerChan;
+                            }
+                            if (peerChan.isConnected()) {
+                                break select;
+                            }
+                        }
+                    }
+                }
+
+                if (foundOne == null) {
+                    // No peers can become a normal leader.
+                    return false;
+                }
+
+                // Try to send a command, even though it might not be connected.
+                peerChan = foundOne;
+            }
+
+            toFollower("explicit failover");
+        } finally {
+            releaseExclusive();
+        }
+
+        peerChan.forceElection(null);
+
+        return true;
     }
 
     @Override
@@ -1172,8 +1223,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     && leader.peer().role() == Role.STANDBY)
                 {
                     acquireExclusive();
-                    mElectionValidated = Integer.MIN_VALUE; // force an election
-                    doElectionTask();
+                    forceElection(); // releases exclusive latch as a side-effect
                 }
             } else {
                 for (int i=0; i<collector.mSize; ) {
@@ -1266,6 +1316,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } finally {
             scheduleElectionTask();
         }
+    }
+
+    // Caller must acquire exclusive latch, which is released by this method.
+    private void forceElection() {
+        mElectionValidated = Integer.MIN_VALUE;
+        doElectionTask();
     }
 
     // Caller must acquire exclusive latch, which is released by this method.
@@ -2002,6 +2058,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         doAffirmLeadership();
+    }
+
+    /**
+     * Called from a remote group member.
+     */
+    @Override // Channel
+    public boolean forceElection(Channel from) {
+        event(Level.INFO, "Forcing an election, as requested by: " + from.peer().mAddress);
+        forceElection();
+        return true;
     }
 
     /**

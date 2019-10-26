@@ -111,7 +111,8 @@ final class ChannelManager {
         OP_WRITE_VIA_PROXY = 26,
         OP_QUERY_DATA_REPLY_MISSING = 29, // alternate reply from OP_QUERY_DATA
         OP_QUERY_DATA_REPLY_VOID    = 31, // alternate reply from OP_QUERY_DATA
-        OP_WRITE_VOID      = 32; // paired with OP_WRITE_DATA_REPLY
+        OP_WRITE_VOID      = 32, // paired with OP_WRITE_DATA_REPLY
+        OP_FORCE_ELECTION  = 34;
 
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
@@ -889,6 +890,9 @@ final class ChannelManager {
                         localServer.requestVoteReply(this, in.readLongLE());
                         commandLength -= (8 * 1);
                         break;
+                    case OP_FORCE_ELECTION:
+                        localServer.forceElection(this);
+                        break;
                     case OP_QUERY_TERMS:
                         localServer.queryTerms(this, in.readLongLE(), in.readLongLE());
                         commandLength -= (8 * 2);
@@ -1062,6 +1066,11 @@ final class ChannelManager {
         }
 
         @Override
+        public synchronized boolean isConnected() {
+            return mOut != null;
+        }
+
+        @Override
         public Peer peer() {
             return mPeer;
         }
@@ -1127,6 +1136,11 @@ final class ChannelManager {
         @Override
         public boolean requestVoteReply(Channel from, long term) {
             return writeCommand(OP_REQUEST_VOTE_REPLY, term);
+        }
+
+        @Override
+        public boolean forceElection(Channel from) {
+            return writeCommand(OP_FORCE_ELECTION);
         }
 
         @Override

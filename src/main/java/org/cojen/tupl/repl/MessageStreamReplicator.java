@@ -92,6 +92,11 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public boolean failover() throws IOException {
+        return mRepl.failover();
+    }
+
+    @Override
     public void compact(long position) throws IOException {
         mRepl.compact(position);
     }

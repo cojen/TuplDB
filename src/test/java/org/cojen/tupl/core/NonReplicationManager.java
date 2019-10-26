@@ -95,6 +95,11 @@ class NonReplicationManager implements ReplicationManager {
     }
 
     @Override
+    public boolean failover() throws IOException {
+        return mState == REPLICA;
+    }
+
+    @Override
     public void checkpointed(long position) {
     }
 

@@ -160,7 +160,7 @@ public class DatabaseReplicatorTest {
 
             readyCheck: {
                 for (int trial=0; trial<100; trial++) {
-                    Thread.sleep(100);
+                    TestUtils.sleep(100);
 
                     if (i == 0) {
                         try {
@@ -318,7 +318,7 @@ public class DatabaseReplicatorTest {
                 if (count >= mReplicators.length) {
                     break allElectable;
                 }
-                Thread.sleep(100);
+                TestUtils.sleep(100);
             }
 
             fail("Not all members are electable: " + count);
@@ -360,7 +360,7 @@ public class DatabaseReplicatorTest {
                 if (i <= 0) {
                     throw e;
                 }
-                Thread.sleep(100);
+                TestUtils.sleep(100);
             }
         }
     }
@@ -487,7 +487,7 @@ public class DatabaseReplicatorTest {
             if (found != null) {
                 break;
             }
-            Thread.sleep(1000);
+            TestUtils.sleep(1000);
         }
 
         fastAssertArrayEquals(value, found);
@@ -499,7 +499,7 @@ public class DatabaseReplicatorTest {
                 leaderIx.store(null, key, value);
                 break;
             } catch (UnmodifiableReplicaException e) {
-                Thread.sleep(1000);
+                TestUtils.sleep(1000);
             }
         }
 
@@ -543,6 +543,50 @@ public class DatabaseReplicatorTest {
         db.close();
     }
 
+    @Test
+    public void explicitFailover() throws Exception {
+        Database[] dbs = startGroup(2);
+        Database leaderDb = dbs[0];
+        Database replicaDb = dbs[1];
+
+        Index leaderIx = leaderDb.openIndex("test");
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+        
+        Index replicaIx = replicaDb.openIndex("test");
+        
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+
+        leaderDb.failover();
+
+        try {
+            leaderIx.store(null, key, value);
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+        }
+
+        boolean success = false;
+        for (int i=0; i<10; i++) {
+            try {
+                replicaIx.store(null, key, value);
+                success = true;
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                System.out.println(e);
+            }
+            TestUtils.sleep(1000);
+        }
+
+        assertTrue(success);
+
+        // Wait for old leader to catch up.
+        fence(replicaDb, leaderDb);
+
+        fastAssertArrayEquals(value, leaderIx.load(null, key));
+    }
+
     /**
      * Writes a message to the "control" index, and block the replica until it's received.
      */
@@ -562,7 +606,7 @@ public class DatabaseReplicatorTest {
                 }
                 fail("Mismatched fence");
             }
-            Thread.sleep(10);
+            TestUtils.sleep(10);
         }
 
         fail("No fence received");

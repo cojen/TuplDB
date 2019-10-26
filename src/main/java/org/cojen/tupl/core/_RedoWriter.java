@@ -53,6 +53,11 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
     }
 
     /**
+     * @return true if now a replica; false if likely still the leader
+     */
+    abstract boolean failover() throws IOException;
+
+    /**
      * Called to sync a redo operation which has no associated transaction.
      *
      * @param commitPos highest position to sync (exclusive)

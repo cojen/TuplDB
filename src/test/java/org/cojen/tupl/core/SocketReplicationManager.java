@@ -132,6 +132,11 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
+    public boolean failover() throws IOException {
+        return mReader != null;
+    }
+
+    @Override
     public void checkpointed(long position) {
     }
 

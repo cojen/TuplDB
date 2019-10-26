@@ -66,4 +66,11 @@ public interface Replicator extends Closeable {
      * replicator. Incomplete data beyond this is discarded.
      */
     void sync() throws IOException;
+
+    /**
+     * Attempt to switch the replication role from leader to replica. If successful, or if
+     * already a replica, true is returned. When false is returned, the role is likely still
+     * the leader, possibly because no replicas exist to failover to.
+     */
+    boolean failover() throws IOException;
 }

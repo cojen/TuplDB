@@ -2690,6 +2690,11 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    public boolean failover() throws IOException {
+        return mRedoWriter == null ? false : mRedoWriter.failover();
+    }
+
+    @Override
     public void close(Throwable cause) throws IOException {
         close(cause, false);
     }

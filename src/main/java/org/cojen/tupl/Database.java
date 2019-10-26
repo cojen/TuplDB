@@ -594,6 +594,14 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract boolean verify(VerificationObserver observer) throws IOException;
 
     /**
+     * If the database instance is currently acting as a leader, attempt to give up leadership
+     * and become a replica. If the database is a replica, or if failover is successful, true
+     * is returned. When false is returned, the database is likely still the leader, either
+     * because the database isn't replicated, or because no replicas exist to failover to.
+     */
+    public abstract boolean failover() throws IOException;
+
+    /**
      * Closes the database, ensuring durability of committed transactions. No
      * checkpoint is performed by this method, and so non-transactional
      * modifications can be lost.

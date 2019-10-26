@@ -230,6 +230,13 @@ public interface ReplicationManager extends Closeable {
     void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
+     * Attempt to switch the replication role from leader to replica. If successful, or if
+     * already a replica, true is returned. When false is returned, the role is likely still
+     * the leader, possibly because no replicas exist to failover to.
+     */
+    boolean failover() throws IOException;
+
+    /**
      * Indicates that all data prior to the given log position has been durably
      * checkpointed, and that old data can be discarded.
      *

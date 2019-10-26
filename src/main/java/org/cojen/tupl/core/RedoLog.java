@@ -330,6 +330,11 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    boolean failover() {
+        return false;
+    }
+
+    @Override
     void commitSync(TransactionContext context, long commitPos) throws IOException {
         txnCommitSync((LocalTransaction) null, commitPos);
     }

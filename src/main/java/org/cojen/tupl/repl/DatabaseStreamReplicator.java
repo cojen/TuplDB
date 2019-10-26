@@ -443,6 +443,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
+    public boolean failover() throws IOException {
+        return mRepl.failover();
+    }
+
+    @Override
     public void checkpointed(long position) throws IOException {
         mRepl.compact(position);
     }
