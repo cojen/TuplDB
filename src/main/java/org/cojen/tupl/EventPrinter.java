@@ -47,11 +47,14 @@ public class EventPrinter implements EventListener {
     @Override
     public void notify(EventType type, String message, Object... args) {
         try {
-            mOut.println(type.category + ": " + String.format(message, args));
+            String fullMessage = type.category + ": " + String.format(message, args);
+            synchronized (mOut) {
+                mOut.println(fullMessage);
 
-            for (Object obj : args) {
-                if (obj instanceof Throwable) {
-                    ((Throwable) obj).printStackTrace(mOut);
+                for (Object obj : args) {
+                    if (obj instanceof Throwable) {
+                        ((Throwable) obj).printStackTrace(mOut);
+                    }
                 }
             }
         } catch (Throwable e) {
