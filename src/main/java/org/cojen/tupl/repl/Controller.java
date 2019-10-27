@@ -1506,6 +1506,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (originalMode != MODE_FOLLOWER) {
             mLocalMode = MODE_FOLLOWER;
+            mElectionValidated = 0;
 
             if (mLeaderReplWriter != null) {
                 // Deactivate before releasing the log underlying writer, ensuring that it's
@@ -2066,7 +2067,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public boolean forceElection(Channel from) {
         event(Level.INFO, "Forcing an election, as requested by: " + from.peer().mAddress);
-        forceElection();
+        acquireExclusive();
+        forceElection(); // releases exclusive latch as a side-effect
         return true;
     }
 
@@ -2405,73 +2407,72 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     private Channel validateLeaderTerm(Channel from, long term) {
         acquireShared();
+        boolean exclusive = false;
 
-        if (from == null) {
-            from = mLeaderReplyChannel;
-        }
+        validate: while (true) {
+            final long originalTerm = mCurrentTerm;
 
-        long originalTerm = mCurrentTerm;
-
-        vadidate: {
             if (term == originalTerm) {
-                if (mElectionValidated > 0 || from == null) {
-                    // Already validated, or cannot fully complete validation without a reply
-                    // channel. A message directly from the leader is required.
-                    releaseShared();
+                if (mElectionValidated > 0) {
+                    if (from == null && term == mValidatedTerm) {
+                        from = mLeaderReplyChannel;
+                    }
+                    release(exclusive);
                     return from; // validation success
                 }
-                if (tryUpgrade()) {
-                    break vadidate;
+                if (exclusive || tryUpgrade()) {
+                    break validate;
                 }
-            } else if (term < originalTerm) {
                 releaseShared();
+                acquireExclusive();
+                exclusive = true;
+                continue;
+            }
+
+            if (term < originalTerm) {
+                release(exclusive);
                 return this; // validation failed
             }
 
-            if (from == null) {
-                // Cannot fully complete validation without a reply channel. A message directly
-                // from the leader is required.
-                releaseShared();
-                return from;
+            if (!exclusive) {
+                if (tryUpgrade()) {
+                    exclusive = true;
+                } else {
+                    releaseShared();
+                    acquireExclusive();
+                    exclusive = true;
+                    continue;
+                }
             }
 
-            if (!tryUpgrade()) {
-                releaseShared();
-                acquireExclusive();
-                originalTerm = mCurrentTerm;
-                if (term < originalTerm) {
+            try {
+                try {
+                    mCurrentTerm = mStateLog.checkCurrentTerm(term);
+                } catch (IOException e) {
+                    uncaught(e);
                     releaseExclusive();
                     return this; // validation failed
                 }
-            }
-
-            if (term != originalTerm) {
-                try {
-                    assert term > originalTerm;
-                    try {
-                        mCurrentTerm = mStateLog.checkCurrentTerm(term);
-                    } catch (IOException e) {
-                        uncaught(e);
-                        releaseExclusive();
-                        return this; // validation failed
-                    }
-                    if (mCurrentTerm <= originalTerm) {
-                        releaseExclusive();
-                        return from; // validation success
-                    }
-                    toFollower(null);
-                } catch (Throwable e) {
-                    releaseExclusive();
-                    throw e;
+                if (mCurrentTerm <= originalTerm) {
+                    continue;
                 }
+                toFollower(null);
+            } catch (Throwable e) {
+                releaseExclusive();
+                throw e;
             }
         }
 
         if (from == null) {
-            // Cannot fully complete validation without a reply channel. A message directly
-            // from the leader is required.
-            releaseExclusive();
-            return from; // validation success (mostly)
+            if (term == mValidatedTerm) {
+                from = mLeaderReplyChannel;
+            }
+            if (from == null) {
+                // Cannot fully complete validation without a reply channel. A message directly
+                // from the leader is required.
+                releaseExclusive();
+                return from; // validation success (mostly)
+            }
         }
 
         mElectionValidated = 1;
