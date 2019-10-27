@@ -249,22 +249,22 @@ public final class LocalTransaction extends Locker implements Transaction {
                     }
                     super.scopeUnlockAll();
                 } else {
-                    // Holding the shared commit lock ensures that the redo log
-                    // doesn't disappear before the undo log. Lingering undo
-                    // logs with no corresponding redo log are treated as
-                    // aborted. Recovery would erroneously rollback committed
-                    // transactions.
+                    // Holding the shared commit lock ensures that the redo log doesn't
+                    // disappear before the undo log. Lingering undo logs with no corresponding
+                    // redo log are treated as aborted. Recovery would erroneously rollback
+                    // committed transactions.
                     final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
-                            commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
+                            RedoWriter redo = mRedo;
+                            commitPos = mContext.redoCommitFinal(redo, mTxnId, mDurabilityMode);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
+                            // Indicates that undo log should be truncated instead of rolled
+                            // back during recovery. Commit lock can now be released safely.
+                            // See recoveryCleanup. Applicable only when non-replicated.
+                            redo.undoCommit(undo);
                         }
-                        // Indicates that undo log should be truncated instead
-                        // of rolled back during recovery. Commit lock can now
-                        // be released safely. See recoveryCleanup.
-                        undo.commit();
                     } finally {
                         shared.release();
                     }
@@ -424,7 +424,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                     super.scopeUnlockAll();
                 } else {
                     try {
-                        undo.commit();
+                        mRedo.undoCommit(undo);
                     } finally {
                         shared.release();
                     }

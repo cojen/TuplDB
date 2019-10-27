@@ -277,7 +277,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * If the transaction was committed, deletes any ghosts and truncates the log.
      *
-     * @return if transaction was committed
+     * @return true if transaction was committed
      */
     boolean recoveryCleanup() throws IOException {
         if (mCommitted != 0) {

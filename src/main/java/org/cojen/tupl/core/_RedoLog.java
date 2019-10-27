@@ -335,6 +335,11 @@ final class _RedoLog extends _RedoWriter {
     }
 
     @Override
+    void undoCommit(_UndoLog undo) {
+        undo.commit();
+    }
+
+    @Override
     void commitSync(_TransactionContext context, long commitPos) throws IOException {
         txnCommitSync((_LocalTransaction) null, commitPos);
     }

@@ -58,6 +58,12 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
     abstract boolean failover() throws IOException;
 
     /**
+     * Indicates that undo log should be truncated instead of rolled back during recovery.
+     * This should be a no-op when replicated.
+     */
+    abstract void undoCommit(_UndoLog undo);
+
+    /**
      * Called to sync a redo operation which has no associated transaction.
      *
      * @param commitPos highest position to sync (exclusive)
