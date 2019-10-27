@@ -171,7 +171,7 @@ final class UndoLog implements DatabaseAccess {
     static final byte OP_LOCK_UPGRADABLE = 35;
 
     private final LocalDatabase mDatabase;
-    private final long mTxnId;
+    final long mTxnId;
 
     // Number of bytes currently pushed into log.
     private long mLength;
@@ -386,9 +386,12 @@ final class UndoLog implements DatabaseAccess {
 
     /**
      * Caller must hold db commit lock.
+     *
+     * @return savepoint
      */
-    void pushPrepare() throws IOException {
+    long pushPrepare() throws IOException {
         doPush(OP_PREPARE);
+        return mLength;
     }
 
     /**
@@ -1606,7 +1609,12 @@ final class UndoLog implements DatabaseAccess {
                 break loop;
 
             case OP_PREPARE:
-                hasState |= LocalTransaction.HAS_PREPARE;
+                if ((hasState & LocalTransaction.HAS_PREPARE) == 0) {
+                    // Only need to recover the last prepare key.
+                    byte[] key = Locker.createPrepareKey(mTxnId);
+                    scope.addExclusiveLock(Tree.PREPARE_LOCK_ID, key);
+                    hasState |= LocalTransaction.HAS_PREPARE;
+                }
                 break;
 
             case OP_SCOPE_ENTER:

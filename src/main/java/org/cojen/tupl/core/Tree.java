@@ -45,6 +45,9 @@ abstract class Tree implements Index {
         FRAGMENTED_TRASH_ID = 3,
         CUSTOM_HANDLER_REGISTRY_ID = 4;
 
+    // Pseudo internal index id used by prepared transactions.
+    static final int PREPARE_LOCK_ID = 0xff;
+
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;
     }

@@ -84,6 +84,10 @@ final class _Lock {
             : ((count != 0 && isSharedLockOwner(locker)) ? OWNED_SHARED : UNOWNED);
     }
 
+    boolean isPrepareLock() {
+        return mIndexId == Tree.PREPARE_LOCK_ID;
+    }
+
     /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
      * the locker's mWaitingFor field is set to this _Lock as a side-effect.
@@ -337,7 +341,7 @@ final class _Lock {
                 }
             } else {
                 // Unlocking an exclusive lock.
-                throw new IllegalStateException("Cannot unlock an exclusive lock");
+                throw unlockFail();
             }
         } else {
             doUnlockShared(locker, ht);
@@ -466,7 +470,7 @@ final class _Lock {
                 addSharedLockOwner(count & 0x7fffffff, locker);
             } else {
                 // Unlocking exclusive lock into shared.
-                throw new IllegalStateException("Cannot unlock an exclusive lock");
+                throw unlockFail();
             }
 
             mOwner = null;
@@ -559,6 +563,37 @@ final class _Lock {
             queueSX.signalShared(latch);
         }
         latch.releaseExclusive();
+    }
+
+    /**
+     * Releases an exclusive lock and never removes it from the _LockManager. Is used to
+     * transfer ownership of a _Locker between threads, which must have a reference back to this
+     * _Lock. No check is made to verify that lock is held exclusive. The other thread, upon
+     * acquiring the lock, must not push this _Lock instance to the _Locker again.
+     *
+     * @param ht never released, even if an exception is thrown
+     */
+    void signalExclusive(_LockManager.LockHT ht) {
+        mOwner = null;
+        mLockCount = 0;
+        // Signal behavior is a simplified from used by doUnlockOwned.
+        if (mQueueU != null) {
+            mQueueU.signal(ht);
+        }
+        if (mQueueSX != null) {
+            mQueueSX.signal(ht);
+        }
+    }
+
+    private IllegalStateException unlockFail() {
+        String message;
+        if (isPrepareLock()) {
+            // White lie to avoid exposing the special prepare lock.
+            message = "No locks held";
+        } else {
+            message = "Cannot unlock an exclusive lock";
+        }
+        return new IllegalStateException(message);
     }
 
     private static boolean isClosed(_LockOwner locker) {

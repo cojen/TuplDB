@@ -196,4 +196,11 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
      * @param metadata true to durably write applicable file system metadata too
      */
     abstract void force(boolean metadata) throws IOException;
+
+    /**
+     * Stash a prepared transaction which needs to be passed to a recovery handler. The given
+     * transaction will have no redo writer, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ,
+     * timeout of 0, and no attachment. It will have a transaction id, locks, and an UndoLog.
+     */
+    abstract void stashForRecovery(LocalTransaction txn);
 }

@@ -48,7 +48,9 @@ public enum EventType {
     RECOVERY_REDO_LOG_CORRUPTION(Category.RECOVERY, Level.WARNING),
     /** Signals that transactions not expliticly committed or rolled back are being processed. */
     RECOVERY_PROCESS_REMAINING(Category.RECOVERY, Level.INFO),
-    /** Prepared two-phase commit transactions remain, but no handler is installed. */
+    /** Signals that a prepared transaction held by the leader hasn't been released yet. */
+    RECOVERY_AWAIT_RELEASE(Category.RECOVERY, Level.WARNING),
+    /** Prepared transactions remain, but no handler is installed. */
     RECOVERY_NO_HANDLER(Category.RECOVERY, Level.SEVERE),
     /** An uncaught exception from a recovery handler. */
     RECOVERY_HANDLER_UNCAUGHT(Category.RECOVERY, Level.SEVERE),

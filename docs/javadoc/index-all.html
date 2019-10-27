@@ -2773,6 +2773,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Signals that non-checkpointed transactions are being committed or rolled back.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#RECOVERY_AWAIT_RELEASE">RECOVERY_AWAIT_RELEASE</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
+<dd>
+<div class="block">Signals that a prepared transaction held by the leader hasn't been released yet.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#RECOVERY_BEGIN">RECOVERY_BEGIN</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>
 <div class="block">Signals the beginning of database recovery.</div>
@@ -2795,7 +2799,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#RECOVERY_NO_HANDLER">RECOVERY_NO_HANDLER</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>
-<div class="block">Prepared two-phase commit transactions remain, but no handler is installed.</div>
+<div class="block">Prepared transactions remain, but no handler is installed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#RECOVERY_PROCESS_REMAINING">RECOVERY_PROCESS_REMAINING</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>

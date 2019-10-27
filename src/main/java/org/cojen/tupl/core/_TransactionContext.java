@@ -23,6 +23,8 @@ import java.lang.invoke.VarHandle;
 import java.io.Flushable;
 import java.io.IOException;
 
+import java.util.Collection;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.Database;
@@ -1200,6 +1202,15 @@ final class _TransactionContext extends Latch implements Flushable {
             workspace = log.writeToMaster(master, workspace);
         }
         return workspace;
+    }
+
+    /**
+     * Copies a reference to all active UndoLogs into the given collection.
+     */
+    synchronized void gatherUndoLogs(Collection<? super _UndoLog> to) {
+        for (_UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+            to.add(log);
+        }
     }
 
     /**

@@ -26,6 +26,8 @@ import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.Random;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TransferQueue;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.ThreadLocalRandom;
@@ -574,7 +576,6 @@ public class DatabaseReplicatorTest {
                 success = true;
                 break;
             } catch (UnmodifiableReplicaException e) {
-                System.out.println(e);
             }
             TestUtils.sleep(1000);
         }
@@ -585,6 +586,264 @@ public class DatabaseReplicatorTest {
         fence(replicaDb, leaderDb);
 
         fastAssertArrayEquals(value, leaderIx.load(null, key));
+    }
+
+    @Test
+    public void prepareTransfer() throws Exception {
+        // Prepared transaction should be transfered to replica and finish.
+
+        BlockingQueue<Database> dbQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<Transaction> txnQueue = new LinkedBlockingQueue<>();
+
+        Supplier<RecoveryHandler> supplier = () -> new RecoveryHandler() {
+            private Database mDb;
+
+            @Override
+            public void init(Database db) {
+                mDb = db;
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                dbQueue.add(mDb);
+                txnQueue.add(txn);
+            }
+        };
+
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database leaderDb = dbs[0];
+        Database replicaDb = dbs[1];
+
+        Index leaderIx = leaderDb.openIndex("test");
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+        
+        Index replicaIx = replicaDb.openIndex("test");
+
+        Transaction txn1 = leaderDb.newTransaction();
+        byte[] k1 = "k1".getBytes();
+        byte[] v1 = "v1".getBytes();
+        leaderIx.store(txn1, k1, v1);
+        txn1.prepare();
+
+        leaderDb.failover();
+
+        // Replica is now the leader and should have the transaction.
+
+        assertEquals(replicaDb, dbQueue.take());
+        Transaction txn2 = txnQueue.take();
+
+        assertNotEquals(txn1, txn2);
+        assertEquals(txn1.getId(), txn2.getId());
+
+        fastAssertArrayEquals(v1, replicaIx.load(txn2, k1));
+
+        byte[] k2 = "k2".getBytes();
+        byte[] v2 = "v2".getBytes();
+        replicaIx.store(txn2, k2, v2);
+
+        txn2.commit();
+
+        // Wait for old leader to catch up. This will fail at first because the old leader
+        // transaction is stuck.
+        boolean pass = true;
+        try {
+            fence(replicaDb, leaderDb);
+            pass = false;
+        } catch (AssertionError e) {
+        }
+
+        assertTrue(pass);
+
+        try {
+            txn1.commit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // This will unstick the transaction.
+        }
+
+        fence(replicaDb, leaderDb);
+
+        // Verify that the old leader observes the committed changes.
+        fastAssertArrayEquals(v1, leaderIx.load(null, k1));
+        fastAssertArrayEquals(v2, leaderIx.load(null, k2));
+    }
+
+    @Test
+    public void prepareTransferPingPong() throws Exception {
+        // Prepared transaction should be transfered to replica, back to old leader, and then
+        // finish.
+
+        BlockingQueue<Database> dbQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<Transaction> txnQueue = new LinkedBlockingQueue<>();
+
+        Supplier<RecoveryHandler> supplier = () -> new RecoveryHandler() {
+            private Database mDb;
+
+            @Override
+            public void init(Database db) {
+                mDb = db;
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                dbQueue.add(mDb);
+                txnQueue.add(txn);
+            }
+        };
+
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database leaderDb = dbs[0];
+        Database replicaDb = dbs[1];
+
+        Index leaderIx = leaderDb.openIndex("test");
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+        
+        Index replicaIx = replicaDb.openIndex("test");
+
+        Transaction txn1 = leaderDb.newTransaction();
+        byte[] k1 = "k1".getBytes();
+        byte[] v1 = "v1".getBytes();
+        leaderIx.store(txn1, k1, v1);
+        txn1.prepare();
+
+        leaderDb.failover();
+
+        // Must capture the id before it gets replaced.
+        long txnId = txn1.getId();
+
+        try {
+            txn1.commit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // This will unstick the transaction.
+        }
+
+        // Replica is now the leader and should have the transaction.
+
+        assertEquals(replicaDb, dbQueue.take());
+        Transaction txn2 = txnQueue.take();
+
+        assertNotEquals(txn1, txn2);
+        assertEquals(txnId, txn2.getId());
+
+        fastAssertArrayEquals(v1, replicaIx.load(txn2, k1));
+
+        byte[] k2 = "k2".getBytes();
+        byte[] v2 = "v2".getBytes();
+        replicaIx.store(txn2, k2, v2);
+        txn2.prepare();
+
+        replicaDb.failover();
+
+        try {
+            txn2.commit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // This will unstick the transaction.
+        }
+
+        // Now the old leader is the leader again.
+
+        assertEquals(leaderDb, dbQueue.take());
+        Transaction txn3 = txnQueue.take();
+
+        assertNotEquals(txn1, txn3);
+        assertNotEquals(txn2, txn3);
+        assertEquals(txnId, txn3.getId());
+
+        fastAssertArrayEquals(v1, leaderIx.load(txn3, k1));
+        fastAssertArrayEquals(v2, leaderIx.load(txn3, k2));
+
+        byte[] k3 = "k3".getBytes();
+        byte[] v3 = "v3".getBytes();
+        leaderIx.store(txn3, k3, v3);
+
+        txn3.commit();
+
+        fence(leaderDb, replicaDb);
+
+        // Verify that leader and replica observe the committed changes.
+
+        fastAssertArrayEquals(v1, leaderIx.load(null, k1));
+        fastAssertArrayEquals(v2, leaderIx.load(null, k2));
+        fastAssertArrayEquals(v3, leaderIx.load(null, k3));
+
+        fastAssertArrayEquals(v1, replicaIx.load(null, k1));
+        fastAssertArrayEquals(v2, replicaIx.load(null, k2));
+        fastAssertArrayEquals(v3, replicaIx.load(null, k3));
+    }
+
+    @Test
+    public void prepareBlank() throws Exception {
+        // Test against a prepared transaction that has no changes. It should still ensure that
+        // the transaction is created properly on the replica.
+
+        BlockingQueue<Database> dbQueue = new LinkedBlockingQueue<>();
+        BlockingQueue<Transaction> txnQueue = new LinkedBlockingQueue<>();
+
+        Supplier<RecoveryHandler> supplier = () -> new RecoveryHandler() {
+            private Database mDb;
+
+            @Override
+            public void init(Database db) {
+                mDb = db;
+            }
+
+            @Override
+            public void recover(Transaction txn) throws IOException {
+                dbQueue.add(mDb);
+                txnQueue.add(txn);
+            }
+        };
+
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database leaderDb = dbs[0];
+        Database replicaDb = dbs[1];
+
+        Index leaderIx = leaderDb.openIndex("test");
+
+        // Wait for replica to catch up.
+        fence(leaderDb, replicaDb);
+        
+        Index replicaIx = replicaDb.openIndex("test");
+
+        Transaction txn1 = leaderDb.newTransaction();
+        txn1.prepare();
+
+        leaderDb.failover();
+
+        // Must capture the id before it gets replaced.
+        long txnId = txn1.getId();
+
+        try {
+            txn1.commit();
+            fail();
+        } catch (UnmodifiableReplicaException e) {
+            // This will unstick the transaction.
+        }
+
+        // Replica is now the leader and should have the transaction.
+
+        assertEquals(replicaDb, dbQueue.take());
+        Transaction txn2 = txnQueue.take();
+
+        assertNotEquals(txn1, txn2);
+        assertEquals(txnId, txn2.getId());
+
+        byte[] k1 = "k1".getBytes();
+        byte[] v1 = "v1".getBytes();
+        replicaIx.store(txn2, k1, v1);
+
+        txn2.commit();
+
+        fence(replicaDb, leaderDb);
+
+        // Verify that the old leader observes the committed changes.
+        fastAssertArrayEquals(v1, leaderIx.load(null, k1));
     }
 
     /**

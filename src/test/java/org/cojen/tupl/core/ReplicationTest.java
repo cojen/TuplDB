@@ -1265,6 +1265,9 @@ public class ReplicationTest {
         Transaction txn = mLeader.newTransaction();
         byte[] key = "hello".getBytes();
         ix.store(txn, key, "world".getBytes());
+        byte[] key2 = "hello2".getBytes();
+        ix.load(txn, key2);
+        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.getId(), key2));
         txn.prepare();
         fence();
 
@@ -1281,13 +1284,24 @@ public class ReplicationTest {
             ix.load(null, key);
             fail();
         } catch (LockTimeoutException e) {
-            // Lock is still held.
+            // Exclusive lock is still held.
+        }
+
+        {
+            // Verify that upgradable lock for key2 was released.
+            Transaction txn2 = mLeader.newTransaction();
+            assertNull(ix.load(txn2, key2));
+            txn2.reset();
         }
 
         fastAssertArrayEquals("world".getBytes(), ix.load(Transaction.BOGUS, key));
 
-        // Transaction shouldn't be borked.
-        txn.check();
+        try {
+            txn.check();
+            fail();
+        } catch (InvalidTransactionException e) {
+            // Transaction should be borked because all state was transferred away.
+        }
     }
 
     /**

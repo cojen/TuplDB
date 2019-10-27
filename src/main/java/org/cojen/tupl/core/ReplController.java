@@ -25,6 +25,7 @@ import java.io.IOException;
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
 import org.cojen.tupl.ext.ReplicationManager;
@@ -372,6 +373,9 @@ final class ReplController extends ReplWriter {
         }
 
         redo.flipped(pos);
+
+        // Cannot start receiving until all prepared transactions have been safely transferred.
+        mEngine.awaitPreparedTransactions();
 
         // Start receiving if not, but does nothing if already receiving. A reset op is
         // expected, and so the initial transaction id can be zero.

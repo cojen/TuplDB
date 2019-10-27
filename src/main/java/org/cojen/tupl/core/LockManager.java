@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
+import java.util.function.BiFunction;
+
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
@@ -194,6 +196,84 @@ public final class LockManager {
         } catch (Throwable e) {
             ht.releaseExclusive();
             throw e;
+        }
+    }
+
+    /**
+     * Signals and releases the prepare lock, which must be held exclusive. The lock isn't
+     * removed from this Locker or from the LockManager.
+     *
+     * @throws IllegalStateException if lock isn't held
+     */
+    final void signalExclusivePrepare(LockOwner locker, long txnId) {
+        accessPrepareLock(true, txnId, (ht, lock) -> {
+            if (lock == null || lock.check(locker) != OWNED_EXCLUSIVE) {
+                throw new IllegalStateException("Prepare lock isn't held");
+            }
+            lock.signalExclusive(ht);
+            return null;
+        });
+    }
+
+    /**
+     * @param locker temporary lock owner -- lock isn't pushed to it
+     * @return null if prepare lock doesn't exist
+     */
+    final LockResult awaitExclusivePrepare(long txnId, Locker locker, long nanosTimeout) {
+        return accessPrepareLock(true, txnId, (ht, lock) -> {
+            return lock == null ? null : lock.tryLockExclusive(ht, locker, nanosTimeout);
+        });
+    }
+
+    /**
+     * Unlocks a lock acquired by awaitExclusivePrepare.
+     */
+    final void unlockExclusivePrepare(long txnId, Locker locker) {
+        accessPrepareLock(false, txnId, (ht, lock) -> {
+            if (lock == null) {
+                ht.releaseExclusive();
+            } else {
+                // Calls releaseExclusive if no exception is thrown.
+                lock.doUnlock(locker, ht);
+            }
+            return null;
+        });
+    }
+
+    /**
+     * @param fun receives the lock, null if not found
+     * @return result of function
+     */
+    private <R> R accessPrepareLock(boolean release, long txnId, BiFunction<LockHT,Lock,R> fun) {
+        byte[] key = Locker.createPrepareKey(txnId);
+        int hash = hash(Tree.PREPARE_LOCK_ID, key);
+
+        LockHT ht = getLockHT(hash);
+        ht.acquireExclusive();
+        try {
+            R result = fun.apply(ht, ht.lockFor(Tree.PREPARE_LOCK_ID, key, hash));
+            if (release) {
+                ht.releaseExclusive();
+            }
+            return result;
+        } catch (Throwable e) {
+            ht.releaseExclusive();
+            throw e;
+        }
+    }
+
+    /**
+     * Take ownership of an upgradable or exclusive lock.
+     */
+    final void takeLockOwnership(Lock lock, LockOwner locker) {
+        LockHT ht = getLockHT(lock.mHashCode);
+        ht.acquireExclusive();
+        try {
+            if (lock.mLockCount < 0) {
+                lock.mOwner = locker;
+            }
+        } finally {
+            ht.releaseExclusive();
         }
     }
 

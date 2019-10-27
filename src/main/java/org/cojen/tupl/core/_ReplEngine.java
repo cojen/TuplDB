@@ -21,7 +21,10 @@ import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +36,7 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
@@ -185,9 +189,13 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
+        return newThread(r, "ReplicationReceiver");
+    }
+
+    private Thread newThread(Runnable r, String namePrefix) {
         Thread t = new Thread(r);
         t.setDaemon(true);
-        t.setName("ReplicationReceiver-" + Long.toUnsignedString(t.getId()));
+        t.setName(namePrefix + '-' + Long.toUnsignedString(t.getId()));
         t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
         return t;
     }
@@ -424,11 +432,8 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                         // Allow index deletion to run concurrently. If multiple deletes
                         // are received concurrently, then the application is likely doing
                         // concurrent deletes.
-                        Thread deletion = new Thread
-                            (task, "IndexDeletion-" +
-                             (ix == null ? indexId : ix.getNameString()));
-                        deletion.setDaemon(true);
-                        deletion.start();
+                        newThread(task, "IndexDeletion-" +
+                                  (ix == null ? indexId : ix.getNameString())).start();
                     } catch (Throwable e) {
                         EventListener listener = mDatabase.eventListener();
                         if (listener != null) {
@@ -1135,6 +1140,100 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
+     * Called by _ReplWriter.
+     */
+    void stashForRecovery(_LocalTransaction txn) {
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        txn.lockTimeout(-1, null);
+        txn.attach(ATTACHMENT);
+
+        long scrambledTxnId = mix(txn.getId());
+
+        mDecodeLatch.acquireExclusive();
+        try {
+            mTransactions.insert(scrambledTxnId).mTxn = txn;
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
+
+    /**
+     * Called by _ReplController.
+     */
+    void awaitPreparedTransactions() {
+        List<_UndoLog> undoLogs = new ArrayList<>();
+        mDatabase.gatherUndoLogs(undoLogs);
+
+        // Report on stuck transactions after timing out.
+        long nanosTimeout = 1_000_000_000L;
+
+        while (true) {
+            if (awaitPreparedTransactions(undoLogs, nanosTimeout)) {
+                return;
+            }
+            // Still waiting for prepared transactions to transfer ownership. Double the
+            // timeout each time, up to a maximum of one minute.
+            nanosTimeout = Math.min(nanosTimeout << 1, 60_000_000_000L);
+        }
+    }
+
+    /**
+     * @return true if not waiting on any prepared transactions
+     */
+    private boolean awaitPreparedTransactions(List<_UndoLog> undoLogs, long nanosTimeout) {
+        final _LockManager lockManager = mDatabase.mLockManager;
+
+        // Temporary locker used for signal await.
+        final _Locker locker = new _Locker(lockManager);
+
+        boolean finished = true;
+
+        Iterator<_UndoLog> it = undoLogs.iterator();
+        while (it.hasNext()) {
+            _UndoLog undoLog = it.next();
+            long txnId = undoLog.mTxnId;
+
+            LockResult result = lockManager.awaitExclusivePrepare(txnId, locker, nanosTimeout);
+
+            if (result != null) {
+                if (!result.isHeld()) {
+                    finished = false;
+
+                    EventListener listener = mDatabase.eventListener();
+                    if (listener != null) {
+                        listener.notify(EventType.RECOVERY_AWAIT_RELEASE,
+                                        "Prepared transaction must be reset: %1$d", txnId);
+                    }
+
+                    continue;
+                }
+
+                TxnEntry te;
+                long scrambledTxnId = mix(txnId);
+
+                mDecodeLatch.acquireShared();
+                try {
+                    te = mTransactions.get(scrambledTxnId);
+                } finally {
+                    mDecodeLatch.releaseShared();
+                }
+
+                if (te == null) {
+                    // Assume transaction was never prepared or it's been committed.
+                    lockManager.unlockExclusivePrepare(txnId, locker);
+                } else {
+                    // Transfer complete.
+                    te.mTxn.takeLockOwnership();
+                }
+            }
+
+            it.remove();
+        }
+
+        return finished;
+    }
+
+    /**
      * @return TxnEntry via scrambled transaction id
      */
     private TxnEntry getTxnEntry(long txnId) {
@@ -1399,21 +1498,22 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             }
         }
 
-        _RedoWriter redo;
-
         try {
-            redo = mController.leaderNotify();
-        } catch (UnmodifiableReplicaException e) {
-            // Should already be receiving again due to this exception.
-            return;
+            _RedoWriter redo;
+            try {
+                redo = mController.leaderNotify();
+            } catch (UnmodifiableReplicaException e) {
+                // Should already be receiving again due to this exception.
+                return;
+            }
+
+            if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
+                Runnable task = () -> mDatabase.invokeRecoveryHandler(remaining, redo);
+                newThread(task, "RecoveryHandler").start();
+            }
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
             closeQuietly(mDatabase, e);
-            return;
-        }
-
-        if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
-            mDatabase.invokeRecoveryHandler(remaining, redo);
         }
     }
 

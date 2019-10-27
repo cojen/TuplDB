@@ -109,6 +109,46 @@ public class TxnPrepareTest {
         }
     }
 
+    @Test
+    public void noUnlock() throws Exception {
+        // Test that the special prepare lock cannot be released.
+
+        Database db = newTempDatabase(newConfig(new NonHandler()));
+        Transaction txn = db.newTransaction();
+
+        for (int i=0; i<2; i++) {
+            txn.prepare();
+
+            try {
+                txn.unlock();
+                fail();
+            } catch (IllegalStateException e) {
+                assertEquals("No locks held", e.getMessage());
+            }
+
+            txn.unlockCombine();
+
+            try {
+                txn.unlock();
+                fail();
+            } catch (IllegalStateException e) {
+                assertEquals("No locks held", e.getMessage());
+            }
+
+            byte[] key = new byte[8];
+            Utils.encodeLongLE(key, 0, txn.getId());
+            assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(Tree.PREPARE_LOCK_ID, key));
+
+            assertEquals(LockResult.ACQUIRED, txn.lockUpgradable(0, "hello".getBytes()));
+        }
+
+        assertEquals(LockResult.UPGRADED, txn.lockExclusive(0, "hello".getBytes()));
+
+        txn.prepare();
+
+        txn.reset();
+    }
+
     // Test transaction recovery from just the redo log...
 
     @Test
@@ -575,16 +615,11 @@ public class TxnPrepareTest {
             txn = recoveredQueue.take();
             assertTrue(recoveredQueue.isEmpty());
 
-            // All locks should still be held. The last key could probably be released too, but
-            // in the current implementation this is tricky. See comments in the
-            // LocalTransaction rollbackToPrepare method.
+            // All locks should still be held except for the last key.
             for (int i=0; i<keys.length; i++) {
                 try {
                     ix.load(null, keys[i]);
-                    if (q > 0 && i == keys.length - 1) {
-                        // As a side effect of rollback and opening again is that all redo
-                        // operations to recover the locks are gone.
-                    } else {
+                    if (i < keys.length - 1) {
                         fail();
                     }
                 } catch (LockTimeoutException e) {

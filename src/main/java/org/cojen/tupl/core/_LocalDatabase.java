@@ -43,6 +43,7 @@ import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
@@ -1090,8 +1091,8 @@ public final class _LocalDatabase extends CoreDatabase {
             if (mEventListener != null) {
                 mEventListener.notify
                     (EventType.RECOVERY_NO_HANDLER,
-                     "No handler is installed for processing the remaining " +
-                     "two-phase commit transactions: %1$d", txns.size());
+                     "No handler is installed for recovering " +
+                     "prepared transactions: %1$d", txns.size());
             }
         }
 
@@ -1940,6 +1941,15 @@ public final class _LocalDatabase extends CoreDatabase {
     void discardRedoWriter(_RedoWriter expect) {
         for (_TransactionContext context : mTxnContexts) {
             context.discardRedoWriter(expect);
+        }
+    }
+
+    /**
+     * Copies a reference to all active UndoLogs into the given collection.
+     */
+    void gatherUndoLogs(Collection<? super _UndoLog> to) {
+        for (_TransactionContext context : mTxnContexts) {
+            context.gatherUndoLogs(to);
         }
     }
 
