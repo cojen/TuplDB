@@ -42,8 +42,7 @@ abstract class Tree implements Index {
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
         CURSOR_REGISTRY_ID = 2,
-        FRAGMENTED_TRASH_ID = 3,
-        CUSTOM_HANDLER_REGISTRY_ID = 4;
+        FRAGMENTED_TRASH_ID = 3;
 
     // Pseudo internal index id used by prepared transactions.
     static final int PREPARE_LOCK_ID = 0xff;

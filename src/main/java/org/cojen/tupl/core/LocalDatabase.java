@@ -209,13 +209,16 @@ public final class LocalDatabase extends CoreDatabase {
     // The root tree, which maps tree ids to other tree root node ids.
     private final BTree mRegistry;
 
-    static final byte KEY_TYPE_INDEX_NAME   = 0; // prefix for name to id mapping
-    static final byte KEY_TYPE_INDEX_ID     = 1; // prefix for id to name mapping
-    static final byte KEY_TYPE_TREE_ID_MASK = 2; // full key for random tree id mask
-    static final byte KEY_TYPE_NEXT_TREE_ID = 3; // full key for tree id sequence
-    static final byte KEY_TYPE_TRASH_ID     = 4; // prefix for id to name mapping of trash
+    // RK == Registry Key prefixes used with mRegistryKeyMap.
+    static final byte RK_INDEX_NAME   = 0; // name to id mapping for user trees
+    static final byte RK_INDEX_ID     = 1; // id to name mapping for user trees
+    static final byte RK_TREE_ID_MASK = 2; // full key for random tree id mask
+    static final byte RK_NEXT_TREE_ID = 3; // full key for tree id sequence
+    static final byte RK_TRASH_ID     = 4; // id to name mapping of trash
+    static final byte RK_CUSTOM_NAME  = 5; // name to id mapping for custom handlers
+    static final byte RK_CUSTOM_ID    = 6; // id to name mapping for custom handlers
 
-    // Various mappings, defined by KEY_TYPE_ fields.
+    // Various mappings, defined by RK_ fields.
     private final BTree mRegistryKeyMap;
 
     private final Latch mOpenTreesLatch;
@@ -261,8 +264,7 @@ public final class LocalDatabase extends CoreDatabase {
     // Maps registered cursor ids to index ids.
     private BTree mCursorRegistry;
 
-    // Maps custom handler names to/from ids.
-    private BTree mCustomHandlerRegistry;
+    // Registered custom handlers.
     private final Map<String, CustomHandler> mCustomHandlers;
     private final LHashTable.Obj<CustomHandler> mCustomHandlersById;
 
@@ -1217,7 +1219,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             byte[] idKey = new byte[9];
-            idKey[0] = KEY_TYPE_INDEX_ID;
+            idKey[0] = RK_INDEX_ID;
             encodeLongBE(idKey, 1, id);
 
             byte[] name;
@@ -1297,8 +1299,6 @@ public final class LocalDatabase extends CoreDatabase {
             return mRegistryKeyMap;
         } else if (id == Tree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash();
-        } else if (id == Tree.CUSTOM_HANDLER_REGISTRY_ID) {
-            return customHandlerRegistry();
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
         }
@@ -1359,10 +1359,10 @@ public final class LocalDatabase extends CoreDatabase {
                 return;
             }
 
-            idKey = newKey(KEY_TYPE_INDEX_ID, tree.mIdBytes);
-            trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
-            oldNameKey = newKey(KEY_TYPE_INDEX_NAME, oldName);
-            newNameKey = newKey(KEY_TYPE_INDEX_NAME, newName);
+            idKey = newKey(RK_INDEX_ID, tree.mIdBytes);
+            trashIdKey = newKey(RK_TRASH_ID, tree.mIdBytes);
+            oldNameKey = newKey(RK_INDEX_NAME, oldName);
+            newNameKey = newKey(RK_INDEX_NAME, newName);
 
             txn = newNoRedoTransaction(redoTxnId);
             try {
@@ -1527,7 +1527,7 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         Node root = tree.mRoot;
-        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+        byte[] trashIdKey = newKey(RK_TRASH_ID, tree.mIdBytes);
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
@@ -1568,7 +1568,7 @@ public final class LocalDatabase extends CoreDatabase {
      * @return null if not found
      */
     private BTree openTrashedTree(byte[] idBytes, boolean next) throws IOException {
-        View view = mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_TRASH_ID}, 1);
+        View view = mRegistryKeyMap.viewPrefix(new byte[] {RK_TRASH_ID}, 1);
 
         if (idBytes == null) {
             // Tag all the entries that should be deleted automatically. Entries created later
@@ -1764,7 +1764,7 @@ public final class LocalDatabase extends CoreDatabase {
             Transaction createTxn = newNoRedoTransaction();
             try {
                 createTxn.lockTimeout(-1, null);
-                byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
+                byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
                 if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
                     throw new DatabaseException("Unable to register temporary index");
                 }
@@ -1830,12 +1830,12 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public View indexRegistryByName() throws IOException {
-        return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_NAME}, 1).viewUnmodifiable();
+        return mRegistryKeyMap.viewPrefix(new byte[] {RK_INDEX_NAME}, 1).viewUnmodifiable();
     }
 
     @Override
     public View indexRegistryById() throws IOException {
-        return mRegistryKeyMap.viewPrefix(new byte[] {KEY_TYPE_INDEX_ID}, 1).viewUnmodifiable();
+        return mRegistryKeyMap.viewPrefix(new byte[] {RK_INDEX_ID}, 1).viewUnmodifiable();
     }
 
     @Override
@@ -1956,10 +1956,9 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public CustomHandler customHandler(String name) throws IOException {
         final byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
-        final byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, nameBytes);
-        final BTree handlerRegistry = customHandlerRegistry();
+        final byte[] nameKey = newKey(RK_CUSTOM_NAME, nameBytes);
 
-        byte[] idBytes = handlerRegistry.load(null, nameKey);
+        byte[] idBytes = mRegistryKeyMap.load(null, nameKey);
 
         if (idBytes == null) define: {
             // Throws IllegalStateException if not found.
@@ -1968,7 +1967,7 @@ public final class LocalDatabase extends CoreDatabase {
             // Assume first use, so define a new handler id.
 
             LocalTransaction txn = newAlwaysRedoTransaction();
-            try (Cursor nameCursor = handlerRegistry.newCursor(txn)) {
+            try (Cursor nameCursor = mRegistryKeyMap.newCursor(txn)) {
                 nameCursor.find(nameKey);
                 idBytes = nameCursor.value();
 
@@ -1977,7 +1976,7 @@ public final class LocalDatabase extends CoreDatabase {
                     break define;
                 }
 
-                final View byId = handlerRegistry.viewPrefix(new byte[] {KEY_TYPE_INDEX_ID}, 1);
+                final View byId = mRegistryKeyMap.viewPrefix(new byte[] {RK_CUSTOM_ID}, 1);
 
                 try (Cursor idCursor = byId.newCursor(txn)) {
                     idCursor.autoload(false);
@@ -2052,9 +2051,8 @@ public final class LocalDatabase extends CoreDatabase {
      * @return null if not found
      */
     String findCustomHandlerName(int handlerId) throws IOException {
-        BTree registry = customHandlerRegistry();
-        byte[] idKey = newKey(KEY_TYPE_INDEX_ID, handlerId);
-        byte[] nameBytes = registry.load(null, idKey);
+        byte[] idKey = newKey(RK_CUSTOM_ID, handlerId);
+        byte[] nameBytes = mRegistryKeyMap.load(null, idKey);
 
         if (nameBytes == null) {
             // Possible race condition with creation of the handler entry by another
@@ -2062,37 +2060,13 @@ public final class LocalDatabase extends CoreDatabase {
             // for the entry lock.
             Transaction txn = newNoRedoTransaction();
             try {
-                nameBytes = registry.load(txn, idKey);
+                nameBytes = mRegistryKeyMap.load(txn, idKey);
             } finally {
                 txn.reset();
             }
         }
 
         return nameBytes == null ? null : new String(nameBytes, StandardCharsets.UTF_8);
-    }
-
-    private BTree customHandlerRegistry() throws IOException {
-        BTree handlerRegistry = mCustomHandlerRegistry;
-        return handlerRegistry != null ? handlerRegistry : openCustomHandlerRegistry(IX_CREATE);
-    }
-
-    /**
-     * @param ixOption IX_FIND or IX_CREATE
-     */
-    private BTree openCustomHandlerRegistry(long ixOption) throws IOException {
-        BTree handlerRegistry;
-
-        mOpenTreesLatch.acquireExclusive();
-        try {
-            if ((handlerRegistry = mCustomHandlerRegistry) == null) {
-                mCustomHandlerRegistry = handlerRegistry =
-                    openInternalTree(Tree.CUSTOM_HANDLER_REGISTRY_ID, ixOption);
-            }
-        } finally {
-            mOpenTreesLatch.releaseExclusive();
-        }
-
-        return handlerRegistry;
     }
 
     @Override
@@ -2326,11 +2300,6 @@ public final class LocalDatabase extends CoreDatabase {
             if (cursorRegistry != null) {
                 // Count the cursors which are actively registering cursors. Sounds confusing.
                 cursorCount += cursorRegistry.countCursors();
-            }
-
-            BTree handlerRegistry = mCustomHandlerRegistry;
-            if (handlerRegistry != null) {
-                cursorCount += handlerRegistry.countCursors();
             }
 
             stats.openIndexes = openTreesCount;
@@ -2673,13 +2642,6 @@ public final class LocalDatabase extends CoreDatabase {
             }
         }
 
-        BTree handlerRegistry = openCustomHandlerRegistry(IX_FIND);
-        if (handlerRegistry != null) {
-            if (!visitor.apply(handlerRegistry)) {
-                return false;
-            }
-        }
-
         // Note that temporary indexes aren't scanned. Some operations performed on them (the
         // sorter) aren't thread-safe, and so verification and compaction cannot examine them.
         Cursor all = indexRegistryByName().newCursor(null);
@@ -2802,9 +2764,6 @@ public final class LocalDatabase extends CoreDatabase {
 
                         trees.add(mCursorRegistry);
                         mCursorRegistry = null;
-
-                        trees.add(mCustomHandlerRegistry);
-                        mCustomHandlerRegistry = null;
                     } finally {
                         if (lock != null) {
                             lock.releaseExclusive();
@@ -3039,14 +2998,14 @@ public final class LocalDatabase extends CoreDatabase {
     private boolean doMoveToTrash(LocalTransaction txn, long treeId, byte[] treeIdBytes)
         throws IOException
     {
-        final byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, treeIdBytes);
+        final byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
 
         if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
             // Already in the trash.
             return false;
         }
 
-        final byte[] idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+        final byte[] idKey = newKey(RK_INDEX_ID, treeIdBytes);
 
         byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
 
@@ -3054,7 +3013,7 @@ public final class LocalDatabase extends CoreDatabase {
             // A trash entry with just a zero indicates that the name is null.
             mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
         } else {
-            byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, treeName);
+            byte[] nameKey = newKey(RK_INDEX_NAME, treeName);
             mRegistryKeyMap.remove(txn, nameKey, treeIdBytes);
             // Tag the trash entry to indicate that name is non-null. Note that nameKey
             // instance is modified directly.
@@ -3069,7 +3028,7 @@ public final class LocalDatabase extends CoreDatabase {
      * Must be called after all entries in the tree have been deleted and tree is closed.
      */
     void removeFromTrash(BTree tree, Node root) throws IOException {
-        byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+        byte[] trashIdKey = newKey(RK_TRASH_ID, tree.mIdBytes);
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
@@ -3106,7 +3065,7 @@ public final class LocalDatabase extends CoreDatabase {
             } finally {
                 mOpenTreesLatch.releaseExclusive();
             }
-            byte[] trashIdKey = newKey(KEY_TYPE_TRASH_ID, tree.mIdBytes);
+            byte[] trashIdKey = newKey(RK_TRASH_ID, tree.mIdBytes);
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
         } catch (Throwable e) {
@@ -3371,7 +3330,7 @@ public final class LocalDatabase extends CoreDatabase {
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        byte[] nameKey = newKey(KEY_TYPE_INDEX_NAME, name);
+        byte[] nameKey = newKey(RK_INDEX_NAME, name);
 
         if (treeIdBytes == null) {
             treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
@@ -3421,7 +3380,7 @@ public final class LocalDatabase extends CoreDatabase {
                     critical = false;
 
                     try {
-                        idKey = newKey(KEY_TYPE_INDEX_ID, treeIdBytes);
+                        idKey = newKey(RK_INDEX_ID, treeIdBytes);
 
                         if (mRedoWriter instanceof ReplController) {
                             // Confirmation is required when replicated.
@@ -3576,7 +3535,7 @@ public final class LocalDatabase extends CoreDatabase {
             // non-compatible with other database instances.
             long treeIdMask;
             {
-                byte[] key = {KEY_TYPE_TREE_ID_MASK};
+                byte[] key = {RK_TREE_ID_MASK};
                 byte[] treeIdMaskBytes = mRegistryKeyMap.load(txn, key);
 
                 if (treeIdMaskBytes == null) {
@@ -3588,7 +3547,7 @@ public final class LocalDatabase extends CoreDatabase {
                 treeIdMask = decodeLongLE(treeIdMaskBytes, 0);
             }
 
-            byte[] key = {KEY_TYPE_NEXT_TREE_ID};
+            byte[] key = {RK_NEXT_TREE_ID};
             byte[] nextTreeIdBytes = mRegistryKeyMap.load(txn, key);
 
             if (nextTreeIdBytes == null) {
