@@ -2694,11 +2694,10 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         boolean lockedCheckpointer = false;
-        final Checkpointer c = mCheckpointer;
 
         try {
-            if (c != null) {
-                c.close(cause);
+            if (mCheckpointer != null) {
+                mCheckpointer.close(cause);
             }
 
             // Wait for any in-progress checkpoint to complete.
@@ -2714,7 +2713,7 @@ public final class LocalDatabase extends CoreDatabase {
                 lockedCheckpointer = true;
             }
         } finally {
-            Thread ct = c == null ? null : c.interrupt();
+            Thread ct = mCheckpointer == null ? null : mCheckpointer.interrupt();
 
             if (lockedCheckpointer) {
                 mCheckpointLock.unlock();
@@ -2846,6 +2845,9 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             }
         } finally {
+            if (mCheckpointer != null) {
+                mCheckpointer.shutdown();
+            }
             if (mPageDb != null) {
                 mPageDb.delete();
             }

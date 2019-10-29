@@ -366,10 +366,6 @@ final class Checkpointer implements Runnable {
      * checkpointer was never started.
      */
     Thread interrupt() {
-        if (mExtraExecutor != null) {
-            mExtraExecutor.shutdownNow();
-        }
-
         Thread t = mThread;
         if (t != null) {
             mThread = null;
@@ -377,5 +373,14 @@ final class Checkpointer implements Runnable {
         }
 
         return t;
+    }
+
+    /**
+     * Shutdown any thread pool, after calling close, interrupt, and running any final checkpoint.
+     */
+    void shutdown() {
+        if (mExtraExecutor != null) {
+            mExtraExecutor.shutdownNow();
+        }
     }
 }
