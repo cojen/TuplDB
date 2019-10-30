@@ -5118,59 +5118,76 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
     final Node notSplitDirty(final CursorFrame frame) throws IOException {
         Node node = frame.mNode;
 
-        while (true) {
-            if (node.mSplit != null) {
-                // Already dirty, but finish the split.
-                return mTree.finishSplit(frame, node);
-            }
+        if (node.mSplit != null) {
+            // Already dirty, but finish the split.
+            return mTree.finishSplit(frame, node);
+        }
 
-            LocalDatabase db = mTree.mDatabase;
-            if (!db.shouldMarkDirty(node)) {
+        LocalDatabase db = mTree.mDatabase;
+        if (!db.shouldMarkDirty(node)) {
+            return node;
+        }
+
+        CursorFrame parentFrame = frame.mParentFrame;
+        if (parentFrame == null) {
+            try {
+                db.doMarkDirty(mTree, node);
                 return node;
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
             }
+        }
 
-            CursorFrame parentFrame = frame.mParentFrame;
-            if (parentFrame == null) {
-                try {
-                    db.doMarkDirty(mTree, node);
-                    return node;
-                } catch (Throwable e) {
-                    node.releaseExclusive();
-                    throw e;
-                }
-            }
+        // Make sure the parent is not split and dirty too.
+        Node parentNode = parentFrame.tryAcquireExclusive();
 
-            // Make sure the parent is not split and dirty too.
-            Node parentNode = parentFrame.tryAcquireExclusive();
-
+        dirtyParent: {
             if (parentNode != null) {
                 // Parent latch was acquired without releasing the current node latch.
-
                 if (parentNode.mSplit == null && !db.shouldMarkDirty(parentNode)) {
-                    // Parent is ready to be updated.
-                    try {
-                        db.doMarkDirty(mTree, node);
-                        parentNode.updateChildRefId(parentFrame.mNodePos, node.id());
-                        return node;
-                    } catch (Throwable e) {
-                        node.releaseExclusive();
-                        throw e;
-                    } finally {
-                        parentNode.releaseExclusive();
-                    }
+                    // Parent is already dirty.
+                    break dirtyParent;
                 }
-
                 node.releaseExclusive();
             } else {
+                // Release and acquire parent without risk of deadlock.
                 node.releaseExclusive();
                 parentFrame.acquireExclusive();
             }
 
             // Parent must be dirtied.
-            notSplitDirty(parentFrame).releaseExclusive();
+            parentNode = notSplitDirty(parentFrame);
 
-            // Since node latch was released, start over and check everything again properly.
+            // Re-acquire child latch which was released.
             node = frame.acquireExclusive();
+
+            // Must repeat some of the same steps as above since the latch was released.
+
+            if (node.mSplit != null) {
+                // Already dirty, but finish the split.
+                parentNode.releaseExclusive();
+                return mTree.finishSplit(frame, node);
+            }
+
+            if (!db.shouldMarkDirty(node)) {
+                parentNode.releaseExclusive();
+                return node;
+            }
+        }
+
+        // Now that parent is ready to be updated, can safely dirty the child node and update
+        // the reference to it.
+
+        try {
+            db.doMarkDirty(mTree, node);
+            parentNode.updateChildRefId(parentFrame.mNodePos, node.id());
+            return node;
+        } catch (Throwable e) {
+            node.releaseExclusive();
+            throw e;
+        } finally {
+            parentNode.releaseExclusive();
         }
     }
 
