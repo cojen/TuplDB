@@ -335,11 +335,6 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void undoCommit(UndoLog undo) {
-        undo.commit();
-    }
-
-    @Override
     void commitSync(TransactionContext context, long commitPos) throws IOException {
         txnCommitSync((LocalTransaction) null, commitPos);
     }

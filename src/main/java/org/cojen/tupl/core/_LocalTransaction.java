@@ -239,26 +239,30 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
-                            _RedoWriter redo = mRedo;
-                            commitPos = mContext.redoCommitFinal(redo, mTxnId, mDurabilityMode);
+                            commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
-                            // Indicates that undo log should be truncated instead of rolled
-                            // back during recovery. Commit lock can now be released safely.
-                            // See recoveryCleanup. Applicable only when non-replicated.
-                            redo.undoCommit(undo);
                         }
+                        // Indicates that undo log should be truncated instead
+                        // of rolled back during recovery. Commit lock can now
+                        // be released safely. See recoveryCleanup.
+                        undo.commit();
                     } finally {
                         shared.release();
                     }
 
                     if (commitPos != 0) {
-                        // Durably sync the redo log after releasing the commit lock,
-                        // preventing additional blocking.
-                        if (mDurabilityMode == DurabilityMode.SYNC) {
-                            mRedo.txnCommitSync(this, commitPos);
-                        } else {
-                            commitPending(commitPos, undo);
-                            return;
+                        try {
+                            // Durably sync the redo log after releasing the commit lock,
+                            // preventing additional blocking.
+                            if (mDurabilityMode == DurabilityMode.SYNC) {
+                                mRedo.txnCommitSync(this, commitPos);
+                            } else {
+                                commitPending(commitPos, undo);
+                                return;
+                            }
+                        } catch (Throwable e) {
+                            undo.uncommit();
+                            throw e;
                         }
                     }
 
@@ -405,18 +409,20 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     }
                     super.scopeUnlockAll();
                 } else {
-                    try {
-                        mRedo.undoCommit(undo);
-                    } finally {
-                        shared.release();
-                    }
+                    undo.commit();
+                    shared.release();
 
                     if (commitPos != 0) {
-                        if (mDurabilityMode == DurabilityMode.SYNC) {
-                            mRedo.txnCommitSync(this, commitPos);
-                        } else {
-                            commitPending(commitPos, undo);
-                            return;
+                        try {
+                            if (mDurabilityMode == DurabilityMode.SYNC) {
+                                mRedo.txnCommitSync(this, commitPos);
+                            } else {
+                                commitPending(commitPos, undo);
+                                return;
+                            }
+                        } catch (Throwable e) {
+                            undo.uncommit();
+                            throw e;
                         }
                     }
 

@@ -275,6 +275,15 @@ final class _UndoLog implements _DatabaseAccess {
     }
 
     /**
+     * Called by _LocalTransaction, which does not need to hold db commit lock.
+     */
+    void uncommit() {
+        CommitLock.Shared shared = mDatabase.commitLock().acquireSharedUnchecked();
+        mCommitted = 0;
+        shared.release();
+    }
+
+    /**
      * If the transaction was committed, deletes any ghosts and truncates the log.
      *
      * @return true if transaction was committed
@@ -855,6 +864,7 @@ final class _UndoLog implements _DatabaseAccess {
 
         final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
         try {
+            mCommitted = 0;
             doRollback(0);
         } finally {
             shared.release();

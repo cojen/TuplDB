@@ -102,12 +102,6 @@ class _ReplWriter extends _RedoWriter {
     }
 
     @Override
-    final void undoCommit(_UndoLog undo) {
-        // Do nothing. Redo logs don't "disappear" when replicated, and a committed undo log
-        // might create an inconsistency if no consensus was reached.
-    }
-
-    @Override
     public final void commitSync(_TransactionContext context, long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
