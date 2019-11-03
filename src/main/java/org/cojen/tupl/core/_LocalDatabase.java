@@ -2404,18 +2404,12 @@ public final class _LocalDatabase extends CoreDatabase {
 
     @Override
     public void checkpoint() throws IOException {
-        while (!isClosed() && mPageDb.isDurable()) {
-            try {
-                checkpoint(0, 0);
-                return;
-            } catch (UnmodifiableReplicaException e) {
-                // Retry.
-                Thread.yield();
-            } catch (Throwable e) {
-                rethrowIfRecoverable(e);
-                closeQuietly(this, e);
-                throw e;
-            }
+        try {
+            checkpoint(0, 0);
+        } catch (Throwable e) {
+            rethrowIfRecoverable(e);
+            closeQuietly(this, e);
+            throw e;
         }
     }
 
@@ -2779,10 +2773,13 @@ public final class _LocalDatabase extends CoreDatabase {
                 }
 
                 if (shutdown) {
+                    mCheckpointLock.lock();
                     try {
-                        checkpoint(-1, 0, 0); // force even if closed
+                        doCheckpoint(-1, 0, 0); // force even if closed
                     } catch (Throwable e) {
                         shutdown = false;
+                    } finally {
+                        mCheckpointLock.unlock();
                     }
                 }
 
@@ -5436,254 +5433,268 @@ public final class _LocalDatabase extends CoreDatabase {
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
-        // Checkpoint lock ensures consistent state between page store and logs.
-        mCheckpointLock.lock();
-        try {
-            if (force >= 0 && isClosed()) {
+        while (!isClosed() && mPageDb.isDurable()) {
+            // Checkpoint lock ensures consistent state between page store and logs.
+            mCheckpointLock.lock();
+            try {
+                doCheckpoint(force, sizeThreshold, delayThresholdNanos);
+                return;
+            } catch (UnmodifiableReplicaException e) {
+                // Retry.
+            } finally {
+                mCheckpointLock.unlock();
+            }
+            Thread.yield();
+        }
+    }
+
+    /**
+     * Caller must hold mCheckpointLock.
+     *
+     * @param force 0: no force, 1: force if not closed, -1: force even if closed
+     */
+    private void doCheckpoint(int force, long sizeThreshold, long delayThresholdNanos)
+        throws IOException
+    {
+        if (force >= 0 && isClosed()) {
+            return;
+        }
+
+        // Now's a good time to clean things up.
+        cleanupUnreferencedTrees();
+
+        final _Node root = mRegistry.mRoot;
+
+        var header = mCommitHeader;
+
+        long nowNanos = System.nanoTime();
+
+        if (force == 0 && header == p_null()) {
+            thresholdCheck : {
+                if (delayThresholdNanos == 0) {
+                    break thresholdCheck;
+                }
+
+                if (delayThresholdNanos > 0 &&
+                    ((nowNanos - mLastCheckpointNanos) >= delayThresholdNanos))
+                {
+                    break thresholdCheck;
+                }
+
+                if (mRedoWriter == null || mRedoWriter.shouldCheckpoint(sizeThreshold)) {
+                    break thresholdCheck;
+                }
+
+                // Thresholds not met for a full checkpoint, but fully sync the redo log
+                // for durability.
+                flush(2); // flush and sync metadata
+
                 return;
             }
 
-            // Now's a good time to clean things up.
-            cleanupUnreferencedTrees();
+            // Thresholds for a checkpoint are met, but it might not be necessary.
 
-            final _Node root = mRegistry.mRoot;
+            boolean full = false;
 
-            var header = mCommitHeader;
-
-            long nowNanos = System.nanoTime();
-
-            if (force == 0 && header == p_null()) {
-                thresholdCheck : {
-                    if (delayThresholdNanos == 0) {
-                        break thresholdCheck;
-                    }
-
-                    if (delayThresholdNanos > 0 &&
-                        ((nowNanos - mLastCheckpointNanos) >= delayThresholdNanos))
-                    {
-                        break thresholdCheck;
-                    }
-
-                    if (mRedoWriter == null || mRedoWriter.shouldCheckpoint(sizeThreshold)) {
-                        break thresholdCheck;
-                    }
-
-                    // Thresholds not met for a full checkpoint, but fully sync the redo log
-                    // for durability.
-                    flush(2); // flush and sync metadata
-
-                    return;
-                }
-
-                // Thresholds for a checkpoint are met, but it might not be necessary.
-
-                boolean full = false;
-
-                root.acquireShared();
-                try {
-                    if (root.mCachedState != CACHED_CLEAN) {
-                        // Root is dirty, so do a full checkpoint.
-                        full = true;
-                    }
-                } finally {
-                    root.releaseShared();
-                }
-
-                if (!full && mRedoWriter != null && (mRedoWriter instanceof _ReplController)) {
-                    if (mRedoWriter.shouldCheckpoint(1)) {
-                        // Clean up the replication log.
-                        full = true;
-                    }
-                }
-
-                if (!full) {
-                    // No need for full checkpoint, but fully sync the redo log for durability.
-                    flush(2); // flush and sync metadata
-                    return;
-                }
-            }
-
-            mLastCheckpointNanos = nowNanos;
-
-            if (mEventListener != null) {
-                // Note: Events should not be delivered when exclusive commit lock is held.
-                // The listener implementation might introduce extra blocking.
-                mEventListener.notify(EventType.CHECKPOINT_BEGIN, "Checkpoint begin");
-            }
-
-            boolean resume = true;
-            _UndoLog masterUndoLog = mCommitMasterUndoLog;
-
-            if (header == p_null()) {
-                // Not resumed. Allocate new header early, before acquiring locks.
-                header = p_callocPage(mPageDb.directPageSize());
-                resume = false;
-                if (masterUndoLog != null) {
-                    // TODO: Thrown when closed? After storage device was full.
-                    throw new AssertionError();
-                }
-            }
-
-            final _RedoWriter redo = mRedoWriter;
-
+            root.acquireShared();
             try {
-                int hoff = mPageDb.extraCommitDataOffset();
-                p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+                if (root.mCachedState != CACHED_CLEAN) {
+                    // Root is dirty, so do a full checkpoint.
+                    full = true;
+                }
+            } finally {
+                root.releaseShared();
+            }
+
+            if (!full && mRedoWriter != null && (mRedoWriter instanceof _ReplController)) {
+                if (mRedoWriter.shouldCheckpoint(1)) {
+                    // Clean up the replication log.
+                    full = true;
+                }
+            }
+
+            if (!full) {
+                // No need for full checkpoint, but fully sync the redo log for durability.
+                flush(2); // flush and sync metadata
+                return;
+            }
+        }
+
+        mLastCheckpointNanos = nowNanos;
+
+        if (mEventListener != null) {
+            // Note: Events should not be delivered when exclusive commit lock is held.
+            // The listener implementation might introduce extra blocking.
+            mEventListener.notify(EventType.CHECKPOINT_BEGIN, "Checkpoint begin");
+        }
+
+        boolean resume = true;
+        _UndoLog masterUndoLog = mCommitMasterUndoLog;
+
+        if (header == p_null()) {
+            // Not resumed. Allocate new header early, before acquiring locks.
+            header = p_callocPage(mPageDb.directPageSize());
+            resume = false;
+            if (masterUndoLog != null) {
+                // TODO: Thrown when closed? After storage device was full.
+                throw new AssertionError();
+            }
+        }
+
+        final _RedoWriter redo = mRedoWriter;
+
+        try {
+            int hoff = mPageDb.extraCommitDataOffset();
+            p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+
+            if (redo != null) {
+                // File-based redo log should create a new file, but not write to it yet.
+                redo.checkpointPrepare();
+            }
+
+            while (true) {
+                mCommitLock.acquireExclusive();
+
+                // Registry root is infrequently modified, and so shared latch is usually
+                // available. If not, cause might be a deadlock. To be safe, always release
+                // commit lock and start over.
+                if (root.tryAcquireShared()) {
+                    break;
+                }
+
+                mCommitLock.releaseExclusive();
+            }
+
+            mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
+
+            if (!resume) {
+                p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.id());
+            }
+
+            final long redoNum, redoPos, redoTxnId;
+            if (redo == null) {
+                redoNum = 0;
+                redoPos = 0;
+                redoTxnId = 0;
+            } else {
+                // Switch and capture state while commit lock is held.
+                redo.checkpointSwitch(mTxnContexts);
+                redoNum = redo.checkpointNumber();
+                redoPos = redo.checkpointPosition();
+                redoTxnId = redo.checkpointTransactionId();
+            }
+
+            p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
+            p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
+            p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
+            p_longPutLE(header, hoff + I_REPL_ENCODING, redo == null ? 0 : redo.encoding());
+
+            // TODO: I don't like all this activity with exclusive commit lock held. _UndoLog
+            // can be refactored to store into a special Tree, but this requires more features
+            // to be added to Tree first. Specifically, large values and appending to them.
+
+            if (!resume) {
+                long txnId = 0;
+                byte[] workspace = null;
+
+                for (_TransactionContext txnContext : mTxnContexts) {
+                    txnId = txnContext.higherTransactionId(txnId);
+
+                    synchronized (txnContext) {
+                        if (txnContext.hasUndoLogs()) {
+                            if (masterUndoLog == null) {
+                                masterUndoLog = new _UndoLog(this, 0);
+                            }
+                            workspace = txnContext.writeToMaster(masterUndoLog, workspace);
+                        }
+                    }
+                }
+
+                final long masterUndoLogId;
+                if (masterUndoLog == null) {
+                    masterUndoLogId = 0;
+                } else {
+                    masterUndoLogId = masterUndoLog.persistReady();
+                    if (masterUndoLogId == 0) {
+                        // Nothing was actually written to the log.
+                        masterUndoLog = null;
+                    }
+                }
+
+                // Stash it to resume after an aborted checkpoint.
+                mCommitMasterUndoLog = masterUndoLog;
+
+                p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
+                p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
+            }
+
+            mCommitHeader = header;
+
+            mPageDb.commit(resume, header, this::checkpointFlush);
+        } catch (Throwable e) {
+            if (mCommitHeader != header) {
+                p_delete(header);
+            }
+
+            if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
+                // Exception was thrown with locks still held, which means that the commit
+                // state didn't change. The header might not be filled in completely, so don't
+                // attempt to resume the checkpoint later. Fully delete the header and truncate
+                // the master undo log.
+
+                mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
+                root.releaseShared();
+                mCommitLock.releaseExclusive();
 
                 if (redo != null) {
-                    // File-based redo log should create a new file, but not write to it yet.
-                    redo.checkpointPrepare();
+                    redo.checkpointAborted();
                 }
 
-                while (true) {
-                    mCommitLock.acquireExclusive();
+                deleteCommitHeader();
+                mCommitMasterUndoLog = null;
 
-                    // Registry root is infrequently modified, and so shared latch
-                    // is usually available. If not, cause might be a deadlock. To
-                    // be safe, always release commit lock and start over.
-                    if (root.tryAcquireShared()) {
-                        break;
+                if (masterUndoLog != null) {
+                    try {
+                        masterUndoLog.truncate();
+                    } catch (Throwable e2) {
+                        // Panic.
+                        suppress(e2, e);
+                        close(e2);
+                        throw e2;
                     }
-
-                    mCommitLock.releaseExclusive();
-                }
-
-                mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
-
-                if (!resume) {
-                    p_longPutLE(header, hoff + I_ROOT_PAGE_ID, root.id());
-                }
-
-                final long redoNum, redoPos, redoTxnId;
-                if (redo == null) {
-                    redoNum = 0;
-                    redoPos = 0;
-                    redoTxnId = 0;
-                } else {
-                    // Switch and capture state while commit lock is held.
-                    redo.checkpointSwitch(mTxnContexts);
-                    redoNum = redo.checkpointNumber();
-                    redoPos = redo.checkpointPosition();
-                    redoTxnId = redo.checkpointTransactionId();
-                }
-
-                p_longPutLE(header, hoff + I_CHECKPOINT_NUMBER, redoNum);
-                p_longPutLE(header, hoff + I_REDO_TXN_ID, redoTxnId);
-                p_longPutLE(header, hoff + I_REDO_POSITION, redoPos);
-                p_longPutLE(header, hoff + I_REPL_ENCODING, redo == null ? 0 : redo.encoding());
-
-                // TODO: I don't like all this activity with exclusive commit
-                // lock held. _UndoLog can be refactored to store into a special
-                // Tree, but this requires more features to be added to Tree
-                // first. Specifically, large values and appending to them.
-
-                if (!resume) {
-                    long txnId = 0;
-                    byte[] workspace = null;
-
-                    for (_TransactionContext txnContext : mTxnContexts) {
-                        txnId = txnContext.higherTransactionId(txnId);
-
-                        synchronized (txnContext) {
-                            if (txnContext.hasUndoLogs()) {
-                                if (masterUndoLog == null) {
-                                    masterUndoLog = new _UndoLog(this, 0);
-                                }
-                                workspace = txnContext.writeToMaster(masterUndoLog, workspace);
-                            }
-                        }
-                    }
-
-                    final long masterUndoLogId;
-                    if (masterUndoLog == null) {
-                        masterUndoLogId = 0;
-                    } else {
-                        masterUndoLogId = masterUndoLog.persistReady();
-                        if (masterUndoLogId == 0) {
-                            // Nothing was actually written to the log.
-                            masterUndoLog = null;
-                        }
-                    }
-
-                    // Stash it to resume after an aborted checkpoint.
-                    mCommitMasterUndoLog = masterUndoLog;
-
-                    p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
-                    p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
-                }
-
-                mCommitHeader = header;
-
-                mPageDb.commit(resume, header, this::checkpointFlush);
-            } catch (Throwable e) {
-                if (mCommitHeader != header) {
-                    p_delete(header);
-                }
-
-                if (mCheckpointFlushState == CHECKPOINT_FLUSH_PREPARE) {
-                    // Exception was thrown with locks still held, which means that the commit
-                    // state didn't change. The header might not be filled in completely, so
-                    // don't attempt to resume the checkpoint later. Fully delete the header
-                    // and truncate the master undo log.
-
-                    mCheckpointFlushState = CHECKPOINT_NOT_FLUSHING;
-                    root.releaseShared();
-                    mCommitLock.releaseExclusive();
-
-                    if (redo != null) {
-                        redo.checkpointAborted();
-                    }
-
-                    deleteCommitHeader();
-                    mCommitMasterUndoLog = null;
-
-                    if (masterUndoLog != null) {
-                        try {
-                            masterUndoLog.truncate();
-                        } catch (Throwable e2) {
-                            // Panic.
-                            suppress(e2, e);
-                            close(e2);
-                            throw e2;
-                        }
-                    }
-                }
-
-                throw e;
-            }
-
-            // Reset for next checkpoint.
-            deleteCommitHeader();
-            mCommitMasterUndoLog = null;
-
-            if (masterUndoLog != null) {
-                // Delete the master undo log, which won't take effect until
-                // the next checkpoint.
-                CommitLock.Shared shared = mCommitLock.acquireShared();
-                try {
-                    if (!isClosed()) {
-                        shared = masterUndoLog.doTruncate(mCommitLock, shared);
-                    }
-                } finally {
-                    shared.release();
                 }
             }
 
-            // Note: This step is intended to discard old redo data, but it can
-            // get skipped if process exits at this point. Data is discarded
-            // again when database is re-opened.
-            if (mRedoWriter != null) {
-                mRedoWriter.checkpointFinished();
-            }
+            throw e;
+        }
 
-            if (mEventListener != null) {
-                double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
-                mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
-                                      "Checkpoint completed in %1$1.3f seconds",
-                                      duration, TimeUnit.SECONDS);
+        // Reset for next checkpoint.
+        deleteCommitHeader();
+        mCommitMasterUndoLog = null;
+
+        if (masterUndoLog != null) {
+            // Delete the master undo log, which won't take effect until the next checkpoint.
+            CommitLock.Shared shared = mCommitLock.acquireShared();
+            try {
+                if (!isClosed()) {
+                    shared = masterUndoLog.doTruncate(mCommitLock, shared);
+                }
+            } finally {
+                shared.release();
             }
-        } finally {
-            mCheckpointLock.unlock();
+        }
+
+        // Note: This step is intended to discard old redo data, but it can get skipped if
+        // process exits at this point. Data is discarded again when database is re-opened.
+        if (mRedoWriter != null) {
+            mRedoWriter.checkpointFinished();
+        }
+
+        if (mEventListener != null) {
+            double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
+            mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
+                                  "Checkpoint completed in %1$1.3f seconds",
+                                  duration, TimeUnit.SECONDS);
         }
     }
 
