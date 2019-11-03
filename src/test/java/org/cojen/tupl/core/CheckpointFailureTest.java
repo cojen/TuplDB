@@ -148,21 +148,27 @@ public class CheckpointFailureTest {
 
         mDb.checkpoint();
 
-        byte[] key1 = "key1".getBytes();
-        byte[] key2 = "key2".getBytes();
-        byte[] key3 = "key3".getBytes();
+        byte[][] keys = new byte[4][];
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = ("key" + i).getBytes();
+        }
 
         Transaction txn1 = mDb.newTransaction();
-        ix.store(txn1, key1, key1);
+        ix.store(txn1, keys[0], keys[0]);
         txn1.commit();
 
         Transaction txn2 = mDb.newTransaction();
-        ix.store(txn2, key2, key2);
+        ix.store(txn2, keys[1], keys[1]);
         txn2.flush();
+
+        // This one isn't explicitly committed or rolled back.
+        Transaction txn3 = mDb.newTransaction();
+        ix.store(txn3, keys[3], keys[3]);
+        txn3.flush();
 
         final long pos = replMan.writer().position();
 
-        ix.store(txn2, key3, key3);
+        ix.store(txn2, keys[2], keys[2]);
 
         var exRef = new AtomicReference<Throwable>();
 
@@ -203,9 +209,9 @@ public class CheckpointFailureTest {
         assertNull(ex);
 
         // Transaction 1 committed and txn 2 rolled back.
-        fastAssertArrayEquals(key1, ix.load(null, key1));
-        assertNull(ix.load(null, key2));
-        assertNull(ix.load(null, key3));
+        fastAssertArrayEquals(keys[0], ix.load(null, keys[0]));
+        assertNull(ix.load(null, keys[1]));
+        assertNull(ix.load(null, keys[2]));
 
         // Close and re-open to verify that txn 1 committed and txn 2 rolled back.
 
@@ -215,8 +221,15 @@ public class CheckpointFailureTest {
 
         ix = mDb.openIndex("test");
 
-        fastAssertArrayEquals(key1, ix.load(null, key1));
-        assertNull(ix.load(null, key2));
-        assertNull(ix.load(null, key3));
+        fastAssertArrayEquals(keys[0], ix.load(null, keys[0]));
+
+        for (int i=1; i<keys.length; i++) {
+            try {
+                ix.load(null, keys[i]);
+                fail();
+            } catch (LockTimeoutException e) {
+                // Only the new leader can roll it back.
+            }
+        }
     }
 }

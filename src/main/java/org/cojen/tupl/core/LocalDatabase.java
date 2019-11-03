@@ -27,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -5440,11 +5441,65 @@ public final class LocalDatabase extends CoreDatabase {
                 doCheckpoint(force, sizeThreshold, delayThresholdNanos);
                 return;
             } catch (UnmodifiableReplicaException e) {
-                // Retry.
+                // Cleanup and retry.
+                try {
+                    cleanupMasterUndoLog();
+                } catch (Throwable e2) {
+                    // Panic.
+                    closeQuietly(this, e2);
+                    suppress(e2, e);
+                    throw e2;
+                }
             } finally {
                 mCheckpointLock.unlock();
             }
+
             Thread.yield();
+        }
+    }
+
+    /**
+     * Caller must hold mCheckpointLock.
+     */
+    private void cleanupMasterUndoLog() throws IOException {
+        if (mCommitMasterUndoLog == null) {
+            return;
+        }
+
+        LHashTable.Obj<Object> committed = mCommitMasterUndoLog.findCommitted();
+
+        if (committed == null) {
+            return;
+        }
+
+        loop: while (true) {
+            checkAll: {
+                for (TransactionContext txnContext : mTxnContexts) {
+                    if (txnContext.anyActive(committed)) {
+                        break checkAll;
+                    }
+                }
+                break loop;
+            }
+
+            // Wait with a sleep. Crude, but it means that no special condition variable is
+            // required. Considering that this method is only expected to be called when
+            // leadership is lost during a checkpoint, there's no reason to be immediate.
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+        }
+
+        LHashTable.Obj<Object> uncommitted = null;
+
+        for (TransactionContext txnContext : mTxnContexts) {
+            uncommitted = txnContext.moveUncommitted(uncommitted);
+        }
+
+        if (uncommitted != null) {
+            mCommitMasterUndoLog.markUncommitted(uncommitted);
         }
     }
 
