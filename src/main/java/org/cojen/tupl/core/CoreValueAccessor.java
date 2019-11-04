@@ -104,12 +104,28 @@ public abstract class CoreValueAccessor implements ValueAccessor {
 
     /**
      * @throws NullPointerException if buf is null
-     * @throws IndexOutOfBoundsException if off or len are out of bound
+     * @throws IndexOutOfBoundsException if off or len are out of bounds
      */
     static void boundsCheck(byte[] buf, int off, int len) {
         if ((off | len | (off + len) | (buf.length - (off + len))) < 0) {
-            throw new IndexOutOfBoundsException();
+            throw failBoundsCheck(buf, off, len);
         }
+    }
+
+    private static IndexOutOfBoundsException failBoundsCheck(byte[] buf, int off, int len) {
+        String msg = null;
+        if (off < 0) {
+            msg = "Negative offset given: " + off;
+        } else if (len < 0) {
+            msg = "Negative length given: " + len;
+        } else {
+            long end = ((long) off) + len;
+            if (end > buf.length) {
+                msg = "End offset is too large: " + end + ", buf.length=" + buf.length +
+                    ", off=" + off + ", len=" + len;
+            }
+        }
+        return new IndexOutOfBoundsException(msg);
     }
 
     final class In extends InputStream {
