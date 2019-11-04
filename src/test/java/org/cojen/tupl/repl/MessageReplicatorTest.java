@@ -438,12 +438,16 @@ public class MessageReplicatorTest {
         assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
         for (int i=0; i<readers.length; i++) {
-            readers[i].close();
-            readers[i] = repls[i].newReader(readers[i].position(), true);
-        }
-
-        for (Reader r : readers) {
-            TestUtils.fastAssertArrayEquals(message, r.readMessage());
+            while (true) {
+                byte[] msg = readers[i].readMessage();
+                if (msg == null) {
+                    readers[i].close();
+                    readers[i] = repls[i].newReader(readers[i].position(), true);
+                } else {
+                    TestUtils.fastAssertArrayEquals(message, msg);
+                    break;
+                }
+            }
         }
     }
 }
