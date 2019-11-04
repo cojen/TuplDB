@@ -262,6 +262,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                             }
                         } catch (Throwable e) {
                             undo.uncommit();
+                            mContext.uncommitted(mTxnId);
                             throw e;
                         }
                     }
@@ -422,6 +423,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                             }
                         } catch (Throwable e) {
                             undo.uncommit();
+                            mContext.uncommitted(mTxnId);
                             throw e;
                         }
                     }

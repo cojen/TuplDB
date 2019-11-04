@@ -65,6 +65,7 @@ final class TransactionContext extends Latch implements Flushable {
     private volatile long mHighTxnId;
     private UndoLog mTopUndoLog;
     private int mUndoLogCount;
+    private LHashTable.Obj<Object> mUncommitted;
 
     // Access to these fields is protected by the inherited latch.
     private final byte[] mRedoBuffer;
@@ -1174,6 +1175,55 @@ final class TransactionContext extends Latch implements Flushable {
             mTopUndoLog = prev;
         }
         mUndoLogCount--;
+    }
+
+    /**
+     * Called for transactions which committed optimistically by writing to the undo log, but
+     * the redo confirmation failed and the transaction needs to rollback.
+     */
+    synchronized void uncommitted(long txnId) {
+        if (mUncommitted == null) {
+            mUncommitted = new LHashTable.Obj<>(4);
+        }
+        mUncommitted.insert(txnId);
+    }
+
+    /**
+     * Checks if any of the given transaction ids match transactions which are still active.
+     *
+     * @param committed set with transaction id keys
+     * @return true if at least one of the given transactions is still registered
+     */
+    synchronized boolean anyActive(LHashTable.Obj<Object> committed) {
+        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+            if (committed.get(log.mTxnId) != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Moves any uncommitted transactions into the given set.
+     *
+     * @param dest set with transaction id keys; can be null initially
+     * @return exiting or new set
+     */
+    synchronized LHashTable.Obj<Object> moveUncommitted(LHashTable.Obj<Object> dest) {
+        final LHashTable.Obj<Object> uncommitted = mUncommitted;
+
+        if (uncommitted != null) {
+            mUncommitted = null;
+            if (dest == null) {
+                return uncommitted;
+            }
+            uncommitted.traverse(e -> {
+                dest.insert(e.key);
+                return false;
+            });
+        }
+
+        return dest;
     }
 
     /**

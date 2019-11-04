@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.util.Random;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -113,5 +115,121 @@ public class CheckpointFailureTest {
 
         // Rolled back.
         assertNull(ix.load(null, "hello".getBytes()));
+    }
+
+    @Test
+    public void undoCommitRollback() throws Exception {
+        // Test that a transaction which optimisically committed its undo log rolls back when
+        // the checkpoint fails.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .checkpointRate(-1, null);
+
+        NonReplicationManager replMan = new NonReplicationManager();
+        config.replicate(replMan);
+
+        mDb = newTempDatabase(getClass(), config);
+
+        // open index
+        replMan.asLeader();
+        Thread.yield();
+        Index ix = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix = mDb.openIndex("test");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+        assertTrue(ix != null);
+
+        mDb.checkpoint();
+
+        byte[][] keys = new byte[4][];
+        for (int i=0; i<keys.length; i++) {
+            keys[i] = ("key" + i).getBytes();
+        }
+
+        Transaction txn1 = mDb.newTransaction();
+        ix.store(txn1, keys[0], keys[0]);
+        txn1.commit();
+
+        Transaction txn2 = mDb.newTransaction();
+        ix.store(txn2, keys[1], keys[1]);
+        txn2.flush();
+
+        // This one isn't explicitly committed or rolled back.
+        Transaction txn3 = mDb.newTransaction();
+        ix.store(txn3, keys[3], keys[3]);
+        txn3.flush();
+
+        final long pos = replMan.writer().position();
+
+        ix.store(txn2, keys[2], keys[2]);
+
+        var exRef = new AtomicReference<Throwable>();
+
+        Thread committer = new Thread(() -> {
+            // Confirm at a lower position.
+            replMan.suspendConfirmation(Thread.currentThread(), pos);
+
+            try {
+                txn2.commit();
+            } catch (Throwable e) {
+                exRef.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(committer);
+
+        var exRef2 = new AtomicReference<Throwable>();
+
+        Thread checkpointer = new Thread(() -> {
+            try {
+                mDb.checkpoint();
+            } catch (Throwable e) {
+                exRef2.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(checkpointer);
+
+        replMan.toReplica(pos);
+
+        committer.join();
+        checkpointer.join();
+
+        Throwable ex = exRef.get();
+        assertTrue("" + ex, ex instanceof UnmodifiableReplicaException);
+
+        ex = exRef2.get();
+        assertNull(ex);
+
+        // Transaction 1 committed and txn 2 rolled back.
+        fastAssertArrayEquals(keys[0], ix.load(null, keys[0]));
+        assertNull(ix.load(null, keys[1]));
+        assertNull(ix.load(null, keys[2]));
+
+        // Close and re-open to verify that txn 1 committed and txn 2 rolled back.
+
+        NonReplicationManager replMan2 = new NonReplicationManager();
+        config.replicate(replMan2);
+        mDb = reopenTempDatabase(getClass(), mDb, config);
+
+        ix = mDb.openIndex("test");
+
+        fastAssertArrayEquals(keys[0], ix.load(null, keys[0]));
+
+        for (int i=1; i<keys.length; i++) {
+            try {
+                ix.load(null, keys[i]);
+                fail();
+            } catch (LockTimeoutException e) {
+                // Only the new leader can roll it back.
+            }
+        }
     }
 }

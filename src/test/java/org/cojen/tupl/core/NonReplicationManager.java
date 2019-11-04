@@ -111,6 +111,18 @@ class NonReplicationManager implements ReplicationManager {
 
     synchronized void toReplica() {
         mState = REPLICA;
+        if (mWriter != null) {
+            mWriter.close();
+        }
+        mWriter = null;
+        notifyAll();
+    }
+
+    synchronized void toReplica(long position) {
+        mState = REPLICA;
+        if (mWriter != null) {
+            mWriter.close(position);
+        }
         mWriter = null;
         notifyAll();
     }
@@ -126,10 +138,23 @@ class NonReplicationManager implements ReplicationManager {
         writer.suspendConfirmation(t);
     }
 
+    /**
+     * @param only suspend for given thread
+     * @param position confirmEnd position to rollback to
+     */
+    void suspendConfirmation(Thread t, long position) {
+        NonWriter writer;
+        synchronized (this) {
+            writer = mWriter;
+        }
+        writer.suspendConfirmation(t, position);
+    }
+
     private class NonWriter implements Writer {
         private final List<Runnable> mCallbacks = new ArrayList<>();
 
         private Thread mSuspend;
+        private long mSuspendPosition;
         private boolean mClosed;
         private long mPosition;
 
@@ -140,7 +165,7 @@ class NonReplicationManager implements ReplicationManager {
 
         @Override
         public synchronized long confirmedPosition() {
-            return mPosition;
+            return mSuspendPosition == 0 ? mPosition : mSuspendPosition;
         }
 
         @Override
@@ -167,7 +192,7 @@ class NonReplicationManager implements ReplicationManager {
         @Override
         public synchronized boolean confirm(long position, long timeoutNanos) {
             while (true) {
-                try {
+                if (mSuspendPosition == 0 || position <= mSuspendPosition) {
                     if (mSuspend != Thread.currentThread()) {
                         if (mPosition >= position) {
                             return true;
@@ -176,8 +201,13 @@ class NonReplicationManager implements ReplicationManager {
                             return false;
                         }
                     }
+                }
+                try {
                     wait();
                 } catch (InterruptedException e) {
+                }
+                if (mClosed) {
+                    return false;
                 }
             }
         }
@@ -195,6 +225,16 @@ class NonReplicationManager implements ReplicationManager {
 
         synchronized void suspendConfirmation(Thread t) {
             mSuspend = t;
+            mSuspendPosition = 0;
+            if (t == null) {
+                notifyAll();
+            }
+        }
+
+        synchronized void suspendConfirmation(Thread t, long position) {
+            mSuspendPosition = position;
+            mSuspend = t;
+            mPosition = position;
             if (t == null) {
                 notifyAll();
             }
@@ -207,6 +247,11 @@ class NonReplicationManager implements ReplicationManager {
             }
             mSuspend = null;
             notifyAll();
+        }
+
+        synchronized void close(long position) {
+            close();
+            mPosition = position;
         }
     }
 }
