@@ -64,7 +64,7 @@ final class UndoLog implements DatabaseAccess {
       +----------------------------------------+
       | log stack entries                      |
       -                                        -
-      |                                        |
+      |                                        |  tail
       +----------------------------------------+
 
       Stack entries are encoded from the tail end of the node towards the
@@ -305,7 +305,7 @@ final class UndoLog implements DatabaseAccess {
 
         // Look for deprecated commit ops.
 
-        switch (peek(POP_DELETE)) {
+        switch (peek(true)) {
         default:
             return false;
         case OP_COMMIT:
@@ -715,7 +715,7 @@ final class UndoLog implements DatabaseAccess {
             } catch (Throwable e) {
                 // Undo the damage.
                 while (node != mNode) {
-                    node = popNode(node, POP_DELETE);
+                    node = popNode(node, true);
                 }
                 node.releaseExclusive();
                 throw e;
@@ -817,7 +817,7 @@ final class UndoLog implements DatabaseAccess {
                 node.acquireExclusive();
                 while (true) {
                     try {
-                        if ((node = popNode(node, POP_DELETE)) == null) {
+                        if ((node = popNode(node, true)) == null) {
                             break;
                         }
                     } catch (Throwable e) {
@@ -883,7 +883,7 @@ final class UndoLog implements DatabaseAccess {
                 activeIndex = undo(activeIndex, op, entry);
                 return true;
             }
-        }.go(POP_DELETE, savepoint);
+        }.go(true, savepoint);
     }
 
     final void rollbackToPrepare() throws IOException {
@@ -911,7 +911,7 @@ final class UndoLog implements DatabaseAccess {
         RTP rtp = new RTP();
 
         try {
-            while (pop(POP_DELETE, rtp));
+            while (pop(true, rtp));
             throw new IllegalStateException("Prepare operation not found");
         } catch (RTP r) {
             // Expected.
@@ -990,7 +990,7 @@ final class UndoLog implements DatabaseAccess {
 
                 return true;
             }
-        }.go(POP_DELETE, 0);
+        }.go(true, 0);
     }
 
     /**
@@ -1171,11 +1171,11 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * @param popMode POP_KEEP, POP_DELETE, or POP_WRITE
+     * @param delete true to delete empty nodes
      * @return last pushed op, or 0 if empty
      */
     @Deprecated
-    private byte peek(int popMode) throws IOException {
+    private byte peek(boolean delete) throws IOException {
         Node node = mNode;
         if (node == null) {
             return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
@@ -1189,7 +1189,7 @@ final class UndoLog implements DatabaseAccess {
                 node.releaseExclusive();
                 return op;
             }
-            if ((node = popNode(node, popMode)) == null) {
+            if ((node = popNode(node, delete)) == null) {
                 return 0;
             }
         }
@@ -1209,11 +1209,11 @@ final class UndoLog implements DatabaseAccess {
      */
     private abstract class PopAll implements Popper {
         /**
-         * @param popMode POP_KEEP, POP_DELETE, or POP_WRITE
+         * @param delete true to delete nodes
          * @param savepoint must be less than mLength; pass 0 to pop the entire stack
          */
-        void go(int popMode, long savepoint) throws IOException {
-            while (pop(popMode, this) && savepoint < mLength);
+        void go(boolean delete, long savepoint) throws IOException {
+            while (pop(delete, this) && savepoint < mLength);
         }
     }
 
@@ -1239,11 +1239,11 @@ final class UndoLog implements DatabaseAccess {
      * Caller must hold db commit lock. The given popper is called such that if it throws any
      * exception, the operation is effectively un-popped (no state changes).
      *
-     * @param popMode POP_KEEP, POP_DELETE, or POP_WRITE
+     * @param delete true to delete nodes
      * @param popper called at most once per call to this method
      * @return false if nothing left
      */
-    private final boolean pop(int popMode, Popper popper) throws IOException {
+    private boolean pop(boolean delete, Popper popper) throws IOException {
         final byte op;
 
         Node node = mNode;
@@ -1280,7 +1280,7 @@ final class UndoLog implements DatabaseAccess {
             if (mNodeTopPos < pageSize(page)) {
                 break;
             }
-            if ((node = popNode(node, popMode)) == null) {
+            if ((node = popNode(node, delete)) == null) {
                 mLength = 0;
                 return false;
             }
@@ -1294,7 +1294,7 @@ final class UndoLog implements DatabaseAccess {
             mNodeTopPos = nodeTopPos;
             mLength -= 1;
             if (nodeTopPos >= pageSize(page)) {
-                node = popNode(node, popMode);
+                node = popNode(node, delete);
             }
             if (node != null) {
                 node.releaseExclusive();
@@ -1376,7 +1376,7 @@ final class UndoLog implements DatabaseAccess {
             try {
                 n.acquireExclusive();
                 while (true) {
-                    n = popNode(n, popMode);
+                    n = popNode(n, delete);
                     if (n == null) {
                         if (nodeId != 0) {
                             throw new AssertionError();
@@ -1401,14 +1401,12 @@ final class UndoLog implements DatabaseAccess {
         return result;
     }
 
-    private static int POP_KEEP = 0, POP_DELETE = 1, POP_WRITE = 2;
-
     /**
      * @param parent latched parent node
-     * @param popMode POP_KEEP, POP_DELETE, or POP_WRITE
+     * @param delete true to delete nodes
      * @return current (latched) mNode; null if none left
      */
-    private Node popNode(Node parent, int popMode) throws IOException {
+    private Node popNode(Node parent, boolean delete) throws IOException {
         Node lowerNode = null;
         long lowerNodeId = p_longGetLE(parent.mPage, I_LOWER_NODE_ID);
         if (lowerNodeId != 0) {
@@ -1426,13 +1424,9 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        if (popMode == POP_WRITE) {
-            parent.write(mDatabase.mPageDb);
-        }
-
         parent.makeEvictable();
 
-        if (popMode == POP_DELETE) {
+        if (delete) {
             LocalDatabase db = mDatabase;
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
@@ -1447,6 +1441,97 @@ final class UndoLog implements DatabaseAccess {
         mNodeTopPos = lowerNode == null ? 0 : lowerNode.undoTop();
 
         return lowerNode;
+    }
+
+    private static interface Visitor {
+        /**
+         * @param node first node of operation, latched exclusively; caller always releases it
+         * @param op undo operation
+         * @param pos position of undo operation
+         * @return size of payload to decode (zero to skip it)
+         */
+        int accept(Node node, byte op, int pos);
+
+        /**
+         * @param node last node of operation, latched exclusively; caller always releases it
+         * @param full or partial payload, as prescribed by the accept method
+         */
+        void payload(Node node, byte[] payload) throws IOException;
+    }
+
+    /**
+     * Scans through all the nodes and calles the visitor for each operation. Assumes that this
+     * undo log is persist-ready and has a top node.
+     */
+    private void scanNodes(Visitor v) throws IOException {
+        Node node = mNode;
+        int nodeTopPos = mNodeTopPos;
+        node.acquireExclusive();
+        var page = node.mPage;
+
+        while (true) {
+            int opPos = nodeTopPos;
+            byte op = p_byteGet(page, nodeTopPos++);
+
+            int payloadLen = 0;
+            if (op >= PAYLOAD_OP) {
+                payloadLen = p_uintGetVar(page, nodeTopPos);
+                int varIntLen = p_uintVarSize(payloadLen);
+                nodeTopPos += varIntLen;
+            }
+
+            int payloadRequired = v.accept(node, op, opPos);
+
+            byte[] entry = null;
+            int entryPos = 0;
+            if (payloadRequired > 0) {
+                entry = new byte[payloadRequired];
+            }
+
+            while (true) {
+                int avail = Math.min(payloadLen, pageSize(page) - nodeTopPos);
+
+                if (entry != null) {
+                    int amt = Math.min(avail, entry.length - entryPos);
+                    p_copyToArray(page, nodeTopPos, entry, entryPos, amt);
+                    entryPos += avail;
+                    if (entryPos >= entry.length) {
+                        try {
+                            v.payload(node, entry);
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw e;
+                        }
+                        entry = null;
+                    }
+                }
+
+                payloadLen -= avail;
+                nodeTopPos += avail;
+
+                if (nodeTopPos >= pageSize(page)) {
+                    long lowerNodeId = p_longGetLE(node.mPage, I_LOWER_NODE_ID);
+                    node.releaseExclusive();
+                    if (lowerNodeId == 0) {
+                        return;
+                    }
+                    LocalDatabase db = mDatabase;
+                    node = db.nodeMapGetExclusive(lowerNodeId);
+                    if (node == null) {
+                        // Node was evicted, so reload it.
+                        node = readUndoLogNode(db, lowerNodeId, 0);
+                        db.nodeMapPut(node);
+                    }
+                    nodeTopPos = node.undoTop();
+                }
+
+                if (payloadLen <= 0) {
+                    break;
+                }
+
+                page = node.mPage;
+            }
+        }
     }
 
     /**
@@ -1543,33 +1628,27 @@ final class UndoLog implements DatabaseAccess {
     }
 
     private LHashTable.Obj<Object> doFindCommitted() throws IOException {
-        final long nodeId = mNode.id();
-        final long length = mLength;
-
-        class Finder extends PopAll {
+        class Finder implements Visitor {
             LHashTable.Obj<Object> mTxns;
 
             @Override
-            public boolean accept(byte op, byte[] entry) throws IOException {
-                switch (op) {
-                case OP_LOG_COPY_C: case OP_LOG_REF_C:
-                    long txnId = decodeLongLE(entry, 0);
-                    if (mTxns == null) {
-                        mTxns = new LHashTable.Obj<>(4);
-                    }
-                    mTxns.insert(txnId);
-                    break;
-                }
+            public int accept(Node node, byte op, int pos) {
+                // Need to decode the transaction id of the payload.
+                return (op == OP_LOG_COPY_C || op == OP_LOG_REF_C) ? 8 : 0;
+            }
 
-                return true;
+            @Override
+            public void payload(Node node, byte[] payload) {
+                long txnId = decodeLongLE(payload, 0);
+                if (mTxns == null) {
+                    mTxns = new LHashTable.Obj<>(4);
+                }
+                mTxns.insert(txnId);
             }
         };
 
         Finder f = new Finder();
-        f.go(POP_KEEP, 0);
-
-        // Restore the master undo log after popping all the nodes.
-        recoverMaster(nodeId, length);
+        scanNodes(f);
 
         return f.mTxns;
     }
@@ -1591,38 +1670,56 @@ final class UndoLog implements DatabaseAccess {
         // Note that it's safe to blindly re-write the nodes. The node were intended for a
         // checkpoint which failed, and so nothing refers to them.
 
-        final long nodeId = mNode.id();
-        final long length = mLength;
+        class Uncommitter implements Visitor {
+            final Deque<Node> mMatched = new ArrayDeque<>();
+            private int mOp;
+            private int mPos;
 
-        new PopAll() {
             @Override
-            public boolean accept(byte op, byte[] entry) throws IOException {
-                switch (op) {
-                case OP_LOG_COPY_C: case OP_LOG_REF_C:
-                    long txnId = decodeLongLE(entry, 0);
-                    if (uncommitted.get(txnId) != null) {
-                        Node node = mNode;
-                        node.acquireExclusive();
+            public int accept(Node node, byte op, int pos) {
+                if (op == OP_LOG_COPY_C || op == OP_LOG_REF_C) {
+                    mMatched.add(node);
+                    mOp = op - OP_LOG_COPY;
+                    mPos = pos;
+                    // Need to decode the transaction id of the payload.
+                    return 8;
+                }
+                return 0;
+            }
+
+            @Override
+            public void payload(Node node, byte[] payload) throws IOException {
+                long txnId = decodeLongLE(payload, 0);
+                if (uncommitted.get(txnId) != null) {
+                    Node opNode = mMatched.getLast();
+                    if (node == opNode) {
+                        // Payload didn't span nodes.
+                        p_bytePut(node.mPage, mPos, mOp);
+                    } else {
+                        // Must latch and modify the node that contained the operation.
+                        opNode.acquireExclusive();
                         try {
-                            var page = node.mPage;
-                            int pos = mNodeTopPos;
-                            if (p_byteGet(page, pos) != op) {
-                                throw new AssertionError();
-                            }
-                            p_bytePut(page, pos, op - OP_LOG_COPY);
+                            p_bytePut(opNode.mPage, mPos, mOp);
                         } finally {
-                            node.releaseExclusive();
+                            opNode.releaseExclusive();
                         }
                     }
-                    break;
                 }
-
-                return true;
             }
-        }.go(POP_WRITE, 0);
+        }
 
-        // Restore the master undo log after popping all the nodes.
-        recoverMaster(nodeId, length);
+        Uncommitter u = new Uncommitter();
+        scanNodes(u);
+
+        // All matched nodes were changed and must be re-written.
+        for (Node node : u.mMatched) {
+            node.acquireExclusive();
+            try {
+                node.write(mDatabase.mPageDb);
+            } finally {
+                node.releaseExclusive();
+            }
+        }
     }
 
     /**
@@ -1665,13 +1762,13 @@ final class UndoLog implements DatabaseAccess {
 
                 return true;
             }
-        }.go(POP_DELETE, 0);
+        }.go(true, 0);
     }
 
     /**
      * Method consumes entire log as a side-effect.
      */
-    private final LocalTransaction recoverTransaction(EventListener debugListener, boolean trace)
+    private LocalTransaction recoverTransaction(EventListener debugListener, boolean trace)
         throws IOException
     {
         if (mNode != null && mNodeTopPos == 0) {
@@ -1695,7 +1792,7 @@ final class UndoLog implements DatabaseAccess {
         int hasState = LocalTransaction.HAS_TRASH;
 
         loop: while (mLength > 0) {
-            if (!pop(POP_KEEP, popper)) {
+            if (!pop(false, popper)) {
                 // Undo log would have to be corrupt for this case to occur.
                 break;
             }

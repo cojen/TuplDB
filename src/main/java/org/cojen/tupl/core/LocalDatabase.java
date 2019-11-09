@@ -5440,8 +5440,13 @@ public final class LocalDatabase extends CoreDatabase {
             try {
                 doCheckpoint(force, sizeThreshold, delayThresholdNanos);
                 return;
-            } catch (UnmodifiableReplicaException e) {
-                // Cleanup and retry.
+            } catch (Throwable e) {
+                if (!isRecoverable(e)) {
+                    // Panic.
+                    closeQuietly(this, e);
+                    throw e;
+                }
+
                 try {
                     cleanupMasterUndoLog();
                 } catch (Throwable e2) {
@@ -5449,6 +5454,11 @@ public final class LocalDatabase extends CoreDatabase {
                     closeQuietly(this, e2);
                     suppress(e2, e);
                     throw e2;
+                }
+
+                // Retry and don't rethrow if leadership was lost.
+                if (!(e instanceof UnmodifiableReplicaException)) {
+                    throw e;
                 }
             } finally {
                 mCheckpointLock.unlock();
