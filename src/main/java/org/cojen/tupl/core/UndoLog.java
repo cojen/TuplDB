@@ -88,81 +88,74 @@ final class UndoLog implements DatabaseAccess {
     // Must be power of two.
     private static final int INITIAL_BUFFER_SIZE = 128;
 
-    private static final byte OP_SCOPE_ENTER = (byte) 1;
-    private static final byte OP_SCOPE_COMMIT = (byte) 2;
-
-    @Deprecated // replaced with OP_LOG_COPY_C and OP_LOG_REF_C
-    static final byte OP_COMMIT = (byte) 4;
-
-    // Indicates that transaction has been committed and log is partially truncated.
-    @Deprecated // replaced with OP_LOG_COPY_C and OP_LOG_REF_C
-    static final byte OP_COMMIT_TRUNCATE = (byte) 5;
+    private static final byte OP_SCOPE_ENTER = 1;
+    private static final byte OP_SCOPE_COMMIT = 2;
 
     // Indicates that transaction has been prepared for two-phase commit.
-    static final byte OP_PREPARE = (byte) 6;
+    static final byte OP_PREPARE = 6;
 
     // Same as OP_UNINSERT, except uses OP_ACTIVE_KEY. (ValueAccessor op)
-    static final byte OP_UNCREATE = (byte) 12;
+    static final byte OP_UNCREATE = 12;
 
     // All ops less than 16 have no payload.
-    private static final byte PAYLOAD_OP = (byte) 16;
+    private static final byte PAYLOAD_OP = 16;
 
     // Copy to another log from master log. Payload is transaction id, active
     // index id, buffer size (short type), and serialized buffer.
-    private static final byte OP_LOG_COPY = (byte) 16;
+    private static final byte OP_LOG_COPY = 16;
 
     // Reference to another log from master log. Payload is transaction id,
     // active index id, length, node id, and top entry offset.
-    private static final byte OP_LOG_REF = (byte) 17;
+    private static final byte OP_LOG_REF = 17;
 
     // Payload is active index id.
-    private static final byte OP_INDEX = (byte) 18;
+    private static final byte OP_INDEX = 18;
 
     // Payload is key to delete to undo an insert.
-    static final byte OP_UNINSERT = (byte) 19;
+    static final byte OP_UNINSERT = 19;
 
     // Payload is Node-encoded key/value entry to store, to undo an update.
-    static final byte OP_UNUPDATE = (byte) 20;
+    static final byte OP_UNUPDATE = 20;
 
     // Payload is Node-encoded key/value entry to store, to undo a delete.
-    static final byte OP_UNDELETE = (byte) 21;
+    static final byte OP_UNDELETE = 21;
 
     // Payload is Node-encoded key and trash id, to undo a fragmented value delete.
-    static final byte OP_UNDELETE_FRAGMENTED = (byte) 22;
+    static final byte OP_UNDELETE_FRAGMENTED = 22;
 
     // Payload is a key for ValueAccessor operations.
-    static final byte OP_ACTIVE_KEY = (byte) 23;
+    static final byte OP_ACTIVE_KEY = 23;
 
     // Payload is custom handler id and message.
-    static final byte OP_CUSTOM = (byte) 24;
+    static final byte OP_CUSTOM = 24;
 
     private static final int LK_ADJUST = 5;
 
     // Payload is a (large) key and value to store, to undo an update.
-    static final byte OP_UNUPDATE_LK = (byte) (OP_UNUPDATE + LK_ADJUST); //25
+    static final byte OP_UNUPDATE_LK = OP_UNUPDATE + LK_ADJUST; //25
 
     // Payload is a (large) key and value to store, to undo a delete.
-    static final byte OP_UNDELETE_LK = (byte) (OP_UNDELETE + LK_ADJUST); //26
+    static final byte OP_UNDELETE_LK = OP_UNDELETE + LK_ADJUST; //26
 
     // Payload is a (large) key and trash id, to undo a fragmented value delete.
-    static final byte OP_UNDELETE_LK_FRAGMENTED = (byte) (OP_UNDELETE_FRAGMENTED + LK_ADJUST); //27
+    static final byte OP_UNDELETE_LK_FRAGMENTED = OP_UNDELETE_FRAGMENTED + LK_ADJUST; //27
 
     // Payload is the value length to undo a value extension. (ValueAccessor op)
-    static final byte OP_UNEXTEND = (byte) 29;
+    static final byte OP_UNEXTEND = 29;
 
     // Payload is the value length and position to undo value hole fill. (ValueAccessor op)
-    static final byte OP_UNALLOC = (byte) 30;
+    static final byte OP_UNALLOC = 30;
 
     // Payload is the value position and bytes to undo a value write. (ValueAccessor op)
-    static final byte OP_UNWRITE = (byte) 31;
+    static final byte OP_UNWRITE = 31;
 
     // Copy to a committed log from master log. Payload is transaction id, active index id,
     // buffer size (short type), and serialized buffer.
-    private static final byte OP_LOG_COPY_C = (byte) 32;
+    private static final byte OP_LOG_COPY_C = 32;
 
     // Reference to a committed log from master log. Payload is transaction id, active index
     // id, length, node id, and top entry offset.
-    private static final byte OP_LOG_REF_C = (byte) 33;
+    private static final byte OP_LOG_REF_C = 33;
 
     // Payload is key to delete to recover an exclusive lock.
     static final byte OP_LOCK_EXCLUSIVE = 34;
@@ -289,32 +282,22 @@ final class UndoLog implements DatabaseAccess {
      * @return true if transaction was committed
      */
     boolean recoveryCleanup() throws IOException {
-        if (mCommitted != 0) {
-            // Transaction was actually committed, but redo log is gone. This can happen when a
-            // checkpoint completes in the middle of the transaction commit operation.
-            if (mNode != null && mNodeTopPos == 0) {
-                // This signals that the checkpoint captured the undo log in the middle of a
-                // truncation, and any ghosts were already deleted.
-                truncate();
-            } else {
-                // Deleting ghosts truncates the undo log as a side-effect.
-                deleteGhosts();
-            }
-            return true;
-        }
-
-        // Look for deprecated commit ops.
-
-        switch (peek(true)) {
-        default:
+        if (mCommitted == 0) {
             return false;
-        case OP_COMMIT:
-            deleteGhosts();
-            return true;
-        case OP_COMMIT_TRUNCATE:
-            truncate();
-            return true;
         }
+
+        // Transaction was actually committed, but redo log is gone. This can happen when a
+        // checkpoint completes in the middle of the transaction commit operation.
+        if (mNode != null && mNodeTopPos == 0) {
+            // This signals that the checkpoint captured the undo log in the middle of a
+            // truncation, and any ghosts were already deleted.
+            truncate();
+        } else {
+            // Deleting ghosts truncates the undo log as a side-effect.
+            deleteGhosts();
+        }
+
+        return true;
     }
 
     /**
@@ -934,8 +917,6 @@ final class UndoLog implements DatabaseAccess {
 
                 case OP_SCOPE_ENTER:
                 case OP_SCOPE_COMMIT:
-                case OP_COMMIT:
-                case OP_COMMIT_TRUNCATE:
                 case OP_PREPARE:
                 case OP_UNCREATE:
                 case OP_UNINSERT:
@@ -1005,8 +986,6 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_SCOPE_ENTER:
         case OP_SCOPE_COMMIT:
-        case OP_COMMIT:
-        case OP_COMMIT_TRUNCATE:
         case OP_PREPARE:
         case OP_LOCK_EXCLUSIVE:
         case OP_LOCK_UPGRADABLE:
@@ -1346,16 +1325,6 @@ final class UndoLog implements DatabaseAccess {
             }
 
             page = node.mPage;
-
-            // Payloads which spill over should always continue into a node which is full. If
-            // the top position is actually at the end, then it likely references a
-            // OP_COMMIT_TRUNCATE operation, in which case the transaction has actully
-            // committed, and full decoding of the undo log is unnecessary or impossible.
-            if (mNodeTopPos == pageSize(page) - 1 &&
-                p_byteGet(page, mNodeTopPos) == OP_COMMIT_TRUNCATE)
-            {
-                break;
-            }
         }
 
         // At this point, the node variable refers to the top node which must remain after the
@@ -1785,7 +1754,6 @@ final class UndoLog implements DatabaseAccess {
         Deque<Scope> scopes = new ArrayDeque<>();
         scopes.addFirst(scope);
 
-        boolean acquireLocks = true;
         int depth = 1;
 
         // Blindly assume trash must be deleted. No harm if none exists.
@@ -1807,22 +1775,6 @@ final class UndoLog implements DatabaseAccess {
             switch (op) {
             default:
                 throw new DatabaseException("Unknown undo log entry type: " + op);
-
-            case OP_COMMIT:
-                // Handled by Transaction.recoveryCleanup, but don't acquire
-                // locks. This avoids deadlocks with later transactions.
-                acquireLocks = false;
-                break;
-
-            case OP_COMMIT_TRUNCATE:
-                // Skip examining the rest of the log. It will likely appear to be corrupt
-                // anyhow due to the OP_COMMIT_TRUNCATE having overwritten existing data.
-                if (mNode != null) {
-                    mNode.makeEvictable();
-                    mNode = null;
-                    mNodeTopPos = 0;
-                }
-                break loop;
 
             case OP_PREPARE:
                 if ((hasState & LocalTransaction.HAS_PREPARE) == 0) {
@@ -1911,15 +1863,11 @@ final class UndoLog implements DatabaseAccess {
         LocalTransaction txn = new LocalTransaction(mDatabase, mTxnId, hasState);
 
         scope = scopes.pollFirst();
-        if (acquireLocks) {
-            scope.acquireLocks(txn);
-        }
+        scope.acquireLocks(txn);
 
         while ((scope = scopes.pollFirst()) != null) {
             txn.recoveredScope(scope.mSavepoint, LocalTransaction.HAS_TRASH);
-            if (acquireLocks) {
-                scope.acquireLocks(txn);
-            }
+            scope.acquireLocks(txn);
         }
 
         return txn;
@@ -1941,14 +1889,6 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_SCOPE_COMMIT:
             opStr = "SCOPE_COMMIT";
-            break;
-
-        case OP_COMMIT:
-            opStr = "COMMIT";
-            break;
-
-        case OP_COMMIT_TRUNCATE:
-            opStr = "COMMIT_TRUNCATE";
             break;
 
         case OP_PREPARE:
@@ -2152,15 +2092,6 @@ final class UndoLog implements DatabaseAccess {
             int topEntry = decodeUnsignedShortLE(masterLogEntry, (8 + 8 + 8 + 8));
             log.mNode = readUndoLogNode(mDatabase, nodeId);
             log.mNodeTopPos = topEntry;
-
-            // If node contains OP_COMMIT_TRUNCATE at the end, then the corresponding transaction
-            // was committed and the undo log nodes don't need to be fully examined.
-            if (log.mNode.undoTop() == pageSize(log.mNode.mPage) - 1 &&
-                p_byteGet(log.mNode.mPage, log.mNode.undoTop()) == OP_COMMIT_TRUNCATE)
-            {
-                log.mNodeTopPos = log.mNode.undoTop();
-            }
-
             log.mNode.releaseExclusive();
         }
 
