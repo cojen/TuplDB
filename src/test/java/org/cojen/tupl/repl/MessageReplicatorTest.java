@@ -371,6 +371,22 @@ public class MessageReplicatorTest {
 
     @Test
     public void explicitFailover() throws Exception {
+        for (int i=10; --i>=0; ) {
+            try {
+                doExplicitFailover();
+                return;
+            } catch (AssertionError e) {
+                // Failover is racy and can elect the original leader.
+                if (i == 0) {
+                    throw e;
+                }
+                teardown();
+                setup();
+            }
+        }
+    }
+
+    private void doExplicitFailover() throws Exception {
         MessageReplicator[] repls = startGroup(3, Role.NORMAL, true, false);
         assertTrue(repls.length == 3);
 
