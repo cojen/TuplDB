@@ -21,7 +21,9 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.cojen.tupl.*;
 
@@ -128,7 +130,7 @@ class NonReplicationManager implements ReplicationManager {
     }
 
     /**
-     * @param only suspend for given thread
+     * @param t suspend for this thread
      */
     void suspendConfirmation(Thread t) {
         NonWriter writer;
@@ -139,7 +141,7 @@ class NonReplicationManager implements ReplicationManager {
     }
 
     /**
-     * @param only suspend for given thread
+     * @param t suspend for this thread
      * @param position confirmEnd position to rollback to
      */
     void suspendConfirmation(Thread t, long position) {
@@ -152,8 +154,7 @@ class NonReplicationManager implements ReplicationManager {
 
     private class NonWriter implements Writer {
         private final List<Runnable> mCallbacks = new ArrayList<>();
-
-        private Thread mSuspend;
+        private final Set<Thread> mSuspended = new HashSet<>();
         private long mSuspendPosition;
         private boolean mClosed;
         private long mPosition;
@@ -193,7 +194,7 @@ class NonReplicationManager implements ReplicationManager {
         public synchronized boolean confirm(long position, long timeoutNanos) {
             while (true) {
                 if (mSuspendPosition == 0 || position <= mSuspendPosition) {
-                    if (mSuspend != Thread.currentThread()) {
+                    if (!mSuspended.contains(Thread.currentThread())) {
                         if (mPosition >= position) {
                             return true;
                         }
@@ -224,20 +225,22 @@ class NonReplicationManager implements ReplicationManager {
         }
 
         synchronized void suspendConfirmation(Thread t) {
-            mSuspend = t;
             mSuspendPosition = 0;
             if (t == null) {
+                mSuspended.clear();
                 notifyAll();
+            } else {
+                mSuspended.add(t);
             }
         }
 
         synchronized void suspendConfirmation(Thread t, long position) {
-            mSuspendPosition = position;
-            mSuspend = t;
-            mPosition = position;
             if (t == null) {
-                notifyAll();
+                throw new IllegalArgumentException();
             }
+            mSuspendPosition = position;
+            mSuspended.add(t);
+            mPosition = position;
         }
 
         synchronized void close() {
@@ -245,7 +248,7 @@ class NonReplicationManager implements ReplicationManager {
             for (Runnable r : mCallbacks) {
                 r.run();
             }
-            mSuspend = null;
+            mSuspended.clear();
             notifyAll();
         }
 

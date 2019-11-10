@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.util.Random;
 
+import java.util.concurrent.TimeUnit;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.*;
@@ -229,6 +231,169 @@ public class CheckpointFailureTest {
                 fail();
             } catch (LockTimeoutException e) {
                 // Only the new leader can roll it back.
+            }
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void undoCommitRollback2() throws Exception {
+        // Same as undoCommitRollback, but with more transactions.
+
+        DatabaseConfig config = new DatabaseConfig()
+            .directPageAccess(false)
+            .checkpointRate(-1, null);
+
+        NonReplicationManager replMan = new NonReplicationManager();
+        config.replicate(replMan);
+
+        mDb = newTempDatabase(getClass(), config);
+
+        // open index
+        replMan.asLeader();
+        Thread.yield();
+        Index ix = null;
+        for (int i=0; i<10; i++) {
+            try {
+                ix = mDb.openIndex("test");
+                break;
+            } catch (UnmodifiableReplicaException e) {
+                // Wait for replication thread to finish the switch.
+                Thread.sleep(100);
+            }
+        }
+        assertTrue(ix != null);
+
+        mDb.checkpoint();
+
+        final long seed = 29083745;
+        Random rnd = new Random(seed);
+
+        Transaction[] txns = new Transaction[100];
+        int mid = txns.length / 2;
+
+        long pos = Long.MIN_VALUE;
+
+        for (int i=0; i<txns.length; i++) {
+            Transaction txn = mDb.newTransaction();
+            txns[i] = txn;
+
+            int amt = rnd.nextInt(203) + 1;
+            for (int j=0; j<amt; j++) {
+                byte[] key = ("txn-" + i + "-key-" + j).getBytes();
+                ix.store(txn, key, key);
+            }
+
+            if (i < mid) {
+                txn.commit();
+                txn.flush();
+            } else if (i == mid) {
+                pos = replMan.writer().position();
+            }
+        }
+
+        final long fpos = pos;
+
+        class Committer extends Thread {
+            final Transaction txn;
+            volatile Throwable ex;
+
+            Committer(Transaction txn) {
+                this.txn = txn;
+            }
+
+            @Override
+            public void run() {
+                // Confirm at a lower position.
+                replMan.suspendConfirmation(this, fpos);
+
+                try {
+                    txn.commit();
+                } catch (Throwable e) {
+                    ex = e;
+                }
+            }
+        }
+
+        Committer[] committers = new Committer[txns.length - mid];
+        for (int i=0; i<committers.length; i++) {
+            committers[i] = new Committer(txns[mid + i]);
+        }
+
+        for (Thread c : committers) {
+            startAndWaitUntilBlocked(c);
+        }
+
+        var exRef = new AtomicReference<Throwable>();
+
+        Thread checkpointer = new Thread(() -> {
+            try {
+                mDb.checkpoint();
+            } catch (Throwable e) {
+                exRef.set(e);
+            }
+        });
+
+        startAndWaitUntilBlocked(checkpointer);
+
+        replMan.toReplica(pos);
+
+        for (Thread c : committers) {
+            c.join();
+        }
+
+        checkpointer.join();
+
+        for (Committer c : committers) {
+            Throwable ex = c.ex;
+            assertTrue("" + ex, ex instanceof UnmodifiableReplicaException);
+        }
+
+        assertNull(exRef.get());
+
+        // Verify that transactions lower than mid committed and those higher rolled back.
+
+        rnd = new Random(seed);
+
+        for (int i=0; i<txns.length; i++) {
+            int amt = rnd.nextInt(203) + 1;
+            for (int j=0; j<amt; j++) {
+                byte[] key = ("txn-" + i + "-key-" + j).getBytes();
+                byte[] value = ix.load(null, key);
+                if (i < mid) {
+                    fastAssertArrayEquals(key, value);
+                } else {
+                    assertNull(value);
+                }
+            }
+        }
+
+        // Close and re-open to verify the same commits and rollbacks.
+
+        NonReplicationManager replMan2 = new NonReplicationManager();
+        config.replicate(replMan2);
+        config.lockTimeout(1, TimeUnit.MILLISECONDS);
+        mDb = reopenTempDatabase(getClass(), mDb, config);
+
+        ix = mDb.openIndex("test");
+
+        rnd = new Random(seed);
+
+        for (int i=0; i<txns.length; i++) {
+            int amt = rnd.nextInt(203) + 1;
+            for (int j=0; j<amt; j++) {
+                byte[] key = ("txn-" + i + "-key-" + j).getBytes();
+                if (i < mid) {
+                    byte[] value = ix.load(null, key);
+                    fastAssertArrayEquals(key, value);
+                } else {
+                    try {
+                        ix.load(null, key);
+                        fail();
+                    } catch (LockTimeoutException e) {
+                        // Only the new leader can roll it back.
+                    }
+                }
             }
         }
     }
