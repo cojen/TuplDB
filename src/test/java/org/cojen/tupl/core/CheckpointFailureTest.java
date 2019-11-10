@@ -137,13 +137,13 @@ public class CheckpointFailureTest {
         replMan.asLeader();
         Thread.yield();
         Index ix = null;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
             try {
                 ix = mDb.openIndex("test");
                 break;
             } catch (UnmodifiableReplicaException e) {
                 // Wait for replication thread to finish the switch.
-                Thread.sleep(100);
+                sleep(100);
             }
         }
         assertTrue(ix != null);
@@ -253,13 +253,13 @@ public class CheckpointFailureTest {
         replMan.asLeader();
         Thread.yield();
         Index ix = null;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
             try {
                 ix = mDb.openIndex("test");
                 break;
             } catch (UnmodifiableReplicaException e) {
                 // Wait for replication thread to finish the switch.
-                Thread.sleep(100);
+                sleep(100);
             }
         }
         assertTrue(ix != null);
