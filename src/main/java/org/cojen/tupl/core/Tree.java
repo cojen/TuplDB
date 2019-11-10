@@ -44,9 +44,6 @@ abstract class Tree implements Index {
         CURSOR_REGISTRY_ID = 2,
         FRAGMENTED_TRASH_ID = 3;
 
-    // Pseudo internal index id used by prepared transactions.
-    static final int PREPARE_LOCK_ID = 0xff;
-
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;
     }

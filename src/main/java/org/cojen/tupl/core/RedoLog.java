@@ -579,11 +579,6 @@ final class RedoLog extends RedoWriter {
         Utils.closeQuietly(mOut);
     }
 
-    @Override
-    void stashForRecovery(LocalTransaction txn) {
-        // Recovery handler can only be invoked when restarting the database.
-    }
-
     // Caller must hold exclusive latch (replay is exempt)
     int nextTermRnd() {
         return mTermRndSeed = Utils.nextRandom(mTermRndSeed);

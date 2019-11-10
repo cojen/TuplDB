@@ -70,9 +70,6 @@ class RedoOps {
         OP_DELETE_INDEX = 22,
 
         /** txnId: delta */
-        OP_TXN_PREPARE = 23,
-
-        /** txnId: delta */
         OP_TXN_ENTER = 24,
 
         /** txnId: delta */
@@ -148,9 +145,6 @@ class RedoOps {
 
         /** cursorId: delta, txnId: delta, pos: varLong, length: varLong */
         OP_CURSOR_VALUE_CLEAR = 47,
-
-        /** txnId: delta */
-        OP_TXN_ROLLBACK_TO_PREPARE = 48,
 
         /** txnId: delta, handlerId: varInt, dataLength: varInt, data: bytes */
         OP_TXN_CUSTOM = (byte) 128,

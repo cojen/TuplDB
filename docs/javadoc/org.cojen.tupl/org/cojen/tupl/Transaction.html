@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":18,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":18,"i27":6,"i28":18,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6,"i34":6};
+<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":18,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":6,"i27":18,"i28":6,"i29":6,"i30":6,"i31":6,"i32":6,"i33":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -385,28 +385,20 @@ long&nbsp;nanosTimeout)</code></th>
 </td>
 </tr>
 <tr class="altColor" id="i26">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepare()">prepare</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
- committing the transaction.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i27">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications.</div>
 </td>
 </tr>
-<tr class="altColor" id="i28">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset(java.lang.Throwable)">reset</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i29">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockExclusive(long,byte%5B%5D,long)">tryLockExclusive</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key,
@@ -416,7 +408,7 @@ long&nbsp;nanosTimeout)</code></th>
  additional locks.</div>
 </td>
 </tr>
-<tr class="altColor" id="i30">
+<tr class="rowColor" id="i29">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockShared(long,byte%5B%5D,long)">tryLockShared</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key,
@@ -426,7 +418,7 @@ long&nbsp;nanosTimeout)</code></th>
  locks.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i31">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryLockUpgradable(long,byte%5B%5D,long)">tryLockUpgradable</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key,
@@ -436,21 +428,21 @@ long&nbsp;nanosTimeout)</code></th>
  exclusive and additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="altColor" id="i32">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlock()">unlock</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Fully releases the last lock or group acquired, within the current scope.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlockCombine()">unlockCombine</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Combines the last lock acquired or upgraded into a group which can be unlocked together.</div>
 </td>
 </tr>
-<tr class="altColor" id="i34">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unlockToShared()">unlockToShared</a></span>()</code></th>
 <td class="colLast">
@@ -1008,36 +1000,6 @@ byte[]&nbsp;key)</span></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a positive transaction identifier, or zero if transaction cannot replicate</dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="prepare()">prepare</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">prepare</span>()
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
- committing the transaction. A recovery <a href="DatabaseConfig.html#recoveryHandler(org.cojen.tupl.ext.RecoveryHandler)"><code>handler</code></a>
- must be installed, and the transaction must be <a href="#check()"><code>valid</code></a>. As a side-effect of
- calling this method, all non-exclusive locks held by the transaction are released.
-
- <p>Prior to calling prepare, applications are expected to have stored additional state,
- keyed by the transaction <a href="#getId()"><code>identifier</code></a>. This state should be stored into
- indexes of the same database, and within this transaction as well. When the recovery
- handler is invoked, it can continue the transaction workflow, by loading the previously
- stored state.
-
- <p>When passed to a recovery handler, the transaction will have rolled back to the last
- prepare operation. To ensure that post-prepare operations are recoverable, call prepare
- again.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if not in a top-level scope or if transaction isn't in a
- state for supporting two-phase commit</dd>
-<dd><code><a href="UnmodifiableReplicaException.html" title="class in org.cojen.tupl">UnmodifiableReplicaException</a></code> - if transaction cannot replicate</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
- implementation</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>

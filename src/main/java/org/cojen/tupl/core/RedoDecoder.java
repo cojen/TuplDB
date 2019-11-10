@@ -183,30 +183,8 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_PREPARE:
-                long txnId;
-                try {
-                    txnId = readTxnId(in);
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in) || !visitor.txnPrepare(txnId)) {
-                    return false;
-                }
-                break;
-
-            case OP_TXN_ROLLBACK_TO_PREPARE:
-                try {
-                    txnId = readTxnId(in);
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in) || !visitor.txnRollbackToPrepare(txnId)) {
-                    return false;
-                }
-                break;
-
             case OP_TXN_ENTER:
+                long txnId;
                 try {
                     txnId = readTxnId(in);
                 } catch (EOFException e) {

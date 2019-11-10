@@ -446,32 +446,6 @@ public interface Transaction extends Flushable {
     }
 
     /**
-     * Prepares a transaction for finishing a two-phase commit, to be called before fully
-     * committing the transaction. A recovery {@link DatabaseConfig#recoveryHandler handler}
-     * must be installed, and the transaction must be {@link #check valid}. As a side-effect of
-     * calling this method, all non-exclusive locks held by the transaction are released.
-     *
-     * <p>Prior to calling prepare, applications are expected to have stored additional state,
-     * keyed by the transaction {@link #getId identifier}. This state should be stored into
-     * indexes of the same database, and within this transaction as well. When the recovery
-     * handler is invoked, it can continue the transaction workflow, by loading the previously
-     * stored state.
-     *
-     * <p>When passed to a recovery handler, the transaction will have rolled back to the last
-     * prepare operation. To ensure that post-prepare operations are recoverable, call prepare
-     * again.
-     *
-     * @throws IllegalStateException if not in a top-level scope or if transaction isn't in a
-     * state for supporting two-phase commit
-     * @throws UnmodifiableReplicaException if transaction cannot replicate
-     * @throws UnsupportedOperationException if completely unsupported by the transaction
-     * implementation
-     */
-    default void prepare() throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Attach an arbitrary object to this transaction instance, for tracking it. Attachments
      * can become visible to other threads as a result of a {@link LockTimeoutException}. A
      * happens-before relationship is guaranteed only if the attachment is set before the

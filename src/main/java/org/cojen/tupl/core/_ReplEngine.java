@@ -202,15 +202,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        final LHashTable.Obj<_LocalTransaction> remaining = doReset(false);
-
-        if (remaining != null) {
-            remaining.traverse(entry -> {
-                mTransactions.insert(entry.key).mTxn = entry.value;
-                return false;
-            });
-        }
-
+        doReset(false);
         return true;
     }
 
@@ -218,27 +210,16 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
      * Note: Caller must hold mDecodeLatch exclusively.
      *
      * @param interrupt pass true to cause worker threads to exit when done
-     * @return remaining 2PC transactions, or null if none
      */
-    private LHashTable.Obj<_LocalTransaction> doReset(boolean interrupt) throws IOException {
-        // Reset and discard all non-2PC transactions.
-
+    private void doReset(boolean interrupt) throws IOException {
         final LHashTable.Obj<_LocalTransaction> remaining;
 
-        if (mTransactions.size() == 0) {
-            remaining = null;
-        } else {
-            remaining = new LHashTable.Obj<>(16); 
-
+        if (mTransactions.size() != 0) {
             mTransactions.traverse(te -> {
                 runTask(te, new Worker.Task() {
                     public void run() throws IOException {
                         _LocalTransaction txn = te.mTxn;
-                        if (!txn.recoveryCleanup(true)) {
-                            synchronized (remaining) {
-                                remaining.insert(te.key).value = txn;
-                            }
-                        }
+                        txn.recoveryCleanup(true);
                     }
                 });
 
@@ -260,16 +241,12 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 return true;
             });
         }
-
-        return remaining == null || remaining.size() == 0 ? null : remaining;
     }
 
     /**
      * Reset and interrupt all worker threads. Intended to be used by _RedoLogApplier subclass.
-     *
-     * @return remaining 2PC transactions, or null if none
      */
-    public LHashTable.Obj<_LocalTransaction> finish() throws IOException {
+    public void finish() throws IOException {
         mDecodeLatch.acquireExclusive();
         try {
             EventListener listener = mDatabase.eventListener();
@@ -282,7 +259,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 }
             }
 
-            return doReset(true);
+            doReset(true);
         } finally {
             mDecodeLatch.releaseExclusive();
         }
@@ -444,32 +421,6 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                         // Index will get fully deleted when database is re-opened.
                     }
                 }
-            }
-        });
-
-        return true;
-    }
-
-    @Override
-    public boolean txnPrepare(long txnId) throws IOException {
-        TxnEntry te = getTxnEntry(txnId);
-
-        runTask(te, new Worker.Task() {
-            public void run() throws IOException {
-                te.mTxn.prepareNoRedo();
-            }
-        });
-
-        return true;
-    }
-
-    @Override
-    public boolean txnRollbackToPrepare(long txnId) throws IOException {
-        TxnEntry te = getTxnEntry(txnId);
-
-        runTask(te, new Worker.Task() {
-            public void run() throws IOException {
-                te.mTxn.rollbackToPrepare(false);
             }
         });
 
@@ -1140,100 +1091,6 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * Called by _ReplWriter.
-     */
-    void stashForRecovery(_LocalTransaction txn) {
-        txn.lockMode(LockMode.UPGRADABLE_READ);
-        txn.lockTimeout(-1, null);
-        txn.attach(ATTACHMENT);
-
-        long scrambledTxnId = mix(txn.getId());
-
-        mDecodeLatch.acquireExclusive();
-        try {
-            mTransactions.insert(scrambledTxnId).mTxn = txn;
-        } finally {
-            mDecodeLatch.releaseExclusive();
-        }
-    }
-
-    /**
-     * Called by _ReplController.
-     */
-    void awaitPreparedTransactions() {
-        List<_UndoLog> undoLogs = new ArrayList<>();
-        mDatabase.gatherUndoLogs(undoLogs);
-
-        // Report on stuck transactions after timing out.
-        long nanosTimeout = 1_000_000_000L;
-
-        while (true) {
-            if (awaitPreparedTransactions(undoLogs, nanosTimeout)) {
-                return;
-            }
-            // Still waiting for prepared transactions to transfer ownership. Double the
-            // timeout each time, up to a maximum of one minute.
-            nanosTimeout = Math.min(nanosTimeout << 1, 60_000_000_000L);
-        }
-    }
-
-    /**
-     * @return true if not waiting on any prepared transactions
-     */
-    private boolean awaitPreparedTransactions(List<_UndoLog> undoLogs, long nanosTimeout) {
-        final _LockManager lockManager = mDatabase.mLockManager;
-
-        // Temporary locker used for signal await.
-        final _Locker locker = new _Locker(lockManager);
-
-        boolean finished = true;
-
-        Iterator<_UndoLog> it = undoLogs.iterator();
-        while (it.hasNext()) {
-            _UndoLog undoLog = it.next();
-            long txnId = undoLog.mTxnId;
-
-            LockResult result = lockManager.awaitExclusivePrepare(txnId, locker, nanosTimeout);
-
-            if (result != null) {
-                if (!result.isHeld()) {
-                    finished = false;
-
-                    EventListener listener = mDatabase.eventListener();
-                    if (listener != null) {
-                        listener.notify(EventType.RECOVERY_AWAIT_RELEASE,
-                                        "Prepared transaction must be reset: %1$d", txnId);
-                    }
-
-                    continue;
-                }
-
-                TxnEntry te;
-                long scrambledTxnId = mix(txnId);
-
-                mDecodeLatch.acquireShared();
-                try {
-                    te = mTransactions.get(scrambledTxnId);
-                } finally {
-                    mDecodeLatch.releaseShared();
-                }
-
-                if (te == null) {
-                    // Assume transaction was never prepared or it's been committed.
-                    lockManager.unlockExclusivePrepare(txnId, locker);
-                } else {
-                    // Transfer complete.
-                    te.mTxn.takeLockOwnership();
-                }
-            }
-
-            it.remove();
-        }
-
-        return finished;
-    }
-
-    /**
      * @return TxnEntry via scrambled transaction id
      */
     private TxnEntry getTxnEntry(long txnId) {
@@ -1467,7 +1324,6 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     private void decode() {
         final ReplDecoder decoder = mDecoder;
-        LHashTable.Obj<_LocalTransaction> remaining;
 
         try {
             while (!decoder.run(this));
@@ -1482,8 +1338,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                     // isn't thread-safe.
                     mWorkerGroup.join(false);
                 }
-                // Rollback any lingering non-2PC transactions.
-                remaining = doReset(false);
+                doReset(false);
             } finally {
                 mDecodeLatch.releaseExclusive();
             }
@@ -1505,11 +1360,6 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             } catch (UnmodifiableReplicaException e) {
                 // Should already be receiving again due to this exception.
                 return;
-            }
-
-            if (mDatabase.shouldInvokeRecoveryHandler(remaining) && redo != null) {
-                Runnable task = () -> mDatabase.invokeRecoveryHandler(remaining, redo);
-                newThread(task, "RecoveryHandler").start();
             }
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.

@@ -31,7 +31,6 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.*;
 
 import org.cojen.tupl.ext.CustomHandler;
-import org.cojen.tupl.ext.RecoveryHandler;
 
 import static org.cojen.tupl.core.TestUtils.*;
 
@@ -62,7 +61,6 @@ public class ReplicationTest {
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customHandlers(Map.of("TestHandler", mLeaderHandler))
-            .recoveryHandler(mLeaderHandler)
             .replicate(mLeaderMan);
 
         config = decorate(config);
@@ -70,7 +68,6 @@ public class ReplicationTest {
         mLeader = newTempDatabase(getClass(), config);
 
         config.customHandlers(Map.of("TestHandler", mReplicaHandler));
-        config.recoveryHandler(null);
         config.replicate(mReplicaMan);
         mReplica = newTempDatabase(getClass(), config);
 
@@ -1253,57 +1250,6 @@ public class ReplicationTest {
         assertNull(rix.load(null, "hello".getBytes()));
     }
 
-    @Test
-    public void prepareRollback() throws Exception {
-        // Tests that a prepared transaction cannot be immediately rolled back when leadership
-        // is lost.
-
-        Index ix = mLeader.openIndex("test");
-        fence();
-        Index rix = mReplica.openIndex("test");
-
-        Transaction txn = mLeader.newTransaction();
-        byte[] key = "hello".getBytes();
-        ix.store(txn, key, "world".getBytes());
-        byte[] key2 = "hello2".getBytes();
-        ix.load(txn, key2);
-        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.getId(), key2));
-        txn.prepare();
-        fence();
-
-        mLeaderMan.disableWrites();
-
-        try {
-            txn.exit();
-            fail();
-        } catch (UnmodifiableReplicaException e) {
-            // Expected.
-        }
-
-        try {
-            ix.load(null, key);
-            fail();
-        } catch (LockTimeoutException e) {
-            // Exclusive lock is still held.
-        }
-
-        {
-            // Verify that upgradable lock for key2 was released.
-            Transaction txn2 = mLeader.newTransaction();
-            assertNull(ix.load(txn2, key2));
-            txn2.reset();
-        }
-
-        fastAssertArrayEquals("world".getBytes(), ix.load(Transaction.BOGUS, key));
-
-        try {
-            txn.check();
-            fail();
-        } catch (InvalidTransactionException e) {
-            // Transaction should be borked because all state was transferred away.
-        }
-    }
-
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */
@@ -1313,7 +1259,7 @@ public class ReplicationTest {
         mReplicaMan.waitForControl(pos, message);
     }
 
-    private static class Handler implements CustomHandler, RecoveryHandler {
+    private static class Handler implements CustomHandler {
         volatile byte[] mMessage;
         volatile long mIndexId;
         volatile byte[] mKey;
@@ -1336,10 +1282,6 @@ public class ReplicationTest {
 
         @Override
         public void init(Database db) {
-        }
-
-        @Override
-        public void recover(Transaction txn) {
         }
     }
 }

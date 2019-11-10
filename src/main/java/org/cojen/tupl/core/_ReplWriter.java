@@ -448,11 +448,6 @@ class _ReplWriter extends _RedoWriter {
         closeConsumerThread();
     }
 
-    @Override
-    void stashForRecovery(_LocalTransaction txn) {
-        mEngine.stashForRecovery(txn);
-    }
-
     private void closeConsumerThread() {
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;

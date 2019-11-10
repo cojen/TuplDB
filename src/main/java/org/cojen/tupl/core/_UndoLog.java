@@ -91,9 +91,6 @@ final class _UndoLog implements _DatabaseAccess {
     private static final byte OP_SCOPE_ENTER = 1;
     private static final byte OP_SCOPE_COMMIT = 2;
 
-    // Indicates that transaction has been prepared for two-phase commit.
-    static final byte OP_PREPARE = 6;
-
     // Same as OP_UNINSERT, except uses OP_ACTIVE_KEY. (ValueAccessor op)
     static final byte OP_UNCREATE = 12;
 
@@ -374,16 +371,6 @@ final class _UndoLog implements _DatabaseAccess {
             }
             mActiveIndexId = indexId;
         }
-    }
-
-    /**
-     * Caller must hold db commit lock.
-     *
-     * @return savepoint
-     */
-    long pushPrepare() throws IOException {
-        doPush(OP_PREPARE);
-        return mLength;
     }
 
     /**
@@ -869,38 +856,6 @@ final class _UndoLog implements _DatabaseAccess {
         }.go(true, savepoint);
     }
 
-    final void rollbackToPrepare() throws IOException {
-        // RTP: "Rollback To Prepare" helper class.
-        class RTP extends IOException implements Popper {
-            Index activeIndex;
-
-            @Override
-            public boolean accept(byte op, byte[] entry) throws IOException {
-                if (op == OP_PREPARE) {
-                    // Found the prepare operation, but don't pop it.
-                    throw this;
-                }
-                activeIndex = undo(activeIndex, op, entry);
-                return true;
-            }
-
-            // Disable stack trace capture, since it's not required.
-            @Override
-            public Throwable fillInStackTrace() {
-                return this;
-            }
-        };
-
-        RTP rtp = new RTP();
-
-        try {
-            while (pop(true, rtp));
-            throw new IllegalStateException("Prepare operation not found");
-        } catch (RTP r) {
-            // Expected.
-        }
-    }
-
     /**
      * Truncate all log entries, and delete any ghosts that were created. Only
      * to be called during recovery.
@@ -917,7 +872,6 @@ final class _UndoLog implements _DatabaseAccess {
 
                 case OP_SCOPE_ENTER:
                 case OP_SCOPE_COMMIT:
-                case OP_PREPARE:
                 case OP_UNCREATE:
                 case OP_UNINSERT:
                 case OP_UNUPDATE:
@@ -986,7 +940,6 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_SCOPE_ENTER:
         case OP_SCOPE_COMMIT:
-        case OP_PREPARE:
         case OP_LOCK_EXCLUSIVE:
         case OP_LOCK_UPGRADABLE:
             // Only needed by recovery.
@@ -1776,15 +1729,6 @@ final class _UndoLog implements _DatabaseAccess {
             default:
                 throw new DatabaseException("Unknown undo log entry type: " + op);
 
-            case OP_PREPARE:
-                if ((hasState & _LocalTransaction.HAS_PREPARE) == 0) {
-                    // Only need to recover the last prepare key.
-                    byte[] key = _Locker.createPrepareKey(mTxnId);
-                    scope.addExclusiveLock(Tree.PREPARE_LOCK_ID, key);
-                    hasState |= _LocalTransaction.HAS_PREPARE;
-                }
-                break;
-
             case OP_SCOPE_ENTER:
                 depth++;
                 if (depth > scopes.size()) {
@@ -1889,10 +1833,6 @@ final class _UndoLog implements _DatabaseAccess {
 
         case OP_SCOPE_COMMIT:
             opStr = "SCOPE_COMMIT";
-            break;
-
-        case OP_PREPARE:
-            opStr = "PREPARE";
             break;
 
         case OP_UNCREATE:
