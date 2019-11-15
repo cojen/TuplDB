@@ -20,8 +20,8 @@ package org.cojen.tupl.repl;
 import java.io.File;
 import java.io.IOException;
 
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
 
 import java.util.Arrays;
 import java.util.Random;
@@ -112,7 +112,7 @@ public class DatabaseReplicatorTest {
         mSockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
-            mSockets[i] = new ServerSocket(0);
+            mSockets[i] = TestUtils.newServerSocket();
         }
 
         mReplBaseFiles = new File[members];
@@ -875,10 +875,10 @@ public class DatabaseReplicatorTest {
         mDatabases[member].close();
 
         // Replace closed socket.
-        int port = mSockets[member].getLocalPort();
+        SocketAddress addr = mSockets[member].getLocalSocketAddress();
         ServerSocket ss = new ServerSocket();
         ss.setReuseAddress(true);
-        ss.bind(new InetSocketAddress(port));
+        ss.bind(addr);
 
         mReplConfigs[member].localSocket(ss);
         mReplicators[member] = DatabaseReplicator.open(mReplConfigs[member]);

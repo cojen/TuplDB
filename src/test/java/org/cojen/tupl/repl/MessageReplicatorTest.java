@@ -86,7 +86,7 @@ public class MessageReplicatorTest {
         ServerSocket[] sockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
-            sockets[i] = new ServerSocket(0);
+            sockets[i] = TestUtils.newServerSocket();
         }
 
         mReplBaseFiles = new File[members];

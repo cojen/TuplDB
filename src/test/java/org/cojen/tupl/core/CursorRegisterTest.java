@@ -325,7 +325,7 @@ public class CursorRegisterTest {
 
     @Test
     public void replication() throws Exception {
-        ServerSocket leaderSocket = new ServerSocket(0);
+        ServerSocket leaderSocket = newServerSocket();
 
         ReplicatorConfig replConfig = new ReplicatorConfig()
             .groupToken(283947)
@@ -368,7 +368,7 @@ public class CursorRegisterTest {
             txn.commit();
         }
 
-        ServerSocket replicaSocket = new ServerSocket(0);
+        ServerSocket replicaSocket = newServerSocket();
         replConfig.localSocket(replicaSocket);
         replConfig.addSeed(leaderSocket.getLocalSocketAddress());
 

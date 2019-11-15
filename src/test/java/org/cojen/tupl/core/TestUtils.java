@@ -18,6 +18,7 @@
 package org.cojen.tupl.core;
 
 import java.io.*;
+import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -280,6 +281,10 @@ public class TestUtils {
             System.gc();
         }
         cForceGcRef = null;
+    }
+
+    public static ServerSocket newServerSocket() throws IOException {
+        return new ServerSocket(0, 1000, InetAddress.getLoopbackAddress());
     }
 
     private static File cSourceDir;
