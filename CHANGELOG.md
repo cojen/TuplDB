@@ -4,7 +4,7 @@ Changelog
 v1.5.0
 ------
 
-* Depends on Java 9, replacing "unsafe" usage with VarHandles.
+* Depends on Java 11 and defines a module: org.cojen.tupl.
 * Fix race condition when copying pages from the secondary cache.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
 * Fix data loss when replicating values using the ValueAccessor API.
@@ -21,8 +21,10 @@ v1.5.0
 * Fix checkpoint resumption after failure.
 * Fix race condition when open an index while it's being renamed.
 * Fix rare NPE caused by race condition in the replication engine.
+* Fix writer starvation issue when there are a lot of active readers.
 * Fix in replication hole fill request handling which dropped them too soon, leading to a flood
   of duplicate requests.
+* Replace "unsafe" usage with VarHandles.
 * Guard against a flood of duplicate hole fill requests. De-duplicate them and handle them in
   at most one thread per remote peer.
 * Support for inclusive/exclusive ranges with count and random methods, and fix double wrapping
@@ -38,7 +40,7 @@ v1.5.0
 * Permit non-durable database to utilize a secondary cache.
 * Handle edge cases where a latches wouldn't get released when an exception was thrown.
 * Define a default Cursor.close method.
-* Add socket factory support to replicator.
+* Added socket factory support to replicator.
 * Improve replication election stability.
 * Reduce the number of latch acquisition retries when storing entries (performance).
 * Thread safety fixes in replication layer during checkpoints and leadership changes.
@@ -57,7 +59,9 @@ v1.5.0
 * Boost the size of the replication writer cache when creating non-contiguous writers, to
   ensure that they don't get lost. When they're lost, additional hole filling requests are
   performed.
-* Add non-blocking replication read support.
+* Added non-blocking replication read support.
+* Added more replication roles and refine exitsing ones.
+* Redesign custom transaction handler such that multiple named handlers can be installed.
 * Include database stats when throwing a cache exhausted exception.
 * Added a convenience method to set the cache size.
 * LatchCondition now unparks the signaled waiter as the latch is released. Earlier behavior
