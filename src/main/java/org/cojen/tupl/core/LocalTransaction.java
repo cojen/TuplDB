@@ -46,9 +46,8 @@ public final class LocalTransaction extends Locker implements Transaction {
     static final int
         HAS_SCOPE   = 1, // When set, scope has been entered and logged.
         HAS_COMMIT  = 2, // When set, transaction has committable changes.
-        HAS_TRASH   = 4, /* When set, fragmented values are in the trash and must be
+        HAS_TRASH   = 4; /* When set, fragmented values are in the trash and must be
                             fully deleted after committing the top-level scope. */
-        HAS_PREPARE = 8; // When set, transaction is prepared for two-phase commit.
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
@@ -556,15 +555,9 @@ public final class LocalTransaction extends Locker implements Transaction {
                 try {
                     if ((hasState & HAS_SCOPE) != 0) {
                         long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
-                        if ((hasState & HAS_PREPARE) != 0) {
-                            mRedo.txnCommitSync(this, commitPos);
-                        }
                     }
                     mHasState = 0;
                 } catch (UnmodifiableReplicaException e) {
-                    if ((hasState & HAS_PREPARE) != 0) {
-                        throw e;
-                    }
                     // Suppress and let undo proceed.
                 }
 
@@ -654,15 +647,9 @@ public final class LocalTransaction extends Locker implements Transaction {
         try {
             if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
                 long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
-                if ((hasState & HAS_PREPARE) != 0) {
-                    mRedo.txnCommitSync(this, commitPos);
-                }
             }
             mHasState = 0;
         } catch (UnmodifiableReplicaException e) {
-            if ((hasState & HAS_PREPARE) != 0) {
-                throw e;
-            }
             // Suppress and let undo proceed.
         }
 
@@ -945,104 +932,14 @@ public final class LocalTransaction extends Locker implements Transaction {
         return txnId < 0 ? 0 : txnId;
     }
 
-    @Override
-    public final void prepare() throws IOException {
-        check();
-
-        if (mDatabase.mRecoveryHandler == null) {
-            throw new IllegalStateException("Transaction recovery handler is not installed");
-        }
-
-        if (mRedo == null || mDurabilityMode == DurabilityMode.NO_REDO) {
-            throw new IllegalStateException("Cannot prepare a no-redo transaction");
-        }
-
-        if (mParentScope != null) {
-            throw new IllegalStateException("Cannot prepare within a nested scope");
-        }
-
-        try {
-            long savepoint = pushUndoPrepare();
-
-            long commitPos = mContext.redoPrepare(mRedo, mTxnId, mDurabilityMode);
-
-            mHasState |= HAS_SCOPE | HAS_COMMIT;
-
-            if (commitPos != 0 && mDurabilityMode == DurabilityMode.SYNC) {
-                mRedo.txnCommitSync(this, commitPos);
-            }
-
-            unlockNonExclusive();
-
-            // Acquire a special prepare lock, which is used for safely transferring ownership
-            // of this transaction after leadership is lost.
-            pushPrepareLock(mTxnId, savepoint);
-        } catch (Throwable e) {
-            borked(e);
-        }
-
-        mHasState |= HAS_PREPARE;
-    }
-
-    /**
-     * To be called during redo recovery.
-     */
-    final void prepareNoRedo() throws IOException {
-        check();
-
-        try {
-            long savepoint = pushUndoPrepare();
-            pushPrepareLock(mTxnId, savepoint);
-            mHasState |= HAS_PREPARE;
-        } catch (Throwable e) {
-            borked(e);
-        }
-    }
-
-    private long pushUndoPrepare() throws IOException {
-        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-        try {
-            return undoLog().pushPrepare();
-        } finally {
-            shared.release();
-        }
-    }
-
-    /**
-     * Rollback the transaction to the last encountered prepare operation.
-     *
-     * @param redo pass false when called by replica (ReplEngine)
-     */
-    final void rollbackToPrepare(boolean redo) throws IOException {
-        check();
-
-        if ((mHasState & HAS_PREPARE) == 0) {
-            throw new IllegalStateException("Transaction isn't prepared");
-        }
-
-        try {
-            while (isNested()) {
-                exit();
-            }
-            if (redo) {
-                mContext.redoRollbackToPrepare(mRedo, mTxnId);
-            }
-            mUndoLog.rollbackToPrepare();
-            unlockToPrepare();
-        } catch (Throwable e) {
-            borked(e);
-        }
-    }
-
     /**
      * Recovery cleanup always resets committed transactions, or those with negative
      * identifiers. When the finish parameter is false, unfinished transactions aren't reset.
-     * When the finish parameter is true, all non-2PC transactions are reset.
      *
      * @return true if was reset
      */
     final boolean recoveryCleanup(boolean finish) throws IOException {
-        finish = mTxnId < 0 | (finish & (mHasState & HAS_PREPARE) == 0);
+        finish |= mTxnId < 0;
 
         UndoLog undo = mUndoLog;
         if (undo != null) {
@@ -1425,58 +1322,6 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * Used by recovery, before passing transaction to a recovery handler.
-     */
-    final void recoverPrepared(RedoWriter redo, DurabilityMode durabilityMode,
-                               LockMode lockMode, long timeoutNanos)
-        throws IOException
-    {
-        // When recovered from the undo log only, the HAS_COMMIT state won't be set. Set it
-        // explicitly now, in order for commit and rollback operations to actually work. Also
-        // set the HAS_SCOPE state, which is always set for even the outermost scope when
-        // anything is written to the transaction.
-        mHasState |= HAS_COMMIT | HAS_SCOPE;
-
-        mRedo = redo;
-        mLockMode = lockMode;
-        mDurabilityMode = durabilityMode;
-        mLockTimeoutNanos = timeoutNanos;
-        mAttachment = null;
-
-        rollbackToPrepare(true);
-    }
-
-    /**
-     * Transfers the state of this prepared transaction to another. Transaction must be
-     * prepared and not borked.
-     */
-    private LocalTransaction transferPrepared() throws IOException {
-        rollbackToPrepare(false);
-
-        // Can use the undo recovery constructor because recoverPrepared must be called later,
-        // which will fill in remaining relevant state. Note that HAS_COMMIT state is cleared.
-        // This should only be set when new redo-able operations are logged. The replacement
-        // transaction won't have a redo log, and so it cannot set HAS_COMMIT. If this state is
-        // set, then calling commit will attempt to write to a null redo log and fail.
-        LocalTransaction txn = new LocalTransaction(mDatabase, mTxnId, mHasState & ~HAS_COMMIT);
-
-        // Transfer locks, undo log, etc.
-        txn.mParentScope = mParentScope;
-        txn.mTailBlock = mTailBlock;
-        txn.mSavepoint = mSavepoint;
-        txn.mUndoLog = mUndoLog;
-
-        mParentScope = null;
-        mTailBlock = null;
-        mHasState = 0;
-        mSavepoint = 0;
-        mTxnId = 0;
-        mUndoLog = null;
-
-        return txn;
-    }
-
-    /**
      * Always rethrows the given exception or a replacement. No rollback is performed.
      */
     final void borked(Throwable borked) {
@@ -1485,7 +1330,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     /**
      * Rethrows the given exception or a replacement, unless the database is closed. A rollback
-     * is attempted only if specified and if the transaction isn't prepared for 2PC.
+     * is attempted only if specified.
      *
      * @param rollback rollback should only be performed by operations which don't hold tree
      * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
@@ -1505,25 +1350,6 @@ public final class LocalTransaction extends Locker implements Transaction {
         if (mBorked == null) {
             if (closed) {
                 Utils.initCause(borked, mDatabase.closedCause());
-                mBorked = borked;
-            } else if ((mHasState & HAS_PREPARE) != 0) {
-                // Can't let a prepared transaction rollback due to an unexpected failure,
-                // since this can result in an inconsistency with respect to later recovery
-                // actions. Instead, transfer the state to a new transaction and attempt to
-                // stash it for later use by a recovery handler.
-                try {
-                    final long txnId = mTxnId; // capture before it's cleared
-                    mRedo.stashForRecovery(transferPrepared());
-                    // Signal to any recovery thread of transaction ownership transfer.
-                    mManager.signalExclusivePrepare(this, txnId);
-                } catch (Throwable e) {
-                    // Panic.
-                    try {
-                        Utils.closeOnFailure(mDatabase, e);
-                    } catch (Throwable e2) {
-                        // Ignore.
-                    }
-                }
                 mBorked = borked;
             } else if (rollback) {
                 // Attempt to rollback the mess and release the locks.

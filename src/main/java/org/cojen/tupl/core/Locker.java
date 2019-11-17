@@ -711,71 +711,6 @@ class Locker extends LockOwner {
     }
 
     /**
-     * Releases all locks until a prepare lock is found, keeping it. If no prepare is found,
-     * then all locks are released.
-     *
-     * @throws IllegalStateException if in a scope
-     */
-    final void unlockToPrepare() {
-        if (mParentScope != null) {
-            throw new IllegalStateException();
-        }
-
-        while (true) {
-            Object tailObj = mTailBlock;
-            if (tailObj instanceof Lock) {
-                Lock lock = (Lock) tailObj;
-                if (!lock.isPrepareLock()) {
-                    mManager.doUnlock(this, lock);
-                    mTailBlock = null;
-                }
-                return;
-            }
-            Block tail = (Block) tailObj;
-            if (tail == null || tail.last().isPrepareLock()) {
-                return;
-            }
-            Block.doUnlockLast(tail, this);
-        }
-    }
-
-    /**
-     * Releases all non-exclusive locks held by this locker and breaks apart all combined
-     * locks. Assumes that no parent scope exists.
-     */
-    final void unlockNonExclusive() {
-        Object tailObj = mTailBlock;
-        if (tailObj instanceof Lock) {
-            Lock lock = (Lock) tailObj;
-            if (lock.mLockCount != ~0) {
-                mManager.doUnlock(this, lock);
-                mTailBlock = null;
-            }
-        } else {
-            Block tail = (Block) tailObj;
-            if (tail != null) {
-                Block last = null;
-                do {
-                    int size = tail.unlockNonExclusive(this);
-                    if (size >= 0) {
-                        last = tail;
-                        tail = tail.peek();
-                    } else if (size == 0) {
-                        tail = tail.pop();
-                        if (last == null) {
-                            mTailBlock = tail;
-                        } else {
-                            last.mPrev = tail;
-                        }
-                    } else {
-                        break;
-                    }
-                } while (tail != null);
-            }
-        }
-    }
-
-    /**
      * Transfers all exclusive locks held by this Locker and releases all others. Assumes that
      * no parent scope exists.
      */
@@ -799,23 +734,6 @@ class Locker extends LockOwner {
         mTailBlock = null;
 
         return pending;
-    }
-
-    /**
-     * Assigns all owned locks to be this Locker. Is used when transferring ownership of
-     * prepared transactions.
-     */
-    final void takeLockOwnership() {
-        Object tailObj = mTailBlock;
-        if (tailObj instanceof Lock) {
-            mManager.takeLockOwnership((Lock) tailObj, this);
-        } else if (tailObj instanceof Block) {
-            Block tail = (Block) tailObj;
-            do {
-                tail.takeLockOwnership(this);
-                tail = tail.peek();
-            } while (tail != null);
-        }
     }
 
     /**
@@ -885,35 +803,6 @@ class Locker extends LockOwner {
             mParentScope = parent.mParentScope;
         }
         return parent;
-    }
-
-    /**
-     * Called when a transaction is prepared, and is later used to transfer ownership.
-     */
-    void pushPrepareLock(long txnId, long savepoint) throws LockFailureException {
-        byte[] key = createPrepareKey(txnId);
-        LockResult result = doLockExclusive(Tree.PREPARE_LOCK_ID, key, -1);
-
-        if (result == LockResult.OWNED_EXCLUSIVE) {
-            // Push another prepare lock as a rollback point. The savepoint value is used only
-            // to ensure that the lock is unique. Another option would be to find the original
-            // prepare lock on the lock stack and move it to the top.
-            key = createPrepareKey(txnId, savepoint);
-            doLockExclusive(Tree.PREPARE_LOCK_ID, key, -1);
-        }
-    }
-
-    static byte[] createPrepareKey(long txnId) {
-        byte[] key = new byte[8];
-        Utils.encodeLongLE(key, 0, txnId);
-        return key;
-    }
-
-    private static byte[] createPrepareKey(long txnId, long savepoint) {
-        byte[] key = new byte[16];
-        Utils.encodeLongLE(key, 0, txnId);
-        Utils.encodeLongLE(key, 8, savepoint);
-        return key;
     }
 
     static final class Block {
@@ -1255,48 +1144,6 @@ class Locker extends LockOwner {
         }
 
         /**
-         * @return remaining size; caller MUST pop and discard the block if zero; -1 is
-         * returned if prepare lock was found and unlocking should stop (because no more
-         * non-exclusive locks should be found)
-         */
-        int unlockNonExclusive(Locker locker) {
-            final Lock[] locks = mLocks;
-            final LockManager manager = locker.mManager;
-            final int size = mSize;
-
-            long upgrades = mUpgrades;
-            int newSize = 0;
-            boolean prepared = false;
-
-            for (int i=0; i<size; i++) {
-                Lock lock = locks[i];
-                if (lock.mLockCount != ~0) {
-                    manager.doUnlock(locker, lock);
-                } else {
-                    prepared |= lock.isPrepareLock();
-                    if (upgrades >= 0) { // don't track lock twice if it was upgraded
-                        if (newSize != i) {
-                            locks[newSize] = lock;
-                        }
-                        newSize++;
-                    }
-                }
-                upgrades <<= 1;
-            }
-
-            if (newSize != size) {
-                for (int i=newSize; i<size; i++) {
-                    locks[i] = null;
-                }
-                mUpgrades = 0;
-                mSize = newSize;
-                mUnlockGroup = 0;
-            }
-
-            return prepared ? -1 : newSize;
-        }
-
-        /**
          * Note: Caller MUST pop and discard the block.
          */
         PendingTxn transferExclusive(Locker locker, PendingTxn pending) {
@@ -1310,13 +1157,6 @@ class Locker extends LockOwner {
                 } while (size != 0);
             }
             return pending;
-        }
-
-        void takeLockOwnership(Locker locker) {
-            LockManager manager = locker.mManager;
-            for (int i=0; i<mSize; i++) {
-                manager.takeLockOwnership(mLocks[i], locker);
-            }
         }
 
         Block pop() {

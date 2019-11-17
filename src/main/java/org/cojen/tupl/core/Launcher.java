@@ -44,7 +44,6 @@ import org.cojen.tupl.ev.ChainedEventListener;
 import org.cojen.tupl.ev.ReplicationEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
-import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
@@ -74,7 +73,6 @@ public final class Launcher implements Cloneable {
     FileFactory mFileFactory;
     long mMinCachedBytes;
     long mMaxCachedBytes;
-    RecoveryHandler mRecoveryHandler;
     long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
@@ -248,10 +246,6 @@ public final class Launcher implements Cloneable {
 
     public void maxReplicaThreads(int num) {
         mMaxReplicaThreads = num;
-    }
-
-    public void recoveryHandler(RecoveryHandler handler) {
-        mRecoveryHandler = handler;
     }
 
     public void encrypt(Crypto crypto) {

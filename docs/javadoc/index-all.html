@@ -1651,10 +1651,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html#init(org.cojen.tupl.Database)">init(Database)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
-<dd>
-<div class="block">Called once when the database is opened, immediately before recovery is performed.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#initCipher(javax.crypto.Cipher,int,javax.crypto.SecretKey)">initCipher(Cipher, int, SecretKey)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to initialize a new or re-used <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a>, generating a random initialization
@@ -2614,11 +2610,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Only attempt to preallocate if it can be done quickly.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#prepare()">prepare()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
-<dd>
-<div class="block">Prepares a transaction for finishing a two-phase commit, to be called before fully
- committing the transaction.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html#prepare(long,int)">prepare(long, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>
 <div class="block">Returns an instance-specific thread-local ByteBuffer which references any memory
@@ -2761,10 +2752,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Member address which is receiving the snapshot.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html#recover(org.cojen.tupl.Transaction)">recover(Transaction)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext">RecoveryHandler</a></dt>
-<dd>
-<div class="block">Called for each recovered transaction.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html#RECOVERY">RECOVERY</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a></dt>
 <dd>
 <div class="block">Recovery processes transactions which did not get included in the last checkpoint.</div>
@@ -2812,15 +2799,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#RECOVERY_REDO_LOG_CORRUPTION">RECOVERY_REDO_LOG_CORRUPTION</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>
 <div class="block">Signals that some redo operations were not recovered due to log file corruption.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#recoveryHandler(org.cojen.tupl.ext.RecoveryHandler)">recoveryHandler(RecoveryHandler)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
-<dd>
-<div class="block">Install a transaction recovery handler, which receives unfinished transactions which
- were <a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#prepare()"><code>prepared</code></a> for two-phase commit.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/RecoveryHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">RecoveryHandler</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
-<dd>
-<div class="block">Handler for recovered transactions which were prepared, but aren't finished yet.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo(Transaction, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></dt>
 <dd>

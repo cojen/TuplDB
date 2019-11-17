@@ -89,18 +89,6 @@ interface RedoVisitor {
      * @param txnId non-zero transaction id
      * @return false to stop visiting
      */
-    public boolean txnPrepare(long txnId) throws IOException;
-
-    /**
-     * @param txnId non-zero transaction id
-     * @return false to stop visiting
-     */
-    public boolean txnRollbackToPrepare(long txnId) throws IOException;
-
-    /**
-     * @param txnId non-zero transaction id
-     * @return false to stop visiting
-     */
     public boolean txnEnter(long txnId) throws IOException;
 
     /**

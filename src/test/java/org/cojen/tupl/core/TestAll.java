@@ -128,7 +128,6 @@ public class TestAll {
             UnionViewTest.class,
             ScannerTest.class,
             UpdaterTest.class,
-            TxnPrepareTest.class,
             BTreeGraftTest.class,
             BTreeMergerTest.class,
             SorterTest.class,

@@ -94,7 +94,6 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.ev.SafeEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
-import org.cojen.tupl.ext.RecoveryHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
@@ -163,9 +162,6 @@ public final class _LocalDatabase extends CoreDatabase {
     private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
 
     final EventListener mEventListener;
-
-    final RecoveryHandler mRecoveryHandler;
-    private LHashTable.Obj<_LocalTransaction> mRecoveredTransactions;
 
     private final File mBaseFile;
     private final boolean mReadOnly;
@@ -353,8 +349,6 @@ public final class _LocalDatabase extends CoreDatabase {
         } else {
             mCustomHandlersById = new LHashTable.Obj<>(mCustomHandlers.size());
         }
-
-        mRecoveryHandler = launcher.mRecoveryHandler;
 
         mBaseFile = launcher.mBaseFile;
         mReadOnly = launcher.mReadOnly;
@@ -805,14 +799,8 @@ public final class _LocalDatabase extends CoreDatabase {
                         // Although the handlers shouldn't access the database yet, be safe and
                         // call this method at the point that the database is mostly
                         // functional. All other custom methods will be called soon as well.
-                        if (handler != mRecoveryHandler) {
-                            handler.init(this);
-                        }
+                        handler.init(this);
                     }
-                }
-
-                if (mRecoveryHandler != null) {
-                    mRecoveryHandler.init(this);
                 }
 
                 // Ensure that the handler has a safe reference to the Database instance.  Due
@@ -891,16 +879,10 @@ public final class _LocalDatabase extends CoreDatabase {
 
                         doCheckpoint |= !redoFiles.isEmpty();
 
-                        // Finish recovery and collect remaining 2PC transactions.
-                        txns = applier.finish();
+                        applier.finish();
 
                         // Check if any exceptions were caught by recovery worker threads.
                         checkClosedCause();
-
-                        if (shouldInvokeRecoveryHandler(txns)) {
-                            // Invoke the handler later, when database is fully opened.
-                            mRecoveredTransactions = txns;
-                        }
 
                         // Avoid re-using transaction ids used by recovery.
                         txnId = applier.highestTxnId(txnId);
@@ -981,17 +963,9 @@ public final class _LocalDatabase extends CoreDatabase {
 
         mCheckpointer.start(false);
 
-        LHashTable.Obj<_LocalTransaction> txns = mRecoveredTransactions;
-
-        if (!(mRedoWriter instanceof _ReplController)) {
-            if (txns != null) {
-                new Thread(() -> invokeRecoveryHandler(txns, mRedoWriter)).start();
-                mRecoveredTransactions = null;
-            }
-        } else {
+        if (mRedoWriter instanceof _ReplController) {
             // Start replication and recovery.
             _ReplController controller = (_ReplController) mRedoWriter;
-            assert txns == null;
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
@@ -1081,66 +1055,6 @@ public final class _LocalDatabase extends CoreDatabase {
                 }
             }
         }
-    }
-
-    /**
-     * @return true if a recovery handler exists and should be invoked
-     */
-    boolean shouldInvokeRecoveryHandler(LHashTable.Obj<_LocalTransaction> txns) {
-        if (txns != null && txns.size() != 0) {
-            if (mRecoveryHandler != null) {
-                return true;
-            }
-            if (mEventListener != null) {
-                mEventListener.notify
-                    (EventType.RECOVERY_NO_HANDLER,
-                     "No handler is installed for recovering " +
-                     "prepared transactions: %1$d", txns.size());
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * To be called only when shouldInvokeRecoveryHandler returns true.
-     *
-     * @param redo non-null _RedoWriter assigned to each transaction
-     */
-    void invokeRecoveryHandler(LHashTable.Obj<_LocalTransaction> txns, _RedoWriter redo) {
-        RecoveryHandler handler = mRecoveryHandler;
-
-        txns.traverse(entry -> {
-            _LocalTransaction txn = entry.value;
-
-            try {
-                txn.recoverPrepared
-                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
-            } catch (UnmodifiableReplicaException e) {
-                // No point in continuing with recovery if no longer the leader.
-                return true;
-            } catch (Throwable e) {
-                // Panic.
-                closeQuietly(this, e);
-                return true;
-            }
-
-            try {
-                handler.recover(txn);
-            } catch (Throwable e) {
-                if (!isClosed()) {
-                    EventListener listener = mEventListener;
-                    if (listener == null) {
-                        uncaught(e);
-                    } else {
-                        listener.notify(EventType.RECOVERY_HANDLER_UNCAUGHT,
-                                        "Uncaught exception from recovery handler: %1$s", e);
-                    }
-                }
-            }
-
-            return true;
-        });
     }
 
     static class ShutdownPrimer extends ShutdownHook.Weak<_LocalDatabase> {
