@@ -43,7 +43,7 @@ public class RemoveMember {
 
         try {
             int i = 0;
-            loop: for (; i<args.length; i++) {
+            for (; i<args.length; i++) {
                 switch (args[i]) {
                 case "--token":
                     groupToken = Long.parseLong(args[++i]);

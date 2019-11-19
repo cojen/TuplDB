@@ -372,12 +372,6 @@ public final class Launcher implements Cloneable {
         return options;
     }
 
-    private static void set(Map<String, String> props, String name, Object value) {
-        if (value != null) {
-            props.put(name, value.toString());
-        }
-    }
-
     /**
      * @return true if mReplManager was assigned a new replicator
      */

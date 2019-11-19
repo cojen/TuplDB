@@ -72,7 +72,6 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
-import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.DurabilityMode;

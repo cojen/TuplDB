@@ -19,7 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.DataInput;
 import java.io.DataOutput;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.util.Comparator;
@@ -29,7 +28,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
-import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -1253,8 +1251,8 @@ class BTree extends Tree implements View, Index {
     }
 
     /**
-     * Performs a depth-first traversal of the tree, only visting loaded nodes. Nodes passed to
-     * the visitor are latched exclusively, and they must be released by the visitor.
+     * Performs a depth-first traversal of the tree, only visiting loaded nodes. Nodes passed
+     * to the visitor are latched exclusively, and they must be released by the visitor.
      */
     final void traverseLoaded(NodeVisitor visitor) throws IOException {
         Node node = mRoot;

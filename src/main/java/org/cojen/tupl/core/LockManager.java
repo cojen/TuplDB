@@ -22,8 +22,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
-import java.util.function.BiFunction;
-
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;

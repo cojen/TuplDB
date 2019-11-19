@@ -941,7 +941,7 @@ final class FileTermLog extends Latch implements TermLog {
         LKey<Segment> key = new LKey.Finder<>(position);
 
         acquireExclusive();
-        find: try {
+        try {
             if (writer.mWriterVersion != mLogVersion) {
                 // Re-init the writer as if it was just opened, starting from where the
                 // in-progress write operation began. This prevents creation of false
@@ -1926,7 +1926,7 @@ final class FileTermLog extends Latch implements TermLog {
             FileIO io = mFileIO;
 
             while (true) {
-                if (io != null || (io = fileIO()) != null) tryRead: {
+                if (io != null || (io = fileIO()) != null) {
                     try {
                         io.read(position, buf, offset, length);
                         return length;
@@ -2082,7 +2082,7 @@ final class FileTermLog extends Latch implements TermLog {
             FileIO io = mFileIO;
 
             while (true) {
-                if (io != null || (io = fileIO()) != null) trySync: {
+                if (io != null || (io = fileIO()) != null) {
                     try {
                         io.sync(false);
                         return;

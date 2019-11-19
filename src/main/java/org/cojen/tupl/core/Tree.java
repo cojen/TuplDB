@@ -21,9 +21,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-
 import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.Index;

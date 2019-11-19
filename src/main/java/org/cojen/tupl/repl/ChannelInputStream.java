@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-
 import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;

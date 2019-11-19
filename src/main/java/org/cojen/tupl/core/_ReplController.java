@@ -25,7 +25,6 @@ import java.io.IOException;
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
 import org.cojen.tupl.ext.ReplicationManager;

@@ -29,7 +29,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Transaction;

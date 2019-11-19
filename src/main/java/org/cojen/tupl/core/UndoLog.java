@@ -1712,7 +1712,7 @@ final class UndoLog implements DatabaseAccess {
         // Blindly assume trash must be deleted. No harm if none exists.
         int hasState = LocalTransaction.HAS_TRASH;
 
-        loop: while (mLength > 0) {
+        while (mLength > 0) {
             if (!pop(false, popper)) {
                 // Undo log would have to be corrupt for this case to occur.
                 break;

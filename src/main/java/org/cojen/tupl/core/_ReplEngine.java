@@ -21,11 +21,7 @@ import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -36,7 +32,6 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;

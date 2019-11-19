@@ -457,7 +457,7 @@ final class _Lock {
      * shared locks
      */
     void unlockToShared(_LockOwner locker, Latch latch) {
-        ownerCheck: if (mOwner == locker) {
+        if (mOwner == locker) {
             int count = mLockCount;
 
             if (count != ~0) {
