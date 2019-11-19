@@ -969,8 +969,9 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                                 mTree.mDatabase.commitLock().tryAcquireShared();
                             if (shared != null) {
                                 try {
-                                    node = notSplitDirty(frame);
-                                    node.storeChildEntryCount(frame.mNodePos, childCount);
+                                    if (tryNotSplitDirty(frame)) {
+                                        node.storeChildEntryCount(frame.mNodePos, childCount);
+                                    }
                                 } catch (Throwable e) {
                                     child.releaseShared();
                                     throw e;
@@ -978,9 +979,11 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                                     shared.release();
                                 }
                             }
-                        } finally {
-                            node.downgrade();
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw e;
                         }
+                        node.downgrade();
                     }
 
                     if (amount >= childCount) {
@@ -1109,17 +1112,24 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                     CommitLock.Shared shared = mTree.mDatabase.commitLock().tryAcquireShared();
                     if (shared != null) {
                         try {
-                            node = notSplitDirty(frame);
-                            node.storeChildEntryCount(frame.mNodePos, childCount);
-                            continue;
+                            if (tryNotSplitDirty(frame)) {
+                                node.storeChildEntryCount(frame.mNodePos, childCount);
+                                child.releaseShared();
+                                node.downgrade();
+                                continue;
+                            }
+                        } catch (Throwable e) {
+                            child.releaseShared();
+                            throw e;
                         } finally {
                             shared.release();
-                            child.releaseShared();
                         }
                     }
-                } finally {
-                    node.downgrade();
+                } catch (Throwable e) {
+                    node.releaseExclusive();
+                    throw e;
                 }
+                node.downgrade();
             }
 
             if (child.mSplit != null) {
@@ -1588,8 +1598,9 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                                 mTree.mDatabase.commitLock().tryAcquireShared();
                             if (shared != null) {
                                 try {
-                                    node = notSplitDirty(frame);
-                                    node.storeChildEntryCount(frame.mNodePos, childCount);
+                                    if (tryNotSplitDirty(frame)) {
+                                        node.storeChildEntryCount(frame.mNodePos, childCount);
+                                    }
                                 } catch (Throwable e) {
                                     child.releaseShared();
                                     throw e;
@@ -1597,9 +1608,11 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                                     shared.release();
                                 }
                             }
-                        } finally {
-                            node.downgrade();
+                        } catch (Throwable e) {
+                            node.releaseExclusive();
+                            throw e;
                         }
+                        node.downgrade();
                     }
 
                     if (amount >= childCount) {
@@ -5257,6 +5270,56 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         frame.acquireExclusive();
         notSplitDirty(frame);
         return false;
+    }
+
+    /**
+     * Variant of notSplitDirty which fails if it would need to re-acquire any latches. Should
+     * be used when caller is maintaining a child node latch. If this parent node was
+     * re-acquired with the child latch held, that's the wrong order and cause a deadlock.
+     *
+     * Note: Latch isn't released, even if an exception is thrown.
+     *
+     * @return false if latches would need to be re-acquired
+     */
+    final boolean tryNotSplitDirty(final _CursorFrame frame) throws IOException {
+        _Node node = frame.mNode;
+
+        if (node.mSplit != null) {
+            // _Node is dirty, but finishing the split causes latches to be re-acquired.
+            return false;
+        }
+
+        _LocalDatabase db = mTree.mDatabase;
+        if (!db.shouldMarkDirty(node)) {
+            return true;
+        }
+
+        _CursorFrame parentFrame = frame.mParentFrame;
+        if (parentFrame == null) {
+            db.doMarkDirty(mTree, node);
+            return true;
+        }
+
+        // Make sure the parent is not split and dirty too.
+        _Node parentNode = parentFrame.tryAcquireExclusive();
+
+        if (parentNode == null) {
+            // The child latch would need to be released to acquire the parent latch.
+            return false;
+        }
+
+        try {
+            if (!tryNotSplitDirty(parentFrame)) {
+                return false;
+            }
+            // Now that parent is ready to be updated, can safely dirty the child node and
+            // update the reference to it.
+            db.doMarkDirty(mTree, node);
+            parentNode.updateChildRefId(parentFrame.mNodePos, node.id());
+            return true;
+        } finally {
+            parentNode.releaseExclusive();
+        }
     }
 
     /**

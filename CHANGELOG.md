@@ -24,6 +24,7 @@ v1.5.0
 * Fix writer starvation issue when there are a lot of active readers.
 * Fix in replication hole fill request handling which dropped them too soon, leading to a flood
   of duplicate requests.
+* Fix potential deadlock in the count and skip methods.	
 * Replace "unsafe" usage with VarHandles.
 * Guard against a flood of duplicate hole fill requests. De-duplicate them and handle them in
   at most one thread per remote peer.
