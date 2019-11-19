@@ -290,7 +290,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             while (true) {
                 frame.bind(node, 0);
                 if (node.mSplit != null) {
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                     if (frame.mNodePos != 0) {
                         // Rebind if position changed (possibly negative).
                         frame.bindOrReposition(node, 0);
@@ -321,7 +321,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             while (true) {
                 frame.bind(node, 0);
                 if (node.mSplit != null) {
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                     if (frame.mNodePos != 0) {
                         // Rebind if position changed (possibly negative).
                         frame.bindOrReposition(node, 0);
@@ -392,7 +392,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (split != null) {
                     // Bind to the highest position and finish the split.
                     frame.bind(node, split.highestPos(node));
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                 }
 
                 if (node.isLeaf()) {
@@ -429,7 +429,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (split != null) {
                     // Bind to the highest position and finish the split.
                     frame.bind(node, split.highestPos(node));
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                 }
                 // Note: Highest pos is 0 if internal node has no keys.
                 int childPos = node.highestInternalPos();
@@ -680,7 +680,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                         // When this point is reached, only the parent latch is held, and the
                         // parent node must be split.
 
-                        parentNode = finishSplitShared(parentFrame, parentNode);
+                        parentNode = mTree.finishSplitShared(parentFrame, parentNode);
                     }
 
                     // When this point is reached, only the parent latch is held.
@@ -699,7 +699,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
                     if (node.mSplit != null) {
                         parentNode.releaseShared();
-                        finishSplitShared(frame, node);
+                        mTree.finishSplitShared(frame, node);
                         continue start;
                     }
 
@@ -800,7 +800,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                         // When this point is reached, only the parent latch is held, and the
                         // parent node must be split.
 
-                        parentNode = finishSplitShared(parentFrame, parentNode);
+                        parentNode = mTree.finishSplitShared(parentFrame, parentNode);
                     }
 
                     // When this point is reached, only the parent latch is held.
@@ -820,7 +820,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
                     if (node.mSplit != null) {
                         parentNode.releaseShared();
-                        finishSplitShared(frame, node);
+                        mTree.finishSplitShared(frame, node);
                         continue start;
                     }
 
@@ -896,7 +896,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
             node = frame.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(frame, node);
+                node = mTree.finishSplitShared(frame, node);
             }
 
             while (true) {
@@ -1048,7 +1048,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
         node = frame.acquireShared();
         if (node.mSplit != null) {
-            node = finishSplitShared(frame, node);
+            node = mTree.finishSplitShared(frame, node);
         }
 
         while (true) {
@@ -1084,7 +1084,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                     if (child.mSplit != null) {
                         // Finishing the split causes all latches to be released, so loop back
                         // and check again afterwards.
-                        finishSplitShared(high.mFrame, child).releaseShared();
+                        mTree.finishSplitShared(high.mFrame, child).releaseShared();
                         node = frame.acquireShared();
                         continue;
                     }
@@ -1309,7 +1309,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                         // When this point is reached, only the parent latch is held, and the
                         // parent node must be split.
 
-                        parentNode = finishSplitShared(parentFrame, parentNode);
+                        parentNode = mTree.finishSplitShared(parentFrame, parentNode);
                     }
 
                     // When this point is reached, only the parent latch is held.
@@ -1328,7 +1328,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
                     if (node.mSplit != null) {
                         parentNode.releaseShared();
-                        finishSplitShared(frame, node);
+                        mTree.finishSplitShared(frame, node);
                         continue start;
                     }
 
@@ -1429,7 +1429,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                         // When this point is reached, only the parent latch is held, and the
                         // parent node must be split.
 
-                        parentNode = finishSplitShared(parentFrame, parentNode);
+                        parentNode = mTree.finishSplitShared(parentFrame, parentNode);
                     }
 
                     // When this point is reached, only the parent latch is held.
@@ -1449,7 +1449,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
                     if (node.mSplit != null) {
                         parentNode.releaseShared();
-                        finishSplitShared(frame, node);
+                        mTree.finishSplitShared(frame, node);
                         continue start;
                     }
 
@@ -1525,7 +1525,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
             node = frame.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(frame, node);
+                node = mTree.finishSplitShared(frame, node);
             }
 
             while (true) {
@@ -1980,7 +1980,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         } else {
             node = frame.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(frame, node);
+                node = mTree.finishSplitShared(frame, node);
             }
 
             int startPos = frame.mNodePos;
@@ -2054,7 +2054,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 node = frame.acquireShared();
 
                 if (node.mSplit != null) {
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                 }
 
                 try {
@@ -2119,7 +2119,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                         // be completely defined first.
                         frame.mNotFoundKey = key;
                     }
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                     pos = frame.mNodePos;
                 }
 
@@ -2291,7 +2291,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (node.mSplit != null) {
                     // Bind to anything to finish the split.
                     frame.bind(node, 0);
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                 }
 
                 int pos;
@@ -2424,7 +2424,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (node.mSplit != null) {
                     // Bind to anything to finish the split.
                     frame.bindOrReposition(node, 0);
-                    node = finishSplitShared(frame, node);
+                    node = mTree.finishSplitShared(frame, node);
                 }
 
                 int pos;
@@ -2628,7 +2628,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         try {
             _Node node = leaf.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(leaf, node);
+                node = mTree.finishSplitShared(leaf, node);
             }
             try {
                 int pos = leaf.mNodePos;
@@ -2771,7 +2771,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         try {
             _Node node = leaf.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(leaf, node);
+                node = mTree.finishSplitShared(leaf, node);
             }
             try {
                 int pos = leaf.mNodePos;
@@ -2844,7 +2844,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         try {
             _Node node = leaf.acquireShared();
             if (node.mSplit != null) {
-                node = finishSplitShared(leaf, node);
+                node = mTree.finishSplitShared(leaf, node);
             }
             try {
                 int pos = leaf.mNodePos;
@@ -2869,7 +2869,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         _Node node = leaf.tryAcquireShared();
         if (node != null) {
             if (node.mSplit != null) {
-                node = finishSplitShared(leaf, node);
+                node = mTree.finishSplitShared(leaf, node);
             }
             try {
                 if (mTree.isLockAvailable(txn, key, keyHash)) {
@@ -5073,52 +5073,9 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         _CursorFrame frame = frame();
         _Node node = frame.acquireShared();
         if (node.mSplit != null) {
-            finishSplitShared(frame, node);
+            mTree.finishSplitShared(frame, node);
         }
         return frame;
-    }
-
-    /**
-     * Caller must hold shared latch and it must verify that node has split. _Node latch is
-     * released if an exception is thrown.
-     *
-     * @param frame bound cursor frame
-     * @param node node which is bound to the frame, latched shared
-     * @return replacement node, still latched
-     */
-    final _Node finishSplitShared(final _CursorFrame frame, _Node node) throws IOException {
-        doSplit: {
-            // In order to call finishSplit, the caller must hold an exclusive node lock, and
-            // a shared commit lock. At this point only a shared node lock is held.
-            //
-            // Following proper lock order, the shared commit lock should be obtained before
-            // the node lock. If another thread is attempting to acquire the exclusive commit
-            // lock, attempting to acquire the shared commit lock here might stall or deadlock.
-            //
-            // One strategy is to optimistically try to get the shared commit lock, then
-            // upgrade the shared node lock to an exclusive node lock. If either of those steps
-            // fail, all locks are released and then acquired in the proper order.
-            //
-            // The actual approach used here acquires the shared commit lock without checking
-            // the exclusive lock. This doesn't lead to starvation of any exclusive waiter
-            // because it cannot proceed when the split exists anyhow. The thread which created
-            // the split must be holding a shared commit lock already.
-            CommitLock.Shared shared = mTree.mDatabase.commitLock().acquireSharedUnchecked();
-            try {
-                if (!node.tryUpgrade()) {
-                    node.releaseShared();
-                    node = frame.acquireExclusive();
-                    if (node.mSplit == null) {
-                        break doSplit;
-                    }
-                }
-                node = mTree.finishSplit(frame, node);
-            } finally {
-                shared.release();
-            }
-        }
-        node.downgrade();
-        return node;
     }
 
     /**

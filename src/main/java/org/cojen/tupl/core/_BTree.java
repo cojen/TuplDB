@@ -1258,14 +1258,14 @@ class _BTree extends Tree implements View, Index {
      */
     final void traverseLoaded(NodeVisitor visitor) throws IOException {
         _Node node = mRoot;
-        node.acquireExclusive();
+        node.acquireShared();
 
         if (node.mSplit != null) {
             // Create a temporary frame for the root split.
             _CursorFrame frame = new _CursorFrame();
             frame.bind(node, 0);
             try {
-                node = finishSplit(frame, node);
+                node = finishSplitShared(frame, node);
             } catch (Throwable e) {
                 _CursorFrame.popAll(frame);
                 throw e;
@@ -1285,11 +1285,14 @@ class _BTree extends Tree implements View, Index {
                         break toLower;
                     }
                     long childId = node.retrieveChildRefId(pos);
-                    _Node child = mDatabase.nodeMapGetExclusive(childId);
+                    _Node child = mDatabase.nodeMapGetShared(childId);
                     if (child != null) {
-                        frame = new _CursorFrame(frame);
-                        frame.bind(node, pos);
-                        node.releaseExclusive();
+                        try {
+                            frame = new _CursorFrame(frame);
+                            frame.bind(node, pos);
+                        } finally {
+                            node.releaseShared();
+                        }
                         node = child;
                         pos = 0;
                         continue toLower;
@@ -1309,11 +1312,11 @@ class _BTree extends Tree implements View, Index {
                 return;
             }
 
-            node = frame.acquireExclusive();
+            node = frame.acquireShared();
 
             if (node.mSplit != null) {
                 try {
-                    node = finishSplit(frame, node);
+                    node = finishSplitShared(frame, node);
                 } catch (Throwable e) {
                     _CursorFrame.popAll(frame);
                     throw e;
@@ -1537,6 +1540,49 @@ class _BTree extends Tree implements View, Index {
                 e = e2;
             }
         }
+    }
+
+    /**
+     * Caller must hold shared latch and it must verify that node has split. _Node latch is
+     * released if an exception is thrown.
+     *
+     * @param frame bound cursor frame
+     * @param node node which is bound to the frame, latched shared
+     * @return replacement node, still latched
+     */
+    final _Node finishSplitShared(final _CursorFrame frame, _Node node) throws IOException {
+        doSplit: {
+            // In order to call finishSplit, the caller must hold an exclusive node lock, and
+            // a shared commit lock. At this point only a shared node lock is held.
+            //
+            // Following proper lock order, the shared commit lock should be obtained before
+            // the node lock. If another thread is attempting to acquire the exclusive commit
+            // lock, attempting to acquire the shared commit lock here might stall or deadlock.
+            //
+            // One strategy is to optimistically try to get the shared commit lock, then
+            // upgrade the shared node lock to an exclusive node lock. If either of those steps
+            // fail, all locks are released and then acquired in the proper order.
+            //
+            // The actual approach used here acquires the shared commit lock without checking
+            // the exclusive lock. This doesn't lead to starvation of any exclusive waiter
+            // because it cannot proceed when the split exists anyhow. The thread which created
+            // the split must be holding a shared commit lock already.
+            CommitLock.Shared shared = mDatabase.commitLock().acquireSharedUnchecked();
+            try {
+                if (!node.tryUpgrade()) {
+                    node.releaseShared();
+                    node = frame.acquireExclusive();
+                    if (node.mSplit == null) {
+                        break doSplit;
+                    }
+                }
+                node = finishSplit(frame, node);
+            } finally {
+                shared.release();
+            }
+        }
+        node.downgrade();
+        return node;
     }
 
     /**
