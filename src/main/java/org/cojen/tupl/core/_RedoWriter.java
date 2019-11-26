@@ -67,10 +67,9 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
     /**
      * Called after redoCommitFinal.
      *
-     * @param txn transaction committed
      * @param commitPos highest position to sync (exclusive)
      */
-    abstract void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException;
+    abstract void txnCommitSync(long commitPos) throws IOException;
 
     /**
      * Called after redoCommitFinal.

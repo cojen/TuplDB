@@ -1652,8 +1652,8 @@ class BTree extends Tree implements View, Index {
             (redo.txnRedoWriter(), mId, key, value, mode);
     }
 
-    final void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
-        mDatabase.mRedoWriter.txnCommitSync(txn, commitPos);
+    final void txnCommitSync(long commitPos) throws IOException {
+        mDatabase.mRedoWriter.txnCommitSync(commitPos);
     }
 
     /**

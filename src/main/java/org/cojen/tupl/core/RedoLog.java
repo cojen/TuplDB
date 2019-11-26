@@ -336,11 +336,11 @@ final class RedoLog extends RedoWriter {
 
     @Override
     void commitSync(TransactionContext context, long commitPos) throws IOException {
-        txnCommitSync((LocalTransaction) null, commitPos);
+        txnCommitSync(commitPos);
     }
 
     @Override
-    void txnCommitSync(LocalTransaction txn, long commitPos) throws IOException {
+    void txnCommitSync(long commitPos) throws IOException {
         try {
             force(false);
         } catch (IOException e) {

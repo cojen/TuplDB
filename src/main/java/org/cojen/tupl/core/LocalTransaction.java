@@ -221,7 +221,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                         if (commitPos != 0) {
                             if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(this, commitPos);
+                                mRedo.txnCommitSync(commitPos);
                             } else {
                                 commitPending(commitPos, null);
                                 return;
@@ -254,7 +254,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                             // Durably sync the redo log after releasing the commit lock,
                             // preventing additional blocking.
                             if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(this, commitPos);
+                                mRedo.txnCommitSync(commitPos);
                             } else {
                                 commitPending(commitPos, undo);
                                 return;
@@ -401,7 +401,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                     shared.release();
                     if (commitPos != 0) {
                         if (mDurabilityMode == DurabilityMode.SYNC) {
-                            mRedo.txnCommitSync(this, commitPos);
+                            mRedo.txnCommitSync(commitPos);
                         } else {
                             commitPending(commitPos, null);
                             return;
@@ -415,7 +415,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                     if (commitPos != 0) {
                         try {
                             if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(this, commitPos);
+                                mRedo.txnCommitSync(commitPos);
                             } else {
                                 commitPending(commitPos, undo);
                                 return;

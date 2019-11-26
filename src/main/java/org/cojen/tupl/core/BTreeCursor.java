@@ -3455,7 +3455,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             if (commitPos != 0) {
                 // Wait for commit sync without holding commit lock and node latch.
-                mTree.txnCommitSync(txn, commitPos);
+                mTree.txnCommitSync(commitPos);
             }
         } else {
             try {
@@ -3485,7 +3485,7 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 // this point, and the unsafe store committed is out-of-band. Combining safe
                 // and unsafe stores within a transaction breaks atomicity. If strong redo
                 // durability is requested, then wait for it without holding the commit lock.
-                txn.mRedo.txnCommitSync(txn, commitPos);
+                txn.mRedo.txnCommitSync(commitPos);
             }
         }
     }

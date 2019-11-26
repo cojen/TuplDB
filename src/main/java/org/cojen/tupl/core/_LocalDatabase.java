@@ -1338,7 +1338,7 @@ public final class _LocalDatabase extends CoreDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    txn.mRedo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(commitPos);
                 }
             }
 
@@ -2880,7 +2880,7 @@ public final class _LocalDatabase extends CoreDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    txn.mRedo.txnCommitSync(txn, commitPos);
+                    txn.mRedo.txnCommitSync(commitPos);
                 }
             }
 

@@ -113,7 +113,7 @@ class _ReplWriter extends _RedoWriter {
     }
 
     @Override
-    public final void txnCommitSync(_LocalTransaction txn, long commitPos) throws IOException {
+    public final void txnCommitSync(long commitPos) throws IOException {
         ReplicationManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw mEngine.unmodifiable();
