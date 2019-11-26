@@ -5655,7 +5655,7 @@ public final class _LocalDatabase extends CoreDatabase {
             CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
                 if (!isClosed()) {
-                    shared = masterUndoLog.doTruncate(mCommitLock, shared);
+                    masterUndoLog.doTruncate(mCommitLock, shared);
                 }
             } finally {
                 shared.release();

@@ -767,7 +767,7 @@ final class UndoLog implements DatabaseAccess {
         final CommitLock commitLock = mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.acquireShared();
         try {
-            shared = doTruncate(commitLock, shared);
+            doTruncate(commitLock, shared);
         } finally {
             shared.release();
         }
@@ -776,7 +776,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Truncate all log entries. Caller must hold db commit lock.
      */
-    final CommitLock.Shared doTruncate(CommitLock commitLock, final CommitLock.Shared shared)
+    final void doTruncate(CommitLock commitLock, final CommitLock.Shared shared)
         throws IOException
     {
         if (mLength > 0) {
@@ -818,8 +818,6 @@ final class UndoLog implements DatabaseAccess {
             mActiveIndexId = 0;
             mActiveKey = null;
         }
-
-        return shared;
     }
 
     /**
