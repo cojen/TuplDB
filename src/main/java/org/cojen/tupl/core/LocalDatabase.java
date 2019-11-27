@@ -2644,38 +2644,43 @@ public final class LocalDatabase extends CoreDatabase {
                 // then check if the database is closed.
                 final ArrayList<Tree> trees;
 
-                mOpenTreesLatch.acquireExclusive();
+                if (lock == null) {
+                    mOpenTreesLatch.acquireExclusive();
+                } else while (true) {
+                    lock.acquireExclusive();
+                    if (mOpenTreesLatch.tryAcquireExclusive()) {
+                        break;
+                    }
+                    // Retry to avoid a potential deadlock.
+                    lock.releaseExclusive();
+                    Thread.yield();
+                }
+
                 try {
-                    if (lock != null) {
-                        lock.acquireExclusive();
-                    }
-                    try {
-                        trees = new ArrayList<>(mOpenTreesById.size());
+                    trees = new ArrayList<>(mOpenTreesById.size());
 
-                        mOpenTreesById.traverse(entry -> {
-                            Tree tree = entry.value.get();
-                            if (tree != null) {
-                                trees.add(tree);
-                            }
-                            return true;
-                        });
-
-                        mOpenTrees.clear();
-
-                        trees.add(mRegistryKeyMap);
-
-                        trees.add(mFragmentedTrash);
-                        mFragmentedTrash = null;
-
-                        trees.add(mCursorRegistry);
-                        mCursorRegistry = null;
-                    } finally {
-                        if (lock != null) {
-                            lock.releaseExclusive();
+                    mOpenTreesById.traverse(entry -> {
+                        Tree tree = entry.value.get();
+                        if (tree != null) {
+                            trees.add(tree);
                         }
-                    }
+                        return true;
+                    });
+
+                    mOpenTrees.clear();
+
+                    trees.add(mRegistryKeyMap);
+
+                    trees.add(mFragmentedTrash);
+                    mFragmentedTrash = null;
+
+                    trees.add(mCursorRegistry);
+                    mCursorRegistry = null;
                 } finally {
                     mOpenTreesLatch.releaseExclusive();
+                    if (lock != null) {
+                        lock.releaseExclusive();
+                    }
                 }
 
                 for (Tree tree : trees) {
