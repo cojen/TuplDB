@@ -193,8 +193,7 @@ final class _FragmentedTrash {
     }
 
     /**
-     * Non-transactionally deletes all fragmented values for the given
-     * top-level transaction.
+     * Non-transactionally deletes all fragmented values for the given top-level transaction.
      */
     static void emptyTrash(_BTree trash, long txnId) throws IOException {
         var prefix = new byte[8];
@@ -230,12 +229,44 @@ final class _FragmentedTrash {
         }
     }
 
-    private static boolean deleteFragmented(_LocalDatabase db, Cursor cursor) throws IOException {
+    /**
+     * Non-transactionally deletes all fragmented values except for those that are still active.
+     *
+     * @param all pass true to also delete fragmented values for non-replicated transactions
+     */
+    static void emptyLingeringTrash(_BTree trash, LHashTable<?> activeTxns,
+                                    boolean all)
+        throws IOException
+    {
+        _LocalDatabase db = trash.mDatabase;
+        final CommitLock commitLock = db.commitLock();
+
+        try (var cursor = new _BTreeCursor(trash, Transaction.BOGUS)) {
+            cursor.autoload(false);
+            for (cursor.first(); cursor.key() != null; cursor.next()) {
+                long txnId = decodeLongBE(cursor.key(), 0);
+
+                if (txnId < 0 && !all) {
+                    // Allow non-replicated transaction to complete on its own.
+                    continue;
+                }
+
+                if (activeTxns.get(txnId) == null) {
+                    CommitLock.Shared shared = commitLock.acquireShared();
+                    try {
+                        deleteFragmented(db, cursor);
+                    } finally {
+                        shared.release();
+                    }
+                }
+            }
+        }
+    }
+
+    private static void deleteFragmented(_LocalDatabase db, Cursor cursor) throws IOException {
         cursor.load();
         byte[] value = cursor.value();
-        if (value == null) {
-            return false;
-        } else {
+        if (value != null) {
             var fragmented = p_transfer(value);
             try {
                 db.deleteFragments(fragmented, 0, value.length);
@@ -243,7 +274,6 @@ final class _FragmentedTrash {
             } finally {
                 p_delete(fragmented);
             }
-            return true;
         }
     }
 }

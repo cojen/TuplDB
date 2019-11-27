@@ -169,6 +169,13 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         try {
             mDecodeLatch.acquireExclusive();
             try {
+                if (mDecoder == null) {
+                    // This is the only time it's safe to delete all fragmented values, even
+                    // those that aren't replicated. The database has just been opened and
+                    // non-replicated transactions cannot have been created yet.
+                    mDatabase.emptyLingeringTrash(mTransactions, true);
+                }
+
                 if (mDecoder == null || mDecoder.mDeactivated) {
                     mDecoder = new ReplDecoder
                         (mManager, initialPosition, initialTxnId, mDecodeLatch);
@@ -204,9 +211,10 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     /**
      * Note: Caller must hold mDecodeLatch exclusively.
      *
-     * @param interrupt pass true to cause worker threads to exit when done
+     * @param finish pass true to interrupt all worker threads such that they exit when done;
+     * expected to be true only when called by _RedoLogApplier
      */
-    private void doReset(boolean interrupt) throws IOException {
+    private void doReset(boolean finish) throws IOException {
         final LHashTable.Obj<_LocalTransaction> remaining;
 
         if (mTransactions.size() != 0) {
@@ -225,7 +233,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
             // Assume that mDecodeLatch is held exclusively.
-            mWorkerGroup.join(interrupt);
+            mWorkerGroup.join(finish);
         }
 
         synchronized (mCursors) {
@@ -236,6 +244,8 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 return true;
             });
         }
+
+        mDatabase.emptyLingeringTrash(mTransactions, finish);
     }
 
     /**

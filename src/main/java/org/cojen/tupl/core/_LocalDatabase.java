@@ -5287,6 +5287,41 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     /**
+     * Non-transactionally deletes all fragmented values except for those that are still active.
+     *
+     * @param all pass true to also delete fragmented values for non-replicated transactions
+     */
+    void emptyLingeringTrash(LHashTable<?> activeTxns, boolean all) throws IOException {
+        mOpenTreesLatch.acquireExclusive();
+        _BTree trash = mFragmentedTrash;
+
+        if (trash != null) {
+            mOpenTreesLatch.releaseExclusive();
+            _FragmentedTrash.emptyLingeringTrash(trash, activeTxns, all);
+            return;
+        }
+
+        try {
+            trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, IX_FIND);
+            if (trash == null) {
+                mOpenTreesLatch.releaseExclusive();
+                return;
+            }
+        } catch (Throwable e) {
+            mOpenTreesLatch.releaseExclusive();
+            throw e;
+        }
+
+        mOpenTreesLatch.downgrade();
+        try {
+            _FragmentedTrash.emptyLingeringTrash(trash, activeTxns, all);
+        } finally {
+            mOpenTreesLatch.releaseShared();
+            trash.forceClose();
+        }
+    }
+
+    /**
      * Reads the node page, sets the id and cached state. _Node must be latched exclusively.
      */
     void readNode(_Node node, long id) throws IOException {
