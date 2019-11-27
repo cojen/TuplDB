@@ -46,7 +46,7 @@ class Locker implements DatabaseAccess { // weak access to database
     final LockManager mManager;
     final int mHash;
 
-    // LockOwner is currently waiting to acquire this lock. Used for deadlock detection.
+    // Locker is currently waiting to acquire this lock. Used for deadlock detection.
     Lock mWaitingFor;
 
     ParentScope mParentScope;

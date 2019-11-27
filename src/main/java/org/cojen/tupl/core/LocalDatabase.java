@@ -2200,19 +2200,8 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             }
 
-            cursorCount += mRegistry.countCursors();
-            cursorCount += mRegistryKeyMap.countCursors();
-
-            BTree trash = mFragmentedTrash;
-            if (trash != null) {
-                cursorCount += trash.countCursors();
-            }
-
-            BTree cursorRegistry = mCursorRegistry;
-            if (cursorRegistry != null) {
-                // Count the cursors which are actively registering cursors. Sounds confusing.
-                cursorCount += cursorRegistry.countCursors();
-            }
+            cursorCount += countCursors(mRegistry) + countCursors(mRegistryKeyMap)
+                + countCursors(mFragmentedTrash) + countCursors(mCursorRegistry);
 
             stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
@@ -2240,6 +2229,13 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         return stats;
+    }
+
+    /**
+     * @param tree can be null
+     */
+    private static long countCursors(BTree tree) {
+        return tree == null ? 0 : tree.countCursors();
     }
 
     static class RedoClose extends ShutdownHook.Weak<LocalDatabase> {
@@ -2527,25 +2523,11 @@ public final class LocalDatabase extends CoreDatabase {
      * @return false if stopped
      */
     private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
-        if (!visitor.apply(mRegistry)) {
+        if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
+            || !scan(visitor, openFragmentedTrash(IX_FIND))
+            || !scan(visitor, openCursorRegistry(IX_FIND)))
+        {
             return false;
-        }
-        if (!visitor.apply(mRegistryKeyMap)) {
-            return false;
-        }
-
-        BTree trash = openFragmentedTrash(IX_FIND);
-        if (trash != null) {
-            if (!visitor.apply(trash)) {
-                return false;
-            }
-        }
-
-        BTree cursorRegistry = openCursorRegistry(IX_FIND);
-        if (cursorRegistry != null) {
-            if (!visitor.apply(cursorRegistry)) {
-                return false;
-            }
         }
 
         // Note that temporary indexes aren't scanned. Some operations performed on them (the
@@ -2565,6 +2547,13 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         return true;
+    }
+
+    /**
+     * @return false if should stop scanning
+     */
+    private static boolean scan(ScanVisitor visitor, BTree tree) throws IOException {
+        return tree == null || visitor.apply(tree);
     }
 
     @Override
