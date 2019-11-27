@@ -75,7 +75,7 @@ class LocalHost {
             }
         } catch (SocketException e) {
             if (ni == null) {
-                UnknownHostException u = new UnknownHostException(e.getMessage());
+                var u = new UnknownHostException(e.getMessage());
                 u.initCause(e);
                 throw u;
             }

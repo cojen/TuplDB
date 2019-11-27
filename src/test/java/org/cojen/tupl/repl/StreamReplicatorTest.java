@@ -74,7 +74,7 @@ public class StreamReplicatorTest {
             throw new IllegalArgumentException();
         }
 
-        ServerSocket[] sockets = new ServerSocket[members];
+        var sockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
             sockets[i] = TestUtils.newServerSocket();
@@ -175,7 +175,7 @@ public class StreamReplicatorTest {
         assertTrue(writer.write(wrapped));
         assertEquals(wrapped.length, writer.waitForCommit(wrapped.length, 0));
 
-        byte[] buf = new byte[message.length];
+        var buf = new byte[message.length];
         readFully(reader, buf);
         TestUtils.fastAssertArrayEquals(message, buf);
     }
@@ -218,7 +218,7 @@ public class StreamReplicatorTest {
         long highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
-        byte[] buf = new byte[message.length];
+        var buf = new byte[message.length];
         readFully(reader, buf);
         TestUtils.fastAssertArrayEquals(message, buf);
 
@@ -256,7 +256,7 @@ public class StreamReplicatorTest {
     }
 
     private static byte[] wrapMessage(byte[] message, int control) {
-        byte[] wrapped = new byte[4 + message.length];
+        var wrapped = new byte[4 + message.length];
         Utils.encodeLongLE(wrapped, 0, message.length | control);
         System.arraycopy(message, 0, wrapped, 4, message.length);
         return wrapped;
@@ -319,7 +319,7 @@ public class StreamReplicatorTest {
         public int read(byte[] buf, int offset, int length) throws IOException {
             if (mMessage == null) {
                 while (true) {
-                    byte[] b = new byte[4];
+                    var b = new byte[4];
                     FileStateLogTest.readFully(mSource, b);
                     int len = Utils.decodeIntLE(b, 0);
 

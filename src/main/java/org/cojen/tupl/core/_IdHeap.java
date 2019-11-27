@@ -128,7 +128,7 @@ final class _IdHeap {
      * Removes a specific id, intended for recovering from exceptions.
      */
     public void remove(long id) {
-        long[] copy = new long[mIds.length];
+        var copy = new long[mIds.length];
         int pos = 0;
         while (true) {
             long removed = tryRemove();
@@ -176,7 +176,7 @@ final class _IdHeap {
      */
     public void undrain(long id, long buffer, int offset, int endOffset) {
         add(id);
-        IntegerRef offsetRef = new IntegerRef.Value();
+        var offsetRef = new IntegerRef.Value();
         offsetRef.set(offset);
         while (offsetRef.get() < endOffset) {
             id += DirectPageOps.p_ulongGetVar(buffer, offsetRef);

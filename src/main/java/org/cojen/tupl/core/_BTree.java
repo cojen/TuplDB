@@ -730,7 +730,7 @@ class _BTree extends Tree implements View, Index {
                 endKey = highKey; 
             }
             
-            long[] stats = new long[2];
+            var stats = new long[2];
             while (cursor.key() != null) {
                 byte[] key = cursor.key();
                 byte[] value = cursor.value();
@@ -1122,7 +1122,7 @@ class _BTree extends Tree implements View, Index {
 
         _Node survivorNode;
         try {
-            _Split split = new _Split(lowTree == survivor, victimNode);
+            var split = new _Split(lowTree == survivor, victimNode);
             split.setKey(survivor, midKey);
             survivorNode = survivorFrame.acquireExclusive();
             survivorNode.mSplit = split;
@@ -1260,7 +1260,7 @@ class _BTree extends Tree implements View, Index {
 
         if (node.mSplit != null) {
             // Create a temporary frame for the root split.
-            _CursorFrame frame = new _CursorFrame();
+            var frame = new _CursorFrame();
             frame.bind(node, 0);
             try {
                 node = finishSplitShared(frame, node);
@@ -1593,7 +1593,7 @@ class _BTree extends Tree implements View, Index {
         // stub is assigned a _NodeGroup. Because the stub isn't in the group usage list,
         // attempting to update its position within it has no effect. Note too that the stub
         // isn't placed into the database node map.
-        _Node stub = new _Node(mRoot.mGroup);
+        var stub = new _Node(mRoot.mGroup);
 
         // Stub isn't in the node map, so use this pointer field to link the stubs together.
         stub.mNodeMapNext = mStubTail;
@@ -1604,7 +1604,7 @@ class _BTree extends Tree implements View, Index {
 
     final _LocalTransaction check(Transaction txn) throws IllegalArgumentException {
         if (txn instanceof _LocalTransaction) {
-            _LocalTransaction local = (_LocalTransaction) txn;
+            var local = (_LocalTransaction) txn;
             _LocalDatabase txnDb = local.mDatabase;
             if (txnDb == mDatabase || txnDb == null) {
                 return local;

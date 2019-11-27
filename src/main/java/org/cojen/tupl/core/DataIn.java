@@ -316,7 +316,7 @@ abstract class DataIn extends InputStream {
      * Reads a byte string prefixed with a variable length.
      */
     public byte[] readBytes() throws IOException {
-        byte[] bytes = new byte[readUnsignedVarInt()];
+        var bytes = new byte[readUnsignedVarInt()];
         readFully(bytes);
         return bytes;
     }

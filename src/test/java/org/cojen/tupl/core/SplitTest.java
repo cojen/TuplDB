@@ -62,8 +62,8 @@ public class SplitTest {
         // Fill up a leaf node, just before it has to split, with all possible cursor bindings.
 
         final int count = 340;
-        byte[][] keys = new byte[count][];
-        BTreeCursor[] found = new BTreeCursor[count];
+        var keys = new byte[count][];
+        var found = new BTreeCursor[count];
 
         for (int i=0; i<count; i++) {
             byte[] key = key((i + 1) << 1);
@@ -78,7 +78,7 @@ public class SplitTest {
         assertTrue(root.isLeaf());
         assertEquals(4, root.availableBytes());
 
-        BTreeCursor[] notFound = new BTreeCursor[count + 1];
+        var notFound = new BTreeCursor[count + 1];
 
         for (int i=0; i<=count; i++) {
             byte[] key = key((i << 1) + 1);
@@ -105,7 +105,7 @@ public class SplitTest {
         byte[] splitKey = key(count + 1);
         assertFalse(ix.exists(null, splitKey));
         Node sibling = db.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
-        Split split = new Split(splitRight, sibling);
+        var split = new Split(splitRight, sibling);
         split.setKey(db, splitKey);
 
         int splitPos = highPos ? ((count << 1) - 50) : 50;
@@ -151,7 +151,7 @@ public class SplitTest {
     }
 
     private static byte[] key(int i) {
-        byte[] key = new byte[4];
+        var key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }

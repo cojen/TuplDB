@@ -272,15 +272,15 @@ final class SnapshotPageArray extends PageArray {
 
         TempFileManager tfm = db.mTempFileManager;
 
-        SnapshotImpl snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
+        var snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
 
         synchronized (this) {
             Object obj = mSnapshots;
             if (obj == null) {
                 mSnapshots = snapshot;
             } else if (obj instanceof SnapshotImpl[]) {
-                SnapshotImpl[] snapshots = (SnapshotImpl[]) obj;
-                SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length + 1];
+                var snapshots = (SnapshotImpl[]) obj;
+                var newSnapshots = new SnapshotImpl[snapshots.length + 1];
                 arraycopy(snapshots, 0, newSnapshots, 0, snapshots.length);
                 newSnapshots[newSnapshots.length - 1] = snapshot;
                 mSnapshots = newSnapshots;
@@ -323,7 +323,7 @@ final class SnapshotPageArray extends PageArray {
             return;
         }
 
-        SnapshotImpl[] newSnapshots = new SnapshotImpl[snapshots.length - 1];
+        var newSnapshots = new SnapshotImpl[snapshots.length - 1];
         arraycopy(snapshots, 0, newSnapshots, 0, pos);
         arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
         mSnapshots = newSnapshots;
@@ -399,7 +399,7 @@ final class SnapshotPageArray extends PageArray {
                 mCaptureBuffers[i] = p_transferPage(mCaptureBufferArrays[i], directPageSize());
             }
 
-            Launcher launcher = new Launcher();
+            var launcher = new Launcher();
             launcher.pageSize(pageSize);
             launcher.minCacheSize(pageSize * Math.max(100, slots * 16));
             mPageCopyIndex = LocalDatabase.openTemp(tfm, launcher);
@@ -440,7 +440,7 @@ final class SnapshotPageArray extends PageArray {
                 mSnapshotLatch.releaseExclusive();
             }
 
-            final byte[] pageBufferArray = new byte[pageSize()];
+            final var pageBufferArray = new byte[pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
             final var pageBuffer = p_transferPage(pageBufferArray, directPageSize());
 
@@ -455,7 +455,7 @@ final class SnapshotPageArray extends PageArray {
                 Cursor c = mPageCopyIndex.newCursor(txn);
                 try {
                     for (long index = 0; index < count; index++) {
-                        byte[] key = new byte[8];
+                        var key = new byte[8];
                         encodeLongBE(key, 0, index);
                         txn.doLockExclusive(mPageCopyIndex.getId(), key);
 
@@ -525,7 +525,7 @@ final class SnapshotPageArray extends PageArray {
             Cursor c = mPageCopyIndex.newCursor(Transaction.BOGUS);
             try {
                 c.autoload(false);
-                byte[] key = new byte[8];
+                var key = new byte[8];
                 encodeLongBE(key, 0, index);
                 c.find(key);
 

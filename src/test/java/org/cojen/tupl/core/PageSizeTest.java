@@ -48,7 +48,7 @@ public class PageSizeTest {
 
     @Test
     public void nonStandardPageSize() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .pageSize(512).durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
@@ -80,7 +80,7 @@ public class PageSizeTest {
 
     @Test
     public void restore() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .pageSize(512).durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
@@ -88,7 +88,7 @@ public class PageSizeTest {
         assertEquals(512, db.stats().pageSize());
 
         Snapshot snap = db.beginSnapshot();
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        var out = new ByteArrayOutputStream();
         snap.writeTo(out);
         db.close();
 
@@ -98,7 +98,7 @@ public class PageSizeTest {
             .durabilityMode(DurabilityMode.NO_FLUSH);
         config = decorate(config);
 
-        ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+        var in = new ByteArrayInputStream(out.toByteArray());
         db = Database.restoreFromSnapshot(config, in);
 
         assertEquals(512, db.stats().pageSize());

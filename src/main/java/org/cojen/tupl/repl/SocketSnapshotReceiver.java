@@ -45,7 +45,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
     SocketSnapshotReceiver(GroupFile groupFile, Socket socket, Map<String, String> requestOptions)
         throws IOException
     {
-        OptionsEncoder enc = new OptionsEncoder();
+        var enc = new OptionsEncoder();
         enc.encodeIntLE(0); // encoding format
         enc.encodeMap(requestOptions == null ? Collections.emptyMap() : requestOptions);
         enc.writeTo(socket.getOutputStream());

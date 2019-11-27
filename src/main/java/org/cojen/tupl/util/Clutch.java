@@ -408,7 +408,7 @@ public abstract class Clutch extends Latch {
         if (mContendedSlot < 0) {
             return super.toString();
         }
-        StringBuilder b = new StringBuilder();
+        var b = new StringBuilder();
         appendMiniString(b, this);
         return b.append(" {state=").append("contended").append('}').toString();
     }
@@ -476,7 +476,7 @@ public abstract class Clutch extends Latch {
 
             // Try to steal the slot.
             if (existing instanceof Clutch) {
-                Clutch existingClutch = (Clutch) existing;
+                var existingClutch = (Clutch) existing;
                 if (existingClutch.tryAcquireExclusive()) {
                     // If acquired exclusive, then slot has been potentially freed.
                     existingClutch.releaseExclusive();

@@ -250,7 +250,7 @@ final class TrimmedView implements View {
     byte[] applyPrefix(byte[] key, int offset, int length) {
         Utils.keyCheck(key);
         byte[] prefix = mPrefix;
-        byte[] full = new byte[prefix.length + length];
+        var full = new byte[prefix.length + length];
         System.arraycopy(prefix, 0, full, 0, prefix.length);
         System.arraycopy(key, offset, full, prefix.length, length);
         return full;

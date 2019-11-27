@@ -44,7 +44,7 @@ public interface DatabaseReplicator extends Replicator, ReplicationManager {
      */
     public static DatabaseReplicator open(ReplicatorConfig config) throws IOException {
         StreamReplicator streamRepl = StreamReplicator.open(config);
-        DatabaseReplicator dbRepl = new DatabaseStreamReplicator(streamRepl);
+        var dbRepl = new DatabaseStreamReplicator(streamRepl);
         return dbRepl;
     }
 }

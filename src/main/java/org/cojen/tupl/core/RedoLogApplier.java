@@ -63,7 +63,7 @@ final class RedoLogApplier extends ReplEngine implements ReplicationManager {
 
     @Override
     public Thread newThread(Runnable r) {
-        Thread t = new Thread(r);
+        var t = new Thread(r);
         t.setDaemon(true);
         t.setName("Recovery-" + Long.toUnsignedString(t.getId()));
         t.setUncaughtExceptionHandler((thread, ex) -> Utils.closeQuietly(mDatabase, ex));
@@ -82,7 +82,7 @@ final class RedoLogApplier extends ReplEngine implements ReplicationManager {
             mHighestTxnId = txnId;
         }
 
-        LocalTransaction txn = new LocalTransaction
+        var txn = new LocalTransaction
             (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
 
         txn.attach(attachment());

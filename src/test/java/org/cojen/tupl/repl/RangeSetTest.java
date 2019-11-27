@@ -36,8 +36,8 @@ public class RangeSetTest {
     public void basicRanges() throws Exception {
         for (int start = 10; start <= 70; start += 10) {
             for (int end = 10; end <= 70; end += 10) {
-                RangeSet set = new RangeSet();
-                TreeSet<Long> set2 = new TreeSet<>();
+                var set = new RangeSet();
+                var set2 = new TreeSet<Long>();
                 add(set, 30, 50, set2);
                 add(set, start, end, set2);
                 verify(set, set2);
@@ -47,8 +47,8 @@ public class RangeSetTest {
 
     @Test
     public void combineAdjacent() throws Exception {
-        RangeSet set = new RangeSet();
-        TreeSet<Long> set2 = new TreeSet<>();
+        var set = new RangeSet();
+        var set2 = new TreeSet<Long>();
 
         add(set, 10, 20, set2);
         add(set, 30, 40, set2);
@@ -65,8 +65,8 @@ public class RangeSetTest {
         for (int i=0; i<32; i++) {
             for (int start = 9; start <= 26; start++) {
                 for (int end = 9; end <= 27; end++) {
-                    RangeSet set = new RangeSet();
-                    TreeSet<Long> set2 = new TreeSet<>();
+                    var set = new RangeSet();
+                    var set2 = new TreeSet<Long>();
                     for (int b=1; b<32; b<<=1) {
                         if ((i & b) != 0) {
                             add(set, 10 + b - 1, 10 + b, set2);

@@ -154,7 +154,7 @@ class _GhostFrame extends _CursorFrame {
                     // Assume index was deleted.
                     break;
                 }
-                _BTreeCursor c = new _BTreeCursor((_BTree) ix);
+                var c = new _BTreeCursor((_BTree) ix);
                 if (c.deleteGhost(key)) {
                     break;
                 }

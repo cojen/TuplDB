@@ -68,10 +68,10 @@ public class ShutdownTest {
     public void shutdown() throws Exception {
         // Verifies that no inserts are lost when database is concurrently shutdown.
 
-        AtomicLong lastNum = new AtomicLong();
-        AtomicReference<Throwable> exception = new AtomicReference<>();
+        var lastNum = new AtomicLong();
+        var exception = new AtomicReference<Throwable>();
 
-        Thread t1 = new Thread(() -> {
+        var t1 = new Thread(() -> {
             try {
                 Index ix = mDb.openIndex("test");
                 long num = 1;

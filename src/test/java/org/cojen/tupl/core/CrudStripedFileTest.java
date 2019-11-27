@@ -39,11 +39,11 @@ public class CrudStripedFileTest extends CrudTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        File[] files = new File[4];
+        var files = new File[4];
         for (int i=0; i<files.length; i++) {
             files[i] = new File(newTempBaseFile(getClass()).getPath() + ".db");
         }
-        DatabaseConfig config = new DatabaseConfig().dataFiles(files).directPageAccess(false);
+        var config = new DatabaseConfig().dataFiles(files).directPageAccess(false);
         mDb = newTempDatabase(getClass(), config);
     }
 }

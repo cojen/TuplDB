@@ -409,7 +409,7 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     Node cloneNode() {
-        Node newNode = new Node(mGroup, mPage);
+        var newNode = new Node(mGroup, mPage);
         newNode.id(id());
         newNode.mCachedState = mCachedState;
         /*P*/ // [
@@ -700,7 +700,7 @@ final class Node extends Clutch implements DatabaseAccess {
         searchVecEnd(searchVecStart);
 
         // Add a parent cursor frame for all left and right node cursors.
-        CursorFrame lock = new CursorFrame();
+        var lock = new CursorFrame();
         addParentFrames(lock, left, 0);
         addParentFrames(lock, right, 2);
 
@@ -932,7 +932,7 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     private static Node createClosedNode() {
-        Node closed = new Node(null, p_closedTreePage());
+        var closed = new Node(null, p_closedTreePage());
         closed.id(CLOSED_ID);
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
@@ -1614,7 +1614,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
             }
         }
-        byte[] key = new byte[keyLen];
+        var key = new byte[keyLen];
         p_copyToArray(page, loc, key, 0, keyLen);
         return key;
     }
@@ -1638,7 +1638,7 @@ final class Node extends Clutch implements DatabaseAccess {
             keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
             result = (header & ENTRY_FRAGMENTED) == 0;
         }
-        byte[] akey = new byte[keyLen];
+        var akey = new byte[keyLen];
         p_copyToArray(page, loc, akey, 0, keyLen);
         akeyRef[0] = akey;
 
@@ -1678,7 +1678,7 @@ final class Node extends Clutch implements DatabaseAccess {
         if (cmp == 0) {
             return limitKey;
         } else if ((cmp ^ limitMode) < 0) {
-            byte[] key = new byte[keyLen];
+            var key = new byte[keyLen];
             p_copyToArray(page, loc, key, 0, keyLen);
             return key;
         } else {
@@ -1751,7 +1751,7 @@ final class Node extends Clutch implements DatabaseAccess {
         byte[] key = dbAccess.getDatabase().reconstructKey(page, loc, keyLen);
         int keyHeaderLen = Utils.calcUnsignedVarIntLength(key.length);
 
-        byte[] expanded = new byte[keyHeaderLen + key.length + valueLen];
+        var expanded = new byte[keyHeaderLen + key.length + valueLen];
 
         int offset = Utils.encodeUnsignedVarInt(expanded, 0, key.length);
         System.arraycopy(key, 0, expanded, offset, key.length);
@@ -1908,7 +1908,7 @@ final class Node extends Clutch implements DatabaseAccess {
             }
         }
 
-        byte[] value = new byte[len];
+        var value = new byte[len];
         p_copyToArray(page, loc, value, 0, len);
         return value;
     }
@@ -1980,7 +1980,7 @@ final class Node extends Clutch implements DatabaseAccess {
         throws IOException
     {
         // Allocate early, in case out of memory.
-        GhostFrame frame = new GhostFrame();
+        var frame = new GhostFrame();
 
         final var page = mPage;
         final int entryLoc = p_ushortGetLE(page, searchVecStart() + pos);
@@ -3283,7 +3283,7 @@ final class Node extends Clutch implements DatabaseAccess {
         try {
             // Leftmost key to move comes from the parent.
             int pos = left.highestInternalPos();
-            InResult result = new InResult();
+            var result = new InResult();
             left.createInternalEntry(null, result, tree, pos, parentKeyLen, (pos + 2) << 2, false);
             // Note: Must access left page each time, since compaction can replace it.
             p_copy(parentPage, parentKeyLoc, left.mPage, result.mEntryLoc, parentKeyLen);
@@ -3470,7 +3470,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         try {
             // Rightmost key to move comes from the parent.
-            InResult result = new InResult();
+            var result = new InResult();
             right.createInternalEntry(null, result, tree, 0, parentKeyLen, 0, false);
             // Note: Must access right page each time, since compaction can replace it.
             p_copy(parentPage, parentKeyLoc, right.mPage, result.mEntryLoc, parentKeyLen);
@@ -3689,7 +3689,7 @@ final class Node extends Clutch implements DatabaseAccess {
             if (garbage > remaining) {
                 // Do full compaction and free up the garbage, or split the node.
 
-                byte[][] akeyRef = new byte[1][];
+                var akeyRef = new byte[1][];
                 boolean isOriginal = retrieveActualKeyAtLoc(page, start, akeyRef);
                 byte[] akey = akeyRef[0];
 
@@ -3747,7 +3747,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 rightSegTail(entryLoc - 1);
             } else {
                 // Search vector is misaligned, so do full compaction.
-                byte[][] akeyRef = new byte[1][];
+                var akeyRef = new byte[1][];
                 int loc = p_ushortGetLE(page, searchVecStart + pos);
                 boolean isOriginal = retrieveActualKeyAtLoc(page, loc, akeyRef);
                 byte[] akey = akeyRef[0];
@@ -3886,7 +3886,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
             garbage(garbage);
 
-            InResult result = new InResult();
+            var result = new InResult();
             compactInternal(result, encodedLen, pos, Integer.MIN_VALUE);
 
             return result.mEntryLoc;
@@ -4107,7 +4107,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         // Create space to absorb parent key.
         int leftEndPos = leftNode.highestInternalPos();
-        InResult result = new InResult();
+        var result = new InResult();
         leftNode.createInternalEntry
             (null, result, tree, leftEndPos, parentLen, (leftEndPos += 2) << 2, false);
 
@@ -4281,7 +4281,7 @@ final class Node extends Clutch implements DatabaseAccess {
         /*P*/ // ]
 
         // Lock the last frames, preventing concurrent unbinding of those frames...
-        CursorFrame lock = new CursorFrame();
+        var lock = new CursorFrame();
         CursorFrame childLastFrame = child.lockLastFrame(lock);
         CursorFrame thisLastFrame = this.lockLastFrame(lock);
 
@@ -4830,7 +4830,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
                         newAvail += encodedLen + 2; // undo
 
-                        FragParams params = new FragParams();
+                        var params = new FragParams();
                         params.value = value;
                         params.encodedLen = encodedLen;
                         params.available = newAvail;
@@ -4948,7 +4948,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
                             newAvail += encodedLen + 2; // undo
 
-                            FragParams params = new FragParams();
+                            var params = new FragParams();
                             params.value = value;
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
@@ -4985,7 +4985,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
                             newAvail += encodedLen + 2; // undo
 
-                            FragParams params = new FragParams();
+                            var params = new FragParams();
                             params.value = value;
                             params.encodedLen = encodedLen;
                             params.available = newAvail;
@@ -5152,7 +5152,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 throw new DatabaseException("Fragmented entry doesn't fit");
             }
 
-            FragParams params = new FragParams();
+            var params = new FragParams();
             params.value = value;
             params.encodedLen = encodedLen;
             params.available = ~entryLoc;
@@ -5676,7 +5676,7 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     private Split newSplitLeft(Node newNode) {
-        Split split = new Split(false, newNode);
+        var split = new Split(false, newNode);
         // New left node cannot be a high extremity, and this node cannot be a low extremity.
         newNode.type((byte) (type() & ~HIGH_EXTREMITY));
         type((byte) (type() & ~LOW_EXTREMITY));
@@ -5684,7 +5684,7 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     private Split newSplitRight(Node newNode) {
-        Split split = new Split(true, newNode);
+        var split = new Split(true, newNode);
         // New right node cannot be a low extremity, and this node cannot be a high extremity.
         newNode.type((byte) (type() & ~LOW_EXTREMITY));
         type((byte) (type() & ~HIGH_EXTREMITY));
@@ -5949,7 +5949,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return 0;
             }
 
-            CursorFrame lock = new CursorFrame();
+            var lock = new CursorFrame();
             CursorFrame lockResult;
 
             while (true) {
@@ -6102,7 +6102,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 return verifyFailed(level, observer, "Child ids end: " + childIdsEnd);
             }
 
-            LHashTable.Int childIds = new LHashTable.Int(512);
+            var childIds = new LHashTable.Int(512);
 
             for (int i = childIdsStart; i < childIdsEnd; i += 8) {
                 long childId = p_uint48GetLE(page, i);

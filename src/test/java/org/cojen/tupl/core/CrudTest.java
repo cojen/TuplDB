@@ -240,7 +240,7 @@ public class CrudTest {
             }
         }
 
-        Waiter w = new Waiter();
+        var w = new Waiter();
         startAndWaitUntilBlocked(w);
 
         txn.reset();
@@ -617,7 +617,7 @@ public class CrudTest {
         View ix = openIndex("test");
 
         // Fill with ordered entries to create filled nodes.
-        byte[] key = new byte[4];
+        var key = new byte[4];
         byte[] value = "small".getBytes();
         for (int i=0; i<1000; i++) {
             Utils.encodeIntBE(key, 0, i);
@@ -666,8 +666,8 @@ public class CrudTest {
 
         // Insert random entries and verify.
 
-        LHashTable.Int skipped = new LHashTable.Int(10);
-        Random rnd = new Random(seed1);
+        var skipped = new LHashTable.Int(10);
+        var rnd = new Random(seed1);
 
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 1, 100);
@@ -702,7 +702,7 @@ public class CrudTest {
 
         // Replace random entries and verify.
 
-        Map<byte[], byte[]> replaced = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        var replaced = new TreeMap<byte[], byte[]>(KeyComparator.THE);
         rnd = new Random(seed2);
 
         for (int i=0; i<count; i++) {

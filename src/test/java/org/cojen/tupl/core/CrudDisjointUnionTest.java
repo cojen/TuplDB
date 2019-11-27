@@ -69,7 +69,7 @@ public class CrudDisjointUnionTest extends CrudNonDurableTest {
             for (byte b : key) {
                 hash = hash * 31 + b;
             }
-            byte[][] pair = new byte[2][];
+            var pair = new byte[2][];
             pair[hash & 1] = value;
             return pair;
         }

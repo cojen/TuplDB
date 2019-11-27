@@ -2284,7 +2284,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
         start: while (true) {
             reset();
-            _CursorFrame frame = new _CursorFrame();
+            var frame = new _CursorFrame();
             _Node node = latchRootNode();
 
             while (true) {
@@ -2406,7 +2406,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
 
         start: while (true) {
             reset();
-            _CursorFrame frame = new _CursorFrame();
+            var frame = new _CursorFrame();
             _Node node = latchRootNode();
 
             // Until the cursor hits a node that is 3 deep (parent of a bottom internal node), the 
@@ -2670,7 +2670,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
                 keyBytes = 0;
                 valueBytes = 0;
             } else {
-                long[] stats = new long[2];
+                var stats = new long[2];
 
                 node.retrieveKeyStats(pos, stats);
                 keyBytes = ((double) stats[0]) * numKeys;
@@ -4198,7 +4198,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         if (e instanceof DatabaseException) {
-            DatabaseException de = (DatabaseException) e;
+            var de = (DatabaseException) e;
             if (de.isRecoverable()) {
                 if (reset) {
                     reset();
@@ -4396,10 +4396,10 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     private _BTreeCursor copyNoValue() {
-        _BTreeCursor copy = new _BTreeCursor(mTree, mTxn);
+        var copy = new _BTreeCursor(mTree, mTxn);
         _CursorFrame frame = mFrame;
         if (frame != null) {
-            _CursorFrame frameCopy = new _CursorFrame();
+            var frameCopy = new _CursorFrame();
             frame.copyInto(frameCopy);
             copy.mFrame = frameCopy;
         }
@@ -4628,7 +4628,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
         // Reference to frame nodes, to detect when cursor has moved past a node. Level 0
         // represents the leaf node. Detection may also be triggered by concurrent
         // modifications to the tree, but this is not harmful.
-        _Node[] frameNodes = new _Node[height];
+        var frameNodes = new _Node[height];
 
         _CursorFrame frame = mFrame;
 
@@ -4850,7 +4850,7 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
      */
     final boolean verify(final int height, VerificationObserver observer) throws IOException {
         if (height > 0) {
-            final _Node[] stack = new _Node[height];
+            final var stack = new _Node[height];
             while (key() != null) {
                 if (!verifyFrames(height, stack, mFrame, observer)) {
                     return false;

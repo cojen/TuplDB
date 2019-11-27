@@ -129,7 +129,7 @@ public abstract class WorkerGroup {
              long keepAliveTime, TimeUnit unit,
              ThreadFactory threadFactory)
         {
-            Worker[] workers = new Worker[workerCount];
+            var workers = new Worker[workerCount];
 
             for (int i=0; i<workers.length; i++) {
                 workers[i] = Worker.make(maxSize, keepAliveTime, unit, threadFactory);

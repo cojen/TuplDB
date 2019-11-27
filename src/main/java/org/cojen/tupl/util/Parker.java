@@ -335,7 +335,7 @@ public abstract class Parker {
 
         private void rehash() {
             Entry[] entries = mEntries;
-            Entry[] newEntries = new Entry[entries.length << 1];
+            var newEntries = new Entry[entries.length << 1];
 
             for (int i=0; i<entries.length; i++) {
                 for (Entry e = entries[i]; e != null; ) {

@@ -71,8 +71,8 @@ public class ContentionTest {
             @Override
             public void run() {
                 try {
-                    byte[] key = new byte[4];
-                    byte[] value = new byte[0];
+                    var key = new byte[4];
+                    var value = new byte[0];
                     int inc = threadCount;
                     int end = insertCount;
                     for (int k=start; k<end; k+=inc) {
@@ -100,7 +100,7 @@ public class ContentionTest {
             }
         }
 
-        Runner[] runners = new Runner[threadCount];
+        var runners = new Runner[threadCount];
 
         for (int i=0; i<threadCount; i++) {
             runners[i] = new Runner(i, threadCount);

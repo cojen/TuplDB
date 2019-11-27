@@ -52,7 +52,7 @@ public class CursorDirectTest extends CursorTest {
 
         final int count = 3000;
         final int seed = 3892476;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 100, 500);
             ix.store(Transaction.BOGUS, key, key);

@@ -126,7 +126,7 @@ final class Checkpointer implements Runnable {
     }
 
     private static Thread newThread(Runnable r) {
-        Thread t = new Thread(r);
+        var t = new Thread(r);
         t.setDaemon(true);
         t.setName("Checkpointer-" + Long.toUnsignedString(t.getId()));
         return t;
@@ -218,7 +218,7 @@ final class Checkpointer implements Runnable {
                 }
 
                 if (mShutdownHook == null) {
-                    Thread hook = new Thread(() -> Checkpointer.this.close(null));
+                    var hook = new Thread(() -> Checkpointer.this.close(null));
                     try {
                         Runtime.getRuntime().addShutdownHook(hook);
                         mShutdownHook = hook;
@@ -297,7 +297,7 @@ final class Checkpointer implements Runnable {
             }
         }
 
-        final Countdown cd = new Countdown(dirtySets.length);
+        final var cd = new Countdown(dirtySets.length);
 
         for (DirtySet set : dirtySets) {
             mExtraExecutor.execute(() -> {

@@ -430,7 +430,7 @@ final class ChannelManager {
     }
 
     static byte[] newConnectHeader(long groupToken, long groupId, long memberId, int conType) {
-        byte[] header = new byte[INIT_HEADER_SIZE];
+        var header = new byte[INIT_HEADER_SIZE];
         encodeLongLE(header, 0, MAGIC_NUMBER);
         encodeLongLE(header, 8, groupToken);
         encodeLongLE(header, 16, groupId);
@@ -606,7 +606,7 @@ final class ChannelManager {
     }
 
     static void encodeHeaderCrc(byte[] header) {
-        Checksum crc = new CRC32C();
+        var crc = new CRC32C();
         crc.update(header, 0, header.length - 4);
         encodeIntLE(header, header.length - 4, (int) crc.getValue());
     }
@@ -644,7 +644,7 @@ final class ChannelManager {
     {
         InputStream in = s.getInputStream();
 
-        byte[] header = new byte[INIT_HEADER_SIZE];
+        var header = new byte[INIT_HEADER_SIZE];
         readFully(in, header, 0, header.length);
 
         if (decodeLongLE(header, 0) != MAGIC_NUMBER) {
@@ -668,7 +668,7 @@ final class ChannelManager {
             return null;
         }
 
-        Checksum crc = new CRC32C();
+        var crc = new CRC32C();
         crc.update(header, 0, header.length - 4);
         if (decodeIntLE(header, header.length - 4) != (int) crc.getValue()) {
             return null;
@@ -1551,7 +1551,7 @@ final class ChannelManager {
          * Caller must hold exclusive latch.
          */
         private byte[] growWriteBuffer(int size) {
-            byte[] buf = new byte[Math.max(size, (int) (mWriteBuffer.length * 1.5))];
+            var buf = new byte[Math.max(size, (int) (mWriteBuffer.length * 1.5))];
             mWriteBuffer = buf;
             return buf;
         }

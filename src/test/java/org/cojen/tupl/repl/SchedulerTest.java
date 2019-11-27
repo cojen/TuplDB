@@ -39,7 +39,7 @@ public class SchedulerTest {
     @Before
     public void setup() {
         mScheduler = new Scheduler(Executors.newCachedThreadPool(r -> {
-            Thread t = new Thread(r);
+            var t = new Thread(r);
             t.setPriority(Thread.MAX_PRIORITY);
             return t;
         }));
@@ -63,7 +63,7 @@ public class SchedulerTest {
     }
 
     private void doBasic() {
-        Task task = new Task();
+        var task = new Task();
         assertTrue(mScheduler.execute(task));
         task.runCheck();
 
@@ -97,12 +97,12 @@ public class SchedulerTest {
     }
 
     private void doFuzz() {
-        Task[] tasks = new Task[1000];
+        var tasks = new Task[1000];
         for (int i=0; i<tasks.length; i++) {
             tasks[i] = new Task();
         }
 
-        Random rnd = new Random(309458);
+        var rnd = new Random(309458);
 
         for (int i=0; i<tasks.length; i++) {
             long delay = rnd.nextInt(1000);

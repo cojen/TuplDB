@@ -466,7 +466,7 @@ class ReplWriter extends RedoWriter {
 
     private void checkConsumerException() throws WriteFailureException {
         if (mConsumerException != null) {
-            WriteFailureException e = new WriteFailureException(mConsumerException);
+            var e = new WriteFailureException(mConsumerException);
             mConsumerException = null;
             throw e;
         }

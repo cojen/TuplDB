@@ -34,7 +34,7 @@ public class ExtraLargeValueDirectTest extends LargeValueTest {
     @Before
     @Override
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         // Use smaller page size so that more inode levels are required without
         // requiring super large arrays.

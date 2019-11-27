@@ -76,7 +76,7 @@ public class CrudBasicTransformTest extends CrudNonDurableTest {
         public byte[] transformKey(Cursor cursor) {
             // First part of key in underlying index is a copy of the second.
             byte[] key = cursor.key();
-            byte[] tkey = new byte[key.length >> 1];
+            var tkey = new byte[key.length >> 1];
             System.arraycopy(key, 0, tkey, 0, tkey.length);
             return tkey;
         }
@@ -84,7 +84,7 @@ public class CrudBasicTransformTest extends CrudNonDurableTest {
         @Override
         public byte[] inverseTransformKey(byte[] tkey) {
             // Store the key concatenated with itself in the underlying index.
-            byte[] dup = new byte[tkey.length << 1];
+            var dup = new byte[tkey.length << 1];
             System.arraycopy(tkey, 0, dup, 0, tkey.length);
             System.arraycopy(tkey, 0, dup, tkey.length, tkey.length);
             return dup;

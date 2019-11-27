@@ -37,12 +37,12 @@ public class AAA_PageAccessTransformerTest {
     public void generateAndCompare() throws Exception {
         File src = TestUtils.findSourceDirectory();
 
-        File dst = new File(System.getProperty("java.io.tmpdir"), "tupl");
+        var dst = new File(System.getProperty("java.io.tmpdir"), "tupl");
         dst = new File(dst, "generated");
 
         TestUtils.deleteRecursively(dst);
 
-        PageAccessTransformer pa = new PageAccessTransformer(src, dst);
+        var pa = new PageAccessTransformer(src, dst);
         pa.findFiles();
         Collection<String> generated = pa.transform();
 
@@ -60,8 +60,8 @@ public class AAA_PageAccessTransformerTest {
         // Compare lines and ignore CR/LF differences.
 
         try {
-            try (BufferedReader ar = new BufferedReader(new FileReader(a))) {
-                try (BufferedReader br = new BufferedReader(new FileReader(b))) {
+            try (var ar = new BufferedReader(new FileReader(a))) {
+                try (var br = new BufferedReader(new FileReader(b))) {
                     while (true) {
                         String aline = ar.readLine();
                         String bline = br.readLine();

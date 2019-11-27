@@ -72,7 +72,7 @@ public class SecondaryCacheTest {
     }
 
     private void test(boolean durable, boolean full, boolean direct) throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .minCacheSize(1_000_000)
             .secondaryCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
@@ -92,7 +92,7 @@ public class SecondaryCacheTest {
 
         Index ix = db.openIndex("test");
 
-        Random rnd = new Random(98653245);
+        var rnd = new Random(98653245);
 
         final int count = full ? 1_000_000 : 100_000;
 

@@ -41,7 +41,7 @@ public class SorterTest {
 
     @Before
     public void setup() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointSizeThreshold(0)
             .minCacheSize(10_000_000)
@@ -152,7 +152,7 @@ public class SorterTest {
      */
     private Sorter sortMany(int count, int range, Sorter s, boolean batch) throws Exception {
         final long seed = 123 + count + range;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         if (s == null) {
             s = mDatabase.newSorter(null);
@@ -191,7 +191,7 @@ public class SorterTest {
         // Verify entries.
 
         rnd = new Random(seed);
-        TreeMap<byte[], byte[]> expected = new TreeMap<>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextInt(range)).getBytes();
@@ -220,7 +220,7 @@ public class SorterTest {
     public void largeKeysAndValues() throws Exception {
         final int count = 5000;
         final long seed = 394508;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Sorter s = mDatabase.newSorter(null);
 
@@ -269,11 +269,11 @@ public class SorterTest {
 
     private void scan(int count, boolean reverse, boolean close) throws Exception {
         final long seed = 123 + count;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Sorter s = mDatabase.newSorter(null);
 
-        TreeMap<byte[], byte[]> expected = new TreeMap<>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextLong()).getBytes();
@@ -288,7 +288,7 @@ public class SorterTest {
             scanner.close();
         }
 
-        byte[][] prevRef = new byte[1][];
+        var prevRef = new byte[1][];
 
         scanner.scanAll((k, v) -> {
             fastAssertArrayEquals(v, expected.get(k));

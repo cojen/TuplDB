@@ -178,7 +178,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                  Role.NORMAL + " to create the group, but configured role is: " + localRole);
         }
 
-        Controller con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
+        var con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
 
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
@@ -222,7 +222,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 for (int trials = 2; --trials >= 0; ) {
                     try {
-                        GroupJoiner joiner = new GroupJoiner
+                        var joiner = new GroupJoiner
                             (mEventListener, groupFile, mChanMan.getGroupToken(),
                              localAddress, listenAddress);
 
@@ -260,7 +260,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must hold exclusive latch.
     @SuppressWarnings("unchecked")
     private void refreshPeerSet() {
-        Map<Long, Channel> oldPeerChannels = new HashMap<>();
+        var oldPeerChannels = new HashMap<Long, Channel>();
 
         if (mAllChannels != null) {
             for (Channel channel : mAllChannels) {
@@ -268,7 +268,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        Map<Long, Channel> newPeerChannels = new HashMap<>();
+        var newPeerChannels = new HashMap<Long, Channel>();
 
         for (Peer peer : mGroupFile.allPeers()) {
             Long memberId = peer.mMemberId;
@@ -279,11 +279,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mChanMan.disconnect(toRemove);
         }
 
-        List<Peer> consensusPeers = new ArrayList<>();
-        List<Channel> consensusChannels = new ArrayList<>();
-        List<Channel> candidateChannels = new ArrayList<>();
-        List<Channel> proxyChannels = new ArrayList<>();
-        List<Channel> allChannels = new ArrayList<>();
+        var consensusPeers = new ArrayList<Peer>();
+        var consensusChannels = new ArrayList<Channel>();
+        var candidateChannels = new ArrayList<Channel>();
+        var proxyChannels = new ArrayList<Channel>();
+        var allChannels = new ArrayList<Channel>();
 
         for (Peer peer : mGroupFile.allPeers()) {
             Channel channel = newPeerChannels.get(peer.mMemberId);
@@ -337,7 +337,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @SuppressWarnings("unchecked")
     private static Channel[][] toArrays(List<Channel>... lists) {
-        Channel[][] arrays = new Channel[lists.length][];
+        var arrays = new Channel[lists.length][];
 
         fill: for (int i=0; i<lists.length; i++) {
             List<Channel> list = lists[i];
@@ -476,7 +476,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             {
                 return null;
             }
-            ReplWriter writer = new ReplWriter
+            var writer = new ReplWriter
                 (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0,
                  mProxyWrites ? mProxyChannels : null);
             mLeaderReplWriter = writer;
@@ -789,7 +789,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         long timeoutMillis = SNAPSHOT_REPLY_TIMEOUT_MILLIS;
         long end = System.currentTimeMillis() + timeoutMillis;
 
-        List<SnapshotScore> results = new ArrayList<>(channels.length);
+        var results = new ArrayList<SnapshotScore>(channels.length);
 
         for (int i=0; i<channels.length; ) {
             Channel channel = channels[i];
@@ -1210,7 +1210,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Avoid overlapping requests for missing data if results are flowing in.
             mReceivingMissingData = false;
         } else {
-            Collector collector = new Collector();
+            var collector = new Collector();
             mMissingContigPosition = mStateLog.checkForMissingData
                 (mMissingContigPosition, collector);
 
@@ -1427,7 +1427,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         } else {
             releaseExclusive();
 
-            StringBuilder b = new StringBuilder().append("Local member is ");
+            var b = new StringBuilder().append("Local member is ");
             if (mLocalRole == Role.STANDBY) {
                 b.append("an interim ");
             } else {
@@ -1521,7 +1521,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mLeaderLogWriter = null;
             }
 
-            StringBuilder b = new StringBuilder("Local member ");
+            var b = new StringBuilder("Local member ");
 
             if (mLocalRole == Role.STANDBY) {
                 b.append("interim ");
@@ -1638,7 +1638,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @SuppressWarnings("fallthrough")
     private boolean doRequestJoin(Socket s) throws IOException {
-        ChannelInputStream in = new ChannelInputStream(s.getInputStream(), 100);
+        var in = new ChannelInputStream(s.getInputStream(), 100);
 
         SocketAddress addr;
         long memberId;
@@ -1671,7 +1671,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (leaderReplyChannel == null || (leaderPeer = leaderReplyChannel.peer()) == null) {
                 return joinFailure(s, ErrorCodes.NO_LEADER);
             }
-            EncodingOutputStream eout = new EncodingOutputStream();
+            var eout = new EncodingOutputStream();
             eout.write(GroupJoiner.OP_ADDRESS);
             eout.encodeStr(leaderPeer.mAddress.toString());
             out.write(eout.toByteArray());
@@ -1705,7 +1705,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                     TermLog termLog = mStateLog.termLogAt(position);
 
-                    byte[] buf = new byte[1000];
+                    var buf = new byte[1000];
                     int off = 0;
                     buf[off++] = GroupJoiner.OP_JOINED;
                     encodeLongLE(buf, off, termLog.prevTermAt(position)); off += 8;
@@ -1895,7 +1895,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mEventListener == null) {
                 uncaught(e);
             } else {
-                StringBuilder b = new StringBuilder()
+                var b = new StringBuilder()
                     .append(e.isFatal() ? "Fatal commit" : "Commit")
                     .append(" conflict detected: position=").append(e.mPosition)
                     .append(", conflicting term=").append(e.mTermInfo.mTerm)
@@ -2019,7 +2019,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void toLeader(long term, long position) {
         try {
-            StringBuilder b = new StringBuilder().append("Local member is ");
+            var b = new StringBuilder().append("Local member is ");
             if (mLocalRole == Role.STANDBY) {
                 b.append("an interim ");
             } else {
@@ -2489,7 +2489,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         releaseExclusive();
 
         if (first) {
-            StringBuilder b = new StringBuilder().append("Remote member is ");
+            var b = new StringBuilder().append("Remote member is ");
             if (from.peer().role() == Role.STANDBY) {
                 b.append("an interim ");
             } else {
@@ -2796,7 +2796,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 break tryUpdateRole;
             }
 
-            Peer key = new Peer(memberId);
+            var key = new Peer(memberId);
             Peer peer = mGroupFile.allPeers().ceiling(key); // findGe
 
             if (peer == null || peer.mMemberId != memberId) {

@@ -32,10 +32,10 @@ public class LCacheTest {
 
     @Test
     public void singleton() {
-        LCache<TestEntry, Object> cache = new LCache<>(1);
+        var cache = new LCache<TestEntry, Object>(1);
 
-        TestEntry e1 = new TestEntry(1, 1);
-        TestEntry e2 = new TestEntry(2, 2);
+        var e1 = new TestEntry(1, 1);
+        var e2 = new TestEntry(2, 2);
 
         assertNull(cache.remove(1, this));
         assertNull(cache.add(e1));
@@ -62,12 +62,12 @@ public class LCacheTest {
 
     @Test
     public void evictLRU() {
-        LCache<TestEntry, Object> cache = new LCache<>(3);
+        var cache = new LCache<TestEntry, Object>(3);
 
-        TestEntry e1 = new TestEntry(1, 1);
-        TestEntry e2 = new TestEntry(2, 2);
-        TestEntry e3 = new TestEntry(3, 3);
-        TestEntry e4 = new TestEntry(4, 4);
+        var e1 = new TestEntry(1, 1);
+        var e2 = new TestEntry(2, 2);
+        var e3 = new TestEntry(3, 3);
+        var e4 = new TestEntry(4, 4);
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
@@ -114,10 +114,10 @@ public class LCacheTest {
 
     @Test
     public void cacheCheck() {
-        LCache<TestEntry, Object> cache = new LCache<>(3);
+        var cache = new LCache<TestEntry, Object>(3);
 
-        TestEntry e1 = new TestEntry(1, 1);
-        TestEntry e2 = new TestEntry(2, 2);
+        var e1 = new TestEntry(1, 1);
+        var e2 = new TestEntry(2, 2);
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
@@ -138,12 +138,12 @@ public class LCacheTest {
     }
 
     private void growMax(int newMax) {
-        LCache<TestEntry, Object> cache = new LCache<>(3);
+        var cache = new LCache<TestEntry, Object>(3);
 
-        TestEntry e1 = new TestEntry(1, 1);
-        TestEntry e2 = new TestEntry(2, 2);
-        TestEntry e3 = new TestEntry(3, 3);
-        TestEntry e4 = new TestEntry(4, 4);
+        var e1 = new TestEntry(1, 1);
+        var e2 = new TestEntry(2, 2);
+        var e3 = new TestEntry(3, 3);
+        var e4 = new TestEntry(4, 4);
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
@@ -184,7 +184,7 @@ public class LCacheTest {
     }
 
     private void reduceMax(int newMax) {
-        LCache<TestEntry, Object> cache = new LCache<>(1000);
+        var cache = new LCache<TestEntry, Object>(1000);
 
         for (int i=1; i<=1000; i++) {
             assertNull(cache.add(new TestEntry(i, i)));

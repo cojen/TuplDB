@@ -48,13 +48,13 @@ public class WorkerTest {
 
         final int max = 100;
         Worker w = Worker.make(max, 60, TimeUnit.SECONDS, null);
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
         for (int i=1; i<=max; i++) {
             assertTrue(w.tryEnqueue(new Counter(total, i, 10)));
         }
 
-        Counter task = new Counter(total, 1000, 0);
+        var task = new Counter(total, 1000, 0);
         assertFalse(w.tryEnqueue(task));
 
         w.join(false);
@@ -74,7 +74,7 @@ public class WorkerTest {
 
         final int max = 100;
         Worker w = Worker.make(max, 60, TimeUnit.SECONDS, null);
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
         final int limit = max * 2;
         for (int i=1; i<=limit; i++) {
@@ -92,7 +92,7 @@ public class WorkerTest {
 
         final int max = 100;
         Worker w = Worker.make(max, 1, TimeUnit.MILLISECONDS, null);
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
         final int limit = max * 10;
         for (int i=1; i<=limit; i++) {
@@ -111,7 +111,7 @@ public class WorkerTest {
 
         Worker w = Worker.make(100, 60, TimeUnit.SECONDS, null);
 
-        AtomicReference<Thread> threadRef = new AtomicReference<>();
+        var threadRef = new AtomicReference<Thread>();
 
         w.enqueue(new Worker.Task() {
             @Override
@@ -135,7 +135,7 @@ public class WorkerTest {
 
         // Launch a few new tasks.
 
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
         w.enqueue(new Counter(total, 123, 0));
         w.join(false);
         assertEquals(123, total.sum());
@@ -151,7 +151,7 @@ public class WorkerTest {
         
         final int max = 100;
         WorkerGroup group = WorkerGroup.make(1, max, 60, TimeUnit.SECONDS, null);
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
         Worker w = null;
 
@@ -177,9 +177,9 @@ public class WorkerTest {
         
         final int max = 100;
         WorkerGroup group = WorkerGroup.make(10, max, 60, TimeUnit.SECONDS, null);
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
-        Map<Worker, Integer> counts = new HashMap<>();
+        var counts = new HashMap<Worker, Integer>();
 
         final int limit = max * 2;
         for (int i=1; i<=limit; i++) {
@@ -215,9 +215,9 @@ public class WorkerTest {
         WorkerGroup group = WorkerGroup.make(10, max, 60, TimeUnit.SECONDS, null);
 
         long seed = new Random().nextLong();
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         long expected = 0;
-        LongAdder total = new LongAdder();
+        var total = new LongAdder();
 
         for (int i=0; i<100_000_000; i++) {
             long amt = rnd.nextLong();

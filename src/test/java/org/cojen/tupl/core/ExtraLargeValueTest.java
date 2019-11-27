@@ -38,7 +38,7 @@ public class ExtraLargeValueTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.directPageAccess(false);
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         // Use smaller page size so that more inode levels are required without
@@ -57,7 +57,7 @@ public class ExtraLargeValueTest {
 
     @Test
     public void testStoreBasic() throws Exception {
-        Random rnd = new Random(82348976232L);
+        var rnd = new Random(82348976232L);
         int[] sizes = {20000, 30000, 43519, 43520, 43521, 50000, 100000, 1000000, 4000000};
 
         for (int size : sizes) {

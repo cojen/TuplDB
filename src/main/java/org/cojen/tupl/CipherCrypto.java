@@ -146,7 +146,7 @@ public class CipherCrypto implements Crypto {
             // least 196 bytes available. Max AES block size is 32 bytes, so required space is
             // 99 bytes. If block size is 64 bytes, required header space is 195 bytes.
 
-            byte[] srcCopy = new byte[pageSize];
+            var srcCopy = new byte[pageSize];
 
             System.arraycopy(src, srcOffset, srcCopy, 0, pageSize);
             src = srcCopy;
@@ -335,7 +335,7 @@ public class CipherCrypto implements Crypto {
                                                byte[] salt, SecretKey dataKey)
         throws GeneralSecurityException
     {
-        byte[] iv = new byte[cipher.getBlockSize()];
+        var iv = new byte[cipher.getBlockSize()];
         Utils.encodeLongLE(iv, 0, pageIndex);
         initCipher(cipher, Cipher.ENCRYPT_MODE, dataKey, new IvParameterSpec(iv));
         byte[] fin = cipher.doFinal(salt);
@@ -364,7 +364,7 @@ public class CipherCrypto implements Crypto {
         if (length < 0) {
             throw new EOFException();
         }
-        byte[] iv = new byte[length + 1];
+        var iv = new byte[length + 1];
         Utils.readFully(in, iv, 0, iv.length);
         Cipher cipher = newStreamCipher();
         initCipher(cipher, Cipher.DECRYPT_MODE, mRootKey, new IvParameterSpec(iv));
@@ -382,7 +382,7 @@ public class CipherCrypto implements Crypto {
      * Returns a String with a parseable Java byte array declaration.
      */
     public static String toString(byte[] key) {
-        StringBuilder b = new StringBuilder(200);
+        var b = new StringBuilder(200);
         b.append('{');
         for (int i=0; i<key.length; i++) {
             if (i > 0) {
@@ -499,13 +499,13 @@ public class CipherCrypto implements Crypto {
     }
 
     private static byte[] decodeBlock(byte[] src, int offset) {
-        byte[] value = new byte[(src[--offset] & 0xff) + 1];
+        var value = new byte[(src[--offset] & 0xff) + 1];
         System.arraycopy(src, offset - value.length, value, 0, value.length);
         return value;
     }
 
     private static byte[] decodeBlock(long srcPtr, int offset) {
-        byte[] value = new byte[DirectPageOps.p_ubyteGet(srcPtr, --offset) + 1];
+        var value = new byte[DirectPageOps.p_ubyteGet(srcPtr, --offset) + 1];
         DirectPageOps.p_copyToArray(srcPtr, offset - value.length, value, 0, value.length);
         return value;
     }

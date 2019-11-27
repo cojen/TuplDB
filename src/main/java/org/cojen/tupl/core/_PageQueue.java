@@ -189,7 +189,7 @@ final class _PageQueue implements IntegerRef {
         // call into the recycle list, since free list nodes cannot safely be recycled.
         // Allocate as non-aggressive, preventing page manager from raiding pages that were
         // deleted instead of recycled. Full reclamation is possible only after a checkpoint.
-        _PageQueue queue = new _PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
+        var queue = new _PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
 
         // All nodes must be deleted when compaction aborts and the reserve list is raided.
         queue.mReserveReclaimUpperBound = Long.MAX_VALUE;
@@ -596,7 +596,7 @@ final class _PageQueue implements IntegerRef {
             var node = p_clonePage(mRemoveHead, pa.directPageSize());
             try {
                 long pageId = mRemoveHeadFirstPageId;
-                IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
+                var nodeOffsetRef = new IntegerRef.Value();
                 nodeOffsetRef.value = mRemoveHeadOffset;
 
                 while (true) {

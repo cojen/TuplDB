@@ -41,12 +41,12 @@ public class DataInTest {
     public void fromEmpty() throws Exception {
         // Read when nothing has been buffered yet.
 
-        Random rnd = new Random();
+        var rnd = new Random();
         byte[] src = randomStr(rnd, 500);
-        ByteArrayInputStream bin = new ByteArrayInputStream(src);
-        DataIn din = new DataIn.Stream(0, bin, 100);
+        var bin = new ByteArrayInputStream(src);
+        var din = new DataIn.Stream(0, bin, 100);
 
-        byte[] buf = new byte[500];
+        var buf = new byte[500];
         assertEquals(500, din.read(buf));
         fastAssertArrayEquals(src, buf);
 
@@ -57,10 +57,10 @@ public class DataInTest {
     public void fromEmptyEnd() throws Exception {
         // Read from an empty buffer when no more data is left.
 
-        ByteArrayInputStream bin = new ByteArrayInputStream(new byte[0]);
-        DataIn din = new DataIn.Stream(0, bin, 100);
+        var bin = new ByteArrayInputStream(new byte[0]);
+        var din = new DataIn.Stream(0, bin, 100);
 
-        byte[] buf = new byte[50];
+        var buf = new byte[50];
         assertEquals(-1, din.read(buf));
     }
 
@@ -68,12 +68,12 @@ public class DataInTest {
     public void split() throws Exception {
         // Read into the buffer, and then read partially.
 
-        Random rnd = new Random();
+        var rnd = new Random();
         byte[] src = randomStr(rnd, 100);
-        ByteArrayInputStream bin = new ByteArrayInputStream(src);
-        DataIn din = new DataIn.Stream(0, bin, 100);
+        var bin = new ByteArrayInputStream(src);
+        var din = new DataIn.Stream(0, bin, 100);
 
-        byte[] buf = new byte[100];
+        var buf = new byte[100];
         assertEquals(10, din.read(buf, 0, 10));
         assertEquals(80, din.read(buf, 10, 80));
         assertEquals(10, din.read(buf, 90, 20));
@@ -84,7 +84,7 @@ public class DataInTest {
 
     @Test
     public void unsignedInt() throws Exception {
-        byte[] src = new byte[100];
+        var src = new byte[100];
         int off = 0;
         off = Utils.encodeUnsignedVarInt(src, off, 1);
         off = Utils.encodeUnsignedVarInt(src, off, 130);
@@ -93,8 +93,8 @@ public class DataInTest {
         off = Utils.encodeUnsignedVarInt(src, off, Integer.MAX_VALUE + 10);
         assertEquals(15, off);
 
-        ByteArrayInputStream bin = new ByteArrayInputStream(src);
-        DataIn din = new DataIn.Stream(0, bin, 100);
+        var bin = new ByteArrayInputStream(src);
+        var din = new DataIn.Stream(0, bin, 100);
 
         assertEquals(1, din.readUnsignedVarInt());
         assertEquals(130, din.readUnsignedVarInt());
@@ -105,7 +105,7 @@ public class DataInTest {
 
     @Test
     public void unsignedLong() throws Exception {
-        byte[] src = new byte[100];
+        var src = new byte[100];
         int off = 0;
         off = Utils.encodeUnsignedVarLong(src, off, 1);
         off = Utils.encodeUnsignedVarLong(src, off, 130);
@@ -118,8 +118,8 @@ public class DataInTest {
         off = Utils.encodeUnsignedVarLong(src, off, ~0L);
         assertEquals(45, off);
 
-        ByteArrayInputStream bin = new ByteArrayInputStream(src);
-        DataIn din = new DataIn.Stream(0, bin, 100);
+        var bin = new ByteArrayInputStream(src);
+        var din = new DataIn.Stream(0, bin, 100);
 
         assertEquals(1, din.readUnsignedVarLong());
         assertEquals(130, din.readUnsignedVarLong());

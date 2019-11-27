@@ -52,7 +52,7 @@ public class CheckpointFailureTest {
 
     @Test
     public void checkpointResume() throws Exception {
-        DatabaseConfig config0 = new DatabaseConfig()
+        var config0 = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH)
@@ -60,7 +60,7 @@ public class CheckpointFailureTest {
 
         Database db0 = newTempDatabase(getClass(), config0);
 
-        DatabasePageArray pa = new DatabasePageArray(4096, db0);
+        var pa = new DatabasePageArray(4096, db0);
         DatabaseConfig config = config0.clone();
         config.dataPageArray(pa).baseFile(newTempBaseFile(getClass()));
         mDb = Database.open(config);
@@ -75,7 +75,7 @@ public class CheckpointFailureTest {
             Transaction txn = mDb.newTransaction();
             ix.store(txn, "hello".getBytes(), "world".getBytes());
 
-            Random rnd = new Random(seed);
+            var rnd = new Random(seed);
             for (int i=0; i<count; i++) {
                 byte[] key = randomStr(rnd, 10, 20);
                 byte[] value = randomStr(rnd, 10, 100);
@@ -106,7 +106,7 @@ public class CheckpointFailureTest {
 
         Index ix = mDb.openIndex("test");
 
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 10, 20);
             byte[] value = randomStr(rnd, 10, 100);
@@ -124,11 +124,11 @@ public class CheckpointFailureTest {
         // Test that a transaction which optimisically committed its undo log rolls back when
         // the checkpoint fails.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null);
 
-        NonReplicationManager replMan = new NonReplicationManager();
+        var replMan = new NonReplicationManager();
         config.replicate(replMan);
 
         mDb = newTempDatabase(getClass(), config);
@@ -150,7 +150,7 @@ public class CheckpointFailureTest {
 
         mDb.checkpoint();
 
-        byte[][] keys = new byte[4][];
+        var keys = new byte[4][];
         for (int i=0; i<keys.length; i++) {
             keys[i] = ("key" + i).getBytes();
         }
@@ -174,7 +174,7 @@ public class CheckpointFailureTest {
 
         var exRef = new AtomicReference<Throwable>();
 
-        Thread committer = new Thread(() -> {
+        var committer = new Thread(() -> {
             // Confirm at a lower position.
             replMan.suspendConfirmation(Thread.currentThread(), pos);
 
@@ -189,7 +189,7 @@ public class CheckpointFailureTest {
 
         var exRef2 = new AtomicReference<Throwable>();
 
-        Thread checkpointer = new Thread(() -> {
+        var checkpointer = new Thread(() -> {
             try {
                 mDb.checkpoint();
             } catch (Throwable e) {
@@ -217,7 +217,7 @@ public class CheckpointFailureTest {
 
         // Close and re-open to verify that txn 1 committed and txn 2 rolled back.
 
-        NonReplicationManager replMan2 = new NonReplicationManager();
+        var replMan2 = new NonReplicationManager();
         config.replicate(replMan2);
         mDb = reopenTempDatabase(getClass(), mDb, config);
 
@@ -240,11 +240,11 @@ public class CheckpointFailureTest {
     public void undoCommitRollback2() throws Exception {
         // Same as undoCommitRollback, but with more transactions.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null);
 
-        NonReplicationManager replMan = new NonReplicationManager();
+        var replMan = new NonReplicationManager();
         config.replicate(replMan);
 
         mDb = newTempDatabase(getClass(), config);
@@ -267,9 +267,9 @@ public class CheckpointFailureTest {
         mDb.checkpoint();
 
         final long seed = 29083745;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
-        Transaction[] txns = new Transaction[100];
+        var txns = new Transaction[100];
         int mid = txns.length / 2;
 
         long pos = Long.MIN_VALUE;
@@ -315,7 +315,7 @@ public class CheckpointFailureTest {
             }
         }
 
-        Committer[] committers = new Committer[txns.length - mid];
+        var committers = new Committer[txns.length - mid];
         for (int i=0; i<committers.length; i++) {
             committers[i] = new Committer(txns[mid + i]);
         }
@@ -326,7 +326,7 @@ public class CheckpointFailureTest {
 
         var exRef = new AtomicReference<Throwable>();
 
-        Thread checkpointer = new Thread(() -> {
+        var checkpointer = new Thread(() -> {
             try {
                 mDb.checkpoint();
             } catch (Throwable e) {
@@ -370,7 +370,7 @@ public class CheckpointFailureTest {
 
         // Close and re-open to verify the same commits and rollbacks.
 
-        NonReplicationManager replMan2 = new NonReplicationManager();
+        var replMan2 = new NonReplicationManager();
         config.replicate(replMan2);
         config.lockTimeout(1, TimeUnit.MILLISECONDS);
         mDb = reopenTempDatabase(getClass(), mDb, config);

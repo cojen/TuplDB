@@ -51,7 +51,7 @@ public class LargeKeyTest {
         Database db = Database.open(decorate(new DatabaseConfig().pageSize(4096)));
         Index ix = db.openIndex("test");
 
-        byte[] value = new byte[0];
+        var value = new byte[0];
 
         byte[][] keys = {
             new byte[2000], new byte[2001], new byte[2002], new byte[2003], new byte[2004]
@@ -84,12 +84,12 @@ public class LargeKeyTest {
         Database db = Database.open(decorate(new DatabaseConfig().pageSize(pageSize)));
         Index ix = db.openIndex("test");
 
-        byte[] value = new byte[0];
+        var value = new byte[0];
 
         final int max = Math.min(16383, ((pageSize - 22) >> 1) - 13);
 
-        byte[][] keys = new byte[1000][];
-        Random rnd = new Random(87324);
+        var keys = new byte[1000][];
+        var rnd = new Random(87324);
         for (int i=0; i<keys.length; i++) {
             keys[i] = randomStr(rnd, max, max);
         }
@@ -125,14 +125,14 @@ public class LargeKeyTest {
         Database db = Database.open(decorate(new DatabaseConfig().pageSize(pageSize)));
         Index ix = db.openIndex("test");
 
-        byte[] value = new byte[0];
+        var value = new byte[0];
 
         final int max = Math.min(16383, (pageSize / 2) - 22);
 
-        byte[][] keys = new byte[800][];
-        Random rnd = new Random(87324);
+        var keys = new byte[800][];
+        var rnd = new Random(87324);
         for (int i=0; i<keys.length; i++) {
-            byte[] key = new byte[max];
+            var key = new byte[max];
             Arrays.fill(key, (byte) '.');
             byte[] tail = randomStr(rnd, 4, 4);
             System.arraycopy(tail, 0, key, key.length - tail.length, tail.length);
@@ -164,16 +164,16 @@ public class LargeKeyTest {
         for (int t=0; t<2; t++) {
             for (int q=0; q<3; q++) {
                 for (int p : prefixes) {
-                    byte[] prefix = new byte[p];
+                    var prefix = new byte[p];
                     new Random(seed + p).nextBytes(prefix);
                     View view = ix.viewPrefix(prefix, prefix.length);
 
-                    Random rnd = new Random(seed);
-                    byte[] value = new byte[4];
+                    var rnd = new Random(seed);
+                    var value = new byte[4];
 
                     for (int i=0; i<1000; i++) {
                         int keyLen = rnd.nextInt(10000) + 1;
-                        byte[] key = new byte[keyLen];
+                        var key = new byte[keyLen];
                         rnd.nextBytes(key);
                         Utils.encodeIntLE(value, 0, hash(key));
                         if (t == 0) {
@@ -207,9 +207,9 @@ public class LargeKeyTest {
 
         final int seed = 1234567;
 
-        byte[] value = new byte[0];
+        var value = new byte[0];
 
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<1000; i++) {
             byte[] key = randomStr(rnd, 1000, 4000);
             ix.store(Transaction.BOGUS, key, value);
@@ -247,7 +247,7 @@ public class LargeKeyTest {
         Database db = newTempDatabase(getClass(), decorate(new DatabaseConfig()));
         Index ix = db.openIndex("test");
  
-        Random rnd = new Random(18732);
+        var rnd = new Random(18732);
  
         // Test with various key and value sizes.
 
@@ -275,12 +275,12 @@ public class LargeKeyTest {
 
     @Test
     public void recovery() throws Exception {
-        DatabaseConfig config = new DatabaseConfig().checkpointRate(-1, null);
+        var config = new DatabaseConfig().checkpointRate(-1, null);
         config = decorate(config);
         Database db = newTempDatabase(getClass(), config);
         Index ix = db.openIndex("test");
 
-        Random rnd = new Random(18732);
+        var rnd = new Random(18732);
 
         byte[] key1 = randomStr(rnd, 10000);
         byte[] val1 = randomStr(rnd, 100);

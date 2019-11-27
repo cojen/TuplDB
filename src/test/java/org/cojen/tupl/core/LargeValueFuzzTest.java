@@ -115,7 +115,7 @@ public class LargeValueFuzzTest {
         // threads shouldn't interfere with each other.
         long seed = new Random().nextLong();
 
-        Runner[] runners = new Runner[threads];
+        var runners = new Runner[threads];
         for (int i=0; i<runners.length; i++) {
             (runners[i] = new Runner(seed++)).start();
         }
@@ -137,7 +137,7 @@ public class LargeValueFuzzTest {
                               int valueMin, int valueMax)
         throws Exception
     {
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         for (int i=0; i<iterations; i++) {
             Index ix = mDb.openIndex("test-" + seed);
@@ -155,7 +155,7 @@ public class LargeValueFuzzTest {
     }
 
     private static byte[] rndBytes(Random rnd, int min, int max) {
-        byte[] bytes = new byte[min + rnd.nextInt(max - min)];
+        var bytes = new byte[min + rnd.nextInt(max - min)];
         rnd.nextBytes(bytes);
         return bytes;
     }

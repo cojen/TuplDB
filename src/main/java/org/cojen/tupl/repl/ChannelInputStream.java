@@ -69,11 +69,11 @@ final class ChannelInputStream extends InputStream {
     String readStr(int len) throws IOException {
         if (len <= mBuffer.length) {
             fillBuffer(len);
-            String str = new String(mBuffer, mPos, len, StandardCharsets.UTF_8);
+            var str = new String(mBuffer, mPos, len, StandardCharsets.UTF_8);
             mPos += len;
             return str;
         } else {
-            byte[] b = new byte[len];
+            var b = new byte[len];
             readFully(b, 0, b.length);
             return new String(b, StandardCharsets.UTF_8);
         }
@@ -96,7 +96,7 @@ final class ChannelInputStream extends InputStream {
      */
     void readFully(int length) throws IOException {
         if (mBuffer.length < length) {
-            byte[] newBuffer = new byte[Math.max(length, (int) (mBuffer.length * 1.5))];
+            var newBuffer = new byte[Math.max(length, (int) (mBuffer.length * 1.5))];
             int avail = mEnd - mPos;
             System.arraycopy(mBuffer, mPos, newBuffer, 0, avail);
             mBuffer = newBuffer;

@@ -579,7 +579,7 @@ abstract class AbstractFileIO extends FileIO {
             // Expecting block size to be >= page size. If block size is smaller than page 
             // size then this will not touch all the necessary blocks.
             final long currLength = doLength();
-            byte[] buf = new byte[1];
+            var buf = new byte[1];
             for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
                 // In order not to be destructive to existing data we read the byte
                 // at the given offset. If it is non-zero then assume the block 

@@ -101,7 +101,7 @@ final class CryptoPageArray extends PageArray {
             return;
         }
 
-        byte[] page = new byte[pageSize];
+        var page = new byte[pageSize];
 
         readPage(index, page);
         System.arraycopy(page, 0, dst, offset, length);
@@ -139,7 +139,7 @@ final class CryptoPageArray extends PageArray {
         try {
             int pageSize = pageSize();
             // Unknown if source contents can be destroyed, so create a new one.
-            byte[] encrypted = new byte[pageSize];
+            var encrypted = new byte[pageSize];
 
             mCrypto.encryptPage(index, pageSize, src, offset, encrypted, 0);
             mSource.writePage(index, encrypted, 0);

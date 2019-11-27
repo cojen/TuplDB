@@ -247,7 +247,7 @@ public class DatabaseReplicatorTest {
         Database db = dbs[0];
         Index ix = db.openIndex("test");
 
-        byte[] value = new byte[100_000];
+        var value = new byte[100_000];
         Arrays.fill(value, 0, value.length, (byte) 0x7f); // illegal redo op
 
         byte[] key = "hello".getBytes();
@@ -280,12 +280,12 @@ public class DatabaseReplicatorTest {
 
         Index leaderIx = leaderDb.openIndex("test");
 
-        Random rnd = new Random();
+        var rnd = new Random();
 
-        byte[] part1 = new byte[1000];
+        var part1 = new byte[1000];
         rnd.nextBytes(part1);
 
-        byte[] part2 = new byte[1000];
+        var part2 = new byte[1000];
         rnd.nextBytes(part2);
 
         Transaction txn = leaderDb.newTransaction();
@@ -312,7 +312,7 @@ public class DatabaseReplicatorTest {
         txn.commit();
         fence(leaderDb, replicaDb);
 
-        byte[] expect = new byte[part1.length + part2.length];
+        var expect = new byte[part1.length + part2.length];
         System.arraycopy(part1, 0, expect, 0, part1.length);
         System.arraycopy(part2, 0, expect, part1.length, part2.length);
 
@@ -492,7 +492,7 @@ public class DatabaseReplicatorTest {
 
         // Replace closed socket.
         SocketAddress addr = mSockets[member].getLocalSocketAddress();
-        ServerSocket ss = new ServerSocket();
+        var ss = new ServerSocket();
         ss.setReuseAddress(true);
         ss.bind(addr);
 

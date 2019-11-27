@@ -82,7 +82,7 @@ public class DatabaseException extends IOException {
         } else if (nanosTimeout < 0) {
             msg = "Infinite wait";
         } else {
-            StringBuilder b = new StringBuilder("Waited ");
+            var b = new StringBuilder("Waited ");
             Utils.appendTimeout(b, getTimeout(), getUnit());
             Object att = getOwnerAttachment();
             if (att != null) {
@@ -93,7 +93,7 @@ public class DatabaseException extends IOException {
 
         Object att = getOwnerAttachment();
         if (att != null) {
-            StringBuilder b = new StringBuilder(msg);
+            var b = new StringBuilder(msg);
             appendAttachment(b, att);
             msg = b.toString();
         }

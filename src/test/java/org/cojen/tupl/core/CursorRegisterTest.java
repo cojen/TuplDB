@@ -53,7 +53,7 @@ public class CursorRegisterTest {
 
     @Test
     public void tempIndex() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -88,7 +88,7 @@ public class CursorRegisterTest {
 
     @Test
     public void reopenRecover() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -137,7 +137,7 @@ public class CursorRegisterTest {
     @Test
     @SuppressWarnings("unchecked")
     public void longRunningCursors() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -147,7 +147,7 @@ public class CursorRegisterTest {
 
         Transaction[] txns = {db.newTransaction(), db.newTransaction(), db.newTransaction()};
 
-        Cursor[] cursors = new Cursor[100];
+        var cursors = new Cursor[100];
         for (int i=0; i<cursors.length; i++) {
             Cursor c = indexes[i % indexes.length].newCursor(txns[i % txns.length]);
             c.register();
@@ -206,7 +206,7 @@ public class CursorRegisterTest {
     public void valueAccessor() throws Exception {
         // Verify that cursor key is registered, to recover cursors which write to a stream.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -215,7 +215,7 @@ public class CursorRegisterTest {
         Index ix = db.openIndex("test");
 
         final long seed = 937854;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Cursor c = ix.newCursor(null);
         final byte[] key = "hello".getBytes();
@@ -252,7 +252,7 @@ public class CursorRegisterTest {
     public void nestedStoreCommit() throws Exception {
         // Test nested transaction commits against a registered cursor.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.NO_FLUSH);
@@ -327,11 +327,11 @@ public class CursorRegisterTest {
     public void replication() throws Exception {
         ServerSocket leaderSocket = newServerSocket();
 
-        ReplicatorConfig replConfig = new ReplicatorConfig()
+        var replConfig = new ReplicatorConfig()
             .groupToken(283947)
             .localSocket(leaderSocket);
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .replicate(replConfig);

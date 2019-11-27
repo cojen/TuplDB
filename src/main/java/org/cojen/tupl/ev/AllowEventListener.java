@@ -46,7 +46,7 @@ public final class AllowEventListener extends FilteredEventListener {
 
         Set<Level> levelSet;
         if (listener instanceof AllowEventListener) {
-            AllowEventListener allowed = (AllowEventListener) listener;
+            var allowed = (AllowEventListener) listener;
             listener = allowed.mListener;
             categorySet.retainAll(allowed.mCategories);
             levelSet = allowed.mLevels;
@@ -69,7 +69,7 @@ public final class AllowEventListener extends FilteredEventListener {
 
         Set<EventType.Category> categorySet;
         if (listener instanceof AllowEventListener) {
-            AllowEventListener allowed = (AllowEventListener) listener;
+            var allowed = (AllowEventListener) listener;
             listener = allowed.mListener;
             levelSet.retainAll(allowed.mLevels);
             categorySet = allowed.mCategories;
@@ -83,7 +83,7 @@ public final class AllowEventListener extends FilteredEventListener {
     private static EventListener make(EventListener original, EventListener listener,
                                       Set<EventType.Category> categories, Set<Level> levels)
     {
-        EventListener newListener = new AllowEventListener(listener, categories, levels);
+        var newListener = new AllowEventListener(listener, categories, levels);
         return newListener.equals(original) ? original : newListener;
     }
 

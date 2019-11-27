@@ -101,7 +101,7 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig dataFiles(File... files) {
         if (files != null && files.length != 0) {
-            File[] dataFiles = new File[files.length];
+            var dataFiles = new File[files.length];
             for (int i=0; i<files.length; i++) {
                 dataFiles[i] = files[i].getAbsoluteFile();
             }

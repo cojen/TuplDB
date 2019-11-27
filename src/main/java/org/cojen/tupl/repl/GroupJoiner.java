@@ -160,7 +160,7 @@ class GroupJoiner {
         // have a valid connect header. Non-leaders further respond with the leader address (if
         // available), and the leader responds with the term, position, and GroupFile.
 
-        EncodingOutputStream out = new EncodingOutputStream();
+        var out = new EncodingOutputStream();
         out.write(ChannelManager.newConnectHeader(mGroupToken, 0, 0, ChannelManager.TYPE_JOIN));
 
         cout.accept(out);
@@ -179,8 +179,8 @@ class GroupJoiner {
 
         int expected = seeds.size();
 
-        Set<String> joinFailureMessages = new TreeSet<>();
-        Set<String> connectFailureMessages = new TreeSet<>();
+        var joinFailureMessages = new TreeSet<String>();
+        var connectFailureMessages = new TreeSet<String>();
 
         long end = System.currentTimeMillis() + timeoutMillis;
 
@@ -236,7 +236,7 @@ class GroupJoiner {
 
         String fullMessage;
 
-        Set<String> failureMessages = new LinkedHashSet<>();
+        var failureMessages = new LinkedHashSet<String>();
         failureMessages.addAll(joinFailureMessages);
         failureMessages.addAll(connectFailureMessages);
 
@@ -297,7 +297,7 @@ class GroupJoiner {
         byte[] header = ChannelManager.readHeader(s, false, mGroupToken, 0);
 
         if (header != null) {
-            ChannelInputStream cin = new ChannelInputStream(s.getInputStream(), 1000);
+            var cin = new ChannelInputStream(s.getInputStream(), 1000);
             int op = cin.read();
             if (op == OP_ADDRESS) {
                 addr = GroupFile.parseSocketAddress(cin.readStr(cin.readIntLE()));
@@ -311,7 +311,7 @@ class GroupJoiner {
                 mPrevTerm = cin.readLongLE();
                 mTerm = cin.readLongLE();
                 mPosition = cin.readLongLE();
-                try (FileOutputStream out = new FileOutputStream(mFile)) {
+                try (var out = new FileOutputStream(mFile)) {
                     cin.drainTo(out);
                 }
                 mGroupFile = GroupFile.open(mEventListener, mFile, mLocalAddress, false);

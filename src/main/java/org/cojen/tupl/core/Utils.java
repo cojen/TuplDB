@@ -246,13 +246,13 @@ public class Utils extends org.cojen.tupl.io.Utils {
             byte lo = low[lowOff + i];
             byte hi = high[highOff + i];
             if (lo != hi) {
-                byte[] mid = new byte[i + 1];
+                var mid = new byte[i + 1];
                 System.arraycopy(low, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
-        byte[] mid = new byte[lowLen + 1];
+        var mid = new byte[lowLen + 1];
         System.arraycopy(high, highOff, mid, 0, mid.length);
         return mid;
     }
@@ -712,7 +712,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
         int len = decodeReverseUnsignedLength(b, offset);
         decrement(b, offset, offset + len);
         if (len != decodeReverseUnsignedLength(b, offset)) {
-            byte[] copy = new byte[b.length + 1];
+            var copy = new byte[b.length + 1];
             arraycopy(b, 0, copy, 0, b.length);
             copy[copy.length - 1] = (byte) 0xff;
             b = copy;
@@ -749,7 +749,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
         if (key == null) {
             return "null";
         }
-        char[] chars = new char[length << 1];
+        var chars = new char[length << 1];
         int end = offset + length;
         for (int bi=offset, ci=0; bi<end; bi++) {
             int b = key[bi] & 0xff;
@@ -768,7 +768,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     public static String toHexDump(byte[] b, int offset, int length) {
-        StringBuilder bob = new StringBuilder();
+        var bob = new StringBuilder();
 
         for (int i=0; i<length; i+=16) {
             if (i > 0) {
@@ -890,7 +890,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
      */
     static void rethrowIfRecoverable(Throwable e) throws DatabaseException {
         if (e instanceof DatabaseException) {
-            DatabaseException de = (DatabaseException) e;
+            var de = (DatabaseException) e;
             if (de.isRecoverable()) {
                 throw de;
             }
@@ -932,12 +932,12 @@ public class Utils extends org.cojen.tupl.io.Utils {
         String message = "--- thread transfer ---";
 
         StackTraceElement[] original = e.getStackTrace();
-        StackTraceElement[] local = new Exception().getStackTrace();
+        var local = new Exception().getStackTrace();
         if (local.length == 0) {
             return;
         }
 
-        StackTraceElement[] merged = new StackTraceElement[local.length + original.length];
+        var merged = new StackTraceElement[local.length + original.length];
 
         // Append original.
         System.arraycopy(original, 0, merged, 0, original.length);
@@ -952,7 +952,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     public static String toMiniString(Object obj) {
-        StringBuilder b = new StringBuilder();
+        var b = new StringBuilder();
         appendMiniString(b, obj);
         return b.toString();
     }

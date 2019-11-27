@@ -203,7 +203,7 @@ public final class DirectPageOps {
         } else {
             // Arenas are searchable in a sorted array, and nothing special needs to be done to
             // handle overlapping ranges. We trust that the operating system doesn't do this.
-            Arena[] arenas = new Arena[existing.length + 1];
+            var arenas = new Arena[existing.length + 1];
             System.arraycopy(existing, 0, arenas, 0, existing.length);
             arenas[arenas.length - 1] = arena;
             Arrays.sort(arenas);
@@ -226,7 +226,7 @@ public final class DirectPageOps {
         }
 
         try {
-            Arena[] arenas = new Arena[existing.length - 1];
+            var arenas = new Arena[existing.length - 1];
             for (int i=0,j=0; i<existing.length; i++) {
                 Arena a = existing[i];
                 if (a != arena) {
@@ -241,7 +241,7 @@ public final class DirectPageOps {
 
     static Object p_arenaAlloc(int pageSize, long pageCount) throws IOException {
         try {
-            Arena arena = new Arena(pageSize, pageCount);
+            var arena = new Arena(pageSize, pageCount);
             registerArena(arena);
             return arena;
         } catch (UnsupportedOperationException e) {
@@ -252,7 +252,7 @@ public final class DirectPageOps {
 
     static void p_arenaDelete(Object arena) throws IOException {
         if (arena instanceof Arena) {
-            Arena a = (Arena) arena;
+            var a = (Arena) arena;
             // Unregister before closing, in case new allocations are allowed in the recycled
             // memory range and then deleted. The delete method would erroneously think the page
             // is still in an arena and do nothing.
@@ -753,13 +753,13 @@ public final class DirectPageOps {
             byte lo = p_byteGet(lowPage, lowOff + i);
             byte hi = high[highOff + i];
             if (lo != hi) {
-                byte[] mid = new byte[i + 1];
+                var mid = new byte[i + 1];
                 p_copyToArray(lowPage, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
-        byte[] mid = new byte[lowLen + 1];
+        var mid = new byte[lowLen + 1];
         System.arraycopy(high, highOff, mid, 0, mid.length);
         return mid;
     }
@@ -771,13 +771,13 @@ public final class DirectPageOps {
             byte lo = low[lowOff + i];
             byte hi = p_byteGet(highPage, highOff + i);
             if (lo != hi) {
-                byte[] mid = new byte[i + 1];
+                var mid = new byte[i + 1];
                 System.arraycopy(low, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
-        byte[] mid = new byte[lowLen + 1];
+        var mid = new byte[lowLen + 1];
         p_copyToArray(highPage, highOff, mid, 0, mid.length);
         return mid;
     }
@@ -789,19 +789,19 @@ public final class DirectPageOps {
             byte lo = p_byteGet(lowPage, lowOff + i);
             byte hi = p_byteGet(highPage, highOff + i);
             if (lo != hi) {
-                byte[] mid = new byte[i + 1];
+                var mid = new byte[i + 1];
                 p_copyToArray(lowPage, lowOff, mid, 0, i);
                 mid[i] = (byte) (((lo & 0xff) + (hi & 0xff) + 1) >> 1);
                 return mid;
             }
         }
-        byte[] mid = new byte[lowLen + 1];
+        var mid = new byte[lowLen + 1];
         p_copyToArray(highPage, highOff, mid, 0, mid.length);
         return mid;
     }
 
     static int p_crc32(long srcPage, int srcStart, int len) {
-        CRC32 crc = new CRC32();
+        var crc = new CRC32();
         crc.update(DirectAccess.ref(srcPage + srcStart, len));
         return (int) crc.getValue();
     }

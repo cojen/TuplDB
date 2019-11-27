@@ -76,9 +76,9 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         assertTrue(fullLength > 20_000_000);
 
         File snapshotBase = newTempBaseFile(getClass());
-        File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
+        var snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
-        final FileOutputStream out = new FileOutputStream(snapshot);
+        final var out = new FileOutputStream(snapshot);
 
         class Suspendable extends OutputStream {
             private long mLimit;
@@ -128,10 +128,10 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         };
 
         // Copy half the snapshot for now.
-        Suspendable sout = new Suspendable();
+        var sout = new Suspendable();
         sout.setLimit(fullLength / 2);
 
-        Thread writer = new Thread(() -> {
+        var writer = new Thread(() -> {
             try {
                 s.writeTo(sout);
                 sout.close();
@@ -155,7 +155,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         sout.setLimit(Long.MAX_VALUE);
         writer.join();
 
-        DatabaseConfig restoredConfig = new DatabaseConfig()
+        var restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(snapshotBase)
             .minCacheSize(50_000_000)

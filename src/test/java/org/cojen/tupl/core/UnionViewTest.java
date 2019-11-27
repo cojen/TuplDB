@@ -36,7 +36,7 @@ public class UnionViewTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.directPageAccess(false);
         config.maxCacheSize(100000000);
         mDb = Database.open(config);
@@ -63,7 +63,7 @@ public class UnionViewTest {
 
         final int keyCount = 10;
 
-        Index[] indexes = new Index[4];
+        var indexes = new Index[4];
         for (int i=0; i<indexes.length; i++) {
             indexes[i] = mDb.openIndex("test-" + i);
             for (int j=0; j<keyCount; j++) {

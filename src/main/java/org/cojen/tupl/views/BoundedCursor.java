@@ -617,7 +617,7 @@ final class BoundedCursor implements Cursor {
 
     @Override
     public Cursor copy() {
-        BoundedCursor copy = new BoundedCursor(mView, mSource.copy());
+        var copy = new BoundedCursor(mView, mSource.copy());
         copy.mOutOfBounds = mOutOfBounds;
         return copy;
     }

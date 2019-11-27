@@ -61,7 +61,7 @@ final class PageOps {
     }
 
     private static byte[] newEmptyTreePage(int pageSize, int type) {
-        byte[] empty = new byte[pageSize];
+        var empty = new byte[pageSize];
 
         empty[0] = (byte) type;
 
@@ -374,7 +374,7 @@ final class PageOps {
     }
 
     static int p_crc32(byte[] srcPage, int srcStart, int len) {
-        CRC32 crc = new CRC32();
+        var crc = new CRC32();
         crc.update(srcPage, srcStart, len);
         return (int) crc.getValue();
     }

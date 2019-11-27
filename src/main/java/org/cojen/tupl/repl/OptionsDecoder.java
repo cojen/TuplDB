@@ -33,7 +33,7 @@ final class OptionsDecoder extends DecodingInputStream {
     }
 
     private static byte[] decode(InputStream in) throws IOException {
-        byte[] buf = new byte[4];
+        var buf = new byte[4];
         Utils.readFully(in, buf, 0, buf.length);
         buf = new byte[Utils.decodeIntLE(buf, 0) - 4];
         Utils.readFully(in, buf, 0, buf.length);

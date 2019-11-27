@@ -98,11 +98,11 @@ public class CrudBasicFilterTest extends CrudNonDurableTest {
     }
 
     static void fillNew(Index ix) throws java.io.IOException {
-        Random rnd = new Random(9821314);
+        var rnd = new Random(9821314);
         for (int i=0; i<100; i++) {
-            byte[] key = new byte[4];
+            var key = new byte[4];
             rnd.nextBytes(key);
-            byte[] value = new byte[10];
+            var value = new byte[10];
             rnd.nextBytes(value);
             value[0] = 'm';
             value[1] = 'a';

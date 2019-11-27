@@ -211,7 +211,7 @@ final class Peer implements Comparable<Peer> {
             return true;
         }
         if (obj instanceof Peer) {
-            Peer other = (Peer) obj;
+            var other = (Peer) obj;
             return mMemberId == other.mMemberId && Objects.equals(mAddress, other.mAddress)
                 && Objects.equals(mRole, other.mRole);
         }

@@ -83,7 +83,7 @@ public class MessageReplicatorTest {
             throw new IllegalArgumentException();
         }
 
-        ServerSocket[] sockets = new ServerSocket[members];
+        var sockets = new ServerSocket[members];
 
         for (int i=0; i<members; i++) {
             sockets[i] = TestUtils.newServerSocket();
@@ -268,7 +268,7 @@ public class MessageReplicatorTest {
         };
 
         final long seed = 9823745;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Writer writer = repls[0].newWriter();
 
@@ -280,7 +280,7 @@ public class MessageReplicatorTest {
         long highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
-        byte[] buf = new byte[1001];
+        var buf = new byte[1001];
 
         for (MessageReplicator repl : repls) {
             rnd = new Random(seed);
@@ -336,7 +336,7 @@ public class MessageReplicatorTest {
 
         Writer writer = repls[0].newWriter();
 
-        Reader[] readers = new Reader[count];
+        var readers = new Reader[count];
         for (int i=0; i<count; i++) {
             readers[i] = repls[i].newReader(0, true);
         }
@@ -392,7 +392,7 @@ public class MessageReplicatorTest {
 
         Writer writer = repls[0].newWriter();
 
-        Reader[] readers = new Reader[repls.length];
+        var readers = new Reader[repls.length];
         for (int i=0; i<readers.length; i++) {
             readers[i] = repls[i].newReader(0, true);
         }
@@ -427,7 +427,7 @@ public class MessageReplicatorTest {
         int writerSlot = -1;
 
         find: {
-            Writer[] writers = new Writer[repls.length];
+            var writers = new Writer[repls.length];
 
             for (int i=0; i<10; i++) {
                 for (int j=0; j<repls.length; j++) {

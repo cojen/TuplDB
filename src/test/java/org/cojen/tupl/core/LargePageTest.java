@@ -45,7 +45,7 @@ public class LargePageTest {
         // should't cause the search vector start position to overflow. All the magic numbers
         // used in this test were determined through experimentation.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).checkpointRate(-1, null).pageSize(65536);
         Database db = newTempDatabase(getClass(), config);
         Index ix = db.openIndex("test");

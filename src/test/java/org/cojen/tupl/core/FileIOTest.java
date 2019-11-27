@@ -132,7 +132,7 @@ public class FileIOTest {
         //   $ mount -t ext4 /dev/loop0 root
         
         assumeTrue(Platform.isLinux()); 
-        File f = new File("root/test.file");
+        var f = new File("root/test.file");
         if (f.exists()) f.delete();
 
         FileIO fio = FileIO.open(f, EnumSet.of(OpenOption.CREATE));

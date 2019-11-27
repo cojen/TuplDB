@@ -150,7 +150,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
 
             if (listener != null && length >= 0 && (mRepl instanceof Controller)) {
                 Scheduler scheduler = ((Controller) mRepl).scheduler();
-                RestoreInputStream rin = new RestoreInputStream(in);
+                var rin = new RestoreInputStream(in);
                 in = rin;
 
                 listener.notify(EventType.REPLICATION_RESTORE,
@@ -332,7 +332,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     private void sendSnapshot(Database db, SnapshotSender sender) throws IOException {
         Map<String, String> requestedOptions = sender.options();
 
-        Map<String, String> options = new HashMap<>();
+        var options = new HashMap<String, String>();
 
         Checksum checksum = null;
         if ("CRC32C".equals(requestedOptions.get("checksum"))) {
@@ -371,7 +371,7 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
             snapshot.writeTo(out);
 
             if (cout != null) {
-                byte[] buf = new byte[4];
+                var buf = new byte[4];
                 Utils.encodeIntLE(buf, 0, (int) checksum.getValue());
                 out.write(buf);
             }

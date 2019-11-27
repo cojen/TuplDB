@@ -81,7 +81,7 @@ public class RegistryTest {
         {
             View registry = mDb.indexRegistryById();
 
-            byte[] idKey = new byte[8];
+            var idKey = new byte[8];
             Utils.encodeLongBE(idKey, 0, ix1.getId());
             byte[] name = registry.load(null, idKey);
             assertNotNull(name);

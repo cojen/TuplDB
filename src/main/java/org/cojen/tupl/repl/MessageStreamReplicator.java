@@ -316,7 +316,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                     }
 
                     int length = readLength(avail);
-                    byte[] message = new byte[length & ~(1 << 31)];
+                    var message = new byte[length & ~(1 << 31)];
                     decodeMessage(message);
 
                     if (length >= 0) {
@@ -377,7 +377,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                         if (rem >= 0) {
                             break;
                         }
-                        byte[] message = new byte[rem & ~(1 << 31)];
+                        var message = new byte[rem & ~(1 << 31)];
                         decodeMessage(message);
                         mRepl.controlMessageReceived(position() - (mEnd - mPos), message);
                     }

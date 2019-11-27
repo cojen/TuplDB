@@ -103,7 +103,7 @@ class SortScanner implements Scanner {
     }
 
     void ready(BTree tree) throws IOException {
-        BTreeCursor c = new BTreeCursor(tree, Transaction.BOGUS);
+        var c = new BTreeCursor(tree, Transaction.BOGUS);
         initPosition(c);
         mCursor = c;
     }

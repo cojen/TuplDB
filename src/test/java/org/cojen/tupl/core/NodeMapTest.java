@@ -47,7 +47,7 @@ public class NodeMapTest {
              .directPageAccess(false).pageSize(page).maxCacheSize(size * page));
 
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, p_callocPage(page));
+            var n = new Node(null, p_callocPage(page));
             long id = idOffset + i;
             n.id(id);
             db.nodeMapPut(n, Long.hashCode(id));
@@ -82,9 +82,9 @@ public class NodeMapTest {
             (new DatabaseConfig()
              .directPageAccess(false).pageSize(page).maxCacheSize(size * page));
 
-        Node[] nodes = new Node[count];
+        var nodes = new Node[count];
         for (int i=0; i<count; i++) {
-            Node n = new Node(null, p_callocPage(page));
+            var n = new Node(null, p_callocPage(page));
             long id = idOffset + i;
             n.id(id);
             db.nodeMapPut(n, Long.hashCode(id));

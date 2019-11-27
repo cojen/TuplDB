@@ -103,8 +103,8 @@ public class RecoverTest {
             }
         };
 
-        Waiter w = new Waiter();
-        Thread t = new Thread(w);
+        var w = new Waiter();
+        var t = new Thread(w);
         startAndWaitUntilBlocked(t);
 
         Thread.sleep(1000);
@@ -463,7 +463,7 @@ public class RecoverTest {
         Index ix2 = mDb.openIndex("test2");
 
         final int seed = 5334519;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Transaction txn = mDb.newTransaction();
         for (int i=0; i<count; i++) {
@@ -576,7 +576,7 @@ public class RecoverTest {
 
         Index ix = mDb.openIndex("test");
 
-        byte[][] keys = new byte[7][];
+        var keys = new byte[7][];
         for (int i=0; i<keys.length; i++) {
             keys[i] = ("key-" + i).getBytes();
             ix.store(null, keys[i], keys[i]);
@@ -685,7 +685,7 @@ public class RecoverTest {
         Index ix2 = mDb.openIndex("test2");
 
         final int seed = 1234;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         ix1.store(null, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
         ix2.store(null, randomStr(rnd, 10, 100), randomStr(rnd, 10, 100));
@@ -915,7 +915,7 @@ public class RecoverTest {
         Index ix2 = mDb.openIndex("test2");
         ix2.store(null, "hello".getBytes(), "world".getBytes());
 
-        File primer = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".primer");
+        var primer = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".primer");
         assertFalse(primer.exists());
 
         mDb.close();
@@ -934,7 +934,7 @@ public class RecoverTest {
             mDb = newTempDatabase(getClass(), mConfig.cachePriming(false));
             mDb.close();
             File base = baseFileForTempDatabase(getClass(), mDb);
-            File newPrimer = new File(base.getPath() + ".primer");
+            var newPrimer = new File(base.getPath() + ".primer");
             assertTrue(primer.renameTo(newPrimer));
             primer = newPrimer;
             mConfig.cachePriming(true);
@@ -1063,7 +1063,7 @@ public class RecoverTest {
 
         Index ix = mDb.openIndex("test");
 
-        Transaction[] txns = new Transaction[1000];
+        var txns = new Transaction[1000];
 
         for (int i=0; i<txns.length; i++) {
             txns[i] = mDb.newTransaction();
@@ -1085,7 +1085,7 @@ public class RecoverTest {
         // of it. This exersizes handling of the OP_COMMIT_TRUNCATE operation during recovery.
 
         final Index ix = mDb.openIndex("test");
-        Random rnd = new Random(3494847);
+        var rnd = new Random(3494847);
 
         Transaction txn = mDb.newTransaction();
         for (int i=0; i<100_000; i++) {
@@ -1094,7 +1094,7 @@ public class RecoverTest {
             ix.store(txn, key, value);
         }
 
-        Thread checkpointer = new Thread(() -> {
+        var checkpointer = new Thread(() -> {
             try {
                 Thread.sleep(100);
 
@@ -1135,7 +1135,7 @@ public class RecoverTest {
 
     @Test
     public void testUndoNonReplicatedTransaction() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC);
@@ -1143,7 +1143,7 @@ public class RecoverTest {
         decorate(config);
 
         // open database with NonReplicationManager
-        NonReplicationManager replMan = new NonReplicationManager();
+        var replMan = new NonReplicationManager();
         config.replicate(replMan);
         Database db = newTempDatabase(getClass(), config);
 
@@ -1211,7 +1211,7 @@ public class RecoverTest {
         // Tests how the UndoLog.OP_COMMIT operation detects a checkpoint in the middle of a
         // transaction commit. It should sweep through and delete any lingering ghost records.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC);
@@ -1219,7 +1219,7 @@ public class RecoverTest {
         decorate(config);
 
         // open database with NonReplicationManager
-        NonReplicationManager replMan = new NonReplicationManager();
+        var replMan = new NonReplicationManager();
         config.replicate(replMan);
         Database db = newTempDatabase(getClass(), config);
 
@@ -1240,7 +1240,7 @@ public class RecoverTest {
 
         Index ix2 = db.openIndex("test2");
 
-        Random rnd = new Random(123);
+        var rnd = new Random(123);
 
         byte[] k1 = "k1".getBytes();
         byte[] v1 = "v1".getBytes();
@@ -1264,7 +1264,7 @@ public class RecoverTest {
         ix1.delete(txn, k3);
         ix2.delete(txn, k4);
 
-        AtomicReference<Exception> ex = new AtomicReference<>();
+        var ex = new AtomicReference<Exception>();
 
         Thread t1 = startAndWaitUntilBlocked(new Thread() {
             @Override
@@ -1293,7 +1293,7 @@ public class RecoverTest {
         }
 
         // Close and reopen, forcing clean up.
-        NonReplicationManager replMan2 = new NonReplicationManager();
+        var replMan2 = new NonReplicationManager();
         config.replicate(replMan2);
         db = reopenTempDatabase(getClass(), db, config);
         replMan2.asLeader();

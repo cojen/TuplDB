@@ -74,7 +74,7 @@ public class CompactTest {
         final int seed = 98232;
         final int count = 100000;
 
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd.nextInt();
             byte[] key = ("key" + k).getBytes();
@@ -194,8 +194,8 @@ public class CompactTest {
         final Index ix = openTestIndex();
         final int seed = 1234;
 
-        Random rnd1 = new Random(seed);
-        Random rnd2 = new Random(seed);
+        var rnd1 = new Random(seed);
+        var rnd2 = new Random(seed);
 
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
@@ -281,7 +281,7 @@ public class CompactTest {
         final int seed = 98232;
         final int count = 100000;
 
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd.nextInt();
             byte[] key = ("key" + k).getBytes();
@@ -300,7 +300,7 @@ public class CompactTest {
         mDb.checkpoint();
         Database.Stats stats1 = mDb.stats();
 
-        CompactionObserver obs = new CompactionObserver() {
+        var obs = new CompactionObserver() {
             private int count;
 
             @Override
@@ -325,7 +325,7 @@ public class CompactTest {
         final int seed = 98232;
         final int count = 100000;
 
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd.nextInt();
             byte[] key = ("key" + k).getBytes();
@@ -365,7 +365,7 @@ public class CompactTest {
             }
         };
 
-        final Obs obs = new Obs();
+        final var obs = new Obs();
 
         class Compactor extends Thread {
             volatile Object result;
@@ -383,7 +383,7 @@ public class CompactTest {
             }
         };
 
-        Compactor comp = new Compactor();
+        var comp = new Compactor();
         comp.start();
 
         // Compaction will abort because of database growth.
@@ -458,7 +458,7 @@ public class CompactTest {
             }
         };
 
-        Compactor comp = new Compactor();
+        var comp = new Compactor();
         comp.start();
 
         final Index ix = openTestIndex();
@@ -468,8 +468,8 @@ public class CompactTest {
         for (int round=0; round<1000; round++) {
             int roundCount = round;
 
-            Random rnd1 = new Random(seed);
-            Random rnd2 = new Random(seed);
+            var rnd1 = new Random(seed);
+            var rnd2 = new Random(seed);
 
             for (int i=0; i<roundCount; i++) {
                 int k = rnd1.nextInt();
@@ -600,8 +600,8 @@ public class CompactTest {
         final int seed = 793846;
         final int count = 500000;
 
-        Random rnd = new Random(seed);
-        byte[] value = new byte[0];
+        var rnd = new Random(seed);
+        var value = new byte[0];
 
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 10, 20);
@@ -662,10 +662,10 @@ public class CompactTest {
             assertFalse(mDb.compactFile(null, 0.9));
         }
 
-        File dbFile = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".db");
+        var dbFile = new File(baseFileForTempDatabase(getClass(), mDb).getPath() + ".db");
         assertTrue(dbFile.length() > 1_000_000);
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        var bout = new ByteArrayOutputStream();
         snap.writeTo(bout);
 
         assertTrue(mDb.compactFile(null, 0.9));
@@ -673,7 +673,7 @@ public class CompactTest {
 
         deleteTempDatabase(getClass(), mDb);
 
-        ByteArrayInputStream bin = new ByteArrayInputStream(bout.toByteArray());
+        var bin = new ByteArrayInputStream(bout.toByteArray());
 
         DatabaseConfig config = decorate(new DatabaseConfig()
                                          .baseFile(newTempBaseFile(getClass())));

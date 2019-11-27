@@ -188,7 +188,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     private Thread newThread(Runnable r, String namePrefix) {
-        Thread t = new Thread(r);
+        var t = new Thread(r);
         t.setDaemon(true);
         t.setName(namePrefix + '-' + Long.toUnsignedString(t.getId()));
         t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
@@ -298,7 +298,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     public boolean store(long indexId, byte[] key, byte[] value) throws IOException {
         // Must acquire the lock before task is enqueued.
 
-        Locker locker = new Locker(mDatabase.mLockManager) {
+        var locker = new Locker(mDatabase.mLockManager) {
             // Superclass doesn't support attachments by default.
             @Override
             public Object attachment() {
@@ -614,7 +614,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
-        Worker.Task task = new Worker.Task() {
+        var task = new Worker.Task() {
             public void run() throws IOException {
                 if (lock != null) {
                     txn.push(lock);
@@ -1130,7 +1130,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     protected LocalTransaction newTransaction(long txnId) {
-        LocalTransaction txn = new LocalTransaction
+        var txn = new LocalTransaction
             (mDatabase, txnId, LockMode.UPGRADABLE_READ, INFINITE_TIMEOUT);
         txn.attach(ATTACHMENT);
         return txn;
@@ -1192,7 +1192,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             return null;
         }
 
-        SoftReference<Index> ref = new SoftReference<>(ix);
+        var ref = new SoftReference<Index>(ix);
 
         synchronized (mIndexes) {
             mIndexes.insert(indexId).value = ref;

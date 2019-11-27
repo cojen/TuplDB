@@ -656,7 +656,7 @@ class Locker implements DatabaseAccess { // weak access to database
      * @return new parent scope
      */
     final ParentScope scopeEnter() {
-        ParentScope parent = new ParentScope();
+        var parent = new ParentScope();
         parent.mParentScope = mParentScope;
         Object tailObj = mTailBlock;
         parent.mTailBlock = tailObj;
@@ -695,7 +695,7 @@ class Locker implements DatabaseAccess { // weak access to database
                 mManager.doUnlock(this, (Lock) tailObj);
                 mTailBlock = null;
             } else {
-                Block tail = (Block) tailObj;
+                var tail = (Block) tailObj;
                 if (tail != null) {
                     do {
                         tail.unlockToSavepoint(this, 0);
@@ -707,7 +707,7 @@ class Locker implements DatabaseAccess { // weak access to database
         } else if (parentTailObj instanceof Lock) {
             Object tailObj = mTailBlock;
             if (tailObj instanceof Block) {
-                Block tail = (Block) tailObj;
+                var tail = (Block) tailObj;
                 while (true) {
                     Block prev = tail.peek();
                     if (prev == null) {
@@ -721,7 +721,7 @@ class Locker implements DatabaseAccess { // weak access to database
                 mTailBlock = tail;
             }
         } else {
-            Block tail = (Block) mTailBlock;
+            var tail = (Block) mTailBlock;
             while (tail != parentTailObj) {
                 tail.unlockToSavepoint(this, 0);
                 tail = tail.pop();
@@ -746,7 +746,7 @@ class Locker implements DatabaseAccess { // weak access to database
         }
 
         if (tailObj instanceof Lock) {
-            Lock lock = (Lock) tailObj;
+            var lock = (Lock) tailObj;
             if (lock.mLockCount != ~0) {
                 mManager.doUnlock(this, lock);
             } else if (newOwner == this) {
@@ -759,7 +759,7 @@ class Locker implements DatabaseAccess { // weak access to database
             return;
         }
 
-        Block tail = (Block) tailObj;
+        var tail = (Block) tailObj;
         Block last = null;
         do {
             int size = tail.transferExclusive(this, newOwner);
@@ -827,7 +827,7 @@ class Locker implements DatabaseAccess { // weak access to database
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             if (tailObj != lock || mParentScope != null) {
-                Block block = new Block((Lock) tailObj, lock);
+                var block = new Block((Lock) tailObj, lock);
                 block.secondUpgrade();
                 mTailBlock = block;
             }
@@ -864,7 +864,7 @@ class Locker implements DatabaseAccess { // weak access to database
         private Block mPrev;
 
         Block(Lock first, Lock second) {
-            Lock[] locks = new Lock[FIRST_BLOCK_CAPACITY];
+            var locks = new Lock[FIRST_BLOCK_CAPACITY];
             locks[0] = first;
             locks[1] = second;
             mLocks = locks;

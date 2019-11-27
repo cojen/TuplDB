@@ -48,7 +48,7 @@ public class PageCacheTest {
     }
 
     private void fill(boolean scramble) {
-        PageCache cache = new BasicPageCache(1_000_000, 4096);
+        var cache = new BasicPageCache(1_000_000, 4096);
         assertTrue(cache.capacity() > 0);
         assertTrue(cache.capacity() <= 1_000_000);
         assertTrue(cache.maxEntryCount() > 0);
@@ -57,7 +57,7 @@ public class PageCacheTest {
         final long seed = System.nanoTime();
         final /*P*/ byte[] page = p_alloc(4096);
         try {
-            Random rnd = new Random(seed);
+            var rnd = new Random(seed);
 
             for (int i = 0; i < cache.maxEntryCount(); i++) {
                 long pageId = i;
@@ -116,12 +116,12 @@ public class PageCacheTest {
     }
 
     private void evict(boolean scramble) {
-        PageCache cache = new BasicPageCache(100_000, 100);
+        var cache = new BasicPageCache(100_000, 100);
 
         final long seed = System.nanoTime();
         final /*P*/ byte[] page = p_alloc(100);
         try {
-            Random rnd = new Random(seed);
+            var rnd = new Random(seed);
 
             for (int i = 0; i < cache.maxEntryCount() * 2; i++) {
                 long pageId = i + 1;
@@ -163,7 +163,7 @@ public class PageCacheTest {
 
     @Test
     public void closed() {
-        PageCache cache = new BasicPageCache(256, 4);
+        var cache = new BasicPageCache(256, 4);
         cache.close();
 
         final /*P*/ byte[] p1 = p_alloc(4);
@@ -184,7 +184,7 @@ public class PageCacheTest {
 
     @Test
     public void stripes() {
-        PageCache cache = new StripedPageCache(1_000_000, 4096, 16);
+        var cache = new StripedPageCache(1_000_000, 4096, 16);
         assertTrue(cache.capacity() > 0);
         assertTrue(cache.capacity() <= 1_000_000);
         assertTrue(cache.maxEntryCount() > 0);
@@ -193,7 +193,7 @@ public class PageCacheTest {
         final long seed = System.nanoTime();
         final /*P*/ byte[] page = p_alloc(4096);
         try {
-            Random rnd = new Random(seed);
+            var rnd = new Random(seed);
 
             for (int i = 0; i < cache.maxEntryCount(); i++) {
                 long pageId = i + 1;

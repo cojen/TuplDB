@@ -93,7 +93,7 @@ public class UpdaterTest extends ScannerTest {
         }
 
         u = newUpdater(ix, txn);
-        AtomicInteger count = new AtomicInteger();
+        var count = new AtomicInteger();
         u.scanAll((k, v) -> count.getAndIncrement());
         assertEquals(0, count.get());
         assertNull(u.key());
@@ -292,7 +292,7 @@ public class UpdaterTest extends ScannerTest {
 
         for (int i=0; i<10; i++) {
             byte[] value = ix.load(null, ("" + i).getBytes());
-            String str = new String(value);
+            var str = new String(value);
             String expect = (((i & 1) == 1) ? "value-" : "updated-") + i;
             assertEquals(expect, str);
         }

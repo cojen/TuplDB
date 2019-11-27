@@ -41,7 +41,7 @@ public class ScannerTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.directPageAccess(false);
         config.maxCacheSize(100000000);
         mDb = Database.open(config);
@@ -91,7 +91,7 @@ public class ScannerTest {
         assertFalse(s.step());
 
         s = newScanner(ix, null);
-        AtomicInteger count = new AtomicInteger();
+        var count = new AtomicInteger();
         s.scanAll((k, v) -> count.getAndIncrement());
         assertEquals(0, count.get());
         assertNull(s.key());
@@ -145,8 +145,8 @@ public class ScannerTest {
             volatile byte[] key;
             volatile byte[] value;
         }
-        Observed obs = new Observed();
-        AtomicInteger count = new AtomicInteger();
+        var obs = new Observed();
+        var count = new AtomicInteger();
         s.scanAll((k, v) -> {
             obs.count++;
             obs.key = k;
@@ -166,7 +166,7 @@ public class ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        ArrayList<SimpleEntry<byte[], byte[]>> list = new ArrayList<>();
+        var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
         Scanner s = newScanner(ix, null);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
@@ -202,7 +202,7 @@ public class ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        ArrayList<SimpleEntry<byte[], byte[]>> list = new ArrayList<>();
+        var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
         Transaction txn = mDb.newTransaction();
         assertEquals(LockMode.UPGRADABLE_READ, txn.lockMode());
         Scanner s = newScanner(ix, txn);

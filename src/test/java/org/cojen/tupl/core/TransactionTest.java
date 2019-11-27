@@ -274,7 +274,7 @@ public class TransactionTest {
         Index ix2 = mDb.openIndex("test2");
 
         final int seed = 8384712;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Transaction txn = mDb.newTransaction();
         for (int i=0; i<100000; i++) {
@@ -427,7 +427,7 @@ public class TransactionTest {
         Index ix = mDb.openIndex("test");
 
         byte[] key = "key".getBytes();
-        byte[] value = new byte[100_000];
+        var value = new byte[100_000];
         ix.store(null, key, value);
 
         Transaction txn = mDb.newTransaction();
@@ -607,7 +607,7 @@ public class TransactionTest {
     public void undeleteFragmentedMissing() throws Exception {
         // Test when an undo log refers to fragments for an index which is missing.
 
-        Random rnd = new Random(23895777);
+        var rnd = new Random(23895777);
         byte[] bigValue = randomStr(rnd, 10000);
         byte[] bigKey = randomStr(rnd, 10000);
         byte[] smallKey = "key".getBytes();
@@ -652,7 +652,7 @@ public class TransactionTest {
         } catch (IllegalArgumentException e) {
         }
 
-        Exception ex = new Exception();
+        var ex = new Exception();
         txn.reset(ex);
         try {
             txn.check();

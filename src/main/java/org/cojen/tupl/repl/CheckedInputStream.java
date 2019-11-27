@@ -43,7 +43,7 @@ class CheckedInputStream extends InputStream {
 
     @Override
     public int read() throws IOException {
-        byte[] buf = new byte[1];
+        var buf = new byte[1];
         return read(buf) <= 0 ? -1 : (buf[0] & 0xff);
     }
 
@@ -64,7 +64,7 @@ class CheckedInputStream extends InputStream {
         mChecksum.update(buf, off, amt);
 
         if ((mRemaining -= amt) <= 0) {
-            byte[] expectBuf = new byte[4];
+            var expectBuf = new byte[4];
             try {
                 Utils.readFully(mSource, expectBuf, 0, expectBuf.length);
             } catch (EOFException e) {

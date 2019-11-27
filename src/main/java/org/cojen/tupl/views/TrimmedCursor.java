@@ -319,7 +319,7 @@ final class TrimmedCursor implements Cursor {
 
     @Override
     public Cursor copy() {
-        TrimmedCursor c = new TrimmedCursor(mView, mSource.copy());
+        var c = new TrimmedCursor(mView, mSource.copy());
         c.mKey = mKey;
         return c;
     }

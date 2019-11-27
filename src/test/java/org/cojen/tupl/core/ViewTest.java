@@ -711,7 +711,7 @@ public class ViewTest {
         i = 100;
         c = view.viewReverse().newCursor(null);
         for (c.first(); c.key() != null; c.next()) {
-            String strKey = new String(c.key());
+            var strKey = new String(c.key());
             if (strKey.equals("key-hello")) {
                 continue;
             }

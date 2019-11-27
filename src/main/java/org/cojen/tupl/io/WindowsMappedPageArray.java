@@ -178,8 +178,7 @@ class WindowsMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        WindowsMappedPageArray pa = new WindowsMappedPageArray
-            (pageSize(), super.getPageCount(), mFile, mOptions);
+        var pa = new WindowsMappedPageArray(pageSize(), super.getPageCount(), mFile, mOptions);
         pa.mEmpty = empty;
         return pa;
     }

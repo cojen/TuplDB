@@ -34,7 +34,7 @@ public class SorterDirectTest extends SorterTest {
     @Before
     @Override
     public void setup() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(true)
             .checkpointSizeThreshold(0)
             .minCacheSize(10_000_000)

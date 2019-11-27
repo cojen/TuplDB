@@ -69,7 +69,7 @@ public class SmallCacheTest {
     public void loadTreeRoot() throws Exception {
         // Tests Database.loadTreeRoot, which allocates a root node.
 
-        List<Index> indexes = new ArrayList<Index>();
+        var indexes = new ArrayList<Index>();
 
         int i = 0;
         try {
@@ -209,7 +209,7 @@ public class SmallCacheTest {
     }
 
     private List<Index> fillCacheWithIndexes() throws Exception {
-        List<Index> indexes = new ArrayList<Index>();
+        var indexes = new ArrayList<Index>();
         try {
             for (int i=0; i<100; i++) {
                 indexes.add(mDb.openIndex("ix_" + i));

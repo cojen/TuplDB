@@ -61,24 +61,24 @@ public class CLL {
     }
 
     private static CLL test(int size, int numThreads) throws Exception {
-        CLL queue = new CLL();
+        var queue = new CLL();
 
         {
-            Node n1 = new Node();
-            Node n2 = new Node();
+            var n1 = new Node();
+            var n2 = new Node();
             queue.add(n1);
             queue.add(n2);
             queue.remove(n1);
             queue.remove(n2);
         }
 
-        Thread[] threads = new Thread[numThreads];
+        var threads = new Thread[numThreads];
         int count = size / numThreads;
 
         for (int i=0; i<threads.length; i++) {
             threads[i] = new Thread(() -> {
                 for (int j=0; j<count; j++) {
-                    Node n = new Node();
+                    var n = new Node();
                     queue.add(n);
                     if ((j & 1) == 1) {
                         //Thread.yield();

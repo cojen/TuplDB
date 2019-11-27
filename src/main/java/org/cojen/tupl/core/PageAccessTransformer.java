@@ -39,9 +39,9 @@ class PageAccessTransformer {
      * @param args [0]: source directory, [1]: destination directory
      */
     public static void main(String[] args) throws Exception {
-        File src = new File(args[0]);
-        File dst = new File(args[1]);
-        PageAccessTransformer pa = new PageAccessTransformer(src, dst);
+        var src = new File(args[0]);
+        var dst = new File(args[1]);
+        var pa = new PageAccessTransformer(src, dst);
         pa.findFiles();
         pa.transform();
     }
@@ -71,7 +71,7 @@ class PageAccessTransformer {
     }
 
     void findFiles() throws IOException {
-        Map<String, Pattern> names = new HashMap<>();
+        var names = new HashMap<String, Pattern>();
 
         File[] files = mSrc.listFiles();
         if (files != null) {
@@ -91,7 +91,7 @@ class PageAccessTransformer {
      * @return set of generated file names
      */
     Collection<String> transform() throws IOException {
-        List<String> all = new ArrayList<>(mNames.size());
+        var all = new ArrayList<String>(mNames.size());
 
         for (String name : mNames.keySet()) {
             String newName = "_" + name + ".java";
@@ -103,9 +103,9 @@ class PageAccessTransformer {
     }
 
     private void transform(File src, File dst) throws IOException {
-        try (BufferedReader in = new BufferedReader(new FileReader(src))) {
+        try (var in = new BufferedReader(new FileReader(src))) {
             dst.getParentFile().mkdirs();
-            try (BufferedWriter out = new BufferedWriter(new FileWriter(dst))) {
+            try (var out = new BufferedWriter(new FileWriter(dst))) {
                 mState = STATE_NORMAL;
                 String line;
                 while ((line = in.readLine()) != null) {
@@ -216,7 +216,7 @@ class PageAccessTransformer {
             return false;
         }
 
-        try (BufferedReader in = new BufferedReader(new FileReader(file))) {
+        try (var in = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = in.readLine()) != null) {
                 if (line.indexOf("/*P*/") >= 0) {

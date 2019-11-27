@@ -56,7 +56,7 @@ public class ConfigTest {
 
     @Test
     public void cacheSize() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.minCacheSize(1000);
         config.maxCacheSize(999);
         try {
@@ -79,7 +79,7 @@ public class ConfigTest {
     //@Ignore("Too disruptive when running concurrently with other tests. " +
     //        "Causes all sorts of GC pauses and OOM failures in other tests.")
     public void outOfMemory() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         try {
             config.minCacheSize(Long.MAX_VALUE);
             Database.open(config);
@@ -90,7 +90,7 @@ public class ConfigTest {
 
     @Test
     public void files() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.dataFile(new File("foo"));
         try {
             Database.open(config);
@@ -99,7 +99,7 @@ public class ConfigTest {
             // Must have a base file.
         }
 
-        File tempDir = new File(System.getProperty("java.io.tmpdir"));
+        var tempDir = new File(System.getProperty("java.io.tmpdir"));
         config.baseFile(tempDir);
 
         try {

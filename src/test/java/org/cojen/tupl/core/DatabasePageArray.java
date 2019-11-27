@@ -120,7 +120,7 @@ class DatabasePageArray extends PageArray {
     }
 
     private static byte[] keyFor(long index) {
-        byte[] key = new byte[6];
+        var key = new byte[6];
         Utils.encodeInt48BE(key, 0, index);
         return key;
     }

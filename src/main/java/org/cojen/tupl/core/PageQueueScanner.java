@@ -46,7 +46,7 @@ class PageQueueScanner {
     static void scan(PageArray array, long headerId, int headerOffset, LongConsumer dst)
         throws IOException
     {
-        byte[] buf = new byte[array.pageSize()];
+        var buf = new byte[array.pageSize()];
         array.readPage(headerId, buf);
 
         final long pageCount = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_PAGE_COUNT);
@@ -76,7 +76,7 @@ class PageQueueScanner {
         long actualPageCount = 0;
         long actualNodeCount = 1;
 
-        IntegerRef.Value nodeOffsetRef = new IntegerRef.Value();
+        var nodeOffsetRef = new IntegerRef.Value();
         nodeOffsetRef.value = nodeOffset;
 
         while (true) {

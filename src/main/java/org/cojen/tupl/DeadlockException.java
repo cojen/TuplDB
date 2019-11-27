@@ -91,7 +91,7 @@ public class DeadlockException extends LockTimeoutException {
     }
 
     private String getMessage(boolean full) {
-        StringBuilder b = new StringBuilder(super.getMessage());
+        var b = new StringBuilder(super.getMessage());
         b.append("; caller ");
         if (mGuilty) {
             b.append("helped cause the deadlock");

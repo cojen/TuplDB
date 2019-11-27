@@ -124,7 +124,7 @@ final class _NonPageDb extends _PageDb {
 
     @Override
     public Stats stats() {
-        Stats stats = new Stats();
+        var stats = new Stats();
         stats.freePages = Math.max(0, mFreePageCount.sum());
         stats.totalPages = Math.max(stats.freePages, mAllocId.get());
         return stats;

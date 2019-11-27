@@ -36,7 +36,7 @@ final class NamedThreadFactory implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
-        Thread t = new Thread(mGroup, r);
+        var t = new Thread(mGroup, r);
         if (mPrefix != null) {
             t.setName(mPrefix + '-' + Long.toUnsignedString(t.getId()));
         }

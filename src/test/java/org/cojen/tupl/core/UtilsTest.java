@@ -66,7 +66,7 @@ public class UtilsTest {
     private void varUnsignedInt(int value, int size) {
         assertEquals(size, calcUnsignedVarIntLength(value));
 
-        byte[] b = new byte[size];
+        var b = new byte[size];
         int offset = encodeUnsignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
@@ -119,7 +119,7 @@ public class UtilsTest {
     }
 
     private void varSignedInt(int value, int size) {
-        byte[] b = new byte[size];
+        var b = new byte[size];
         int offset = encodeSignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
@@ -172,7 +172,7 @@ public class UtilsTest {
     private void varUnsignedLong(long value, int size) {
         assertEquals(size, calcUnsignedVarLongLength(value));
 
-        byte[] b = new byte[size];
+        var b = new byte[size];
         int offset = encodeUnsignedVarLong(b, 0, value);
         assertEquals(b.length, offset);
 
@@ -188,7 +188,7 @@ public class UtilsTest {
             }
         };
 
-        Ref ref = new Ref();
+        var ref = new Ref();
         ref.off = 0;
 
         long decoded = decodeUnsignedVarLong(b, ref);
@@ -201,7 +201,7 @@ public class UtilsTest {
     public void decrementReverseUnsigned() {
         byte[] b = {-1}; // start at zero
 
-        IntegerRef.Value offsetRef = new IntegerRef.Value();
+        var offsetRef = new IntegerRef.Value();
 
         for (long i=0; i<100_000; i++) {
             flip(b);
@@ -237,7 +237,7 @@ public class UtilsTest {
 
     @Test
     public void shortBE() {
-        byte[] b = new byte[2];
+        var b = new byte[2];
         encodeShortBE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82}, b);
         assertEquals(0x8182, decodeUnsignedShortBE(b, 0));
@@ -245,7 +245,7 @@ public class UtilsTest {
 
     @Test
     public void shortLE() {
-        byte[] b = new byte[2];
+        var b = new byte[2];
         encodeShortLE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x82, (byte) 0x81}, b);
         assertEquals(0x8281, decodeUnsignedShortBE(b, 0));
@@ -253,7 +253,7 @@ public class UtilsTest {
 
     @Test
     public void intBE() {
-        byte[] b = new byte[4];
+        var b = new byte[4];
         encodeIntBE(b, 0, 0x81828384);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84}, b);
         assertEquals(0x81828384, decodeIntBE(b, 0));
@@ -261,7 +261,7 @@ public class UtilsTest {
 
     @Test
     public void intLE() {
-        byte[] b = new byte[4];
+        var b = new byte[4];
         encodeIntLE(b, 0, 0x81828384);
         assertArrayEquals(new byte[] {(byte) 0x84, (byte) 0x83, (byte) 0x82, (byte) 0x81}, b);
         assertEquals(0x81828384, decodeIntLE(b, 0));
@@ -269,7 +269,7 @@ public class UtilsTest {
 
     @Test
     public void int48BE() {
-        byte[] b = new byte[6];
+        var b = new byte[6];
         encodeInt48BE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
                                       (byte) 0x85, (byte) 0x86}, b);
@@ -278,7 +278,7 @@ public class UtilsTest {
 
     @Test
     public void int48LE() {
-        byte[] b = new byte[6];
+        var b = new byte[6];
         encodeInt48LE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x86, (byte) 0x85, (byte) 0x84, (byte) 0x83,
                                       (byte) 0x82, (byte) 0x81}, b);
@@ -287,7 +287,7 @@ public class UtilsTest {
 
     @Test
     public void longBE() {
-        byte[] b = new byte[8];
+        var b = new byte[8];
         encodeLongBE(b, 0, 0x8182838485868788L);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
                                       (byte) 0x85, (byte) 0x86, (byte) 0x87, (byte) 0x88}, b);
@@ -296,7 +296,7 @@ public class UtilsTest {
 
     @Test
     public void longLE() {
-        byte[] b = new byte[8];
+        var b = new byte[8];
         encodeLongLE(b, 0, 0x8182838485868788L);
         assertArrayEquals(new byte[] {(byte) 0x88, (byte) 0x87, (byte) 0x86, (byte) 0x85,
                                       (byte) 0x84, (byte) 0x83, (byte) 0x82, (byte) 0x81}, b);

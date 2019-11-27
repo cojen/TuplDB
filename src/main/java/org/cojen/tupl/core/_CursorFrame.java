@@ -475,7 +475,7 @@ class _CursorFrame {
 
         if (parent != null) {
             node.releaseShared();
-            _CursorFrame parentCopy = new _CursorFrame();
+            var parentCopy = new _CursorFrame();
 
             while (true) {
                 // Need to check if parent is null, when looping back.

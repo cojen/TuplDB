@@ -105,14 +105,14 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  <p>Open a non-durable database, limited to a max size of 100MB:
 
  <pre>
- DatabaseConfig config = new DatabaseConfig().maxCacheSize(100_000_000);
+ var config = new DatabaseConfig().maxCacheSize(100_000_000);
  Database db = Database.open(config);
  </pre>
 
  <p>Open a regular database, with a fixed cache size, and a weak <a href="DurabilityMode.html" title="enum in org.cojen.tupl"><code>durability mode</code></a> for the best transactional commit performance.
 
  <pre>
- DatabaseConfig config = new DatabaseConfig()
+ var config = new DatabaseConfig()
     .baseFilePath("/var/lib/tupl/myapp")
     .cacheSize(100_000_000)
     .durabilityMode(DurabilityMode.NO_FLUSH);

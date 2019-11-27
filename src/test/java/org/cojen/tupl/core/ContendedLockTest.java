@@ -38,7 +38,7 @@ public class ContendedLockTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .directPageAccess(false)
             .lockTimeout(5, TimeUnit.SECONDS);
@@ -323,7 +323,7 @@ public class ContendedLockTest {
     }
 
     private Updater start(View ix, byte[] key, byte[] value, boolean noGhost) throws Exception {
-        Updater u = new Updater(ix, key, value, noGhost);
+        var u = new Updater(ix, key, value, noGhost);
         u.start();
         u.waitToSleep();
         return u;

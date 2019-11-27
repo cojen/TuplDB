@@ -311,7 +311,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     private void commitPending(long commitPos, _UndoLog undo) throws IOException {
-        _PendingTxn pending = new _PendingTxn(mManager, mHash);
+        var pending = new _PendingTxn(mManager, mHash);
 
         pending.mContext = mContext;
         pending.mTxnId = mTxnId;
@@ -682,7 +682,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
     @Override
     public final String toString() {
-        StringBuilder b = new StringBuilder(Transaction.class.getName());
+        var b = new StringBuilder(Transaction.class.getName());
 
         if (this == BOGUS) {
             return b.append('.').append("BOGUS").toString();
@@ -852,7 +852,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                 // exception when attempting to acquire a lock. The transaction won't be
                 // able to commit anyhow, and by then an exception will be thrown again.
             } else {
-                LockFailureException fail = new LockFailureException(rootCause(e));
+                var fail = new LockFailureException(rootCause(e));
 
                 try {
                     if (result == LockResult.UPGRADED) {

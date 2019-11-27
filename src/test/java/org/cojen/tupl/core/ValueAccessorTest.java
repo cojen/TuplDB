@@ -43,7 +43,7 @@ public class ValueAccessorTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).pageSize(512).durabilityMode(DurabilityMode.NO_SYNC);
         config = decorate(config);
         mConfig = config;
@@ -116,7 +116,7 @@ public class ValueAccessorTest {
         ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
         assertEquals(0, accessor.valueLength());
 
-        byte[] buf = new byte[5];
+        var buf = new byte[5];
         assertEquals(0, accessor.valueRead(0, buf, 0, 5));
         assertEquals(0, accessor.valueRead(1, buf, 2, 3));
         assertEquals(0, accessor.valueRead(5, buf, 0, 5));
@@ -132,7 +132,7 @@ public class ValueAccessorTest {
         ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
         assertEquals(5, accessor.valueLength());
 
-        byte[] buf = new byte[5];
+        var buf = new byte[5];
         assertEquals(5, accessor.valueRead(0, buf, 0, 5));
         fastAssertArrayEquals("value".getBytes(), buf);
 
@@ -166,7 +166,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 3984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         for (int i=1; i<=100; i++) {
             byte[] key = ("key" + i).getBytes();
@@ -195,7 +195,7 @@ public class ValueAccessorTest {
 
             assertEquals(length, accessor.valueLength());
 
-            byte[] buf = new byte[length + 10];
+            var buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
             assertEquals(0, accessor.valueRead(length, buf, 10, 0));
@@ -226,7 +226,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 3984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         for (int i=1; i<=30; i++) {
             byte[] key = ("key" + i).getBytes();
@@ -236,7 +236,7 @@ public class ValueAccessorTest {
 
             ValueAccessor accessor = ix.newAccessor(null, key);
 
-            byte[] buf = new byte[length + 10];
+            var buf = new byte[length + 10];
 
             // Attempt to read nothing past the end.
             assertEquals(0, accessor.valueRead(length, buf, 10, 0));
@@ -275,7 +275,7 @@ public class ValueAccessorTest {
     private void extendBlank(boolean useWrite) throws Exception {
         Index ix = mDb.openIndex("test");
 
-        byte[] buf = new byte[102];
+        var buf = new byte[102];
 
         for (int i=0; i<100000; i+=100) {
             byte[] key = "key".getBytes();
@@ -378,11 +378,11 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 8675309 + fromLen + toLen;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         byte[] key = "hello".getBytes();
 
-        byte[] initial = new byte[fromLen];
+        var initial = new byte[fromLen];
 
         for (int i=0; i<fromLen; i++) {
             initial[i] = (byte) rnd.nextInt();
@@ -436,7 +436,7 @@ public class ValueAccessorTest {
                     fail();
                 }
             } else {
-                byte[] buf = new byte[101];
+                var buf = new byte[101];
 
                 for (long i=fromLen; i<toLen; ) {
                     Arrays.fill(buf, (byte) 1);
@@ -490,7 +490,7 @@ public class ValueAccessorTest {
 
     private void truncateNonFragmented(boolean undo) throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
@@ -518,7 +518,7 @@ public class ValueAccessorTest {
         // Test truncation of fragmented value which uses direct pointer encoding.
 
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
@@ -539,12 +539,12 @@ public class ValueAccessorTest {
 
     private static void truncate(Database db, int from, int to, boolean undo) throws Exception {
         Index ix = db.openIndex("test");
-        Random rnd = new Random(from * 31 + to);
+        var rnd = new Random(from * 31 + to);
 
-        byte[] key = new byte[30];
+        var key = new byte[30];
         rnd.nextBytes(key);
 
-        byte[] value = new byte[from];
+        var value = new byte[from];
         rnd.nextBytes(value);
 
         ix.store(null, key, value);
@@ -576,9 +576,9 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
         byte[] key = "hello".getBytes();
 
-        Random rnd = new Random(Arrays.hashCode(key));
+        var rnd = new Random(Arrays.hashCode(key));
 
-        byte[] value = new byte[50 + 512 + 512];
+        var value = new byte[50 + 512 + 512];
         rnd.nextBytes(value);
         // Should have inline content and two direct pointers.
         ix.store(Transaction.BOGUS, key, value);
@@ -677,16 +677,16 @@ public class ValueAccessorTest {
         throws Exception
     {
         final long seed = 248237410 + oldLen + newLen;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Index ix = mDb.openIndex("test");
-        byte[] key = new byte[20];
+        var key = new byte[20];
         rnd.nextBytes(key);
 
         Cursor accessor = ix.newAccessor(Transaction.BOGUS, key);
 
         rnd = new Random(seed);
-        byte[] b = new byte[10000];
+        var b = new byte[10000];
 
         for (int i = 0; i < oldLen; i += b.length) {
             rnd.nextBytes(b);
@@ -727,7 +727,7 @@ public class ValueAccessorTest {
         }
 
         rnd = new Random(seed);
-        byte[] b2 = new byte[b.length];
+        var b2 = new byte[b.length];
 
         int total = 0;
 
@@ -793,7 +793,7 @@ public class ValueAccessorTest {
     @Test
     public void writeNonFragmented() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
@@ -804,12 +804,12 @@ public class ValueAccessorTest {
 
     private static void writeNonFragmented(Database db, int size) throws Exception {
         Index ix = db.openIndex("test");
-        Random rnd = new Random(size);
+        var rnd = new Random(size);
 
-        byte[] key = new byte[30];
+        var key = new byte[30];
         rnd.nextBytes(key);
 
-        byte[] value = new byte[size];
+        var value = new byte[size];
 
         int[] offs = {
             0, 0,  // completely replaced
@@ -827,7 +827,7 @@ public class ValueAccessorTest {
             int left = offs[i];
             int right = offs[i + 1];
 
-            byte[] sub = new byte[size - left + right];
+            var sub = new byte[size - left + right];
             rnd.nextBytes(sub);
 
             ValueAccessor accessor = ix.newAccessor(null, key);
@@ -897,14 +897,14 @@ public class ValueAccessorTest {
 
         Index ix = mDb.openIndex("test");
         byte[] key = "hello".getBytes();
-        byte[] value = new byte[19460];
+        var value = new byte[19460];
         ix.store(Transaction.BOGUS, key, value);
 
         if (checkpoint) {
             mDb.checkpoint();
         }
 
-        byte[] value2 = new byte[70000];
+        var value2 = new byte[70000];
         new Random(12345678).nextBytes(value2);
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -921,20 +921,20 @@ public class ValueAccessorTest {
     @Test
     public void convertToIndirectWithLargePages() throws Exception {
         // Use large page to test 3-byte value header encoding.
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false).pageSize(32768).durabilityMode(DurabilityMode.NO_SYNC);
         Database db = newTempDatabase(getClass(), decorate(config));
 
         Index ix = db.openIndex("test");
         byte[] key = "hello".getBytes();
 
-        Random rnd = new Random(8675309);
-        byte[] value = new byte[20_000_000];
+        var rnd = new Random(8675309);
+        var value = new byte[20_000_000];
         rnd.nextBytes(value);
 
         ix.store(Transaction.BOGUS, key, value);
 
-        byte[] extend = new byte[80_000_000]; // too large for direct pointers
+        var extend = new byte[80_000_000]; // too large for direct pointers
         rnd.nextBytes(extend);
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -943,7 +943,7 @@ public class ValueAccessorTest {
         assertEquals(value.length + extend.length, accessor.valueLength());
         accessor.close();
 
-        byte[] full = new byte[value.length + extend.length];
+        var full = new byte[value.length + extend.length];
         System.arraycopy(value, 0, full, 0, value.length);
         System.arraycopy(extend, 0, full, value.length, extend.length);
         value = null;
@@ -959,13 +959,13 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
         byte[] key = "hello".getBytes();
 
-        Random rnd = new Random(8675309);
-        byte[] value = new byte[10 + 512 + 512]; // 10 bytes inline
+        var rnd = new Random(8675309);
+        var value = new byte[10 + 512 + 512]; // 10 bytes inline
         rnd.nextBytes(value);
 
         ix.store(Transaction.BOGUS, key, value);
 
-        byte[] value2 = new byte[10];
+        var value2 = new byte[10];
         rnd.nextBytes(value2);
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -985,12 +985,12 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 8675309;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
-        final byte[] buf = new byte[1000];
+        final var buf = new byte[1000];
 
         for (int i=0; i<100; i++) {
-            byte[] key = new byte[10 + rnd.nextInt(90)];
+            var key = new byte[10 + rnd.nextInt(90)];
             rnd.nextBytes(key);
 
             ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -1015,10 +1015,10 @@ public class ValueAccessorTest {
 
         rnd = new Random(seed);
 
-        final byte[] buf2 = new byte[buf.length];
+        final var buf2 = new byte[buf.length];
 
         for (int i=0; i<100; i++) {
-            byte[] key = new byte[10 + rnd.nextInt(90)];
+            var key = new byte[10 + rnd.nextInt(90)];
             rnd.nextBytes(key);
 
             ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -1174,7 +1174,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
         byte[] key = "key".getBytes();
         long seed = (((length * 31) + clearPos) * 31) + clearLen;
-        byte[] value = new byte[length];
+        var value = new byte[length];
         new Random(seed).nextBytes(value);
         ix.store(Transaction.BOGUS, key, value);
 
@@ -1206,7 +1206,7 @@ public class ValueAccessorTest {
         }
 
         byte[] key = "key-5".getBytes();
-        byte[] value = new byte[100];
+        var value = new byte[100];
         new Random().nextBytes(value);
 
         ValueAccessor accessor = ix.newAccessor(Transaction.BOGUS, key);
@@ -1238,7 +1238,7 @@ public class ValueAccessorTest {
         assertEquals(10000, c.valueLength());
         c.findNearby(k2);
         assertEquals(1 + v2.length, c.valueLength());
-        byte[] expect = new byte[1 + v2.length];
+        var expect = new byte[1 + v2.length];
         System.arraycopy(v2, 0, expect, 1, v2.length);
         c.load();
         fastAssertArrayEquals(expect, c.value());
@@ -1436,7 +1436,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         byte[] k1 = "key-1".getBytes();
-        byte[] v1 = new byte[520];
+        var v1 = new byte[520];
         new Random(2893547).nextBytes(v1);
 
         ix.store(null, k1, v1);
@@ -1462,7 +1462,7 @@ public class ValueAccessorTest {
 
         txn = mDb.newTransaction();
         c = ix.newAccessor(txn, k1);
-        byte[] v2 = new byte[indirect ? 100_000 : 10_000];
+        var v2 = new byte[indirect ? 100_000 : 10_000];
         new Random(28935471).nextBytes(v2);
         c.valueWrite(1, v2, 0, v2.length);
         expect = new byte[1 + v2.length];
@@ -1479,7 +1479,7 @@ public class ValueAccessorTest {
         // Test pure extend with no overlap.
         txn = mDb.newTransaction();
         c = ix.newAccessor(txn, k1);
-        byte[] v3 = new byte[indirect ? 20_000 : 2000];
+        var v3 = new byte[indirect ? 20_000 : 2000];
         new Random(289354715).nextBytes(v3);
         c.valueWrite(v1.length, v3, 0, v3.length);
         expect = new byte[v1.length + v3.length];
@@ -1512,7 +1512,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         byte[] k1 = "key-1".getBytes();
-        byte[] v1 = new byte[indirect ? 100_000 : 520];
+        var v1 = new byte[indirect ? 100_000 : 520];
         new Random(2893542).nextBytes(v1);
 
         ix.store(null, k1, v1);
@@ -1569,8 +1569,8 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 39485743;
-        Random rnd = new Random(seed);
-        final byte[] buf = new byte[1000];
+        var rnd = new Random(seed);
+        final var buf = new byte[1000];
         final int count = 100;
         final byte[] key = "something".getBytes();
 
@@ -1610,8 +1610,8 @@ public class ValueAccessorTest {
         ix.store(null, key, v1);
         
         final long seed = 39485743;
-        Random rnd = new Random(seed);
-        final byte[] buf = new byte[1000];
+        var rnd = new Random(seed);
+        final var buf = new byte[1000];
         final int count = 100;
 
         Transaction txn = mDb.newTransaction();
@@ -1668,7 +1668,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 526776;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         byte[] key = "test".getBytes();
         byte[] value = randomStr(rnd, 100);
@@ -1693,7 +1693,7 @@ public class ValueAccessorTest {
         Index ix2 = mDb.openIndex("test2");
 
         final long seed = 9035768;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         Index ix = ix1;
 
@@ -1730,7 +1730,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 1984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         for (int size : new int[]{100, 2000, 100_000}) {
             byte[] key = randomStr(rnd, 10);
@@ -1748,7 +1748,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 1984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         for (int size : new int[]{100, 2000, 100_000}) {
             byte[] key = randomStr(rnd, 10);
@@ -1802,7 +1802,7 @@ public class ValueAccessorTest {
         c.valueLength(1);
         txn.reset();
         c.load();
-        byte[] expect = new byte[10_000_000];
+        var expect = new byte[10_000_000];
         expect[100_000] = 1;
         fastAssertArrayEquals(expect, c.value());
         c.close();
@@ -1843,7 +1843,7 @@ public class ValueAccessorTest {
         doValueModify(c, BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
         txn.reset();
         c.load();
-        byte[] expect = new byte[10_000_000];
+        var expect = new byte[10_000_000];
         expect[100_000] = 1;
         fastAssertArrayEquals(expect, c.value());
         c.close();
@@ -1865,7 +1865,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 82539882;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         // Store a direct encoded value with some inline content.
         byte[] key = "key".getBytes();
@@ -1885,7 +1885,7 @@ public class ValueAccessorTest {
         accessor.valueLength(100_000);
         accessor.close();
 
-        byte[] expect = new byte[100_000];
+        var expect = new byte[100_000];
         System.arraycopy(value, 0, expect, 0, value.length);
         Arrays.fill(expect, value.length / 2, (value.length / 2) + 2000, (byte) 0);
         fastAssertArrayEquals(expect, ix.load(null, key));
@@ -1957,7 +1957,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 1984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         byte[] key = "input".getBytes();
         byte[] value = randomStr(rnd, 100000);
@@ -2009,7 +2009,7 @@ public class ValueAccessorTest {
         accessor = ix.newAccessor(null, key);
         in = accessor.newValueInputStream(0, 10);
 
-        byte[] buf = new byte[0];
+        var buf = new byte[0];
         assertEquals(0, in.read(buf));
 
         int i = 0;
@@ -2036,7 +2036,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 2984574;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         byte[] key = "output".getBytes();
         byte[] value = randomStr(rnd, 100000);
@@ -2058,7 +2058,7 @@ public class ValueAccessorTest {
         out = accessor.newValueOutputStream(0, 20);
 
         for (int i=0; i<value.length; ) {
-            byte[] buf = new byte[Math.min(value.length - i, rnd.nextInt(21) + 1)];
+            var buf = new byte[Math.min(value.length - i, rnd.nextInt(21) + 1)];
 
             for (int j=0; j<buf.length; j++) {
                 buf[j] = value[i++];
@@ -2077,7 +2077,7 @@ public class ValueAccessorTest {
 
         accessor = ix.newAccessor(null, key);
 
-        byte[] actual = new byte[value.length];
+        var actual = new byte[value.length];
         int amt = accessor.valueRead(0, actual, 0, actual.length);
 
         assertEquals(amt, actual.length);
@@ -2113,7 +2113,7 @@ public class ValueAccessorTest {
         Index ix = mDb.openIndex("test");
 
         final long seed = 9845741;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         byte[] key = "test".getBytes();
         byte[] value = randomStr(rnd, 10000);
@@ -2133,7 +2133,7 @@ public class ValueAccessorTest {
         } catch (IllegalStateException e) {
         }
 
-        byte[] buf = new byte[10];
+        var buf = new byte[10];
 
         try {
             accessor.valueRead(0, buf, 0, buf.length);

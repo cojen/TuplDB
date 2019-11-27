@@ -263,7 +263,7 @@ final class PosixFileIO extends AbstractFileIO {
     private int fd() throws IOException {
         int fd = mFileDescriptor;
         if (fd == 0) {
-            IOException ex = new ClosedChannelException();
+            var ex = new ClosedChannelException();
             ex.initCause(mCause);
             throw ex;
         }
@@ -580,7 +580,7 @@ final class PosixFileIO extends AbstractFileIO {
         
         @Override
         public int fallocate(int fd, long pos, long length) {
-            final Fstore.ByReference fstore = new Fstore.ByReference();
+            final var fstore = new Fstore.ByReference();
             fstore.fst_flags   = 4;   // F_ALLOCATEALL - allocate all requested space or none at all.
             fstore.fst_posmode = 3;   // F_PEOFPOSMODE
             fstore.fst_offset  = 0;

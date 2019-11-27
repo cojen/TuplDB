@@ -58,14 +58,14 @@ public class DeadlockTest {
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
         // Current thread locks k0, and helps cause the deadlock.
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         locker.doLockShared(1, keys[0], timeout);
 
         // Victim thread.
-        Task victim = new Task() {
+        var victim = new Task() {
                 @Override
                 void doRun() throws Throwable {
-                    Locker locker = new Locker(mManager);
+                    var locker = new Locker(mManager);
                     try {
                         // Lock k2 has does not participate in deadlock.
                         locker.doLockExclusive(1, keys[2], timeout / 2);
@@ -83,10 +83,10 @@ public class DeadlockTest {
             };
 
         // Culprit thread.
-        Task culprit = new Task() {
+        var culprit = new Task() {
                 @Override
                 void doRun() throws Throwable {
-                    Locker locker = new Locker(mManager);
+                    var locker = new Locker(mManager);
                     try {
                         // Lock k1 and then k0, which is the opposite order of main thread.
                         locker.doLockShared(1, keys[1], timeout);
@@ -140,7 +140,7 @@ public class DeadlockTest {
 
             void doRun() throws Throwable {
                 try {
-                    Locker locker = new Locker(mManager);
+                    var locker = new Locker(mManager);
                     try {
                         for (byte[] key : mKeys) {
                             locker.doLockUpgradable(1, key, mTimeout);
@@ -221,8 +221,8 @@ public class DeadlockTest {
 
         // Create a deadlock with two threads.
 
-        Thread[] threads = new Thread[2];
-        CyclicBarrier cb = new CyclicBarrier(threads.length);
+        var threads = new Thread[2];
+        var cb = new CyclicBarrier(threads.length);
 
         for (int i=0; i<threads.length; i++) {
             final int fi = i;

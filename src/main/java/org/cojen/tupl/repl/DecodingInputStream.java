@@ -61,7 +61,7 @@ class DecodingInputStream extends ByteArrayInputStream {
         if (size == 0) {
             return Collections.emptyMap();
         }
-        Map<String, String> map = new HashMap<>();
+        var map = new HashMap<String, String>();
         while (--size >= 0) {
             map.put(decodeStr(), decodeStr());
         }

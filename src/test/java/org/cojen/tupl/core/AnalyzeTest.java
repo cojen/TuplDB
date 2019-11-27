@@ -38,7 +38,7 @@ public class AnalyzeTest {
 
     @Before
     public void createTempDb() throws Exception {
-        DatabaseConfig config = new DatabaseConfig();
+        var config = new DatabaseConfig();
         config.durabilityMode(DurabilityMode.NO_FLUSH);
         config.directPageAccess(false);
         config.checkpointRate(-1, null);
@@ -72,7 +72,7 @@ public class AnalyzeTest {
             assertEquals(0, stats.totalBytes(), 0);
         }
 
-        Random rnd = new Random(98765);
+        var rnd = new Random(98765);
 
         final int count = 100_000;
 
@@ -80,11 +80,11 @@ public class AnalyzeTest {
         long valueBytes = 0;
 
         for (int i=0; i<count; i++) {
-            byte[] key = new byte[rnd.nextInt(30) + 1];
+            var key = new byte[rnd.nextInt(30) + 1];
             rnd.nextBytes(key);
             keyBytes += key.length;
 
-            byte[] value = new byte[rnd.nextInt(100) + 1];
+            var value = new byte[rnd.nextInt(100) + 1];
             rnd.nextBytes(value);
             valueBytes += value.length;
 
@@ -118,8 +118,8 @@ public class AnalyzeTest {
     public void analyzeLargeKeyAndValue() throws Exception {
         Index ix = openIndex("stuff");
 
-        byte[] key = new byte[10000];
-        byte[] value = new byte[999999];
+        var key = new byte[10000];
+        var value = new byte[999999];
 
         ix.store(Transaction.BOGUS, key, value);
 

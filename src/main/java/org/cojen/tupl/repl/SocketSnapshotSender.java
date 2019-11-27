@@ -102,7 +102,7 @@ abstract class SocketSnapshotSender extends OutputStream implements SnapshotSend
                 throw new IllegalStateException("Unknown term at position: " + position);
             }
 
-            OptionsEncoder enc = new OptionsEncoder();
+            var enc = new OptionsEncoder();
             enc.encodeIntLE(0); // encoding format
             enc.encodeLongLE(length);
             enc.encodeLongLE(termLog.prevTermAt(position));

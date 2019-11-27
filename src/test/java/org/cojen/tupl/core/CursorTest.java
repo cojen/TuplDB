@@ -532,9 +532,9 @@ public class CursorTest {
         Transaction txn = mDb.newTransaction();
         ix.lockExclusive(txn, key(1));
 
-        AtomicReference<Exception> ex = new AtomicReference<>();
+        var ex = new AtomicReference<Exception>();
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             try {
                 // Must fully skip past key 1.
                 c.previousGe(key(0));
@@ -633,9 +633,9 @@ public class CursorTest {
         Transaction txn = mDb.newTransaction();
         ix.lockExclusive(txn, key(1));
 
-        AtomicReference<Exception> ex = new AtomicReference<>();
+        var ex = new AtomicReference<Exception>();
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             try {
                 // Must fully skip past key 1.
                 c.nextLe(key(2));
@@ -1021,7 +1021,7 @@ public class CursorTest {
 
         final int count = 3000;
         final int seed = 3892476;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 100, 500);
             ix.store(Transaction.BOGUS, key, key);
@@ -1049,7 +1049,7 @@ public class CursorTest {
 
         final int count = 3000;
         final int seed = 3892476;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 100, 500);
             ix.store(Transaction.BOGUS, key, key);
@@ -1120,7 +1120,7 @@ public class CursorTest {
 
         // Ordered fill and verify.
 
-        byte[] key = new byte[4];
+        var key = new byte[4];
         Cursor fill = ix.newCursor(Transaction.BOGUS);
         for (int i=0; i<10000; i++) {
             fill.findNearby(key);
@@ -1153,7 +1153,7 @@ public class CursorTest {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
 
-        int[] buckets = new int[10];
+        var buckets = new int[10];
 
         c = ix.newCursor(null);
         for (int i=0; i<1000000; i++) {
@@ -1204,7 +1204,7 @@ public class CursorTest {
         }
 
         {
-            int[] buckets = new int[10];
+            var buckets = new int[10];
 
             Cursor c = ix.newCursor(null);
             byte[] lowKey = key(0);
@@ -1223,7 +1223,7 @@ public class CursorTest {
         }
 
         {
-            int[] buckets = new int[10];
+            var buckets = new int[10];
 
             Cursor c = ix.newCursor(null);
             byte[] lowKey = key(1000);
@@ -1319,9 +1319,9 @@ public class CursorTest {
 
         ix.store(null, key2, value2);
 
-        CountDownLatch waiter = new CountDownLatch(1);
+        var waiter = new CountDownLatch(1);
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             try {
                 Transaction txn = mDb.newTransaction();
                 try {
@@ -1443,12 +1443,12 @@ public class CursorTest {
 
         View ix = openIndex("test");
 
-        Random rnd = new Random(793846);
-        byte[] value = new byte[0];
+        var rnd = new Random(793846);
+        var value = new byte[0];
 
         final int count = 100000;
-        Cursor[] foundCursors = new Cursor[count];
-        Cursor[] notFoundCursors = new Cursor[count];
+        var foundCursors = new Cursor[count];
+        var notFoundCursors = new Cursor[count];
 
         for (int i=0; i<count; i++) {
             byte[] key = key(rnd.nextInt());
@@ -1483,10 +1483,10 @@ public class CursorTest {
         
         View ix = openIndex("test");
 
-        byte[] value = new byte[200];
+        var value = new byte[200];
 
         final int count = 10000;
-        Cursor[] cursors = new Cursor[count];
+        var cursors = new Cursor[count];
 
         for (int i=count; --i>=0; ) {
             byte[] key = key(i);
@@ -1509,10 +1509,10 @@ public class CursorTest {
         
         View ix = openIndex("test");
 
-        byte[] value = new byte[200];
+        var value = new byte[200];
 
         final int count = 10000;
-        Cursor[] cursors = new Cursor[count];
+        var cursors = new Cursor[count];
 
         for (int i=0; i<count; i++) {
             byte[] key = key(i);
@@ -1595,9 +1595,9 @@ public class CursorTest {
         // Now release the lock, allowing the first access to proceed. There's no point in
         // checking the other cases at this point, since they all call lockAndCopyIfExists.
 
-        AtomicReference<Exception> ex = new AtomicReference<>();
+        var ex = new AtomicReference<Exception>();
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             try {
                 c.first();
             } catch (Exception e) {
@@ -1957,13 +1957,13 @@ public class CursorTest {
     }
 
     private byte[] key(int i) {
-        byte[] key = new byte[4];
+        var key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }
 
     private byte[] bigKey(int i) {
-        byte[] key = new byte[10000];
+        var key = new byte[10000];
         Utils.encodeIntBE(key, key.length - 4, i);
         return key;
     }

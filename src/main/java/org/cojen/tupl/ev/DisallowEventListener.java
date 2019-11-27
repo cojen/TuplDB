@@ -40,11 +40,11 @@ public final class DisallowEventListener extends FilteredEventListener {
 
         final EventListener original = listener;
 
-        Set<EventType.Category> categorySet = new HashSet<>(Arrays.asList(categories));
+        var categorySet = new HashSet<EventType.Category>(Arrays.asList(categories));
 
         Set<Level> levelSet;
         if (listener instanceof DisallowEventListener) {
-            DisallowEventListener disallowed = (DisallowEventListener) listener;
+            var disallowed = (DisallowEventListener) listener;
             listener = disallowed.mListener;
             categorySet.addAll(disallowed.mCategories);
             levelSet = disallowed.mLevels;
@@ -62,11 +62,11 @@ public final class DisallowEventListener extends FilteredEventListener {
 
         final EventListener original = listener;
 
-        Set<Level> levelSet = new HashSet<>(Arrays.asList(levels));
+        var levelSet = new HashSet<Level>(Arrays.asList(levels));
 
         Set<EventType.Category> categorySet;
         if (listener instanceof DisallowEventListener) {
-            DisallowEventListener disallowed = (DisallowEventListener) listener;
+            var disallowed = (DisallowEventListener) listener;
             listener = disallowed.mListener;
             levelSet.addAll(disallowed.mLevels);
             categorySet = disallowed.mCategories;
@@ -80,7 +80,7 @@ public final class DisallowEventListener extends FilteredEventListener {
     private static EventListener make(EventListener original, EventListener listener,
                                       Set<EventType.Category> categories, Set<Level> levels)
     {
-        EventListener newListener = new DisallowEventListener(listener, categories, levels);
+        var newListener = new DisallowEventListener(listener, categories, levels);
         return newListener.equals(original) ? original : newListener;
     }
 

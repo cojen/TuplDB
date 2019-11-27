@@ -61,13 +61,13 @@ final class _DeadlockDetector {
             return Collections.emptySet();
         }
 
-        DeadlockInfo[] infos = new CoreDeadlockInfo[mLocks.size()];
+        var infos = new CoreDeadlockInfo[mLocks.size()];
 
         final _LockManager manager = mOrigin.mManager;
 
         int i = 0;
         for (_Lock lock : mLocks) {
-            CoreDeadlockInfo info = new CoreDeadlockInfo();
+            var info = new CoreDeadlockInfo();
             infos[i++] = info;
 
             info.mIndexId = lock.mIndexId;

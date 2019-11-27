@@ -40,7 +40,7 @@ public class EventListenerTest {
 
     @Test
     public void observe() throws Exception {
-        Listener listener = new Listener();
+        var listener = new Listener();
         listener.notify(EventType.DEBUG, "hello");
         assertEquals("[DEBUG:hello:[]]", listener.mEvents.toString());
 
@@ -75,7 +75,7 @@ public class EventListenerTest {
 
     @Test
     public void ignore() throws Exception {
-        Listener listener = new Listener();
+        var listener = new Listener();
         assertTrue(listener == listener.ignore(new EventType.Category[0]));
         assertTrue(listener == listener.ignore(new Level[0]));
 

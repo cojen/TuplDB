@@ -47,7 +47,7 @@ public final class StripedPageCache implements PageCache {
 
         final int s_count = Utils.roundUpPower2(minStripes);
         final double s_size = capacity / (double) s_count;
-        final int[] s_capacities = new int[s_count];
+        final var s_capacities = new int[s_count];
 
         capacity = 0;
         long maxEntryCount = 0;
@@ -75,7 +75,7 @@ public final class StripedPageCache implements PageCache {
             } else {
                 // Initializing the buffers takes a long time, so do in parallel.
 
-                final AtomicInteger slot = new AtomicInteger(s_count);
+                final var slot = new AtomicInteger(s_count);
 
                 class Init extends Thread {
                     volatile Throwable mEx;
@@ -98,7 +98,7 @@ public final class StripedPageCache implements PageCache {
                     }
                 }
 
-                Init[] inits = new Init[procCount];
+                var inits = new Init[procCount];
 
                 for (int i=0; i<inits.length; i++) {
                     if (slot.get() <= 0) {

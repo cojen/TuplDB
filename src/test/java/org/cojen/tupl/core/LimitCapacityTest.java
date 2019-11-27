@@ -55,8 +55,8 @@ public class LimitCapacityTest {
         mDb.capacityLimit(100_000_000L);
         Index ix = mDb.openIndex("test");
 
-        byte[] key = new byte[6];
-        byte[] value = new byte[0];
+        var key = new byte[6];
+        var value = new byte[0];
 
         Cursor fill = ix.newCursor(Transaction.BOGUS);
 
@@ -139,7 +139,7 @@ public class LimitCapacityTest {
 
         // Value is too large.
         try {
-            byte[] value = new byte[size];
+            var value = new byte[size];
             ix.store(null, "key".getBytes(), value);
             fail();
         } catch (DatabaseFullException e) {
@@ -154,7 +154,7 @@ public class LimitCapacityTest {
         assertEquals(null, ix.load(null, "key".getBytes()));
 
         // Smaller value should work.
-        byte[] value = new byte[size / 2];
+        var value = new byte[size / 2];
         ix.store(null, "key".getBytes(), value);
     }
 

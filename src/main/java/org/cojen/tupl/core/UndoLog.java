@@ -365,7 +365,7 @@ final class UndoLog implements DatabaseAccess {
         long activeIndexId = mActiveIndexId;
         if (indexId != activeIndexId) {
             if (activeIndexId != 0) {
-                byte[] payload = new byte[8];
+                var payload = new byte[8];
                 encodeLongLE(payload, 0, activeIndexId);
                 doPush(OP_INDEX, payload, 0, 8, 1);
             }
@@ -377,7 +377,7 @@ final class UndoLog implements DatabaseAccess {
      * Caller must hold db commit lock.
      */
     void pushCustom(int handlerId, byte[] message) throws IOException {
-        byte[] payload = new byte[calcUnsignedVarIntLength(handlerId) + message.length];
+        var payload = new byte[calcUnsignedVarIntLength(handlerId) + message.length];
         int pos = encodeUnsignedVarInt(payload, 0, handlerId);
         arraycopy(message, 0, payload, pos, message.length);
         doPush(OP_CUSTOM, payload);
@@ -414,7 +414,7 @@ final class UndoLog implements DatabaseAccess {
                 int pos = mBufferPos + 1;
                 int payloadLen = decodeUnsignedVarInt(mBuffer, pos);
                 pos += calcUnsignedVarIntLength(payloadLen);
-                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                var offsetRef = new IntegerRef.Value();
                 offsetRef.value = pos;
                 unlen = decodeUnsignedVarLong(mBuffer, offsetRef);
             } else {
@@ -432,7 +432,7 @@ final class UndoLog implements DatabaseAccess {
                     // Don't bother decoding payload which spills into the next node.
                     break discardCheck;
                 }
-                IntegerRef.Value offsetRef = new IntegerRef.Value();
+                var offsetRef = new IntegerRef.Value();
                 offsetRef.value = pos;
                 unlen = p_ulongGetVar(mNode.mPage, offsetRef);
             }
@@ -443,7 +443,7 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        byte[] payload = new byte[9];
+        var payload = new byte[9];
         int off = encodeUnsignedVarLong(payload, 0, length);
         doPush(OP_UNEXTEND, payload, 0, off);
     }
@@ -453,7 +453,7 @@ final class UndoLog implements DatabaseAccess {
      */
     void pushUnalloc(long indexId, byte[] key, long pos, long length) throws IOException {
         setActiveIndexIdAndKey(indexId, key);
-        byte[] payload = new byte[9 + 9];
+        var payload = new byte[9 + 9];
         int off = encodeUnsignedVarLong(payload, 0, length);
         off = encodeUnsignedVarLong(payload, off, pos);
         doPush(OP_UNALLOC, payload, 0, off);
@@ -487,7 +487,7 @@ final class UndoLog implements DatabaseAccess {
     /*P*/ // void pushUnwrite(long indexId, byte[] key, long pos, long ptr, int off, int len)
     /*P*/ //     throws IOException
     /*P*/ // {
-    /*P*/ //     byte[] b = new byte[len];
+    /*P*/ //     var b = new byte[len];
     /*P*/ //     DirectPageOps.p_copyToArray(ptr, off, b, 0, len);
     /*P*/ //     pushUnwrite(indexId, key, pos, b, 0, len);
     /*P*/ // }
@@ -510,7 +510,7 @@ final class UndoLog implements DatabaseAccess {
         long activeIndexId = mActiveIndexId;
         if (indexId != activeIndexId) {
             if (activeIndexId != 0) {
-                byte[] payload = new byte[8];
+                var payload = new byte[8];
                 encodeLongLE(payload, 0, activeIndexId);
                 doPush(OP_INDEX, payload, 0, 8, 1);
             }
@@ -612,7 +612,7 @@ final class UndoLog implements DatabaseAccess {
                         newCap = Math.max(buffer.length << 1, newCap);
                     }
                     if (newCap <= (mDatabase.pageSize() >> 1)) {
-                        byte[] newBuf = new byte[newCap];
+                        var newBuf = new byte[newCap];
                         int newPos = newCap - size;
                         arraycopy(buffer, pos, newBuf, newPos, size);
                         mBuffer = buffer = newBuf;
@@ -895,7 +895,7 @@ final class UndoLog implements DatabaseAccess {
                     // to undo a delete, but instead delete the ghost.
                     byte[] key = decodeNodeKey(entry);
                     activeIndex = doUndo(activeIndex, ix -> {
-                        BTreeCursor cursor = new BTreeCursor((BTree) ix, null);
+                        var cursor = new BTreeCursor((BTree) ix, null);
                         try {
                             cursor.deleteGhost(key);
                         } catch (Throwable e) {
@@ -911,7 +911,7 @@ final class UndoLog implements DatabaseAccess {
                     key = new byte[decodeUnsignedVarInt(entry, 0)];
                     arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
                     activeIndex = doUndo(activeIndex, ix -> {
-                        BTreeCursor cursor = new BTreeCursor((BTree) ix, null);
+                        var cursor = new BTreeCursor((BTree) ix, null);
                         try {
                             cursor.deleteGhost(key);
                         } catch (Throwable e) {
@@ -965,7 +965,7 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNUPDATE_LK:
         case OP_UNDELETE_LK: {
-            byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+            var key = new byte[decodeUnsignedVarInt(entry, 0)];
             int keyLoc = calcUnsignedVarIntLength(key.length);
             arraycopy(entry, keyLoc, key, 0, key.length);
 
@@ -984,13 +984,13 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_UNDELETE_LK_FRAGMENTED: {
-            byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+            var key = new byte[decodeUnsignedVarInt(entry, 0)];
             int keyLoc = calcUnsignedVarIntLength(key.length);
             arraycopy(entry, keyLoc, key, 0, key.length);
 
             int tidLoc = keyLoc + key.length;
             int tidLen = entry.length - tidLoc;
-            byte[] trashKey = new byte[8 + tidLen];
+            var trashKey = new byte[8 + tidLen];
             encodeLongBE(trashKey, 0, mTxnId);
             arraycopy(entry, tidLoc, trashKey, 8, tidLen);
 
@@ -1003,7 +1003,7 @@ final class UndoLog implements DatabaseAccess {
         case OP_CUSTOM:
             int handlerId = decodeUnsignedVarInt(entry, 0);
             int messageLoc = calcUnsignedVarIntLength(handlerId);
-            byte[] message = new byte[entry.length - messageLoc];
+            var message = new byte[entry.length - messageLoc];
             arraycopy(entry, messageLoc, message, 0, message.length);
             mDatabase.findCustomHandler(handlerId).undo(null, message);
             break;
@@ -1022,7 +1022,7 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_UNALLOC:
-            IntegerRef offsetRef = new IntegerRef.Value();
+            var offsetRef = new IntegerRef.Value();
             length = decodeUnsignedVarLong(entry, offsetRef);
             long pos = decodeUnsignedVarLong(entry, offsetRef);
             activeIndex = doUndo(activeIndex, ix -> {
@@ -1194,7 +1194,7 @@ final class UndoLog implements DatabaseAccess {
                 int payloadLen = decodeUnsignedVarInt(buffer, pos);
                 int varIntLen = calcUnsignedVarIntLength(payloadLen);
                 pos += varIntLen;
-                byte[] entry = new byte[payloadLen];
+                var entry = new byte[payloadLen];
                 arraycopy(buffer, pos, entry, 0, payloadLen);
                 result = popper.accept(op, entry);
                 mBufferPos = pos + payloadLen;
@@ -1239,7 +1239,7 @@ final class UndoLog implements DatabaseAccess {
         nodeTopPos += varIntLen;
         length -= 1 + varIntLen + payloadLen;
 
-        final byte[] entry = new byte[payloadLen];
+        final var entry = new byte[payloadLen];
         int entryPos = 0;
 
         while (true) {
@@ -1518,7 +1518,7 @@ final class UndoLog implements DatabaseAccess {
     }
 
     static UndoLog recoverMasterUndoLog(LocalDatabase db, long nodeId) throws IOException {
-        UndoLog log = new UndoLog(db, 0);
+        var log = new UndoLog(db, 0);
         // Length is not recoverable.
         log.recoverMaster(nodeId, Long.MAX_VALUE);
         return log;
@@ -1567,7 +1567,7 @@ final class UndoLog implements DatabaseAccess {
             }
         };
 
-        Finder f = new Finder();
+        var f = new Finder();
         scanNodes(f);
 
         return f.mTxns;
@@ -1628,7 +1628,7 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        Uncommitter u = new Uncommitter();
+        var u = new Uncommitter();
         scanNodes(u);
 
         // All matched nodes were changed and must be re-written.
@@ -1697,12 +1697,12 @@ final class UndoLog implements DatabaseAccess {
             return new LocalTransaction(mDatabase, mTxnId, 0);
         }
 
-        PopOne popper = new PopOne();
-        Scope scope = new Scope();
+        var popper = new PopOne();
+        var scope = new Scope();
 
         // Scopes are recovered in the opposite order in which they were
         // created. Gather them in a stack to reverse the order.
-        Deque<Scope> scopes = new ArrayDeque<>();
+        var scopes = new ArrayDeque<Scope>();
         scopes.addFirst(scope);
 
         int depth = 1;
@@ -1770,7 +1770,7 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNUPDATE_LK:
             case OP_UNDELETE_LK:
             case OP_UNDELETE_LK_FRAGMENTED: {
-                byte[] key = new byte[decodeUnsignedVarInt(entry, 0)];
+                var key = new byte[decodeUnsignedVarInt(entry, 0)];
                 arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
                 Lock lock = scope.addExclusiveLock(mActiveIndexId, key);
                 if (op != OP_UNUPDATE_LK) {
@@ -1802,7 +1802,7 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        LocalTransaction txn = new LocalTransaction(mDatabase, mTxnId, hasState);
+        var txn = new LocalTransaction(mDatabase, mTxnId, hasState);
 
         scope = scopes.pollFirst();
         scope.acquireLocks(txn);
@@ -1922,7 +1922,7 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNALLOC:
             opStr = "UNALLOC";
-            IntegerRef offsetRef = new IntegerRef.Value();
+            var offsetRef = new IntegerRef.Value();
             long length = decodeUnsignedVarLong(entry, offsetRef);
             long pos = decodeUnsignedVarLong(entry, offsetRef);
             payloadStr = "pos=" + pos + ", length=" + length;
@@ -1977,7 +1977,7 @@ final class UndoLog implements DatabaseAccess {
         }
 
         Lock addLock(long indexId, byte[] key, int lockCount) {
-            Lock lock = new Lock();
+            var lock = new Lock();
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = LockManager.hash(indexId, key);
@@ -2014,13 +2014,13 @@ final class UndoLog implements DatabaseAccess {
         }
 
         long txnId = decodeLongLE(masterLogEntry, 0);
-        UndoLog log = new UndoLog(mDatabase, txnId);
+        var log = new UndoLog(mDatabase, txnId);
         log.mActiveIndexId = decodeLongLE(masterLogEntry, 8);
 
         if ((masterLogOp & 1) == 0) { // OP_LOG_COPY or OP_LOG_COPY_C
             int bsize = decodeUnsignedShortLE(masterLogEntry, (8 + 8));
             log.mLength = bsize;
-            byte[] buffer = new byte[bsize];
+            var buffer = new byte[bsize];
             arraycopy(masterLogEntry, (8 + 8 + 2), buffer, 0, bsize);
             log.mBuffer = buffer;
             log.mBufferPos = 0;

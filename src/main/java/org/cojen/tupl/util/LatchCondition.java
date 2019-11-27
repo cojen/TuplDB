@@ -171,7 +171,7 @@ public class LatchCondition {
     }
 
     private void upon(Latch latch, Continuation cont, int waitState) {
-        final WaitNode node = new WaitNode(cont, waitState);
+        final var node = new WaitNode(cont, waitState);
 
         WaitNode tail = mTail;
         if (tail == null) {

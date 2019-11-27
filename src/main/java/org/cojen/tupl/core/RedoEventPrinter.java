@@ -36,14 +36,14 @@ class RedoEventPrinter implements RedoVisitor {
      */
     @SuppressWarnings("unchecked")
     public static void main(String[] args) throws Exception {
-        java.io.File baseFile = new java.io.File(args[0]);
+        var baseFile = new java.io.File(args[0]);
         long logId = Long.parseLong(args[1]);
 
         Crypto crypto = null;
         if (args.length > 2) {
             Class clazz = Class.forName(args[2]);
-            Class[] types = new Class[args.length - 3];
-            String[] params = new String[types.length];
+            var types = new Class[args.length - 3];
+            var params = new String[types.length];
             for (int i=0; i<types.length; i++) {
                 types[i] = String.class;
                 params[i] = args[i + 3];
@@ -283,7 +283,7 @@ class RedoEventPrinter implements RedoVisitor {
             return "null";
         }
 
-        char[] chars = new String(key, StandardCharsets.UTF_8).toCharArray();
+        var chars = new String(key, StandardCharsets.UTF_8).toCharArray();
 
         for (int i=0; i<chars.length; i++) {
             if (Character.isISOControl(chars[i])) {
@@ -303,7 +303,7 @@ class RedoEventPrinter implements RedoVisitor {
         if (value == null) {
             return "null";
         }
-        StringBuilder b = new StringBuilder().append("0x");
+        var b = new StringBuilder().append("0x");
         if (length <= MAX_VALUE) {
             b.append(Utils.toHex(value, offset, length));
         } else {

@@ -104,7 +104,7 @@ public class CustomLogTest {
             // Expected when key is null.
         }
  
-        byte[] key = new byte[1];
+        var key = new byte[1];
         txn.lockExclusive(123, key);
 
         try {

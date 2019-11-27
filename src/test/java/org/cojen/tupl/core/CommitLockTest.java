@@ -37,7 +37,7 @@ public class CommitLockTest {
 
     @Test
     public void reentrant() throws Exception {
-        CommitLock lock = new CommitLock();
+        var lock = new CommitLock();
 
         lock.lock();
         lock.lock();
@@ -74,7 +74,7 @@ public class CommitLockTest {
         lock.lock();
 
         // Upgrade isn't possible when held by another thread.
-        Thread holder = new Thread(() -> {
+        var holder = new Thread(() -> {
             lock.lock();
             try {
                 while (true) {
@@ -105,11 +105,11 @@ public class CommitLockTest {
 
     @Test
     public void blocked() throws Exception {
-        CommitLock lock = new CommitLock();
+        var lock = new CommitLock();
 
-        CountDownLatch waiter = new CountDownLatch(1);
+        var waiter = new CountDownLatch(1);
 
-        Thread ex = new Thread(() -> {
+        var ex = new Thread(() -> {
             try {
                 lock.acquireExclusive();
                 waiter.countDown();
@@ -143,10 +143,10 @@ public class CommitLockTest {
 
     @Test
     public void contention() throws Exception {
-        CommitLock lock = new CommitLock();
+        var lock = new CommitLock();
 
-        Thread[] sharedThreads = new Thread[100];
-        CountDownLatch waiter = new CountDownLatch(sharedThreads.length);
+        var sharedThreads = new Thread[100];
+        var waiter = new CountDownLatch(sharedThreads.length);
 
         for (int i=0; i<sharedThreads.length; i++) {
             sharedThreads[i] = new Thread(() -> {

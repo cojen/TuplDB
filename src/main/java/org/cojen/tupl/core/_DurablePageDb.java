@@ -171,7 +171,7 @@ final class _DurablePageDb extends _PageDb {
             return new FilePageArray(pageSize, files[0], factory, options);
         }
 
-        PageArray[] arrays = new PageArray[files.length];
+        var arrays = new PageArray[files.length];
 
         try {
             for (int i=0; i<files.length; i++) {
@@ -401,7 +401,7 @@ final class _DurablePageDb extends _PageDb {
 
     @Override
     public Stats stats() {
-        Stats stats = new Stats();
+        var stats = new Stats();
         mPageManager.addTo(stats);
         return stats;
     }
@@ -493,7 +493,7 @@ final class _DurablePageDb extends _PageDb {
             return 0;
         }
 
-        Stats stats = new Stats();
+        var stats = new Stats();
         mPageManager.addTo(stats);
         pageCount -= stats.freePages;
 
@@ -766,7 +766,7 @@ final class _DurablePageDb extends _PageDb {
                     throw new CorruptDatabaseException
                         ("Mismatched page size: " + pageSize + " != " + buffer.length);
                 } else {
-                    byte[] newBuffer = new byte[pageSize];
+                    var newBuffer = new byte[pageSize];
                     arraycopy(buffer, 0, newBuffer, 0, buffer.length);
                     readFully(in, newBuffer, buffer.length, pageSize - buffer.length);
                     buffer = newBuffer;
@@ -793,7 +793,7 @@ final class _DurablePageDb extends _PageDb {
                 throw new DatabaseException("Cannot restore into a non-empty file");
             }
 
-            byte[] buffer = new byte[pa.pageSize()];
+            var buffer = new byte[pa.pageSize()];
             readFully(in, buffer, 0, buffer.length);
 
             if (crypto != null) {

@@ -46,7 +46,7 @@ final class _CustomWriter implements CustomHandler {
     @Override
     public void redo(Transaction txn, byte[] message, long indexId, byte[] key) throws IOException {
         if (txn instanceof _LocalTransaction) {
-            _LocalTransaction local = (_LocalTransaction) txn;
+            var local = (_LocalTransaction) txn;
             if (local.mDatabase == mDatabase) {
                 local.customRedo(mHandlerId, message, indexId, key);
                 return;
@@ -59,7 +59,7 @@ final class _CustomWriter implements CustomHandler {
     @Override
     public void undo(Transaction txn, byte[] message) throws IOException {
         if (txn instanceof _LocalTransaction) {
-            _LocalTransaction local = (_LocalTransaction) txn;
+            var local = (_LocalTransaction) txn;
             if (local.mDatabase == mDatabase) {
                 local.customUndo(mHandlerId, message);
                 return;

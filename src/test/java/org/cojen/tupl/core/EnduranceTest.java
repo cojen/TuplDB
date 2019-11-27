@@ -63,7 +63,7 @@ public class EnduranceTest {
     @Test
     public void loadFragmented() throws Exception {
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
                 .pageSize(1024)
                 .directPageAccess(false)
                 .durabilityMode(DurabilityMode.NO_REDO)
@@ -107,12 +107,12 @@ public class EnduranceTest {
         }
 
         int numWorkers = 10;
-        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        final var keepRunning = new AtomicBoolean(true);
         // Next row to read
-        final AtomicLong nextRow = new AtomicLong(0);
+        final var nextRow = new AtomicLong(0);
 
         ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
-        ArrayList<Future<?>> futures = new ArrayList<>();
+        var futures = new ArrayList<Future<?>>();
         for (int i = 0; i < numWorkers; i++) {
             Runnable readRows = () -> {
                 ByteBuffer keyBuffer = ByteBuffer.allocate(8);
@@ -153,7 +153,7 @@ public class EnduranceTest {
     @Test
     public void splitAndCheckpoint() throws Exception {
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
                 .pageSize(1024)
                 .directPageAccess(false)
                 .durabilityMode(DurabilityMode.NO_REDO)
@@ -166,10 +166,10 @@ public class EnduranceTest {
         mIx = mDb.openIndex("test");
 
         int numWorkers = 5;
-        final AtomicBoolean keepRunning = new AtomicBoolean(true);
+        final var keepRunning = new AtomicBoolean(true);
         // Next row to insert
-        final AtomicLong nextRow = new AtomicLong(0);
-        final byte[] rowValue = new byte[512];
+        final var nextRow = new AtomicLong(0);
+        final var rowValue = new byte[512];
         // Only use row ids up to this value, then wrap around
         final long maxRows = 100_000;
 
@@ -226,7 +226,7 @@ public class EnduranceTest {
         // an ArrayIndexOutOfBounds exception to be thrown from the evict method. It was unable
         // to cope with empty leaf nodes.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .checkpointRate(-1, null)
             .directPageAccess(false)
             .lockTimeout(5, TimeUnit.SECONDS)
@@ -296,7 +296,7 @@ public class EnduranceTest {
         // Stress test which ensures that cursor position doesn't break when concurrent
         // insert/delete operations are making structural tree changes.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .pageSize(512)
             .directPageAccess(false);
 
@@ -306,9 +306,9 @@ public class EnduranceTest {
 
         Index ix = db.openIndex("test");
 
-        final AtomicReference<Exception> failure = new AtomicReference<>();
+        final var failure = new AtomicReference<Exception>();
 
-        Thread mutator = new Thread(() -> {
+        var mutator = new Thread(() -> {
             try {
                 while (true) {
                     for (int i=0; i<120; i++) {
@@ -362,7 +362,7 @@ public class EnduranceTest {
         // Runs concurrent transactional inserts and deletes, making sure that the ghost
         // deletion code handles splits correctly.
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH);
 
@@ -371,15 +371,15 @@ public class EnduranceTest {
         mDb = newTempDatabase(getClass(), config);
         mIx = mDb.openIndex("test");
 
-        AtomicBoolean stop = new AtomicBoolean();
-        AtomicReference<Exception> failure = new AtomicReference<>();
+        var stop = new AtomicBoolean();
+        var failure = new AtomicReference<Exception>();
 
         class Task extends Thread {
             @Override
             public void run() {
-                Random rnd = new Random();
+                var rnd = new Random();
                 try {
-                    byte[][] keys = new byte[1000][];
+                    var keys = new byte[1000][];
 
                     while (!stop.get()) {
                         for (int i=0; i<keys.length; i++) {
@@ -403,7 +403,7 @@ public class EnduranceTest {
             }
         }
 
-        Task[] tasks = new Task[2];
+        var tasks = new Task[2];
         for (int i=0; i<tasks.length; i++) {
             (tasks[i] = new Task()).start();
         }
@@ -423,7 +423,7 @@ public class EnduranceTest {
 
     @Test
     public void testBasic() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .pageSize(2048)
             .minCacheSize(1_000_000)
             .maxCacheSize(1_000_000)    // cacheSize ~ 500 nodes
@@ -444,7 +444,7 @@ public class EnduranceTest {
             mIx.store(null, key, val);
         }
         
-        List<Worker> workers = new ArrayList<>(numWorkers);
+        var workers = new ArrayList<Worker>(numWorkers);
         ExecutorService executor = Executors.newFixedThreadPool(numWorkers);
         workers.add(new StoreOpWorker(mDb, mIx));
         workers.add(new DeleteOpWorker(mDb, mIx));
@@ -471,7 +471,7 @@ public class EnduranceTest {
         assertFalse(failureRatePercentage > 0.1);
         // System.out.printf("NumOperations=%d, FailureRate = %.2f%%\n", numOperations, failureRatePercentage);
 
-        VerificationObserver observer = new VerificationObserver();
+        var observer = new VerificationObserver();
         mIx.verify(observer);
         assertFalse(observer.failed);
     }

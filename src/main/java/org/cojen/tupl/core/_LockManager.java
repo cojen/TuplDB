@@ -259,7 +259,7 @@ public final class _LockManager {
      * locker. This prevents them from being acquired again.
      */
     final void close() {
-        _Locker locker = new _Locker(null);
+        var locker = new _Locker(null);
         for (LockHT ht : mHashTables) {
             ht.close(locker);
         }
@@ -373,7 +373,7 @@ public final class _LockManager {
                 index = hash & (entries.length - 1);
             }
 
-            _Lock lock = new _Lock();
+            var lock = new _Lock();
 
             lock.mIndexId = indexId;
             lock.mKey = key;
@@ -597,7 +597,7 @@ public final class _LockManager {
 
         private _Lock[] rehash(_Lock[] entries) {
             int capacity = entries.length << 1;
-            _Lock[] newEntries = new _Lock[capacity];
+            var newEntries = new _Lock[capacity];
             int newMask = capacity - 1;
 
             // Signal that rehash is in progress.

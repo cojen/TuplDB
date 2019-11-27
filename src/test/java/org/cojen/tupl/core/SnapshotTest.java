@@ -83,9 +83,9 @@ public class SnapshotTest {
             }
         }
 
-        final Listener listener = new Listener();
+        final var listener = new Listener();
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(rateMillis, TimeUnit.MILLISECONDS)
             .checkpointSizeThreshold(0)
@@ -173,9 +173,9 @@ public class SnapshotTest {
     }
 
     private void snapshot(File base, File snapshotBase, int extraThreads) throws Exception {
-        File snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
+        var snapshot = new File(snapshotBase.getParentFile(), snapshotBase.getName() + ".db");
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
@@ -193,7 +193,7 @@ public class SnapshotTest {
             index.store(null, key.getBytes(), value.getBytes());
         }
 
-        final FileOutputStream out = new FileOutputStream(snapshot);
+        final var out = new FileOutputStream(snapshot);
 
         class Slow extends OutputStream {
             volatile boolean fast;
@@ -218,12 +218,12 @@ public class SnapshotTest {
             }
         };
 
-        final Slow slow = new Slow();
+        final var slow = new Slow();
 
-        Thread t = new Thread() {
+        var t = new Thread() {
             public void run() {
                 try {
-                    Random rnd = new Random(5198473);
+                    var rnd = new Random(5198473);
                     for (int i=0; i<1000000; i++) {
                         int k = rnd.nextInt(1000000);
                         String key = "key-" + k;
@@ -251,7 +251,7 @@ public class SnapshotTest {
 
         assertEquals(expectedLength, snapshot.length());
 
-        DatabaseConfig restoredConfig = new DatabaseConfig()
+        var restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(snapshotBase)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
@@ -282,7 +282,7 @@ public class SnapshotTest {
         File snapshotFile = newTempBaseFile(getClass());
         File restoredBase = newTempBaseFile(getClass());
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(base)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
@@ -301,7 +301,7 @@ public class SnapshotTest {
 
         db.checkpoint();
 
-        FileOutputStream out = new FileOutputStream(snapshotFile);
+        var out = new FileOutputStream(snapshotFile);
 
         Snapshot s = db.beginSnapshot();
         long expectedLength = s.length();
@@ -317,7 +317,7 @@ public class SnapshotTest {
         // Throw an exception before the restore can complete.
         long limit = expectedLength / 2;
 
-        InputStream broken = new FilterInputStream(new FileInputStream(snapshotFile)) {
+        var broken = new FilterInputStream(new FileInputStream(snapshotFile)) {
             private long mTotal = 0;
 
             @Override
@@ -335,7 +335,7 @@ public class SnapshotTest {
             }
         };
 
-        DatabaseConfig restoredConfig = new DatabaseConfig()
+        var restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .baseFile(restoredBase)
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
@@ -368,7 +368,7 @@ public class SnapshotTest {
         File snapshotFile = newTempBaseFile(getClass());
         File restoredBase = newTempBaseFile(getClass());
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .directPageAccess(false)
             .pageSize(4096)
             .baseFile(base)
@@ -389,7 +389,7 @@ public class SnapshotTest {
 
         db.checkpoint();
 
-        FileOutputStream out = new FileOutputStream(snapshotFile);
+        var out = new FileOutputStream(snapshotFile);
 
         Snapshot s = db.beginSnapshot();
         long expectedLength = s.length();
@@ -406,7 +406,7 @@ public class SnapshotTest {
             (4096, 25_000, restoredBase, EnumSet.of(OpenOption.CREATE));
 
         // Note that no base file is provided. This means no redo logging.
-        DatabaseConfig restoredConfig = new DatabaseConfig()
+        var restoredConfig = new DatabaseConfig()
             .directPageAccess(false)
             .pageSize(4096)
             .dataPageArray(map)

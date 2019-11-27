@@ -77,7 +77,7 @@ class PosixMappedPageArray extends MappedPageArray {
                 throw e;
             }
         } else {
-            JavaFileIO fio = new JavaFileIO(file, options, 1, false);
+            var fio = new JavaFileIO(file, options, 1, false);
             try {
                 fileLen = fio.length();
                 fd = PosixFileIO.openFd(file, options);
@@ -140,8 +140,7 @@ class PosixMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        PosixMappedPageArray pa = new PosixMappedPageArray
-            (pageSize(), super.getPageCount(), mFile, mOptions);
+        var pa = new PosixMappedPageArray(pageSize(), super.getPageCount(), mFile, mOptions);
         pa.mEmpty = empty;
         return pa;
     }

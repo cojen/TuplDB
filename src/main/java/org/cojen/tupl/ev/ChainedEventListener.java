@@ -46,7 +46,7 @@ public class ChainedEventListener extends SafeEventListener {
             return first;
         }
 
-        EventListener[] rest = new EventListener[count - 1];
+        var rest = new EventListener[count - 1];
         for (int i=0, j=0; i<listeners.length; i++) {
             EventListener listener = listeners[i];
             if (listener != null && listener != first) {

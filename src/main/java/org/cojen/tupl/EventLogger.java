@@ -52,7 +52,7 @@ public final class EventLogger implements EventListener {
         try {
             if (mLogger.isLoggable(type.level)) {
                 String msg = type.category + ": " + String.format(message, args);
-                LogRecord record = new LogRecord(type.level, msg);
+                var record = new LogRecord(type.level, msg);
                 record.setSourceClassName(null);
                 record.setSourceMethodName(null);
 

@@ -204,7 +204,7 @@ public class FileStateLogTest {
     public void missingRanges() throws Exception {
         // Verify that missing ranges can be queried.
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
         assertEquals(0, result.mRanges.size());
 
@@ -310,7 +310,7 @@ public class FileStateLogTest {
         mLog.truncateAll(0, 0, 1000);
         mLog.defineTerm(0, 10, 1000);
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         assertEquals(1000, mLog.checkForMissingData(Long.MAX_VALUE, result));
         assertEquals(0, result.mRanges.size());
 
@@ -363,7 +363,7 @@ public class FileStateLogTest {
     public void primordialTerm() throws Exception {
         LogReader reader = mLog.openReader(0);
 
-        byte[] buf = new byte[10];
+        var buf = new byte[10];
         assertEquals(0, reader.tryReadAny(buf, 0, buf.length));
 
         new Thread(() -> {
@@ -382,7 +382,7 @@ public class FileStateLogTest {
     public void highestPosition() throws Exception {
         // Verify highest position and commit position behavior.
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(0, info.mTerm);
         assertEquals(0, info.mHighestPosition);
@@ -526,12 +526,12 @@ public class FileStateLogTest {
 
     @Test
     public void recoverState() throws Exception {
-        Random rnd = new Random(7435847);
+        var rnd = new Random(7435847);
 
         long prevTerm = mLog.checkCurrentTerm(0);
         long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
-        byte[] msg1 = new byte[1000];
+        var msg1 = new byte[1000];
         rnd.nextBytes(msg1);
         write(writer, msg1);
         writer.release();
@@ -539,7 +539,7 @@ public class FileStateLogTest {
         prevTerm = mLog.checkCurrentTerm(0);
         term = mLog.incrementCurrentTerm(1, 123);
         writer = mLog.openWriter(prevTerm, term, 1000);
-        byte[] msg2 = new byte[2000];
+        var msg2 = new byte[2000];
         rnd.nextBytes(msg2);
         write(writer, msg2);
         writer.release();
@@ -549,7 +549,7 @@ public class FileStateLogTest {
         mLog.close();
         mLog = FileStateLog.open(mBase);
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(term, info.mTerm);
         assertEquals(1000, info.mHighestPosition);
@@ -562,7 +562,7 @@ public class FileStateLogTest {
 
         term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
-        byte[] msg3 = new byte[3500];
+        var msg3 = new byte[3500];
         rnd.nextBytes(msg3);
         write(writer, msg3);
         writer.release();
@@ -616,7 +616,7 @@ public class FileStateLogTest {
         public void run() {
             try {
                 LogReader reader = mLog.openReader(mStartPosition);
-                byte[] buf = new byte[1000];
+                var buf = new byte[1000];
                 while (true) {
                     int amt = reader.read(buf, 0, buf.length);
                     if (amt < 0) {
@@ -638,8 +638,8 @@ public class FileStateLogTest {
         // Write data over multiple segments.
 
         long seed = 1334535;
-        Random rnd = new Random(seed);
-        byte[] buf = new byte[1000];
+        var rnd = new Random(seed);
+        var buf = new byte[1000];
 
         long prevTerm = mLog.checkCurrentTerm(0);
         long term = mLog.incrementCurrentTerm(1, 0);
@@ -682,7 +682,7 @@ public class FileStateLogTest {
         mLog.close();
         mLog = FileStateLog.open(mBase);
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(prevTerm, info.mTerm);
         assertEquals(highestPosition, info.mHighestPosition);
@@ -694,7 +694,7 @@ public class FileStateLogTest {
         // Verify data.
 
         rnd = new Random(seed);
-        byte[] buf2 = new byte[buf.length];
+        var buf2 = new byte[buf.length];
 
         LogReader r = mLog.openReader(0);
         for (int i=0; i<10_000; i++) {
@@ -725,12 +725,12 @@ public class FileStateLogTest {
     public void recoverState3() throws Exception {
         // Test recovery of the start position and term, after truncating the log.
 
-        Random rnd = new Random(64926492);
+        var rnd = new Random(64926492);
 
         long prevTerm = mLog.checkCurrentTerm(0);
         long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(prevTerm, term, 0);
-        byte[] msg1 = new byte[1000];
+        var msg1 = new byte[1000];
         rnd.nextBytes(msg1);
         write(writer, msg1);
         writer.release();
@@ -738,7 +738,7 @@ public class FileStateLogTest {
         prevTerm = mLog.checkCurrentTerm(0);
         term = mLog.incrementCurrentTerm(1, 0);
         writer = mLog.openWriter(prevTerm, term, 1000);
-        byte[] msg2 = new byte[2_000_000];
+        var msg2 = new byte[2_000_000];
         rnd.nextBytes(msg2);
         write(writer, msg2);
         writer.release();
@@ -761,7 +761,7 @@ public class FileStateLogTest {
     public void compactAll() throws Exception {
         long term = mLog.incrementCurrentTerm(1, 0);
         LogWriter writer = mLog.openWriter(0, term, 0);
-        byte[] b = new byte[1024];
+        var b = new byte[1024];
         for (int i=0; i<1024; i++) {
             writer.write(b);
         }
@@ -769,7 +769,7 @@ public class FileStateLogTest {
         mLog.commit(commitPosition);
         writer.release();
 
-        File expect = new File(mBase.getPath() + ".1.0.0");
+        var expect = new File(mBase.getPath() + ".1.0.0");
         assertTrue(expect.exists());
         assertEquals(commitPosition, expect.length());
 
@@ -871,7 +871,7 @@ public class FileStateLogTest {
         assertEquals(2, info.mTerm);
         assertEquals(100, info.mHighestPosition);
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         long contigPosition = mLog.checkForMissingData(Long.MAX_VALUE, result);
         assertEquals(100, contigPosition);
         assertEquals(0, result.mRanges.size());
@@ -1048,7 +1048,7 @@ public class FileStateLogTest {
     }
 
     private static void replicate(StateLog from, long position, StateLog to) throws IOException {
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         to.captureHighest(info);
 
         if (info.mHighestPosition < position) {
@@ -1068,7 +1068,7 @@ public class FileStateLogTest {
             position--;
         }
 
-        byte[] buf = new byte[100];
+        var buf = new byte[100];
 
         while (true) {
             int amt = reader.tryReadAny(buf, 0, buf.length);
@@ -1092,7 +1092,7 @@ public class FileStateLogTest {
     {
         LogReader reader = log.openReader(position);
 
-        byte[] buf = new byte[expect.length];
+        var buf = new byte[expect.length];
         int offset = 0;
 
         while (offset < buf.length) {
@@ -1118,7 +1118,7 @@ public class FileStateLogTest {
     private static void writeTerm(StateLog log, int prevTerm, int term, int position, int len)
         throws IOException
     {
-        byte[] data = new byte[len];
+        var data = new byte[len];
         Arrays.fill(data, (byte) term);
         LogWriter writer = log.openWriter(prevTerm, term, position);
         write(writer, data);

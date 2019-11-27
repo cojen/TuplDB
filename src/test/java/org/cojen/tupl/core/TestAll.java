@@ -139,7 +139,7 @@ public class TestAll {
             SplitTest.class,
         };
 
-        String[] names = new String[classes.length];
+        var names = new String[classes.length];
         for (int i=0; i<classes.length; i++) {
             names[i] = classes[i].getName();
         }

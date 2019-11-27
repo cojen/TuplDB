@@ -132,7 +132,7 @@ final class FileTermLog extends Latch implements TermLog {
             base = checkBase(base);
         }
 
-        FileTermLog termLog = new FileTermLog
+        var termLog = new FileTermLog
             (caches, worker, base, prevTerm, term,
              startPosition, commitPosition, startPosition, null);
 
@@ -168,7 +168,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
         }
 
-        FileTermLog termLog = new FileTermLog
+        var termLog = new FileTermLog
             (caches, worker, base, prevTerm, term,
              startPosition, commitPosition, highestPosition, segmentFileNames);
 
@@ -568,7 +568,7 @@ final class FileTermLog extends Latch implements TermLog {
         try {
             for (Delayed delayed : mCommitTasks) {
                 if (delayed instanceof DelayedWaiter) {
-                    DelayedWaiter dwaiter = (DelayedWaiter) delayed;
+                    var dwaiter = (DelayedWaiter) delayed;
                     if (dwaiter.mWaiter == waiter) {
                         dwaiter.run(WAIT_TERM_END);
                     }
@@ -986,7 +986,7 @@ final class FileTermLog extends Latch implements TermLog {
             long endPosition = nextSegment == null ? mLogEndPosition : nextSegment.mStartPosition;
             maxLength = Math.min(maxLength, endPosition - startPosition);
 
-            Segment segment = new Segment(startPosition, maxLength);
+            var segment = new Segment(startPosition, maxLength);
 
             if (!mSegments.add(segment)) {
                 // Untruncate the startSegment and keep using it.
@@ -1186,7 +1186,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         Segment toClose = mCaches.mSegments.add(segment);
 
-        Worker.Task task = new Worker.Task() {
+        var task = new Worker.Task() {
             @Override
             public void run() {
                 try {
@@ -1228,7 +1228,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     void truncate(Segment segment) {
-        Worker.Task task = new Worker.Task() {
+        var task = new Worker.Task() {
             @Override
             public void run() {
                 cRefCountHandle.getAndAdd(segment, 1);
@@ -1820,7 +1820,7 @@ final class FileTermLog extends Latch implements TermLog {
             long prevTerm = prevTermAt(mStartPosition);
             long term = term();
 
-            StringBuilder b = new StringBuilder();
+            var b = new StringBuilder();
             b.append(base.getPath()).append('.');
 
             b.append(term).append('.').append(mStartPosition);
@@ -2210,7 +2210,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         @Override
         public String toString() {
-            StringBuilder b = new StringBuilder().append("Segment: {");
+            var b = new StringBuilder().append("Segment: {");
 
             File file = file();
             if (file != null) {

@@ -567,7 +567,7 @@ public class Utils {
             Throwable[] s2 = toSuppress.getSuppressed();
 
             if (s1.length != 0 || s2.length != 0) {
-                Set<Throwable> all = new HashSet<>();
+                var all = new HashSet<Throwable>();
                 all.add(target);
                 if (!gatherSuppressed(all, s1) || !gatherSuppressed(all, s2)) {
                     return;

@@ -41,7 +41,7 @@ import static org.cojen.tupl.core.Utils.*;
  * <p>Open a non-durable database, limited to a max size of 100MB:
  *
  * <pre>
- * DatabaseConfig config = new DatabaseConfig().maxCacheSize(100_000_000);
+ * var config = new DatabaseConfig().maxCacheSize(100_000_000);
  * Database db = Database.open(config);
  * </pre>
  *
@@ -49,7 +49,7 @@ import static org.cojen.tupl.core.Utils.*;
  * durability mode} for the best transactional commit performance.
  *
  * <pre>
- * DatabaseConfig config = new DatabaseConfig()
+ * var config = new DatabaseConfig()
  *    .baseFilePath("/var/lib/tupl/myapp")
  *    .cacheSize(100_000_000)
  *    .durabilityMode(DurabilityMode.NO_FLUSH);

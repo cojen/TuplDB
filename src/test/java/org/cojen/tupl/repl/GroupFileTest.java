@@ -211,7 +211,7 @@ public class GroupFileTest {
         GroupFile gf = GroupFile.open(null, f, new InetSocketAddress("localhost", 1001), true);
 
         // Re-open with different address (restored member perhaps)
-        InetSocketAddress addr2 = new InetSocketAddress("localhost", 1002);
+        var addr2 = new InetSocketAddress("localhost", 1002);
 
         gf = GroupFile.open(null, f, addr2, false);
 
@@ -433,8 +433,8 @@ public class GroupFileTest {
                 return;
             }
 
-            try (FileOutputStream out = new FileOutputStream(newFile)) {
-                byte[] buf = new byte[1000];
+            try (var out = new FileOutputStream(newFile)) {
+                var buf = new byte[1000];
                 int amt;
                 while ((amt = in.read(buf)) > 0) {
                     out.write(buf, 0, amt);
@@ -482,7 +482,7 @@ public class GroupFileTest {
             }
         }
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        var bout = new ByteArrayOutputStream();
         gf.writeTo(bout);
         byte[] copy = bout.toByteArray();
 
@@ -491,13 +491,13 @@ public class GroupFileTest {
         }
 
         // Version unchanged.
-        ByteArrayInputStream bin = new ByteArrayInputStream(copy);
+        var bin = new ByteArrayInputStream(copy);
         assertFalse(gf.readFrom(bin));
         assertTrue(bin.read() < 0);
 
         // Copy into a new group file object.
         File f2 = TestUtils.newTempBaseFile(getClass());
-        try (FileOutputStream fout = new FileOutputStream(f2)) {
+        try (var fout = new FileOutputStream(f2)) {
             fout.write(copy);
         }
 
@@ -542,7 +542,7 @@ public class GroupFileTest {
         gf2.updateRole(p2.mMemberId, Role.OBSERVER);
         Peer p4 = gf2.addPeer(new InetSocketAddress("localhost", 1004), Role.NORMAL);
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        var bout = new ByteArrayOutputStream();
         gf2.writeTo(bout);
         gf1.readFrom(new ByteArrayInputStream(bout.toByteArray()));
 

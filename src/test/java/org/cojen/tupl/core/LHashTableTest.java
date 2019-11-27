@@ -32,7 +32,7 @@ public class LHashTableTest {
 
     @Test
     public void clear() {
-        LHashTable<LHashTable.IntEntry> ht = new LHashTable.Int(10);
+        var ht = new LHashTable.Int(10);
 
         ht.insert(1).value = 2;
         ht.insert(3).value = 4;
@@ -48,7 +48,7 @@ public class LHashTableTest {
 
     @Test
     public void replace() {
-        LHashTable<LHashTable.IntEntry> ht = new LHashTable.Int(10);
+        var ht = new LHashTable.Int(10);
 
         ht.replace(0x100).value = 2;
         assertEquals(2, ht.get(0x100).value);
@@ -73,7 +73,7 @@ public class LHashTableTest {
 
     @Test
     public void remove() {
-        LHashTable<LHashTable.IntEntry> ht = new LHashTable.Int(10);
+        var ht = new LHashTable.Int(10);
 
         assertNull(ht.remove(1));
         ht.insert(1).value = 2;

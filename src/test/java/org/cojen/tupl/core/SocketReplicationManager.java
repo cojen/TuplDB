@@ -85,7 +85,7 @@ class SocketReplicationManager implements ReplicationManager {
             mReader = s.getInputStream();
         } else {
             // Local host is the leader. Wait to connect to replica.
-            Socket s = new Socket(mReplicaHost, mPort);
+            var s = new Socket(mReplicaHost, mPort);
             mWriter = new StreamWriter(s.getOutputStream());
         }
     }

@@ -416,7 +416,7 @@ final class Lock {
                     mSharedLockersObj = null;
                     break unlock;
                 } else if (sharedObj instanceof LockerHTEntry[]) {
-                    LockerHTEntry[] entries = (LockerHTEntry[]) sharedObj;
+                    var entries = (LockerHTEntry[]) sharedObj;
                     if (lockerHTremove(entries, locker)) {
                         if (count == 2) {
                             mSharedLockersObj = lockerHTgetOne(entries);
@@ -638,7 +638,7 @@ final class Lock {
     void detectDeadlock(Locker locker, int lockType, long nanosTimeout)
         throws DeadlockException
     {
-        DeadlockDetector detector = new DeadlockDetector(locker);
+        var detector = new DeadlockDetector(locker);
         if (detector.scan()) {
             Object att = findOwnerAttachment(locker, lockType);
             throw new DeadlockException(nanosTimeout, att,
@@ -693,7 +693,7 @@ final class Lock {
                     }
                 }
             } else {
-                LockerHTEntry[] entries = (LockerHTEntry[]) sharedObj;
+                var entries = (LockerHTEntry[]) sharedObj;
 
                 for (int i=entries.length; --i>=0; ) {
                     for (LockerHTEntry e = entries[i]; e != null; e = e.mNext) {
@@ -740,11 +740,11 @@ final class Lock {
         if (sharedObj == null) {
             mSharedLockersObj = locker;
         } else if (sharedObj instanceof LockerHTEntry[]) {
-            LockerHTEntry[] entries = (LockerHTEntry[]) sharedObj;
+            var entries = (LockerHTEntry[]) sharedObj;
             lockerHTadd(entries, newCount & 0x7fffffff, locker);
         } else {
             // Initial capacity of must be a power of 2.
-            LockerHTEntry[] entries = new LockerHTEntry[8];
+            var entries = new LockerHTEntry[8];
             lockerHTadd(entries, (Locker) sharedObj);
             lockerHTadd(entries, locker);
             mSharedLockersObj = entries;
@@ -765,7 +765,7 @@ final class Lock {
     private void lockerHTadd(LockerHTEntry[] entries, int newSize, Locker locker) {
         if (newSize > (entries.length >> 1)) {
             int capacity = entries.length << 1;
-            LockerHTEntry[] newEntries = new LockerHTEntry[capacity];
+            var newEntries = new LockerHTEntry[capacity];
             int newMask = capacity - 1;
 
             for (int i=entries.length; --i>=0; ) {
@@ -786,7 +786,7 @@ final class Lock {
 
     private static void lockerHTadd(LockerHTEntry[] entries, Locker locker) {
         int index = locker.hashCode() & (entries.length - 1);
-        LockerHTEntry e = new LockerHTEntry();
+        var e = new LockerHTEntry();
         e.mOwner = locker;
         e.mNext = entries[index];
         entries[index] = e;

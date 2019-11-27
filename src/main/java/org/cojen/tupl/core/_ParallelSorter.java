@@ -589,7 +589,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             mSortTreeLevels = new ArrayList<>();
         }
 
-        Merger merger = new Merger(mLastMerger, sortTrees, size, dest);
+        var merger = new Merger(mLastMerger, sortTrees, size, dest);
         mLastMerger = merger;
 
         try {
@@ -834,7 +834,7 @@ final class _ParallelSorter implements Sorter, _Node.Supplier {
             if (levelNum < levels.size()) {
                 return levels.get(levelNum);
             }
-            Level level = new Level(levelNum);
+            var level = new Level(levelNum);
             levels.add(level);
             return level;
         }

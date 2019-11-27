@@ -130,7 +130,7 @@ final class GroupFile extends Latch {
             // Create the file.
 
             long groupId;
-            SecureRandom rnd = new SecureRandom();
+            var rnd = new SecureRandom();
             do {
                 groupId = rnd.nextLong();
             } while (groupId == 0);
@@ -191,8 +191,8 @@ final class GroupFile extends Latch {
      * @return groupId
      */
     private long parseFile(RandomAccessFile raf) throws IOException {
-        Properties props = new Properties();
-        try (InputStream in = new FileInputStream(raf.getFD())) {
+        var props = new Properties();
+        try (var in = new FileInputStream(raf.getFD())) {
             props.load(new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)));
         }
 
@@ -266,7 +266,7 @@ final class GroupFile extends Latch {
                 throw new IllegalStateException("Duplicate member identifier: " + memberId);
             }
 
-            Peer peer = new Peer(memberId, addr, role);
+            var peer = new Peer(memberId, addr, role);
 
             if (!peerSet.add(peer)) {
                 throw new IllegalStateException("Duplicate member identifier: " + memberId);
@@ -408,8 +408,8 @@ final class GroupFile extends Latch {
      * stream.
      */
     public void writeTo(OutputStream out) throws IOException {
-        byte[] buf = new byte[1000];
-        Checksum checksum = new CRC32C();
+        var buf = new byte[1000];
+        var checksum = new CRC32C();
 
         acquireShared();
         try {
@@ -459,8 +459,8 @@ final class GroupFile extends Latch {
      * false is returned.
      */
     public boolean readFrom(InputStream in) throws IOException {
-        byte[] buf = new byte[1000];
-        Checksum checksum = new CRC32C();
+        var buf = new byte[1000];
+        var checksum = new CRC32C();
 
         long version, length;
 
@@ -496,9 +496,9 @@ final class GroupFile extends Latch {
         try {
             String path = mFile.getPath();
             oldFile = new File(path + ".old");
-            File newFile = new File(path + ".new");
+            var newFile = new File(path + ".new");
 
-            try (FileOutputStream out = new FileOutputStream(newFile)) {
+            try (var out = new FileOutputStream(newFile)) {
                 while (length > 0) {
                     int amt = in.read(buf, 0, length < buf.length ? (int) length : buf.length);
                     if (amt <= 0) {
@@ -556,7 +556,7 @@ final class GroupFile extends Latch {
      * @return control message; first byte is the opcode
      */
     public byte[] proposeJoin(byte op, SocketAddress address, ObjLongConsumer<InputStream> dest) {
-        EncodingOutputStream eout = new EncodingOutputStream();
+        var eout = new EncodingOutputStream();
         eout.write(op);
         eout.encodeLongLE(version());
         // Encode a simple "unique" key to identify the request, although not strictly
@@ -649,7 +649,7 @@ final class GroupFile extends Latch {
         try {
             consumer = removeProposeConsumer(message);
 
-            DecodingInputStream din = new DecodingInputStream(message);
+            var din = new DecodingInputStream(message);
             din.read(); // skip opcode
             long version = din.decodeLongLE();
             long requestId = din.decodeLongLE();
@@ -684,7 +684,7 @@ final class GroupFile extends Latch {
         } else {
             downgrade();
             try {
-                try (InputStream in = new FileInputStream(mFile)) {
+                try (var in = new FileInputStream(mFile)) {
                     consumer.accept(in, position);
                 } catch (Throwable e) {
                     Utils.uncaught(e);
@@ -758,7 +758,7 @@ final class GroupFile extends Latch {
         }
 
         if (isPeer) {
-            Peer peer = new Peer(mVersion + 1, address, role);
+            var peer = new Peer(mVersion + 1, address, role);
             
             if (!mPeerSet.add(peer)) {
                 // 64-bit identifier wrapped around, which is unlikely.
@@ -809,7 +809,7 @@ final class GroupFile extends Latch {
         try {
             checkUpdateRole(memberId, role);
 
-            byte[] message = new byte[1 + 8 + 8 + 1];
+            var message = new byte[1 + 8 + 8 + 1];
 
             message[0] = op;
             Utils.encodeLongLE(message, 1, mVersion);
@@ -1106,12 +1106,11 @@ final class GroupFile extends Latch {
      */
     private void doPersist() throws IOException {
         String path = mFile.getPath();
-        File oldFile = new File(path + ".old");
-        File newFile = new File(path + ".new");
+        var oldFile = new File(path + ".old");
+        var newFile = new File(path + ".new");
 
-        try (FileOutputStream out = new FileOutputStream(newFile)) {
-            BufferedWriter w = new BufferedWriter
-                (new OutputStreamWriter(out, StandardCharsets.UTF_8));
+        try (var out = new FileOutputStream(newFile)) {
+            var w = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
 
             w.write('#');
             w.write(getClass().getName());
@@ -1172,12 +1171,12 @@ final class GroupFile extends Latch {
      */
     private static RandomAccessFile openFile(File file) throws IOException {
         String path = file.getPath();
-        File oldFile = new File(path + ".old");
-        File newFile = new File(path + ".new");
+        var oldFile = new File(path + ".old");
+        var newFile = new File(path + ".new");
 
         while (true) {
             try {
-                RandomAccessFile raf = new RandomAccessFile(file, "r");
+                var raf = new RandomAccessFile(file, "r");
                 if (raf.length() == 0) {
                     raf.close();
                     raf = null;

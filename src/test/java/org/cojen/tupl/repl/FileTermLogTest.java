@@ -100,9 +100,9 @@ public class FileTermLogTest {
 
         // Write a bunch of data and read it back.
 
-        final byte[] buf = new byte[10000];
-        Random rnd = new Random(seed);
-        Random rnd2 = new Random(seed + 1);
+        final var buf = new byte[10000];
+        var rnd = new Random(seed);
+        var rnd2 = new Random(seed + 1);
         LogWriter writer = mLog.openWriter(0);
         assertEquals(0, writer.prevTerm());
         assertEquals(1, writer.term());
@@ -116,7 +116,7 @@ public class FileTermLogTest {
             }
             assertTrue(writer.write(buf, 0, len, position + len));
             position += len;
-            LogInfo info = new LogInfo();
+            var info = new LogInfo();
             mLog.captureHighest(info);
             assertEquals(position, info.mHighestPosition);
         }
@@ -124,7 +124,7 @@ public class FileTermLogTest {
         writer.release();
 
         if (reopen) {
-            LogInfo info = new LogInfo();
+            var info = new LogInfo();
             mLog.captureHighest(info);
             mLog.sync();
             mLog.close();
@@ -186,7 +186,7 @@ public class FileTermLogTest {
 
         assertEquals(position, mLog.endPosition());
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(position, info.mHighestPosition);
 
@@ -220,9 +220,9 @@ public class FileTermLogTest {
         mLog = FileTermLog.openTerm(mCaches, mWorker, mBase, prevTerm, term,
                                     startPosition, startPosition, startPosition, null);
 
-        final byte[] buf = new byte[1000];
-        Random rnd = new Random(62723);
-        Random rnd2 = new Random(8675309);
+        final var buf = new byte[1000];
+        var rnd = new Random(62723);
+        var rnd2 = new Random(8675309);
         LogWriter writer = mLog.openWriter(startPosition);
         long position = startPosition;
 
@@ -253,25 +253,25 @@ public class FileTermLogTest {
         new File(basePath + '.' + term + ".foo").createNewFile();
 
         // Create some out-of-bounds segments that should be deleted.
-        File low = new File(basePath + term + ".123." + prevTerm);
+        var low = new File(basePath + term + ".123." + prevTerm);
         low.createNewFile();
         assertTrue(low.exists());
-        File high = new File(basePath + term + ".999999999999");
+        var high = new File(basePath + term + ".999999999999");
         high.createNewFile();
         assertTrue(high.exists());
 
         // Expand a segment that should be truncated.
-        File first = new File(basePath + term + ".1000." + prevTerm);
+        var first = new File(basePath + term + ".1000." + prevTerm);
         assertTrue(first.exists());
         long firstLen = first.length();
         assertTrue(firstLen > 1_000_000);
-        try (FileOutputStream out = new FileOutputStream(first, true)) {
+        try (var out = new FileOutputStream(first, true)) {
             out.write("hello".getBytes());
         }
         assertEquals(firstLen + 5, first.length());
 
         // Close and reopen.
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         mLog.close();
 
@@ -384,8 +384,8 @@ public class FileTermLogTest {
             @Override
             public void run() {
                 try {
-                    byte[] buf = new byte[1024];
-                    Random rnd2 = new Random(seed + 1);
+                    var buf = new byte[1024];
+                    var rnd2 = new Random(seed + 1);
                     LogReader reader = mLog.openReader(0);
 
                     while (true) {
@@ -409,12 +409,12 @@ public class FileTermLogTest {
             }
         }
 
-        final Reader r = new Reader();
+        final var r = new Reader();
         TestUtils.startAndWaitUntilBlocked(r);
 
-        final byte[] buf = new byte[10000];
-        Random rnd = new Random(seed);
-        Random rnd2 = new Random(seed + 1);
+        final var buf = new byte[10000];
+        var rnd = new Random(seed);
+        var rnd2 = new Random(seed + 1);
         LogWriter writer = mLog.openWriter(0);
         assertEquals(0, writer.prevTerm());
         assertEquals(1, writer.term());
@@ -428,7 +428,7 @@ public class FileTermLogTest {
             }
             assertTrue(writer.write(buf, 0, len, position + len));
             position += len;
-            LogInfo info = new LogInfo();
+            var info = new LogInfo();
             mLog.captureHighest(info);
             assertEquals(position, info.mHighestPosition);
 
@@ -441,7 +441,7 @@ public class FileTermLogTest {
         writer.release();
         mLog.commit(position);
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(position, info.mHighestPosition);
         assertEquals(position, info.mCommitPosition);
@@ -545,7 +545,7 @@ public class FileTermLogTest {
         byte[] msg1 = "hello".getBytes();
 
         // Wait for the full message.
-        Waiter waiter = new Waiter(position + msg1.length, upon);
+        var waiter = new Waiter(position + msg1.length, upon);
         waiter.begin();
 
         LogWriter writer = mLog.openWriter(0);
@@ -615,7 +615,7 @@ public class FileTermLogTest {
             try {
                 LogWriter w = mLog.openWriter(fposition);
                 int rem = 100 - msg3.length;
-                byte[] b = new byte[(int) (fposition + rem)]; 
+                var b = new byte[(int) (fposition + rem)]; 
                 for (int i=0; i<b.length; i++) {
                     b[i] = (byte) (i + 1);
                 }
@@ -632,7 +632,7 @@ public class FileTermLogTest {
 
         // Verify that everything is read back properly, with no blocking.
         byte[] complete = concat(msg1, msg2, msg3);
-        byte[] buf = new byte[complete.length + 100 - msg3.length];
+        var buf = new byte[complete.length + 100 - msg3.length];
         LogReader reader = mLog.openReader(0);
         int amt = reader.read(buf, 0, buf.length);
         assertEquals(buf.length, amt);
@@ -659,15 +659,15 @@ public class FileTermLogTest {
         // data it observes should match what was written.
 
         final long seed = 289023475245L;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         final int threadCount = 10;
         final int sliceLength = 10_000;
-        Range[] ranges = new Range[sliceLength * threadCount];
+        var ranges = new Range[sliceLength * threadCount];
 
         long position = 0;
         for (int i=0; i<ranges.length; i++) {
-            Range range = new Range();
+            var range = new Range();
             range.mStart = position;
             int len = rnd.nextInt(1000);
             position += len;
@@ -681,7 +681,7 @@ public class FileTermLogTest {
 
         Collections.shuffle(Arrays.asList(ranges), rnd);
 
-        Range[][] slices = new Range[threadCount][];
+        var slices = new Range[threadCount][];
         for (int i=0; i<slices.length; i++) {
             int from = i * sliceLength;
             slices[i] = Arrays.copyOfRange(ranges, from, from + sliceLength);
@@ -703,7 +703,7 @@ public class FileTermLogTest {
                     long sum = 0;
 
                     for (Range range : mRanges) {
-                        byte[] data = new byte[(int) (range.mEnd - range.mStart)];
+                        var data = new byte[(int) (range.mEnd - range.mStart)];
                         mRnd.nextBytes(data);
                         LogWriter writer = mLog.openWriter(range.mStart);
                         write(writer, data);
@@ -742,7 +742,7 @@ public class FileTermLogTest {
             syncThread.start();
         }
 
-        Writer[] writers = new Writer[threadCount];
+        var writers = new Writer[threadCount];
         for (int i=0; i<writers.length; i++) {
             writers[i] = new Writer(slices[i], new Random(seed + i));
         }
@@ -752,7 +752,7 @@ public class FileTermLogTest {
         }
 
         LogReader reader = mLog.openReader(0);
-        byte[] buf = new byte[1024];
+        var buf = new byte[1024];
         long sum = 0;
 
         while (true) {
@@ -798,7 +798,7 @@ public class FileTermLogTest {
     private void doMissingRanges() throws Exception {
         // Verify that missing ranges can be queried.
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
         assertEquals(0, result.mRanges.size());
 
@@ -874,7 +874,7 @@ public class FileTermLogTest {
         assertEquals(1, result.mRanges.size());
         assertEquals(new Range(250, 300), result.mRanges.get(0));
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(250, info.mHighestPosition);
 
@@ -919,7 +919,7 @@ public class FileTermLogTest {
         write(writer, new byte[100]);
         writer.release();
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         assertEquals(0, mLog.checkForMissingData(Long.MAX_VALUE, result));
         assertEquals(0, result.mRanges.size());
 
@@ -938,7 +938,7 @@ public class FileTermLogTest {
         assertEquals(new Range(0, 100), result.mRanges.get(0));
         assertEquals(new Range(150, 200), result.mRanges.get(1));
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(0, info.mHighestPosition);
 
@@ -980,14 +980,14 @@ public class FileTermLogTest {
         write(writer, new byte[100]);
         writer.release();
 
-        RangeResult result = new RangeResult();
+        var result = new RangeResult();
         assertEquals(200, mLog.checkForMissingData(Long.MAX_VALUE, result));
         assertEquals(0, result.mRanges.size());
         assertEquals(200, mLog.checkForMissingData(200, result));
         assertEquals(1, result.mRanges.size());
         assertEquals(new Range(200, 300), result.mRanges.get(0));
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(200, info.mHighestPosition);
 
@@ -1034,7 +1034,7 @@ public class FileTermLogTest {
         LogWriter writer = mLog.openWriter(0);
         write(writer, new byte[100]);
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(100, info.mHighestPosition);
 
@@ -1053,7 +1053,7 @@ public class FileTermLogTest {
         // should be ignored.
 
         LogWriter writer = mLog.openWriter(0);
-        byte[] b = new byte[10000];
+        var b = new byte[10000];
         for (int i=0; i<1000; i++) {
             write(writer, b);
         }
@@ -1116,11 +1116,11 @@ public class FileTermLogTest {
         write(writer, new byte[100], 0);
         writer.release();
 
-        AtomicReference<Object> result = new AtomicReference<>();
+        var result = new AtomicReference<Object>();
 
         Thread stuckReader = TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                byte[] buf = new byte[1000];
+                var buf = new byte[1000];
                 LogReader reader = mLog.openReader(0);
                 result.set(reader.read(buf));
             } catch (Throwable e) {
@@ -1133,7 +1133,7 @@ public class FileTermLogTest {
         mLog.commit(200);
         mLog.finishTerm(200);
 
-        byte[] buf = new byte[1000];
+        var buf = new byte[1000];
 
         LogReader reader = mLog.openReader(0);
         int amt = reader.read(buf);
@@ -1151,23 +1151,23 @@ public class FileTermLogTest {
 
         LogWriter writer = mLog.openWriter(0);
 
-        byte[] data1 = new byte[100];
+        var data1 = new byte[100];
         Arrays.fill(data1, (byte) 1);
         write(writer, data1, 50);
 
         mLog.finishTerm(50);
         mLog.finishTerm(100_000);
 
-        byte[] data2 = new byte[100];
+        var data2 = new byte[100];
         Arrays.fill(data2, (byte) 2);
         write(writer, data2);
 
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         mLog.captureHighest(info);
         assertEquals(50, info.mHighestPosition);
 
         LogReader reader = mLog.openReader(0);
-        byte[] buf = new byte[1000];
+        var buf = new byte[1000];
         assertEquals(50, reader.tryReadAny(buf, 0, buf.length));
         for (int i=0; i<50; i++) {
             assertEquals(1, buf[i]);
@@ -1175,7 +1175,7 @@ public class FileTermLogTest {
 
         // Fill in the gap.
         writer.release();
-        byte[] data3 = new byte[50];
+        var data3 = new byte[50];
         Arrays.fill(data3, (byte) 3);
         writer = mLog.openWriter(50);
         write(writer, data3);
@@ -1202,7 +1202,7 @@ public class FileTermLogTest {
 
         LogWriter writer = mLog.openWriter(0);
 
-        byte[] data1 = new byte[1024];
+        var data1 = new byte[1024];
         Arrays.fill(data1, (byte) 1);
         for (int i = 0; i < (1024 + 2048 + 1000); i++) {
             write(writer, data1);
@@ -1211,7 +1211,7 @@ public class FileTermLogTest {
         writer.release();
 
         LogReader reader = mLog.openReader(0);
-        byte[] buf = new byte[1024];
+        var buf = new byte[1024];
 
         for (int i=0; i < 100; i++) {
             reader.readFully(buf, 0, buf.length);
@@ -1224,7 +1224,7 @@ public class FileTermLogTest {
         mLog.finishTerm(10 * 1024 * 1024);
 
         writer = mLog.openWriter(2000 * 1024);
-        byte[] data2 = new byte[1024];
+        var data2 = new byte[1024];
         Arrays.fill(data2, (byte) 2);
         for (int i = 0; i < (1024 + 2048 + 1000); i++) {
             write(writer, data2);
@@ -1265,7 +1265,7 @@ public class FileTermLogTest {
             length += chunk.length;
         }
 
-        byte[] complete = new byte[length];
+        var complete = new byte[length];
 
         int pos = 0;
         for (byte[] chunk : chunks) {

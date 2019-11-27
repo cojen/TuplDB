@@ -258,7 +258,7 @@ final class _NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
                    : p_callocPage(arena, mDatabase.mPageDb.directPageSize());
             /*P*/ // ]
 
-            _Node node = new _Node(this, page);
+            var node = new _Node(this, page);
             node.acquireExclusive();
             mSize++;
 

@@ -888,7 +888,7 @@ final class _BTreeValue {
 
                             pageSize = pageSize(db, page);
 
-                            _Node[] newNodes = new _Node[newLevels - levels];
+                            var newNodes = new _Node[newLevels - levels];
                             for (int i=0; i<newNodes.length; i++) {
                                 try {
                                     newNodes[i] = db.allocDirtyFragmentNode();
@@ -1481,7 +1481,7 @@ final class _BTreeValue {
 
         try {
             final int igrowth = (int) growth;
-            final byte[] newValue = new byte[vLen + igrowth];
+            final var newValue = new byte[vLen + igrowth];
             final var page = node.mPage;
 
             // Update the header with the new field size.
@@ -1569,7 +1569,7 @@ final class _BTreeValue {
         final _BTree tree = cursor.mTree;
 
         try {
-            final byte[] newValue = new byte[vLen + (int) growth];
+            final var newValue = new byte[vLen + (int) growth];
             final var page = node.mPage;
             p_copyToArray(page, fHeaderLoc, newValue, 0, vLen);
 
@@ -1788,7 +1788,7 @@ final class _BTreeValue {
     {
         // First make sure all the fragment nodes are dirtied, in case of an exception.
 
-        final _Node[] fNodes = new _Node[(endLoc - startLoc) / 6];
+        final var fNodes = new _Node[(endLoc - startLoc) / 6];
         final int pageSize = pageSize(db, page);
 
         try {

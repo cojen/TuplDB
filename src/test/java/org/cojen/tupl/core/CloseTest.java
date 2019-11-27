@@ -173,7 +173,7 @@ public class CloseTest {
         // node pages get recycled into the cache.
 
         // Prevent garbage collection.
-        ArrayList<Index> indexes = new ArrayList<Index>();
+        var indexes = new ArrayList<Index>();
 
         for (int i=0; i<10000; i++) {
             Index ix = mDb.openIndex("ix-" + i);

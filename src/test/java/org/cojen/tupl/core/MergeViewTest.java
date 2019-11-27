@@ -294,7 +294,7 @@ public class MergeViewTest {
 
         mMergeMap = new TreeMap<>(mFirstMap);
         mMergeMap.putAll(mSecondMap);
-        NavigableMap<String, String> intersection = new TreeMap<>(mFirstMap);
+        var intersection = new TreeMap<String, String>(mFirstMap);
         intersection.keySet().retainAll(mSecondMap.keySet());
         mMergeMap.keySet().removeAll(intersection.keySet());
     }
@@ -387,7 +387,7 @@ public class MergeViewTest {
 
     private void verifyDirectionReversal(boolean reverse) throws Exception {
         for (int limit = 1; ; limit++) {
-            Stack<Map.Entry<String, String>> s = new Stack<>();
+            var s = new Stack<Map.Entry<String, String>>();
 
             View view = mMergeView;
 

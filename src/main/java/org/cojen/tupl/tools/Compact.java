@@ -33,7 +33,7 @@ public class Compact {
      * cache size
      */
     public static void main(String[] args) throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .baseFilePath(args[0])
             .eventListener(new EventPrinter().ignore(EventType.Category.CHECKPOINT))
             .checkpointSizeThreshold(0);

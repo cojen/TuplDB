@@ -290,7 +290,7 @@ public final class LocalDatabase extends CoreDatabase {
      * Open a database, creating it if necessary.
      */
     static LocalDatabase open(Launcher launcher) throws IOException {
-        LocalDatabase db = new LocalDatabase(launcher, OPEN_REGULAR);
+        var db = new LocalDatabase(launcher, OPEN_REGULAR);
         try {
             db.finishInit(launcher);
             return db;
@@ -309,7 +309,7 @@ public final class LocalDatabase extends CoreDatabase {
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
-        LocalDatabase db = new LocalDatabase(launcher, OPEN_DESTROY);
+        var db = new LocalDatabase(launcher, OPEN_DESTROY);
         try {
             db.finishInit(launcher);
             return db;
@@ -328,7 +328,7 @@ public final class LocalDatabase extends CoreDatabase {
         launcher.dataFiles(file);
         launcher.createFilePath(false);
         launcher.durabilityMode(DurabilityMode.NO_FLUSH);
-        LocalDatabase db = new LocalDatabase(launcher, OPEN_TEMP);
+        var db = new LocalDatabase(launcher, OPEN_TEMP);
         tfm.register(file, db);
         db.mCheckpointer.start(false);
         return db.mRegistry;
@@ -458,7 +458,7 @@ public final class LocalDatabase extends CoreDatabase {
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mLockFile = null;
             } else {
-                File lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
+                var lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
 
                 FileFactory factory = launcher.mFileFactory;
                 if (factory != null && !mReadOnly) {
@@ -565,7 +565,7 @@ public final class LocalDatabase extends CoreDatabase {
                     try {
                         mArena = p_arenaAlloc(pageSize, minCache); 
                     } catch (IOException e) {
-                        OutOfMemoryError oom = new OutOfMemoryError();
+                        var oom = new OutOfMemoryError();
                         oom.initCause(e);
                         throw oom;
                     }
@@ -618,7 +618,7 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             } catch (OutOfMemoryError e) {
                 groups = null;
-                OutOfMemoryError oom = new OutOfMemoryError
+                var oom = new OutOfMemoryError
                     ("Unable to allocate the minimum required number of cached nodes: " +
                      minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
                 oom.initCause(e.getCause());
@@ -646,7 +646,7 @@ public final class LocalDatabase extends CoreDatabase {
                 mCommitLock.releaseExclusive();
             }
 
-            byte[] header = new byte[HEADER_SIZE];
+            var header = new byte[HEADER_SIZE];
             mPageDb.readExtraCommitData(header);
 
             // Also verifies the database and replication encodings.
@@ -697,7 +697,7 @@ public final class LocalDatabase extends CoreDatabase {
                     try {
                         for (c.first(); c.key() != null; c.next()) {
                             long indexId = decodeLongBE(c.key(), 0);
-                            String nameStr = new String(c.value(), StandardCharsets.UTF_8);
+                            var nameStr = new String(c.value(), StandardCharsets.UTF_8);
                             debugListener.notify(EventType.DEBUG, "Index: id=%1$d, name=%2$s",
                                                  indexId, nameStr);
                         }
@@ -747,7 +747,7 @@ public final class LocalDatabase extends CoreDatabase {
                     recoveryStart = System.nanoTime();
                 }
 
-                LHashTable.Obj<LocalTransaction> txns = new LHashTable.Obj<>(16);
+                var txns = new LHashTable.Obj<LocalTransaction>(16);
                 {
                     long masterNodeId = decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID);
                     if (masterNodeId != 0) {
@@ -765,7 +765,7 @@ public final class LocalDatabase extends CoreDatabase {
                     }
                 }
 
-                LHashTable.Obj<BTreeCursor> cursors = new LHashTable.Obj<>(4);
+                var cursors = new LHashTable.Obj<BTreeCursor>(4);
                 if (cursorRegistry != null) {
                     Cursor c = cursorRegistry.newCursor(Transaction.BOGUS);
                     for (c.first(); c.key() != null; c.next()) {
@@ -774,12 +774,12 @@ public final class LocalDatabase extends CoreDatabase {
                         long indexId = decodeLongBE(regValue, 0);
                         BTree tree = (BTree) anyIndexById(indexId);
 
-                        BTreeCursor cursor = new BTreeCursor(tree, Transaction.BOGUS);
+                        var cursor = new BTreeCursor(tree, Transaction.BOGUS);
                         cursor.mKeyOnly = true;
 
                         if (regValue.length >= 9) {
                             // Cursor key was registered too.
-                            byte[] key = new byte[regValue.length - 9];
+                            var key = new byte[regValue.length - 9];
                             System.arraycopy(regValue, 9, key, 0, key.length);
                             cursor.find(key);
                         }
@@ -822,12 +822,11 @@ public final class LocalDatabase extends CoreDatabase {
                         if (debugListener != null &&
                             Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
-                            RedoEventPrinter printer = new RedoEventPrinter
-                                (debugListener, EventType.DEBUG);
+                            var printer = new RedoEventPrinter(debugListener, EventType.DEBUG);
                             new ReplDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
                         }
                     } else {
-                        ReplEngine engine = new ReplEngine
+                        var engine = new ReplEngine
                             (rm, launcher.mMaxReplicaThreads, this, txns, cursors);
                         mRedoWriter = engine.initWriter(redoNum);
 
@@ -849,10 +848,9 @@ public final class LocalDatabase extends CoreDatabase {
                         if (debugListener != null &&
                             Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
-                            RedoEventPrinter printer = new RedoEventPrinter
-                                (debugListener, EventType.DEBUG);
+                            var printer = new RedoEventPrinter(debugListener, EventType.DEBUG);
 
-                            RedoLog replayLog = new RedoLog(launcher, logId, redoPos);
+                            var replayLog = new RedoLog(launcher, logId, redoPos);
 
                             replayLog.replay
                                 (printer, debugListener, EventType.RECOVERY_APPLY_REDO_LOG,
@@ -867,9 +865,9 @@ public final class LocalDatabase extends CoreDatabase {
 
                         boolean doCheckpoint = txns.size() != 0;
 
-                        RedoLogApplier applier = new RedoLogApplier
+                        var applier = new RedoLogApplier
                             (launcher.mMaxReplicaThreads, this, txns, cursors);
-                        RedoLog replayLog = new RedoLog(launcher, logId, redoPos);
+                        var replayLog = new RedoLog(launcher, logId, redoPos);
 
                         // As a side-effect, log id is set one higher than last file scanned.
                         Set<File> redoFiles = replayLog.replay
@@ -954,7 +952,7 @@ public final class LocalDatabase extends CoreDatabase {
         BTree trashed = openNextTrashedTree(null);
 
         if (trashed != null) {
-            Thread deletion = new Thread
+            var deletion = new Thread
                 (new Deletion(trashed, true, mEventListener), "IndexDeletion");
             deletion.setDaemon(true);
             deletion.start();
@@ -964,7 +962,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         if (mRedoWriter instanceof ReplController) {
             // Start replication and recovery.
-            ReplController controller = (ReplController) mRedoWriter;
+            var controller = (ReplController) mRedoWriter;
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
@@ -1040,7 +1038,7 @@ public final class LocalDatabase extends CoreDatabase {
                     FileInputStream fin;
                     try {
                         fin = new FileInputStream(primer);
-                        try (InputStream bin = new BufferedInputStream(fin)) {
+                        try (var bin = new BufferedInputStream(fin)) {
                             applyCachePrimer(bin);
                         } catch (IOException e) {
                             fin.close();
@@ -1073,7 +1071,7 @@ public final class LocalDatabase extends CoreDatabase {
             try {
                 fout = new FileOutputStream(primer);
                 try {
-                    try (OutputStream bout = new BufferedOutputStream(fout)) {
+                    try (var bout = new BufferedOutputStream(fout)) {
                         db.createCachePrimer(bout);
                     }
                 } catch (IOException e) {
@@ -1132,7 +1130,7 @@ public final class LocalDatabase extends CoreDatabase {
                 return index;
             }
 
-            byte[] idKey = new byte[9];
+            var idKey = new byte[9];
             idKey[0] = RK_INDEX_ID;
             encodeLongBE(idKey, 1, id);
 
@@ -1159,7 +1157,7 @@ public final class LocalDatabase extends CoreDatabase {
                 return null;
             }
 
-            byte[] treeIdBytes = new byte[8];
+            var treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, id);            
 
             index = openTree(txn, treeIdBytes, name, IX_FIND);
@@ -1389,7 +1387,7 @@ public final class LocalDatabase extends CoreDatabase {
      * Returns a deletion task for a tree which just moved to the trash.
      */
     Runnable replicaDeleteTree(long treeId) throws IOException {
-        byte[] treeIdBytes = new byte[8];
+        var treeIdBytes = new byte[8];
         encodeLongBE(treeIdBytes, 0, treeId);
 
         BTree trashed = openTrashedTree(treeIdBytes, false);
@@ -1549,7 +1547,7 @@ public final class LocalDatabase extends CoreDatabase {
             name = null;
         } else {
             // Trim off the tag byte.
-            byte[] actual = new byte[name.length - 1];
+            var actual = new byte[name.length - 1];
             System.arraycopy(name, 1, actual, 0, actual.length);
             name = actual;
         }
@@ -1654,7 +1652,7 @@ public final class LocalDatabase extends CoreDatabase {
         cleanupUnreferencedTrees();
 
         long treeId;
-        byte[] treeIdBytes = new byte[8];
+        var treeIdBytes = new byte[8];
 
         long rootId;
         byte[] rootIdBytes;
@@ -1707,8 +1705,8 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             try {
-                BTree tree = new BTree.Temp(this, treeId, treeIdBytes, root);
-                TreeRef treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
+                var tree = new BTree.Temp(this, treeId, treeIdBytes, root);
+                var treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
@@ -2014,7 +2012,7 @@ public final class LocalDatabase extends CoreDatabase {
                 executor = mSorterExecutor;
                 if (executor == null) {
                     ExecutorService es = Executors.newCachedThreadPool(r -> {
-                        Thread t = new Thread(r);
+                        var t = new Thread(r);
                         t.setDaemon(true);
                         t.setName("Sorter-" + Long.toUnsignedString(t.getId()));
                         return t;
@@ -2131,7 +2129,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         out = ((DurablePageDb) mPageDb).encrypt(out);
 
-        DataOutputStream dout = new DataOutputStream(out);
+        var dout = new DataOutputStream(out);
 
         dout.writeLong(PRIMER_MAGIC_NUMBER);
 
@@ -2172,7 +2170,7 @@ public final class LocalDatabase extends CoreDatabase {
             if (len < 0) {
                 break;
             }
-            byte[] name = new byte[len];
+            var name = new byte[len];
             din.readFully(name);
             Tree tree = openTree(name, IX_FIND);
             if (tree != null) {
@@ -2185,7 +2183,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Stats stats() {
-        Stats stats = new Stats();
+        var stats = new Stats();
 
         stats.pageSize = mPageSize;
 
@@ -2445,7 +2443,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        FreeListScan fls = new FreeListScan();
+        var fls = new FreeListScan();
         new Thread(fls).start();
 
         if (observer == null) {
@@ -2899,7 +2897,7 @@ public final class LocalDatabase extends CoreDatabase {
      * @param txn must not redo
      */
     void redoMoveToTrash(LocalTransaction txn, long treeId) throws IOException {
-        byte[] treeIdBytes = new byte[8];
+        var treeIdBytes = new byte[8];
         encodeLongBE(treeIdBytes, 0, treeId);
         doMoveToTrash(txn, treeId, treeIdBytes);
     }
@@ -3018,12 +3016,12 @@ public final class LocalDatabase extends CoreDatabase {
      */
     void registerCursor(BTree cursorRegistry, BTreeCursor cursor) throws IOException {
         try {
-            byte[] cursorIdBytes = new byte[8];
+            var cursorIdBytes = new byte[8];
             encodeLongBE(cursorIdBytes, 0, cursor.mCursorId);
             byte[] regValue = cursor.mTree.mIdBytes;
             byte[] key = cursor.key();
             if (key != null) {
-                byte[] newReg = new byte[regValue.length + 1 + key.length];
+                var newReg = new byte[regValue.length + 1 + key.length];
                 System.arraycopy(regValue, 0, newReg, 0, regValue.length);
                 System.arraycopy(key, 0, newReg, regValue.length + 1, key.length);
                 regValue = newReg;
@@ -3041,7 +3039,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     void unregisterCursor(long cursorId) {
         try {
-            byte[] cursorIdBytes = new byte[8];
+            var cursorIdBytes = new byte[8];
             encodeLongBE(cursorIdBytes, 0, cursorId);
             cursorRegistry().store(Transaction.BOGUS, cursorIdBytes, null);
         } catch (Throwable e) {
@@ -3175,7 +3173,7 @@ public final class LocalDatabase extends CoreDatabase {
         try {
             checkClosed();
 
-            byte[] treeIdBytes = new byte[8];
+            var treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, treeId);
             byte[] rootIdBytes = mRegistry.load(Transaction.BOGUS, treeIdBytes);
             long rootId;
@@ -3380,7 +3378,7 @@ public final class LocalDatabase extends CoreDatabase {
             tree = btree;
 
             try {
-                TreeRef treeRef = new TreeRef(tree, btree, mOpenTreesRefQueue);
+                var treeRef = new TreeRef(tree, btree, mOpenTreesRefQueue);
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
@@ -3569,14 +3567,14 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     private static byte[] newKey(byte type, byte[] payload) {
-        byte[] key = new byte[1 + payload.length];
+        var key = new byte[1 + payload.length];
         key[0] = type;
         arraycopy(payload, 0, key, 1, payload.length);
         return key;
     }
 
     private static byte[] newKey(byte type, int payload) {
-        byte[] key = new byte[1 + 4];
+        var key = new byte[1 + 4];
         key[0] = type;
         encodeIntBE(key, 1, payload);
         return key;
@@ -4428,7 +4426,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     private void storeTreeRootId(BTree tree, long id) throws IOException {
         if (tree.mIdBytes != null) {
-            byte[] encodedId = new byte[8];
+            var encodedId = new byte[8];
             encodeLongLE(encodedId, 0, id);
             mRegistry.store(Transaction.BOGUS, tree.mIdBytes, encodedId);
         }
@@ -4603,7 +4601,7 @@ public final class LocalDatabase extends CoreDatabase {
         } else if (pageCount == 0 && remainder <= (max - (1 + 2 + 2))) {
             // Entire value fits inline. It didn't really need to be
             // encoded this way, but do as we're told.
-            byte[] newValue = new byte[(1 + 2 + 2) + (int) vlength];
+            var newValue = new byte[(1 + 2 + 2) + (int) vlength];
             newValue[0] = 0x02; // ff=0, i=1, p=0
             encodeShortLE(newValue, 1, (int) vlength);     // full length
             encodeShortLE(newValue, 1 + 2, (int) vlength); // inline length
@@ -5174,7 +5172,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         // Copy all child node ids and release parent latch early.
         int childNodeCount = childNodeCount(vlength, levelCap);
-        long[] childNodeIds = new long[childNodeCount];
+        var childNodeIds = new long[childNodeCount];
         for (int poffset = 0, i=0; i<childNodeCount; poffset += 6, i++) {
             childNodeIds[i] = p_uint48GetLE(page, poffset);
         }
@@ -5240,7 +5238,7 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     private static long[] calculateInodeLevelCaps(int pageSize) {
-        long[] caps = new long[10];
+        var caps = new long[10];
         long cap = pageSize;
         long scalar = pageSize / 6; // 6-byte pointers
 
@@ -5256,7 +5254,7 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         if (i < caps.length) {
-            long[] newCaps = new long[i];
+            var newCaps = new long[i];
             arraycopy(caps, 0, newCaps, 0, i);
             caps = newCaps;
         }

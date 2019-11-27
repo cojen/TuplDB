@@ -275,7 +275,7 @@ public abstract class MappedPageArray extends PageArray {
     long mappingPtr() throws IOException {
         long mappingPtr = mMappingPtr;
         if (mappingPtr == 0) {
-            ClosedChannelException cce = new ClosedChannelException();
+            var cce = new ClosedChannelException();
             cce.initCause(mCause);
             throw cce;
         }

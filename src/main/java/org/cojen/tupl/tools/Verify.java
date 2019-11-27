@@ -33,7 +33,7 @@ public class Verify extends VerificationObserver {
      * argument is the cache size
      */
     public static void main(String[] args) throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .baseFilePath(args[0])
             .eventListener(new EventPrinter());
 
@@ -45,7 +45,7 @@ public class Verify extends VerificationObserver {
 
         System.out.println(db.stats());
 
-        Verify v = new Verify();
+        var v = new Verify();
         db.verify(v);
         System.out.println(v);
         System.exit(v.failed);

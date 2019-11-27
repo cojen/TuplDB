@@ -129,7 +129,7 @@ final class FileStateLog extends Latch implements StateLog {
      * unsupported.
      */
     static StateLog open() throws IOException {
-        FileStateLog log = new FileStateLog(null);
+        var log = new FileStateLog(null);
 
         // Create a primordial term.
         log.mTermLogs.add(FileTermLog.newTerm(log.mCaches, log.mWorker, null, 0, 0, 0, 0));
@@ -185,7 +185,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (!mdFileExists) {
             // Check if old ".md" file exists and copy it.
-            File oldFile = new File(base.getPath() + ".md");
+            var oldFile = new File(base.getPath() + ".md");
             if (oldFile.exists()) {
                 FileChannel old = FileChannel.open(oldFile.toPath(), StandardOpenOption.READ);
                 mMetadataFile.transferFrom(old, 0, old.size());
@@ -269,7 +269,7 @@ final class FileStateLog extends Latch implements StateLog {
         mVotedForId = votedForId;
 
         // Open all the existing terms.
-        TreeMap<Long, List<String>> mTermFileNames = new TreeMap<>();
+        var termFileNames = new TreeMap<Long, List<String>>();
         File parentFile = mBase.getParentFile();
         String[] fileNames = parentFile.list();
 
@@ -288,10 +288,10 @@ final class FileStateLog extends Latch implements StateLog {
                         // Delete all terms higher than the highest.
                         new File(parentFile, name).delete();
                     } else {
-                        List<String> termNames = mTermFileNames.get(term);
+                        List<String> termNames = termFileNames.get(term);
                         if (termNames == null) {
                             termNames = new ArrayList<>();
-                            mTermFileNames.put(term, termNames);
+                            termFileNames.put(term, termNames);
                         }
                         termNames.add(name);
                     }
@@ -300,7 +300,7 @@ final class FileStateLog extends Latch implements StateLog {
         }
 
         long prevTerm = -1;
-        for (Map.Entry<Long, List<String>> e : mTermFileNames.entrySet()) {
+        for (Map.Entry<Long, List<String>> e : termFileNames.entrySet()) {
             long term = e.getKey();
             TermLog termLog = FileTermLog.openTerm
                 (mCaches, mWorker, mBase, prevTerm, term, -1, 0, highestPosition, e.getValue());
@@ -837,7 +837,7 @@ final class FileStateLog extends Latch implements StateLog {
             if (mClosed) {
                 return true;
             }
-            LogInfo termInfo = new LogInfo();
+            var termInfo = new LogInfo();
             termLog.captureHighest(termInfo);
             long durablePosition = mMetadataDurablePosition;
             throw new CommitConflictException(position, termInfo, durablePosition);

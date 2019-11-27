@@ -31,7 +31,7 @@ interface StateLog extends Closeable {
      * contiguous range (by highest position).
      */
     default LogInfo captureHighest() {
-        LogInfo info = new LogInfo();
+        var info = new LogInfo();
         captureHighest(info);
         return info;
     }

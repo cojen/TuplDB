@@ -73,7 +73,7 @@ public class RemoveMember {
         }
 
         Set<SocketAddress> seeds = Collections.singleton(connectAddr);
-        GroupJoiner joiner = new GroupJoiner(groupToken);
+        var joiner = new GroupJoiner(groupToken);
         int timeoutMillis = 10000;
 
         try {

@@ -98,7 +98,7 @@ public final class TransformedCursor extends CoreValueAccessor implements Cursor
     @Override
     public final int compareKeyTo(byte[] rkey, int offset, int length) {
         if (offset != 0 || length != rkey.length) {
-            byte[] newRkey = new byte[length];
+            var newRkey = new byte[length];
             System.arraycopy(rkey, offset, newRkey, 0, length);
             rkey = newRkey;
         }
@@ -543,7 +543,7 @@ public final class TransformedCursor extends CoreValueAccessor implements Cursor
 
     @Override
     public Cursor copy() {
-        TransformedCursor copy = new TransformedCursor(mSource.copy(), mTransformer);
+        var copy = new TransformedCursor(mSource.copy(), mTransformer);
         copy.mKey = Utils.cloneArray(mKey);
         copy.mValue = ViewUtils.copyValue(mValue);
         return copy;

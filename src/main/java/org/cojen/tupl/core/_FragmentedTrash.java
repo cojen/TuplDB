@@ -53,7 +53,7 @@ final class _FragmentedTrash {
                     long entry, int keyStart, int keyLen, int valueStart, int valueLen)
         throws IOException
     {
-        byte[] payload = new byte[valueLen];
+        var payload = new byte[valueLen];
         p_copyToArray(entry, valueStart, payload, 0, valueLen);
 
         _BTreeCursor cursor = prepareEntry(trash, txn.txnId());
@@ -101,10 +101,10 @@ final class _FragmentedTrash {
         // length integer. Integer is reverse encoded, and newer entries within
         // the transaction have lower integer values.
 
-        byte[] prefix = new byte[8];
+        var prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
-        _BTreeCursor cursor = new _BTreeCursor(trash, Transaction.BOGUS);
+        var cursor = new _BTreeCursor(trash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);
@@ -165,7 +165,7 @@ final class _FragmentedTrash {
     static void remove(_BTree trash, _BTree index, byte[] indexKey, byte[] trashKey)
         throws IOException
     {
-        _BTreeCursor trashCursor = new _BTreeCursor(trash, Transaction.BOGUS);
+        var trashCursor = new _BTreeCursor(trash, Transaction.BOGUS);
         try {
             trashCursor.find(trashKey);
 
@@ -174,7 +174,7 @@ final class _FragmentedTrash {
             } else {
                 byte[] fragmented = trashCursor.value();
                 if (fragmented != null) {
-                    _BTreeCursor ixCursor = new _BTreeCursor(index, Transaction.BOGUS);
+                    var ixCursor = new _BTreeCursor(index, Transaction.BOGUS);
                     try {
                         ixCursor.find(indexKey);
                         ixCursor.storeFragmented(fragmented);
@@ -197,13 +197,13 @@ final class _FragmentedTrash {
      * top-level transaction.
      */
     static void emptyTrash(_BTree trash, long txnId) throws IOException {
-        byte[] prefix = new byte[8];
+        var prefix = new byte[8];
         encodeLongBE(prefix, 0, txnId);
 
         _LocalDatabase db = trash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        _BTreeCursor cursor = new _BTreeCursor(trash, Transaction.BOGUS);
+        var cursor = new _BTreeCursor(trash, Transaction.BOGUS);
         try {
             cursor.autoload(false);
             cursor.findGt(prefix);

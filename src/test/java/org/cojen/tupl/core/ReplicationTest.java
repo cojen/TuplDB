@@ -57,7 +57,7 @@ public class ReplicationTest {
         mReplicaHandler = new Handler();
         mLeaderHandler = new Handler();
 
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customHandlers(Map.of("TestHandler", mLeaderHandler))
@@ -266,7 +266,7 @@ public class ReplicationTest {
 
         long start = System.currentTimeMillis();
 
-        Thread stuck = new Thread(() -> {
+        var stuck = new Thread(() -> {
             try {
                 try {
                     rix.lockShared(rtxn, "hello".getBytes());
@@ -505,7 +505,7 @@ public class ReplicationTest {
         // Verifies that a replica can read an uncommitted change.
 
         // Large value to ensure that the TransactionContext flushes.
-        byte[] value = new byte[10000];
+        var value = new byte[10000];
 
         Index lix = mLeader.openIndex("test");
         Transaction ltxn = mLeader.newTransaction();
@@ -577,7 +577,7 @@ public class ReplicationTest {
         final int count = 200_000;
 
         Index lix = mLeader.openIndex("test");
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 10, 100);
             byte[] value = randomStr(rnd, 10, 10000);
@@ -603,7 +603,7 @@ public class ReplicationTest {
 
         Index lix = mLeader.openIndex("test");
         byte[] key = "hello".getBytes();
-        byte[] value = new byte[8];
+        var value = new byte[8];
 
         for (int i=0; i<200_000; i++) {
             Utils.increment(value, 0, value.length);
@@ -1008,7 +1008,7 @@ public class ReplicationTest {
         Cursor c = leader.newCursor(null);
         c.register();
 
-        Transaction[] txns = new Transaction[1000];
+        var txns = new Transaction[1000];
         for (int i=0; i<txns.length; i++) {
             txns[i] = mLeader.newTransaction();
             leader.store(txns[i], ("key-" + i).getBytes(), ("value-" + i).getBytes());
@@ -1053,11 +1053,11 @@ public class ReplicationTest {
         Index test = mLeader.openIndex("test");
 
         long seed = 98250983;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
         final int chunk = 100;
         final int length = 1000 * chunk;
-        final byte[] b = new byte[chunk];
+        final var b = new byte[chunk];
 
         Cursor c = test.newAccessor(null, "key1".getBytes());
         for (int i=0; i<length; i+=chunk) {
@@ -1077,7 +1077,7 @@ public class ReplicationTest {
 
         Index replica = mReplica.openIndex("test");
         rnd = new Random(seed);
-        final byte[] buf = new byte[chunk];
+        final var buf = new byte[chunk];
 
         for (String key : new String[] {"key1", "key2"}) {
             c = replica.newAccessor(null, key.getBytes());
@@ -1101,7 +1101,7 @@ public class ReplicationTest {
         Index test = mLeader.openIndex("test");
 
         byte[] key = "key".getBytes();
-        byte[] value = new byte[100_000];
+        var value = new byte[100_000];
         new Random(2923578).nextBytes(value);
 
         test.store(null, key, value);
@@ -1124,7 +1124,7 @@ public class ReplicationTest {
         Index test = mLeader.openIndex("test");
 
         byte[] key = "key".getBytes();
-        byte[] value = new byte[100_000];
+        var value = new byte[100_000];
         new Random(2923578).nextBytes(value);
 
         test.store(null, key, value);

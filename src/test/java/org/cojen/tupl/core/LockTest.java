@@ -112,7 +112,7 @@ public class LockTest {
 
     @Test
     public void basicShared() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
         assertEquals(OWNED_SHARED, locker.doTryLockShared(0, k1, -1));
@@ -135,7 +135,7 @@ public class LockTest {
         assertEquals(k2, locker.lastLockedKey());
         locker.doUnlock();
 
-        Locker locker2 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k1, -1));
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k2, -1));
         assertEquals(OWNED_SHARED, locker.doTryLockShared(0, k1, -1));
@@ -173,7 +173,7 @@ public class LockTest {
 
     @Test
     public void basicUpgradable() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
         assertEquals(OWNED_UPGRADABLE, locker.doTryLockUpgradable(0, k1, -1));
@@ -196,7 +196,7 @@ public class LockTest {
         assertEquals(k2, locker.lastLockedKey());
         locker.doUnlock();
 
-        Locker locker2 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
         assertEquals(TIMED_OUT_LOCK, locker2.doTryLockUpgradable(0, k1, SHORT_TIMEOUT));
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k2, -1));
         assertEquals(OWNED_UPGRADABLE, locker.doTryLockUpgradable(0, k1, -1));
@@ -257,7 +257,7 @@ public class LockTest {
 
     @Test
     public void basicExclusive() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         assertEquals(1, mManager.numLocksHeld());
         assertEquals(OWNED_EXCLUSIVE, locker.doTryLockExclusive(0, k1, -1));
@@ -280,7 +280,7 @@ public class LockTest {
         assertEquals(k2, locker.lastLockedKey());
         locker.doUnlock();
 
-        Locker locker2 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
         assertEquals(TIMED_OUT_LOCK, locker2.doTryLockShared(0, k1, SHORT_TIMEOUT));
         assertEquals(TIMED_OUT_LOCK, locker2.doTryLockUpgradable(0, k1, SHORT_TIMEOUT));
         assertEquals(TIMED_OUT_LOCK, locker2.doTryLockExclusive(0, k1, SHORT_TIMEOUT));
@@ -339,8 +339,8 @@ public class LockTest {
     public void lenientUpgradeRule() throws Exception {
         LockManager manager = new LockManager(null, LockUpgradeRule.LENIENT, -1);
 
-        Locker locker1 = new Locker(manager);
-        Locker locker2 = new Locker(manager);
+        var locker1 = new Locker(manager);
+        var locker2 = new Locker(manager);
 
         assertEquals(ACQUIRED, locker1.doTryLockShared(0, k1, -1));
         assertEquals(OWNED_UPGRADABLE, locker1.doTryLockUpgradable(0, k1, -1));
@@ -367,10 +367,10 @@ public class LockTest {
 
     @Test
     public void uncheckedUpgradeRule() throws Exception {
-        LockManager manager = new LockManager(null, LockUpgradeRule.UNCHECKED, -1);
+        var manager = new LockManager(null, LockUpgradeRule.UNCHECKED, -1);
 
-        Locker locker1 = new Locker(manager);
-        Locker locker2 = new Locker(manager);
+        var locker1 = new Locker(manager);
+        var locker2 = new Locker(manager);
 
         assertEquals(ACQUIRED, locker1.doTryLockShared(0, k1, -1));
         assertEquals(OWNED_UPGRADABLE, locker1.doTryLockUpgradable(0, k1, -1));
@@ -413,7 +413,7 @@ public class LockTest {
 
     @Test
     public void isolatedIndexes() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.doTryLockExclusive(1, k1, -1));
         assertEquals(ACQUIRED, locker.doTryLockExclusive(2, k1, -1));
         assertEquals(2, mManager.numLocksHeld());
@@ -428,8 +428,8 @@ public class LockTest {
 
     @Test
     public void upgrade() throws Exception {
-        Locker locker = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
+        var locker = new Locker(mManager);
+        var locker2 = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, -1));
         assertEquals(ACQUIRED, locker2.doTryLockUpgradable(0, k1, -1));
@@ -451,7 +451,7 @@ public class LockTest {
 
     @Test
     public void downgrade() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k2, -1));
@@ -529,9 +529,9 @@ public class LockTest {
     }
 
     private void release2(boolean downgrade) throws Exception {
-        Locker locker1 = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
-        Locker locker3 = new Locker(mManager);
+        var locker1 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
 
         assertEquals(LockResult.ACQUIRED, locker1.doLockExclusive(0, k1, -1));
 
@@ -598,7 +598,7 @@ public class LockTest {
 
     @Test
     public void pileOfLocks() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         for (int i=0; i<1000; i++) {
             assertEquals(ACQUIRED, locker.doTryLockExclusive(0, key("k" + i), -1));
         }
@@ -631,8 +631,8 @@ public class LockTest {
     }
 
     private void blocked(long nanosTimeout) throws Exception {
-        Locker locker = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
+        var locker = new Locker(mManager);
+        var locker2 = new Locker(mManager);
 
         locker.doTryLockShared(0, k1, -1);
 
@@ -670,20 +670,20 @@ public class LockTest {
 
     @Test
     public void blockedNoWait2() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k1, -1));
 
         Thread t = startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                Locker locker2 = new Locker(mManager);
+                var locker2 = new Locker(mManager);
                 locker2.doTryLockExclusive(0, k1, -1);
             } catch (Exception e) {
                 Utils.uncaught(e);
             }
         }));
 
-        Locker locker3 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
 
         assertEquals(TIMED_OUT_LOCK, locker3.doTryLockShared(0, k1, 0));
         assertEquals(TIMED_OUT_LOCK, locker3.doTryLockUpgradable(0, k1, 0));
@@ -692,20 +692,20 @@ public class LockTest {
 
     @Test
     public void blockedNoWait3() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
 
         Thread t = startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                Locker locker2 = new Locker(mManager);
+                var locker2 = new Locker(mManager);
                 locker2.doTryLockUpgradable(0, k1, -1);
             } catch (Exception e) {
                 Utils.uncaught(e);
             }
         }));
 
-        Locker locker3 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
 
         assertEquals(TIMED_OUT_LOCK, locker3.doTryLockUpgradable(0, k1, 0));
         assertEquals(TIMED_OUT_LOCK, locker3.doTryLockExclusive(0, k1, 0));
@@ -722,8 +722,8 @@ public class LockTest {
     }
 
     private void interrupts(long nanosTimeout) throws Exception {
-        Locker locker = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
+        var locker = new Locker(mManager);
+        var locker2 = new Locker(mManager);
 
         locker.doTryLockShared(0, k1, -1);
 
@@ -773,8 +773,8 @@ public class LockTest {
 
     @Test
     public void delayedAcquire() throws Exception {
-        Locker locker = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
+        var locker = new Locker(mManager);
+        var locker2 = new Locker(mManager);
         long end;
 
         // Exclusive locks blocked...
@@ -906,7 +906,7 @@ public class LockTest {
     private void fifo(final int count) throws Exception {
         mExecutor = Executors.newCachedThreadPool();
 
-        Locker[] lockers = new Locker[count];
+        var lockers = new Locker[count];
         for (int i=0; i<count; i++) {
             lockers[i] = new Locker(mManager);
         }
@@ -985,7 +985,7 @@ public class LockTest {
     public void scoping() throws Exception {
         // Lots o' sub tests, many of which were created to improve code coverage.
 
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertNull(locker.scopeExit());
 
@@ -1331,7 +1331,7 @@ public class LockTest {
 
     @Test
     public void unlockSavepoint() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.scopeEnter();
         locker.doLockExclusive(0, k1, -1);
@@ -1353,7 +1353,7 @@ public class LockTest {
 
     @Test
     public void promote() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.scopeEnter();
         locker.doTryLockExclusive(0, k1, -1);
@@ -1396,13 +1396,13 @@ public class LockTest {
 
     @Test
     public void promoteExitAll() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         locker.scopeEnter();
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         locker.promote();
         locker.scopeExitAll();
 
-        Locker locker2 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
         assertEquals(ACQUIRED, locker2.doTryLockExclusive(0, k1, SHORT_TIMEOUT));
     }
 
@@ -1412,7 +1412,7 @@ public class LockTest {
         // (child) scope referenced a Lock. This is an illegal combination, resulting in a
         // class cast exception when rolling back.
 
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.doLockExclusive(0, k2, -1);
@@ -1435,7 +1435,7 @@ public class LockTest {
 
     @Test
     public void promoteUnlockUpgraded() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         // Enter, lock, promote...
         locker.scopeEnter();
@@ -1479,8 +1479,8 @@ public class LockTest {
             (numConcurrentReads + numConcurrentWrites);
 
         for (int attempt=0; attempt<numAttempts; attempt++) {
-            final List<byte[]> keys = new ArrayList<>();
-            final List<byte[]> vals = new ArrayList<>();
+            final var keys = new ArrayList<byte[]>();
+            final var vals = new ArrayList<byte[]>();
 
             // Prepare request
             for (int id=0; id<batchSize; id++) {
@@ -1494,7 +1494,7 @@ public class LockTest {
             }
 
             // Write
-            Future[] writeFutures = new Future[numConcurrentWrites];
+            var writeFutures = new Future[numConcurrentWrites];
             for (int i=0; i<numConcurrentWrites; i++) {
                 writeFutures[i] = executor.submit(() -> {
                     try {
@@ -1507,9 +1507,9 @@ public class LockTest {
                 });
             };
 
-            final List<byte[]> reversedKeys = new ArrayList<>(keys);
+            final var reversedKeys = new ArrayList<byte[]>(keys);
             Collections.reverse(reversedKeys);
-            final List<byte[]> reversedVals = new ArrayList<>(vals);
+            final var reversedVals = new ArrayList<byte[]>(vals);
             Collections.reverse(reversedVals);
 
             for (Future f : writeFutures) {
@@ -1517,7 +1517,7 @@ public class LockTest {
             }
 
             // Read
-            Future[] readFutures = new Future[numConcurrentReads];
+            var readFutures = new Future[numConcurrentReads];
             for (int i=0; i<numConcurrentReads; i++) {
                 final boolean reverse = (i % 2 == 1);
                 readFutures[i] = executor.submit(() -> {
@@ -1551,13 +1551,13 @@ public class LockTest {
     public void doubleLockSharedWithExclusiveWaiter() throws Exception {
         // Shared lock request must always check for existing ownership before blocking.
 
-        Locker locker1 = new Locker(mManager);
+        var locker1 = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker1.doTryLockShared(0, k1, -1));
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             try {
-                Locker locker2 = new Locker(mManager);
+                var locker2 = new Locker(mManager);
                 locker2.doTryLockExclusive(0, k1, -1);
             } catch (Exception e) {
                 // Bail.
@@ -1585,7 +1585,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.scopeEnter();
@@ -1605,7 +1605,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock2() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.scopeEnter();
@@ -1624,7 +1624,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock3() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.doLockExclusive(0, k2, -1);
@@ -1645,7 +1645,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock4() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         locker.scopeEnter();
@@ -1662,7 +1662,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock5() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.scopeEnter();
@@ -1681,7 +1681,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock6() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.doLockExclusive(0, k2, -1);
@@ -1702,7 +1702,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock7() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         locker.scopeEnter();
@@ -1719,7 +1719,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock8() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.scopeEnter();
@@ -1738,7 +1738,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock9() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockExclusive(0, k1, -1);
         locker.doLockExclusive(0, k2, -1);
@@ -1759,7 +1759,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock10() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k1, -1));
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k2, -1));
@@ -1795,7 +1795,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock11() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         Lock lock = locker.doLockSharedNoPush(0, k1);
         locker.push(lock);
@@ -1810,7 +1810,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock12() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         Lock lock = locker.doLockSharedNoPush(0, k1);
         locker.push(lock);
@@ -1825,7 +1825,7 @@ public class LockTest {
 
     @Test
     public void illegalUnlock13() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         Lock lock = locker.doLockSharedNoPush(0, k1);
         locker.push(lock);
@@ -1840,9 +1840,9 @@ public class LockTest {
 
     @Test
     public void illegalUnlock14() throws Exception {
-        Locker locker1 = new Locker(mManager);
-        Locker locker2 = new Locker(mManager);
-        Locker locker3 = new Locker(mManager);
+        var locker1 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker1.doTryLockShared(0, k1, -1));
         assertEquals(ACQUIRED, locker2.doTryLockShared(0, k1, -1));
@@ -1862,7 +1862,7 @@ public class LockTest {
     public void illegalUnlock15() throws Exception {
         // Cannot unlock or downgrade exclusive lock via the public API.
 
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
         assertEquals(ACQUIRED, locker.doTryLockUpgradable(0, k2, -1));
         assertEquals(ACQUIRED, locker.doTryLockShared(0, k3, -1));
@@ -1906,9 +1906,9 @@ public class LockTest {
     @Test
     public void closedLocker() throws Exception {
         LocalDatabase db = LocalDatabase.open(new Launcher());
-        LockManager manager = new LockManager(db, null, -1);
+        var manager = new LockManager(db, null, -1);
 
-        Locker locker = new Locker(manager);
+        var locker = new Locker(manager);
 
         Lock lock = locker.doLockSharedNoPush(0, k1);
         locker.push(lock);
@@ -1919,15 +1919,15 @@ public class LockTest {
 
     @Test
     public void closedLocker2() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         locker.doLockShared(0, k1, -1);
 
-        AtomicReference<LockResult> resultRef = new AtomicReference<>();
+        var resultRef = new AtomicReference<LockResult>();
 
         Thread t = startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                Locker locker2 = new Locker(mManager);
+                var locker2 = new Locker(mManager);
                 resultRef.set(locker2.doTryLockExclusive(0, k1, -1));
             } catch (Exception e) {
                 System.out.println(e);
@@ -1943,7 +1943,7 @@ public class LockTest {
 
     @Test
     public void attachment() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         try {
             locker.attach("hello");
             fail();
@@ -1954,7 +1954,7 @@ public class LockTest {
 
     @Test
     public void unlockCombine() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         try {
             locker.unlockCombine();
@@ -2032,7 +2032,7 @@ public class LockTest {
 
     @Test
     public void unlockCombineMany() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         for (int i=0; i<1000; i++) {
             assertEquals(ACQUIRED, locker.doLockShared(0, key("k" + i), -1));
@@ -2132,7 +2132,7 @@ public class LockTest {
     public void unlockCombineBlockOfOne() throws Exception {
         // Tests combine logic for a lock block with one entry.
 
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         // This forms a block of two.
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
@@ -2152,7 +2152,7 @@ public class LockTest {
 
     @Test
     public void unlockCombineTooMuch() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
 
@@ -2174,7 +2174,7 @@ public class LockTest {
 
     @Test
     public void unlockCombineCrossScope() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
         locker.scopeEnter();
@@ -2195,7 +2195,7 @@ public class LockTest {
 
     @Test
     public void unlockDowngradeBlockOfOne() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doLockUpgradable(0, k1, -1));
 
@@ -2227,7 +2227,7 @@ public class LockTest {
 
     @Test
     public void unlockDowngradeGroup() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
         assertEquals(ACQUIRED, locker.doLockUpgradable(0, k2, -1));
@@ -2290,14 +2290,14 @@ public class LockTest {
 
     @Test
     public void tryLockExclusiveWaitingUpgrader() throws Exception {
-        Locker locker1 = new Locker(mManager);
+        var locker1 = new Locker(mManager);
         assertEquals(ACQUIRED, locker1.doLockShared(0, k1, -1));
 
-        AtomicReference<Throwable> ex2 = new AtomicReference<>();
+        var ex2 = new AtomicReference<Throwable>();
 
         Thread t2 = startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                Locker locker2 = new Locker(mManager);
+                var locker2 = new Locker(mManager);
                 locker2.doLockExclusive(0, k1, -1);
                 fail();
             } catch (LockInterruptedException e) {
@@ -2307,11 +2307,11 @@ public class LockTest {
             }
         }));
 
-        AtomicReference<Throwable> ex3 = new AtomicReference<>();
+        var ex3 = new AtomicReference<Throwable>();
 
         Thread t3 = startAndWaitUntilBlocked(new Thread(() -> {
             try {
-                Locker locker3 = new Locker(mManager);
+                var locker3 = new Locker(mManager);
                 assertEquals(ACQUIRED, locker3.doLockUpgradable(0, k1, -1));
             } catch (Throwable e) {
                 ex3.set(e);
@@ -2332,7 +2332,7 @@ public class LockTest {
 
     @Test
     public void unlockNonExclusiveSingle() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
         locker.transferExclusive(locker);
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
@@ -2359,7 +2359,7 @@ public class LockTest {
 
     @Test
     public void unlockNonExclusiveMulti() throws Exception {
-        Locker locker = new Locker(mManager);
+        var locker = new Locker(mManager);
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
         assertEquals(ACQUIRED, locker.doLockShared(0, k2, -1));
@@ -2408,11 +2408,11 @@ public class LockTest {
 
     @Test
     public void unlockNonExclusiveFuzz() throws Exception {
-        Locker locker = new Locker(mManager);
-        Random rnd = new Random(8675309);
+        var locker = new Locker(mManager);
+        var rnd = new Random(8675309);
 
-        Set<String> keep = new HashSet<>();
-        Set<String> toss = new HashSet<>();
+        var keep = new HashSet<String>();
+        var toss = new HashSet<String>();
 
         for (int i=0; i<10_000; i++) {
             int k;
@@ -2502,7 +2502,7 @@ public class LockTest {
 
         long end = System.nanoTime() + delayMillis * ONE_MILLIS_IN_NANOS;
 
-        Thread t = new Thread(() -> {
+        var t = new Thread(() -> {
             LockTest.sleep(delayMillis);
             switch (type) {
             default:

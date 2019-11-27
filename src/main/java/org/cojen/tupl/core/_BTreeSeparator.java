@@ -142,7 +142,7 @@ abstract class _BTreeSeparator extends LongAdder {
     protected abstract void finished(Chain<_BTree> firstRange);
 
     private void startWorker(Worker from, int spawnCount, byte[] lowKey, byte[] highKey) {
-        Worker worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
+        var worker = new Worker(spawnCount, lowKey, highKey, mSources.length);
  
         Worker[] hashtable = mWorkerHashtable;
         int slot = worker.mHash & (hashtable.length - 1);

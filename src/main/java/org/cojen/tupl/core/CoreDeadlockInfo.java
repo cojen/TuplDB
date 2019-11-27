@@ -69,7 +69,7 @@ final class CoreDeadlockInfo implements DeadlockInfo {
             return true;
         }
         if (obj instanceof CoreDeadlockInfo) {
-            CoreDeadlockInfo other = (CoreDeadlockInfo) obj;
+            var other = (CoreDeadlockInfo) obj;
             return mIndexId == other.mIndexId
                 && Arrays.equals(mIndexName, other.mIndexName)
                 && Arrays.equals(mKey, other.mKey)
@@ -80,7 +80,7 @@ final class CoreDeadlockInfo implements DeadlockInfo {
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder()
+        var b = new StringBuilder()
             .append('{')
             .append("indexId").append(": ").append(mIndexId)
             .append(", ");

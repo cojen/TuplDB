@@ -475,7 +475,7 @@ class CursorFrame {
 
         if (parent != null) {
             node.releaseShared();
-            CursorFrame parentCopy = new CursorFrame();
+            var parentCopy = new CursorFrame();
 
             while (true) {
                 // Need to check if parent is null, when looping back.

@@ -778,7 +778,7 @@ public class Latch {
 
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder();
+        var b = new StringBuilder();
         appendMiniString(b, this);
         b.append(" {state=");
 
@@ -1016,7 +1016,7 @@ public class Latch {
 
         @Override
         public String toString() {
-            StringBuilder b = new StringBuilder();
+            var b = new StringBuilder();
             appendMiniString(b, this);
             b.append(" {waiter=").append(mWaiter);
             b.append(", state=").append(mWaitState);

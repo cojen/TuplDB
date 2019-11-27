@@ -190,7 +190,7 @@ public class TestUtils {
     }
 
     private static void deleteDbFile(File baseFile, String suffix) {
-        File f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
+        var f = new File(baseFile.getParentFile(), baseFile.getName() + suffix);
         f.delete();
     }
 
@@ -272,7 +272,7 @@ public class TestUtils {
         for (int x=0; x<10; x++) {
             System.gc();
         }
-        List<String> list = new ArrayList<String>();
+        var list = new ArrayList<String>();
         for (int x=0; x<1000; x++) {
             list.add("" + x);
         }
@@ -294,8 +294,8 @@ public class TestUtils {
             return cSourceDir;
         }
 
-        Set<File> visited = new HashSet<>();
-        File dir = new File(System.getProperty("user.dir")).getAbsoluteFile();
+        var visited = new HashSet<File>();
+        var dir = new File(System.getProperty("user.dir")).getAbsoluteFile();
         if (!dir.isDirectory()) {
             throw new IllegalStateException("Not a directory: " + dir);
         }
@@ -340,7 +340,7 @@ public class TestUtils {
             throw new IllegalStateException();
         }
 
-        File file = new File(dir, match);
+        var file = new File(dir, match);
 
         if (file.exists()) {
             if (!file.isDirectory()) {
@@ -393,7 +393,7 @@ public class TestUtils {
         Database newTempDatabase(long cacheSize, OpenMode mode, int checkpointRateMillis)
             throws IOException
         {
-            DatabaseConfig config = new DatabaseConfig();
+            var config = new DatabaseConfig();
             if (cacheSize >= 0) {
                 config.minCacheSize(cacheSize);
             }
@@ -421,7 +421,7 @@ public class TestUtils {
                 }
                 File baseFile = newTempBaseFile();
                 config.baseFile(baseFile);
-                File dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
+                var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
                 MappedPageArray pa = MappedPageArray.open
                     (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
                      EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
@@ -471,7 +471,7 @@ public class TestUtils {
             }
 
             if (false) {
-                Map<String, Object> props = new HashMap<>();
+                var props = new HashMap<String, Object>();
                 props.put("traceUndo", true);
                 config.debugOpen(null, props);
                 System.exit(1);

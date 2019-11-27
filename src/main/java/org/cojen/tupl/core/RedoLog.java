@@ -151,7 +151,7 @@ final class RedoLog extends RedoWriter {
 
         acquireExclusive();
         try {
-            Set<File> files = new LinkedHashSet<>(2);
+            var files = new LinkedHashSet<File>(2);
 
             while (true) {
                 File file = fileFor(mBaseFile, mLogId);
@@ -181,7 +181,7 @@ final class RedoLog extends RedoWriter {
 
                     files.add(file);
 
-                    DataIn din = new DataIn.Stream(mPosition, in);
+                    var din = new DataIn.Stream(mPosition, in);
                     finished = replay(din, visitor, listener);
                     mPosition = din.mPos;
                 } finally {
@@ -215,7 +215,7 @@ final class RedoLog extends RedoWriter {
             return;
         }
 
-        byte[] header = new byte[8 + 4 + 8 + 4];
+        var header = new byte[8 + 4 + 8 + 4];
 
         final File file = fileFor(mBaseFile, logId);
         if (file.exists() && file.length() > header.length) {

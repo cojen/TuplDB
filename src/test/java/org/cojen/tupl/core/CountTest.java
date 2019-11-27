@@ -93,7 +93,7 @@ public class CountTest {
 
     @Before
     public void setup() throws Exception {
-        DatabaseConfig config = new DatabaseConfig()
+        var config = new DatabaseConfig()
             .minCacheSize(10_000_000).maxCacheSize(100_000_000)
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .directPageAccess(false);
@@ -170,7 +170,7 @@ public class CountTest {
     }
 
     private static byte[] key(int i) {
-        byte[] key = new byte[4];
+        var key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }

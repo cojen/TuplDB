@@ -168,7 +168,7 @@ public class ReplicatorConfig implements Cloneable {
         mLocalAddress = mListenAddress;
 
         if (mLocalAddress instanceof InetSocketAddress) {
-            InetSocketAddress sockAddr = (InetSocketAddress) mLocalAddress;
+            var sockAddr = (InetSocketAddress) mLocalAddress;
             InetAddress addr = sockAddr.getAddress();
             if (addr.isAnyLocalAddress()) {
                 mLocalAddress = new InetSocketAddress

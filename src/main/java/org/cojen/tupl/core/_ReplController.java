@@ -298,7 +298,7 @@ final class _ReplController extends _ReplWriter {
                 return null;
             }
 
-            _ReplWriter redo = new _ReplWriter(mEngine, writer);
+            var redo = new _ReplWriter(mEngine, writer);
             redo.start();
             _TransactionContext context = mEngine.mDatabase.anyTransactionContext();
 

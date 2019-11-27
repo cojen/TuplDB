@@ -100,7 +100,7 @@ public class BTreeGraftTest {
     private void heightImbalance(int count1, int count2) throws Exception {
         try {
             final long seed = 123 + count1 + count2;
-            Random rnd = new Random(seed);
+            var rnd = new Random(seed);
 
             BTree t1 = (BTree) mDatabase.newTemporaryIndex();
             BTree t2 = (BTree) mDatabase.newTemporaryIndex();
@@ -136,9 +136,9 @@ public class BTreeGraftTest {
     @Test
     public void chain() throws Exception {
         final long seed = 5224555;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
-        BTree[] trees = new BTree[256];
+        var trees = new BTree[256];
         for (int i=0; i<trees.length; i++) {
             trees[i] = (BTree) mDatabase.newTemporaryIndex();
             fillTree(trees[i], 100, rnd, (byte) i);
@@ -191,7 +191,7 @@ public class BTreeGraftTest {
     }
 
     private static int height(BTree tree) throws Exception {
-        HeightObserver obs = new HeightObserver();
+        var obs = new HeightObserver();
         assertTrue(tree.verify(obs));
         return obs.height();
     }

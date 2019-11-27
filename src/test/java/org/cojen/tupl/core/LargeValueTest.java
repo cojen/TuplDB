@@ -51,7 +51,7 @@ public class LargeValueTest {
 
     @Test
     public void testStoreBasic() throws Exception {
-        Random rnd = new Random(82348976232L);
+        var rnd = new Random(82348976232L);
         int[] sizes = {1000, 2000, 3000, 4000, 5000, 6000, 10000, 100000};
 
         for (int size : sizes) {
@@ -145,10 +145,10 @@ public class LargeValueTest {
 
         Index ix = mDb.openIndex("test");
 
-        Random rnd = new Random(123456);
+        var rnd = new Random(123456);
 
-        byte[][] keys = new byte[4][];
-        byte[][] values = new byte[keys.length][];
+        var keys = new byte[4][];
+        var values = new byte[keys.length][];
 
         for (int i=0; i<keys.length; i++) {
             keys[i] = new byte[300];
@@ -186,10 +186,10 @@ public class LargeValueTest {
 
         Index ix = mDb.openIndex("test");
 
-        Random rnd = new Random(123456);
+        var rnd = new Random(123456);
 
-        byte[][] keys = new byte[4][];
-        byte[][] values = new byte[keys.length][];
+        var keys = new byte[4][];
+        var values = new byte[keys.length][];
 
         for (int i=0; i<keys.length; i++) {
             keys[i] = new byte[300];
@@ -371,7 +371,7 @@ public class LargeValueTest {
     }
 
     private static byte[] key(int size, int i) {
-        byte[] key = new byte[size];
+        var key = new byte[size];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }
@@ -383,7 +383,7 @@ public class LargeValueTest {
     }
 
     private static byte[] filledValue(int size) {
-        byte[] value = new byte[size];
+        var value = new byte[size];
         Arrays.fill(value, (byte) -1);
         return value;
     }
@@ -396,7 +396,7 @@ public class LargeValueTest {
         Index ix = mDb.openIndex("test");
 
         {
-            byte[] value = new byte[4_000_000];
+            var value = new byte[4_000_000];
             Arrays.fill(value, (byte) 0x55);
             ix.store(Transaction.BOGUS, "hello".getBytes(), value);
         }
@@ -413,7 +413,7 @@ public class LargeValueTest {
         // Now test undo log nodes.
 
         {
-            byte[] value = new byte[4_000_000];
+            var value = new byte[4_000_000];
             Arrays.fill(value, (byte) 0x55);
             ix.store(Transaction.BOGUS, "world".getBytes(), value);
         }
@@ -446,11 +446,11 @@ public class LargeValueTest {
         mDb.suspendCheckpoints();
         Index ix = mDb.openIndex("test");
 
-        Random rnd = new Random(1234L);
+        var rnd = new Random(1234L);
 
         final int keyCount = 10000;
         // List of numbers [0, keyCount) in a random order
-        int keys[] = new int[keyCount];
+        var keys = new int[keyCount];
 
         // Initialize the list of keys as sequential
         for (int i = 0; i < keyCount; i++) {
@@ -464,7 +464,7 @@ public class LargeValueTest {
             // Pick a length for the value, in the range [1B, 12.5KB]. The distribution is
             // biased so that half of the values are less than 117.
             int valueLength = (int)Math.pow(1.1, rnd.nextDouble() * 100);
-            byte[] value = new byte[valueLength];
+            var value = new byte[valueLength];
             rnd.nextBytes(value);
             ix.store(null, key(keys[i]), value);
         }
@@ -472,10 +472,10 @@ public class LargeValueTest {
         // Update all of the keys (in a different order) with new values of different sizes.
         // Do not commit the transactions.
         shuffle(rnd, keys);
-        Transaction[] txns = new Transaction[keyCount];
+        var txns = new Transaction[keyCount];
         for (int i = 0; i < keyCount; i++) {
             int valueLength = (int)Math.pow(1.1, rnd.nextInt(100));
-            byte[] value = new byte[valueLength];
+            var value = new byte[valueLength];
             rnd.nextBytes(value);
             Transaction txn = ix.newTransaction(DurabilityMode.NO_FLUSH);
             ix.store(txn, key(keys[i]), value);

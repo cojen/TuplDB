@@ -54,7 +54,7 @@ final class RangeSet extends TreeSet<RangeSet.Range> {
             return true;
         }
 
-        Range range = new Range(start, end);
+        var range = new Range(start, end);
 
         Range existing = super.floor(range); // findLe
 

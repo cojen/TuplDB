@@ -75,15 +75,15 @@ public class DirectPageOpsTest {
     public void arenaSearch() throws Exception {
         assumeTrue(MappedPageArray.isSupported());
 
-        long[] p1 = new long[10];
+        var p1 = new long[10];
         Object a1 = DirectPageOps.p_arenaAlloc(4096, p1.length);
         allocAll(a1, p1, 4096);
 
-        long[] p2 = new long[20];
+        var p2 = new long[20];
         Object a2 = DirectPageOps.p_arenaAlloc(4096, p2.length);
         allocAll(a2, p2, 4096);
 
-        long[] p3 = new long[30];
+        var p3 = new long[30];
         Object a3 = DirectPageOps.p_arenaAlloc(4096, p3.length);
         allocAll(a3, p3, 4096);
 
@@ -177,7 +177,7 @@ public class DirectPageOpsTest {
             Long.MAX_VALUE, 9,
         };
 
-        IntegerRef.Value ref = new IntegerRef.Value();
+        var ref = new IntegerRef.Value();
 
         for (int i=0; i<values.length; i+=2) {
             long val = values[i];

@@ -114,7 +114,7 @@ public class EvictionTest {
         }
         
         // basic eviction
-        TestEvictionFilter evictionFilter = new TestEvictionFilter();
+        var evictionFilter = new TestEvictionFilter();
         long evicted = ix.evict(null, null, null, evictionFilter, autoLoad);
         int recordCount = initialRecordCount - evictionFilter.mKeys.size();
         long keyValueSize = 0; 
@@ -164,7 +164,7 @@ public class EvictionTest {
         assertEquals(0, evictionFilter.mValues.size());
         txn.reset();
         
-        VerificationObserver observer = new VerificationObserver();
+        var observer = new VerificationObserver();
         ix.verify(observer);
         assertFalse(observer.failed);
     }
@@ -172,7 +172,7 @@ public class EvictionTest {
 
     private String textOfLength(int prefix, char c, int len) {
         len-=6;
-        char[] chars = new char[len];
+        var chars = new char[len];
         Arrays.fill(chars, c);
         return String.format("%06d%s", prefix, new String(chars));
     }

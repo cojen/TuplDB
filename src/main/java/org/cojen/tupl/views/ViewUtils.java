@@ -95,7 +95,7 @@ public class ViewUtils {
     }
 
     public static byte[] appendZero(byte[] key) {
-        byte[] newKey = new byte[key.length + 1];
+        var newKey = new byte[key.length + 1];
         System.arraycopy(key, 0, newKey, 0, key.length);
         return newKey;
     }
@@ -401,7 +401,7 @@ public class ViewUtils {
     }
 
     public static final String toString(Index ix) {
-        StringBuilder b = new StringBuilder();
+        var b = new StringBuilder();
         Utils.appendMiniString(b, ix);
         b.append(" {");
         String nameStr = ix.getNameString();

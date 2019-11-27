@@ -106,9 +106,9 @@ public class BTreeMergerTest {
         throws Exception
     {
         final long seed = 123 + numSources + countPerSource + rangePerSource + numThreads;
-        Random rnd = new Random(seed);
+        var rnd = new Random(seed);
 
-        BTree[] sources = new BTree[numSources];
+        var sources = new BTree[numSources];
         for (int i=0; i<numSources; i++) {
             BTree source = (BTree) mDatabase.openIndex("test-" + i);
             sources[i] = source;
@@ -128,7 +128,7 @@ public class BTreeMergerTest {
             executor = Executors.newCachedThreadPool();
         }
 
-        final List<BTree> results = new ArrayList<>();
+        final var results = new ArrayList<BTree>();
 
         class Merger extends BTreeMerger {
             Merger(LocalDatabase db, BTree[] sources, Executor executor, int workerCount) {
@@ -153,7 +153,7 @@ public class BTreeMergerTest {
             }
         }
 
-        BTreeMerger merger = new Merger(mDatabase, sources, executor, numThreads);
+        var merger = new Merger(mDatabase, sources, executor, numThreads);
 
         if (stopAndResume) {
             new Thread(() -> {
@@ -180,14 +180,14 @@ public class BTreeMergerTest {
         if (stopAndResume && results.size() > 2) {
             // Resume the sort with a new merger.
 
-            BTree[] remaining = new BTree[results.size() - 1];
+            var remaining = new BTree[results.size() - 1];
             for (int i=0; i<remaining.length; i++) {
                 remaining[i] = results.get(i);
             }
 
             results.clear();
 
-            BTreeMerger remainingMerger = new Merger(mDatabase, remaining, executor, numThreads);
+            var remainingMerger = new Merger(mDatabase, remaining, executor, numThreads);
             remainingMerger.start();
 
             synchronized (results) {
@@ -206,7 +206,7 @@ public class BTreeMergerTest {
         // Verify entries.
 
         rnd = new Random(seed);
-        TreeMap<byte[], byte[]> expected = new TreeMap<>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
 
         for (int i=0; i<numSources; i++) {
             byte[] value = ("value-" + i).getBytes();
