@@ -114,9 +114,8 @@ final class _PendingTxnWaiter extends Thread {
             mAhead = null;
             notify();
         }
-        _LocalDatabase db = mWriter.mEngine.mDatabase;
-        finishAll(behind, db, commitPos);
-        finishAll(ahead, db, commitPos);
+        finishAll(behind, commitPos);
+        finishAll(ahead, commitPos);
     }
 
     @Override
@@ -164,34 +163,34 @@ final class _PendingTxnWaiter extends Thread {
 
             // Commit all the confirmed transactions.
 
-            _LocalDatabase db =  mWriter.mEngine.mDatabase;
             do {
                 try {
-                    behind.commit(db);
+                    behind.commit();
                 } catch (Exception e) {
-                    uncaught(db, e);
+                    uncaught(behind, e);
                 }
             } while ((behind = behind.mPrev) != null);
         }
     }
 
-    private static void finishAll(_PendingTxn pending, _LocalDatabase db, long commitPos) {
+    private static void finishAll(_PendingTxn pending, long commitPos) {
         while (pending != null) {
             try {
                 if (pending.mCommitPos <= commitPos) {
-                    pending.commit(db);
+                    pending.commit();
                 } else {
-                    pending.rollback(db);
+                    pending.rollback();
                 }
             } catch (Exception e) {
-                uncaught(db, e);
+                uncaught(pending, e);
             }
             pending = pending.mPrev;
         }
     }
 
-    private static void uncaught(_LocalDatabase db, Throwable e) {
-        if (db.isClosed()) {
+    private static void uncaught(_PendingTxn pending, Throwable e) {
+        _LocalDatabase db = pending.getDatabase();
+        if (db == null || db.isClosed()) {
             return;
         }
         EventListener listener = db.eventListener();

@@ -112,7 +112,7 @@ public final class _LockManager {
      *
      * @param locker optional locker
      */
-    final boolean isAvailable(_LockOwner locker, long indexId, byte[] key, int hash) {
+    final boolean isAvailable(_Locker locker, long indexId, byte[] key, int hash) {
         // Note that no LockHT latch is acquired. The current thread is not required to
         // immediately observe the activity of other threads acting upon the same lock. If
         // another thread has just acquired an exclusive lock, it must still acquire the node
@@ -120,7 +120,7 @@ public final class _LockManager {
         return getLockHT(hash).isAvailable(locker, indexId, key, hash);
     }
 
-    final LockResult check(_LockOwner locker, long indexId, byte[] key, int hash) {
+    final LockResult check(_Locker locker, long indexId, byte[] key, int hash) {
         LockHT ht = getLockHT(hash);
         ht.acquireShared();
         try {
@@ -131,7 +131,7 @@ public final class _LockManager {
         }
     }
 
-    final void unlock(_LockOwner locker, _Lock lock) {
+    final void unlock(_Locker locker, _Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -142,7 +142,7 @@ public final class _LockManager {
         }
     }
 
-    final void doUnlock(_LockOwner locker, _Lock lock) {
+    final void doUnlock(_Locker locker, _Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -153,7 +153,7 @@ public final class _LockManager {
         }
     }
 
-    final void unlockToShared(_LockOwner locker, _Lock lock) {
+    final void unlockToShared(_Locker locker, _Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -164,7 +164,7 @@ public final class _LockManager {
         }
     }
 
-    final void doUnlockToShared(_LockOwner locker, _Lock lock) {
+    final void doUnlockToShared(_Locker locker, _Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -175,7 +175,7 @@ public final class _LockManager {
         }
     }
 
-    final void doUnlockToUpgradable(_LockOwner locker, _Lock lock) {
+    final void doUnlockToUpgradable(_Locker locker, _Lock lock) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
@@ -186,14 +186,18 @@ public final class _LockManager {
         }
     }
 
-    final _PendingTxn transferExclusive(_LockOwner locker, _Lock lock, _PendingTxn pending) {
+    /**
+     * Take ownership of an upgradable or exclusive lock.
+     */
+    final void takeLockOwnership(_Lock lock, _Locker locker) {
         LockHT ht = getLockHT(lock.mHashCode);
         ht.acquireExclusive();
         try {
-            return lock.transferExclusive(locker, ht, pending);
-        } catch (Throwable e) {
+            if (lock.mLockCount < 0) {
+                lock.mOwner = locker;
+            }
+        } finally {
             ht.releaseExclusive();
-            throw e;
         }
     }
 
@@ -306,7 +310,7 @@ public final class _LockManager {
          *
          * @param locker optional locker
          */
-        boolean isAvailable(_LockOwner locker, long indexId, byte[] key, int hash) {
+        boolean isAvailable(_Locker locker, long indexId, byte[] key, int hash) {
             // Optimistically find the lock.
             int stamp = mStamp;
             if (stamp >= 0) {
@@ -429,7 +433,7 @@ public final class _LockManager {
 
                         lock.mLockCount = type;
                         if (type == TYPE_SHARED) {
-                            lock.setSharedLockOwner(locker);
+                            lock.setSharedLocker(locker);
                         } else {
                             lock.mOwner = locker;
                         }
@@ -485,7 +489,7 @@ public final class _LockManager {
                         if (lock.mLockCount == ~0) {
                             e.mLockCount = ~0;
                         }
-                        Object ghost = lock.getSharedLockOwner();
+                        Object ghost = lock.getSharedLocker();
                         if (ghost instanceof _GhostFrame) {
                             e.setGhostFrame((_GhostFrame) ghost);
                         }
@@ -535,7 +539,7 @@ public final class _LockManager {
             mSize--;
         }
 
-        void close(_LockOwner locker) {
+        void close(_Locker locker) {
             acquireExclusive();
             try {
                 if (mSize > 0) {
@@ -564,7 +568,7 @@ public final class _LockManager {
                                 mSize--;
                             }
 
-                            e.setSharedLockOwner(null);
+                            e.setSharedLocker(null);
 
                             // Interrupt all waiters.
 

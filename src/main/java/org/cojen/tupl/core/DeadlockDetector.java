@@ -25,26 +25,24 @@ import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.Index;
 
 /**
- * Used internally by Locker. Only detects deadlocks caused by independent
- * threads. A thread "self deadlock" caused by separate lockers in the same
- * thread is not detected. This is because there is only one thread blocked.
- * The detector relies on multiple threads to be blocked waiting on a lock.
- * Lockers aren't registered with any specific thread, and therefore locks
- * cannot be owned by threads. If this policy changes, then the detector could
+ * Used internally by Locker. Only detects deadlocks caused by independent threads. A thread
+ * "self deadlock" caused by separate lockers in the same thread is not detected. This is
+ * because there is only one thread blocked.  The detector relies on multiple threads to be
+ * blocked waiting on a lock.  Lockers aren't registered with any specific thread, and
+ * therefore locks cannot be owned by threads. If this policy changes, then the detector could
  * see that the thread is self deadlocked.
  *
  * @author Brian S O'Neill
  */
 /*P*/
 final class DeadlockDetector {
-    // Note: This code does not consider proper thread-safety and directly
-    // examines the contents of locks and lockers. It never modifies anything,
-    // so it is relatively safe and deadlocks are usually detectable. All
-    // involved threads had to acquire latches at some point, which implies a
-    // memory barrier.
+    // Note: This code does not consider proper thread-safety and directly examines the
+    // contents of locks and lockers. It never modifies anything, so it is relatively safe and
+    // deadlocks are usually detectable. All involved threads had to acquire latches at some
+    // point, which implies a memory barrier.
 
     private final Locker mOrigin;
-    private final Set<LockOwner> mLockers;
+    private final Set<Locker> mLockers;
     final Set<Lock> mLocks;
 
     boolean mGuilty;
@@ -101,7 +99,7 @@ final class DeadlockDetector {
     /**
      * @return true if deadlock was found
      */
-    private boolean scan(LockOwner locker) {
+    private boolean scan(Locker locker) {
         boolean found = false;
 
         outer: while (true) {
@@ -122,8 +120,8 @@ final class DeadlockDetector {
                 }
             }
 
-            LockOwner owner = lock.mOwner;
-            Object shared = lock.getSharedLockOwner();
+            Locker owner = lock.mOwner;
+            Object shared = lock.getSharedLocker();
 
             // If the owner is the locker, then it is trying to upgrade. It's
             // waiting for another locker to release the shared lock.
@@ -136,20 +134,20 @@ final class DeadlockDetector {
                 found |= scan(owner);
             }
 
-            if (shared instanceof LockOwner) {
+            if (shared instanceof Locker) {
                 // Tail call.
-                locker = (LockOwner) shared;
+                locker = (Locker) shared;
                 continue outer;
             }
 
-            if (!(shared instanceof Lock.LockOwnerHTEntry[])) {
+            if (!(shared instanceof Lock.LockerHTEntry[])) {
                 return found;
             }
 
-            Lock.LockOwnerHTEntry[] entries = (Lock.LockOwnerHTEntry[]) shared;
+            Lock.LockerHTEntry[] entries = (Lock.LockerHTEntry[]) shared;
             for (int i=entries.length; --i>=0; ) {
-                for (Lock.LockOwnerHTEntry e = entries[i]; e != null; ) {
-                    Lock.LockOwnerHTEntry next = e.mNext;
+                for (Lock.LockerHTEntry e = entries[i]; e != null; ) {
+                    Lock.LockerHTEntry next = e.mNext;
                     if (i == 0 && next == null) {
                         // Tail call.
                         locker = e.mOwner;

@@ -2330,6 +2330,151 @@ public class LockTest {
         assertNull(ex3.get());
     }
 
+    @Test
+    public void unlockNonExclusiveSingle() throws Exception {
+        Locker locker = new Locker(mManager);
+        locker.transferExclusive(locker);
+
+        assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
+        locker.transferExclusive(locker);
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k1, -1));
+        locker.transferExclusive(locker);
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+
+        assertEquals(ACQUIRED, locker.doLockExclusive(0, k1, -1));
+        locker.transferExclusive(locker);
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        locker.scopeUnlockAll();
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k1, -1));
+        assertEquals(UPGRADED, locker.doLockExclusive(0, k1, -1));
+        locker.transferExclusive(locker);
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        locker.scopeUnlockAll();
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+    }
+
+    @Test
+    public void unlockNonExclusiveMulti() throws Exception {
+        Locker locker = new Locker(mManager);
+
+        assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
+        assertEquals(ACQUIRED, locker.doLockShared(0, k2, -1));
+        locker.transferExclusive(locker);
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k1, -1));
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k2, -1));
+        assertEquals(UPGRADED, locker.doLockExclusive(0, k1, -1));
+        locker.transferExclusive(locker);
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        assertEquals(UNOWNED, locker.lockCheck(0, k2));
+        locker.scopeUnlockAll();
+
+        assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k2, -1));
+        assertEquals(ACQUIRED, locker.doLockUpgradable(0, k3, -1));
+        assertEquals(UPGRADED, locker.doLockExclusive(0, k2, -1));
+        locker.transferExclusive(locker);
+        assertEquals(UNOWNED, locker.lockCheck(0, k1));
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k2));
+        assertEquals(UNOWNED, locker.lockCheck(0, k3));
+        locker.scopeUnlockAll();
+
+        for (int i=0; i<1000; i++) {
+            assertEquals(ACQUIRED, locker.doLockShared(0, key("key-" + i), -1));
+        }
+        locker.transferExclusive(locker);
+        for (int i=0; i<1000; i++) {
+            assertEquals(UNOWNED, locker.lockCheck(0, key("key-" + i)));
+        }
+        locker.scopeUnlockAll();
+
+        for (int i=0; i<1000; i++) {
+            assertEquals(ACQUIRED, locker.doLockShared(0, key("key-" + i), -1));
+        }
+        locker.doLockExclusive(0, k1, -1);
+        locker.transferExclusive(locker);
+        assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+        for (int i=0; i<1000; i++) {
+            assertEquals(UNOWNED, locker.lockCheck(0, key("key-" + i)));
+        }
+        locker.scopeUnlockAll();
+    }
+
+    @Test
+    public void unlockNonExclusiveFuzz() throws Exception {
+        Locker locker = new Locker(mManager);
+        Random rnd = new Random(8675309);
+
+        Set<String> keep = new HashSet<>();
+        Set<String> toss = new HashSet<>();
+
+        for (int i=0; i<10_000; i++) {
+            int k;
+            if (rnd.nextBoolean()) {
+                k = rnd.nextInt(10);
+            } else {
+                k = rnd.nextInt(1000);
+            }
+
+            String strKey = "key-" + k;
+            byte[] key = key(strKey);
+
+            LockResult result;
+            switch (rnd.nextInt(40)) {
+            default:
+                result = locker.doLockShared(0, key, -1);
+                break;
+            case 0:
+                try {
+                    result = locker.doLockUpgradable(0, key, -1);
+                } catch (IllegalUpgradeException e) {
+                    continue;
+                }
+                break;
+            case 1:
+                try {
+                    result = locker.doLockExclusive(0, key, -1);
+                } catch (IllegalUpgradeException e) {
+                    continue;
+                }
+                break;
+            }
+
+            if (result == LockResult.UPGRADED || result == OWNED_EXCLUSIVE) {
+                keep.add(strKey);
+                toss.remove(strKey);
+            } else {
+                toss.add(strKey);
+            }
+        }
+
+        locker.transferExclusive(locker);
+
+        for (String strKey : keep) {
+            assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, key(strKey)));
+        }
+
+        for (String strKey : toss) {
+            assertEquals(UNOWNED, locker.lockCheck(0, key(strKey)));
+        }
+
+        locker.scopeUnlockAll();
+
+        for (String strKey : keep) {
+            assertEquals(UNOWNED, locker.lockCheck(0, key(strKey)));
+        }
+
+        for (String strKey : toss) {
+            assertEquals(UNOWNED, locker.lockCheck(0, key(strKey)));
+        }
+    }
+
     private long scheduleUnlock(final Locker locker, final long delayMillis)
         throws InterruptedException
     {

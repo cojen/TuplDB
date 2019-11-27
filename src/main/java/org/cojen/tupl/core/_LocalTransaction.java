@@ -121,17 +121,17 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
-    public _LocalDatabase getDatabase() {
+    public final _LocalDatabase getDatabase() {
         return mDatabase;
     }
 
     @Override
-    public void attach(Object obj) {
+    public final void attach(Object obj) {
         mAttachment = obj;
     }
 
     @Override
-    public Object attachment() {
+    public final Object attachment() {
         return mAttachment;
     }
 
@@ -311,13 +311,16 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     private void commitPending(long commitPos, _UndoLog undo) throws IOException {
-        _PendingTxn pending = transferExclusive();
+        _PendingTxn pending = new _PendingTxn(mManager, mHash);
+
         pending.mContext = mContext;
         pending.mTxnId = mTxnId;
         pending.mCommitPos = commitPos;
         pending.mUndoLog = undo;
         pending.mHasState = mHasState;
         pending.attach(mAttachment);
+
+        transferExclusive(pending);
 
         mUndoLog = null;
         mHasState = 0;
@@ -601,7 +604,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
                 mLockMode = parentScope.mLockMode;
                 mLockTimeoutNanos = parentScope.mLockTimeoutNanos;
-                // Use 'or' assignment to keep HAS_TRASH and HAS_PREPARE state.
+                // Use 'or' assignment to keep HAS_TRASH state.
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
             } catch (Throwable e) {
@@ -671,14 +674,14 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
-    public void flush() throws IOException {
+    public final void flush() throws IOException {
         if (mTxnId != 0) {
             mContext.flush();
         }
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         StringBuilder b = new StringBuilder(Transaction.class.getName());
 
         if (this == BOGUS) {
@@ -1368,11 +1371,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     Utils.suppress(borked, rollbackFailed);
 
                     // Also panic the database if not done so already.
-                    try {
-                        Utils.closeOnFailure(mDatabase, borked);
-                    } catch (Throwable e) {
-                        // Ignore.
-                    }
+                    panic(borked);
 
                     // Discard all of the locks, making it impossible for them to be released
                     // even if the application later calls reset.
@@ -1390,6 +1389,14 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
         if (rethrow || !closed) {
             Utils.rethrow(borked);
+        }
+    }
+
+    private void panic(Throwable e) {
+        try {
+            Utils.closeOnFailure(mDatabase, e);
+        } catch (Throwable e2) {
+            // Ignore.
         }
     }
 }

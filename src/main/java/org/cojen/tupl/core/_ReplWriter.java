@@ -147,11 +147,10 @@ class _ReplWriter extends _RedoWriter {
         }
 
         if (action != _PendingTxnWaiter.PENDING) {
-            _LocalDatabase db = mEngine.mDatabase;
             if (action == _PendingTxnWaiter.DO_COMMIT) {
-                pending.commit(db);
+                pending.commit();
             } else if (action == _PendingTxnWaiter.DO_ROLLBACK) {
-                pending.rollback(db);
+                pending.rollback();
             }
         }
     }

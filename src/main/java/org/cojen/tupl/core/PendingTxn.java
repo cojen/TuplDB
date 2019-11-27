@@ -25,11 +25,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 /*P*/
-final class PendingTxn extends LockOwner {
-    private final Lock mFirst;
-    private Lock[] mRest;
-    private int mRestSize;
-
+final class PendingTxn extends Locker {
     TransactionContext mContext;
     long mTxnId;
     long mCommitPos;
@@ -39,14 +35,14 @@ final class PendingTxn extends LockOwner {
 
     PendingTxn mPrev;
 
-    PendingTxn(Lock first) {
-        mFirst = first;
+    PendingTxn(LockManager manager, int hash) {
+        super(manager, hash);
     }
 
     @Override
     public final LocalDatabase getDatabase() {
         UndoLog undo = mUndoLog;
-        return undo == null ? null : undo.getDatabase();
+        return undo == null ? super.getDatabase() : undo.getDatabase();
     }
 
     @Override
@@ -60,39 +56,13 @@ final class PendingTxn extends LockOwner {
     }
 
     /**
-     * Add an exclusive lock into the set, retaining FIFO (queue) order.
-     */
-    void add(Lock lock) {
-        Lock first = mFirst;
-        if (first == null) {
-            throw new IllegalStateException("cannot add lock");
-        }
-        Lock[] rest = mRest;
-        if (rest == null) {
-            rest = new Lock[8];
-            mRest = rest;
-            mRestSize = 1;
-            rest[0] = lock;
-        } else {
-            int size = mRestSize;
-            if (size >= rest.length) {
-                Lock[] newRest = new Lock[rest.length << 1];
-                System.arraycopy(rest, 0, newRest, 0, rest.length);
-                mRest = rest = newRest;
-            }
-            rest[size] = lock;
-            mRestSize = size + 1;
-        }
-    }
-
-    /**
      * Releases all the locks and then discards the undo log. This object must be discarded
      * afterwards.
      */
-    void commit(LocalDatabase db) throws IOException {
+    void commit() throws IOException {
         // See Transaction.commit for more info.
 
-        unlockAll(db);
+        scopeUnlockAll();
 
         UndoLog undo = mUndoLog;
         if (undo != null) {
@@ -101,6 +71,7 @@ final class PendingTxn extends LockOwner {
         }
 
         if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
+            LocalDatabase db = getDatabase();
             FragmentedTrash.emptyTrash(db.fragmentedTrash(), mTxnId);
         }
     }
@@ -109,7 +80,7 @@ final class PendingTxn extends LockOwner {
      * Applies the undo log, releases all the locks, and then discards the undo log. This
      * object must be discarded afterwards.
      */
-    void rollback(LocalDatabase db) throws IOException {
+    void rollback() throws IOException {
         // See Transaction.exit for more info.
 
         UndoLog undo = mUndoLog;
@@ -117,27 +88,10 @@ final class PendingTxn extends LockOwner {
             undo.rollback();
         }
 
-        unlockAll(db);
+        scopeUnlockAll();
 
         if (undo != null) {
             mContext.unregister(undo);
-        }
-    }
-
-    private void unlockAll(LocalDatabase db) {
-        Lock first = mFirst;
-        if (first != null) {
-            LockManager manager = db.mLockManager;
-            manager.doUnlock(this, first);
-            Lock[] rest = mRest;
-            if (rest != null) {
-                for (Lock lock : rest) {
-                    if (lock == null) {
-                        return;
-                    }
-                    manager.doUnlock(this, lock);
-                }
-            }
         }
     }
 }
