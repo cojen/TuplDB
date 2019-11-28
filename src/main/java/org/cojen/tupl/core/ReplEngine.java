@@ -169,13 +169,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         try {
             mDecodeLatch.acquireExclusive();
             try {
-                if (mDecoder == null) {
-                    // This is the only time it's safe to delete all fragmented values, even
-                    // those that aren't replicated. The database has just been opened and
-                    // non-replicated transactions cannot have been created yet.
-                    mDatabase.emptyLingeringTrash(mTransactions, true);
-                }
-
                 if (mDecoder == null || mDecoder.mDeactivated) {
                     mDecoder = new ReplDecoder
                         (mManager, initialPosition, initialTxnId, mDecodeLatch);
@@ -211,12 +204,9 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     /**
      * Note: Caller must hold mDecodeLatch exclusively.
      *
-     * @param finish pass true to interrupt all worker threads such that they exit when done;
-     * expected to be true only when called by RedoLogApplier
+     * @param interrupt pass true to interrupt all worker threads such that they exit when done
      */
-    private void doReset(boolean finish) throws IOException {
-        final LHashTable.Obj<LocalTransaction> remaining;
-
+    private void doReset(boolean interrupt) throws IOException {
         if (mTransactions.size() != 0) {
             mTransactions.traverse(te -> {
                 runTask(te, new Worker.Task() {
@@ -233,7 +223,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         // Wait for work to complete.
         if (mWorkerGroup != null) {
             // Assume that mDecodeLatch is held exclusively.
-            mWorkerGroup.join(finish);
+            mWorkerGroup.join(interrupt);
         }
 
         synchronized (mCursors) {
@@ -245,7 +235,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        mDatabase.emptyLingeringTrash(mTransactions, finish);
+        mDatabase.emptyLingeringTrash(mTransactions); // only for replicated transactions
     }
 
     /**

@@ -22,6 +22,7 @@ import java.io.IOException;
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.View;
 import org.cojen.tupl.Transaction;
 
 import static org.cojen.tupl.core.DirectPageOps.*;
@@ -232,26 +233,23 @@ final class _FragmentedTrash {
     /**
      * Non-transactionally deletes all fragmented values except for those that are still active.
      *
-     * @param all pass true to also delete fragmented values for non-replicated transactions
+     * @param activeTxns pass null to delete from non-replicated (no redo) transactions;
+     * otherwise, only delete from replicated transactions that aren't in this hashtable
      */
-    static void emptyLingeringTrash(_BTree trash, LHashTable<?> activeTxns,
-                                    boolean all)
-        throws IOException
-    {
+    static void emptyLingeringTrash(_BTree trash, LHashTable<?> activeTxns) throws IOException {
         _LocalDatabase db = trash.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        try (var cursor = new _BTreeCursor(trash, Transaction.BOGUS)) {
+        // Non-replicated transactions are negative (high bit is set), so that's the boundary.
+        var boundary = new byte[8];
+        encodeLongBE(boundary, 0, 1L << 63);
+        View view = activeTxns == null ? trash.viewGe(boundary) : trash.viewLt(boundary);
+
+        try (var cursor = view.newCursor(Transaction.BOGUS)) {
             cursor.autoload(false);
+
             for (cursor.first(); cursor.key() != null; cursor.next()) {
-                long txnId = decodeLongBE(cursor.key(), 0);
-
-                if (txnId < 0 && !all) {
-                    // Allow non-replicated transaction to complete on its own.
-                    continue;
-                }
-
-                if (activeTxns.get(txnId) == null) {
+                if (activeTxns == null || activeTxns.get(decodeLongBE(cursor.key(), 0)) == null) {
                     CommitLock.Shared shared = commitLock.acquireShared();
                     try {
                         deleteFragmented(db, cursor);

@@ -960,6 +960,8 @@ public final class LocalDatabase extends CoreDatabase {
 
         mCheckpointer.start(false);
 
+        emptyLingeringTrash(null); // only for non-replicated transactions
+
         if (mRedoWriter instanceof ReplController) {
             // Start replication and recovery.
             var controller = (ReplController) mRedoWriter;
@@ -5289,15 +5291,16 @@ public final class LocalDatabase extends CoreDatabase {
     /**
      * Non-transactionally deletes all fragmented values except for those that are still active.
      *
-     * @param all pass true to also delete fragmented values for non-replicated transactions
+     * @param activeTxns pass null to delete from non-replicated (no redo) transactions;
+     * otherwise, only delete from replicated transactions that aren't in this hashtable
      */
-    void emptyLingeringTrash(LHashTable<?> activeTxns, boolean all) throws IOException {
+    void emptyLingeringTrash(LHashTable<?> activeTxns) throws IOException {
         mOpenTreesLatch.acquireExclusive();
         BTree trash = mFragmentedTrash;
 
         if (trash != null) {
             mOpenTreesLatch.releaseExclusive();
-            FragmentedTrash.emptyLingeringTrash(trash, activeTxns, all);
+            FragmentedTrash.emptyLingeringTrash(trash, activeTxns);
             return;
         }
 
@@ -5314,7 +5317,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         mOpenTreesLatch.downgrade();
         try {
-            FragmentedTrash.emptyLingeringTrash(trash, activeTxns, all);
+            FragmentedTrash.emptyLingeringTrash(trash, activeTxns);
         } finally {
             mOpenTreesLatch.releaseShared();
             trash.forceClose();
