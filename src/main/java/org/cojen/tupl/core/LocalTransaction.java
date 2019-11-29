@@ -554,31 +554,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         ParentScope parentScope = mParentScope;
         if (parentScope == null) {
             try {
-                int hasState = mHasState;
-                try {
-                    if ((hasState & HAS_SCOPE) != 0) {
-                        long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
-                    }
-                    mHasState = 0;
-                } catch (UnmodifiableReplicaException e) {
-                    // Suppress and let undo proceed.
-                }
-
-                UndoLog undo = mUndoLog;
-                if (undo != null) {
-                    undo.rollback();
-                }
-
-                // Exit and release all locks obtained in this scope.
-                super.scopeExit();
-
-                mSavepoint = 0;
-                if (undo != null) {
-                    mContext.unregister(undo);
-                    mUndoLog = null;
-                }
-
-                mTxnId = 0;
+                doRollback(mHasState);
             } catch (Throwable e) {
                 borked(e, true, false); // rollback = true, rethrow = false
             }
@@ -647,9 +623,16 @@ public final class LocalTransaction extends Locker implements Transaction {
             parentScope = parentScope.mParentScope;
         }
 
+        doRollback(hasState);
+    }
+
+    /**
+     * Should only be called when parentScope is null.
+     */
+    private void doRollback(int hasState) throws IOException {
         try {
             if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
-                long commitPos = mContext.redoRollbackFinal(mRedo, mTxnId);
+                mContext.redoRollbackFinal(mRedo, mTxnId);
             }
             mHasState = 0;
         } catch (UnmodifiableReplicaException e) {
