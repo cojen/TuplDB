@@ -807,6 +807,10 @@ public final class LocalDatabase extends CoreDatabase {
                 // necessary, but be safe.
                 VarHandle.fullFence();
 
+                // Must tag the trashed trees before starting replication and recovery.
+                // Otherwise, trees recently deleted might get double deleted.
+                tagTrashedTrees();
+
                 ReplicationManager rm = launcher.mReplManager;
                 if (rm != null) {
                     if (mEventListener != null) {
@@ -947,8 +951,6 @@ public final class LocalDatabase extends CoreDatabase {
             mCheckpointer.register(new ShutdownPrimer(this));
         }
 
-        // Must tag the trashed trees before starting replication and recovery. Otherwise,
-        // trees recently deleted might get double deleted.
         BTree trashed = openNextTrashedTree(null);
 
         if (trashed != null) {
@@ -1469,6 +1471,27 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     /**
+     * Returns the view of trashed trees.
+     */
+    private View trash() {
+        return mRegistryKeyMap.viewPrefix(new byte[] {RK_TRASH_ID}, 1);
+    }
+
+    private void tagTrashedTrees() throws IOException {
+        // Tag all the entries that should be deleted automatically. Entries created later will
+        // have a different prefix, and so they'll be ignored.
+        try (Cursor c = trash().newCursor(Transaction.BOGUS)) {
+            for (c.first(); c.key() != null; c.next()) {
+                byte[] name = c.value();
+                if (name.length != 0) {
+                    name[0] |= 0x80;
+                    c.store(name);
+                }
+            }
+        }
+    }
+
+    /**
      * @param lastIdBytes null to start with first
      * @return null if none available
      */
@@ -1482,29 +1505,9 @@ public final class LocalDatabase extends CoreDatabase {
      * @return null if not found
      */
     private BTree openTrashedTree(byte[] idBytes, boolean next) throws IOException {
-        View view = mRegistryKeyMap.viewPrefix(new byte[] {RK_TRASH_ID}, 1);
-
-        if (idBytes == null) {
-            // Tag all the entries that should be deleted automatically. Entries created later
-            // will have a different prefix, and so they'll be ignored.
-            Cursor c = view.newCursor(Transaction.BOGUS);
-            try {
-                for (c.first(); c.key() != null; c.next()) {
-                    byte[] name = c.value();
-                    if (name.length != 0) {
-                        name[0] |= 0x80;
-                        c.store(name);
-                    }
-                }
-            } finally {
-                c.reset();
-            }
-        }
-
         byte[] treeIdBytes, name, rootIdBytes;
 
-        Cursor c = view.newCursor(Transaction.BOGUS);
-        try {
+        try (Cursor c = trash().newCursor(Transaction.BOGUS)) {
             if (idBytes == null) {
                 c.first();
             } else if (next) {
@@ -1539,8 +1542,6 @@ public final class LocalDatabase extends CoreDatabase {
                     return null;
                 }
             }
-        } finally {
-            c.reset();
         }
 
         long rootId = rootIdBytes.length == 0 ? 0 : decodeLongLE(rootIdBytes, 0);
