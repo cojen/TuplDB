@@ -763,16 +763,16 @@ class _Locker implements _DatabaseAccess { // weak access to database
         Block last = null;
         do {
             int size = tail.transferExclusive(this, newOwner);
-            if (size > 0) {
-                last = tail;
-                tail = tail.peek();
-            } else {
+            if (size <= 0) {
                 tail = tail.pop();
+            } else {
                 if (last == null) {
                     newOwner.mTailBlock = tail;
                 } else {
                     last.mPrev = tail;
                 }
+                last = tail;
+                tail = tail.peek();
             }
         } while (tail != null);
 
@@ -1206,9 +1206,9 @@ class _Locker implements _DatabaseAccess { // weak access to database
                 } else if (upgrades >= 0) { // don't track lock twice if it was upgraded
                     if (newSize != i) {
                         locks[newSize] = lock;
-                        if (newOwner != locker) {
-                            manager.takeLockOwnership(lock, newOwner);
-                        }
+                    }
+                    if (newOwner != locker) {
+                        manager.takeLockOwnership(lock, newOwner);
                     }
                     newSize++;
                 }
