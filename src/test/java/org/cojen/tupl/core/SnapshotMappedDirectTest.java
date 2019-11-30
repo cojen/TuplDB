@@ -80,7 +80,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
 
         final var out = new FileOutputStream(snapshot);
 
-        class Suspendable extends OutputStream {
+        var sout = new OutputStream() {
             private long mLimit;
             private long mTotal;
             private boolean mSuspended;
@@ -128,7 +128,6 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         };
 
         // Copy half the snapshot for now.
-        var sout = new Suspendable();
         sout.setLimit(fullLength / 2);
 
         var writer = new Thread(() -> {

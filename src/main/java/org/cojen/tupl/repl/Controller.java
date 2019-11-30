@@ -1190,27 +1190,26 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseShared();
         }
 
-        class Collector implements PositionRange {
-            long[] mRanges;
-            int mSize;
-
-            @Override
-            public void range(long startPosition, long endPosition) {
-                if (mRanges == null) {
-                    mRanges = new long[16];
-                } else if (mSize >= mRanges.length) {
-                    mRanges = Arrays.copyOf(mRanges, mRanges.length << 1);
-                }
-                mRanges[mSize++] = startPosition;
-                mRanges[mSize++] = endPosition;
-            }
-        };
-
         if (mReceivingMissingData) {
             // Avoid overlapping requests for missing data if results are flowing in.
             mReceivingMissingData = false;
         } else {
-            var collector = new Collector();
+            var collector = new PositionRange() {
+                long[] mRanges;
+                int mSize;
+
+                @Override
+                public void range(long startPosition, long endPosition) {
+                    if (mRanges == null) {
+                        mRanges = new long[16];
+                    } else if (mSize >= mRanges.length) {
+                        mRanges = Arrays.copyOf(mRanges, mRanges.length << 1);
+                    }
+                    mRanges[mSize++] = startPosition;
+                    mRanges[mSize++] = endPosition;
+                }
+            };
+
             mMissingContigPosition = mStateLog.checkForMissingData
                 (mMissingContigPosition, collector);
 

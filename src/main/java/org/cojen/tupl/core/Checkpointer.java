@@ -281,12 +281,8 @@ final class Checkpointer implements Runnable {
             return;
         }
 
-        final class Countdown extends Latch {
+        final var countdown = new Latch(dirtySets.length) {
             volatile Throwable mException;
-
-            Countdown(int count) {
-                super(count);
-            }
 
             void failed(Throwable ex) {
                 if (mException == null) {
@@ -295,19 +291,17 @@ final class Checkpointer implements Runnable {
                 }
                 releaseShared();
             }
-        }
-
-        final var cd = new Countdown(dirtySets.length);
+        };
 
         for (DirtySet set : dirtySets) {
             mExtraExecutor.execute(() -> {
                 try {
                     set.flushDirty(dirtyState);
                 } catch (Throwable e) {
-                    cd.failed(e);
+                    countdown.failed(e);
                     return;
                 }
-                cd.releaseShared();
+                countdown.releaseShared();
             });
         }
 
@@ -316,9 +310,9 @@ final class Checkpointer implements Runnable {
             task.run();
         }
 
-        cd.acquireExclusive();
+        countdown.acquireExclusive();
 
-        Throwable ex = cd.mException;
+        Throwable ex = countdown.mException;
 
         if (ex != null) {
             Utils.rethrow(ex);

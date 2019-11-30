@@ -49,7 +49,7 @@ public class SnapshotTest {
     public void suspend() throws Exception {
         final int rateMillis = 500;
 
-        class Listener implements EventListener {
+        final var listener = new EventListener() {
             private int mCheckpointCount;
 
             @Override
@@ -81,9 +81,7 @@ public class SnapshotTest {
                     }
                 }
             }
-        }
-
-        final var listener = new Listener();
+        };
 
         var config = new DatabaseConfig()
             .directPageAccess(false)
@@ -195,7 +193,7 @@ public class SnapshotTest {
 
         final var out = new FileOutputStream(snapshot);
 
-        class Slow extends OutputStream {
+        final var slow = new OutputStream() {
             volatile boolean fast;
 
             public void write(int b) throws IOException {
@@ -217,8 +215,6 @@ public class SnapshotTest {
                 out.close();
             }
         };
-
-        final var slow = new Slow();
 
         var t = new Thread() {
             public void run() {

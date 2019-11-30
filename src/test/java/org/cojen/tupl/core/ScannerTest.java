@@ -140,12 +140,11 @@ public class ScannerTest {
         assertFalse(s.step());
 
         s = newScanner(ix, null);
-        class Observed {
+        var obs = new Object() {
             volatile int count;
             volatile byte[] key;
             volatile byte[] value;
-        }
-        var obs = new Observed();
+        };
         var count = new AtomicInteger();
         s.scanAll((k, v) -> {
             obs.count++;

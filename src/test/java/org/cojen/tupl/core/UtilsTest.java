@@ -176,7 +176,7 @@ public class UtilsTest {
         int offset = encodeUnsignedVarLong(b, 0, value);
         assertEquals(b.length, offset);
 
-        class Ref implements IntegerRef {
+        var ref = new IntegerRef() {
             int off;
 
             public int get() {
@@ -188,7 +188,6 @@ public class UtilsTest {
             }
         };
 
-        var ref = new Ref();
         ref.off = 0;
 
         long decoded = decodeUnsignedVarLong(b, ref);

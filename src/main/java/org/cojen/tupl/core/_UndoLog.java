@@ -1548,7 +1548,7 @@ final class _UndoLog implements _DatabaseAccess {
     }
 
     private LHashTable.Obj<Object> doFindCommitted() throws IOException {
-        class Finder implements Visitor {
+        var finder = new Visitor() {
             LHashTable.Obj<Object> mTxns;
 
             @Override
@@ -1567,10 +1567,9 @@ final class _UndoLog implements _DatabaseAccess {
             }
         };
 
-        var f = new Finder();
-        scanNodes(f);
+        scanNodes(finder);
 
-        return f.mTxns;
+        return finder.mTxns;
     }
 
     /**
@@ -1590,7 +1589,7 @@ final class _UndoLog implements _DatabaseAccess {
         // Note that it's safe to blindly re-write the nodes. The node were intended for a
         // checkpoint which failed, and so nothing refers to them.
 
-        class Uncommitter implements Visitor {
+        var uncommitter = new Visitor() {
             final Deque<_Node> mMatched = new ArrayDeque<>();
             private int mOp;
             private int mPos;
@@ -1626,13 +1625,12 @@ final class _UndoLog implements _DatabaseAccess {
                     }
                 }
             }
-        }
+        };
 
-        var u = new Uncommitter();
-        scanNodes(u);
+        scanNodes(uncommitter);
 
         // All matched nodes were changed and must be re-written.
-        for (_Node node : u.mMatched) {
+        for (_Node node : uncommitter.mMatched) {
             node.acquireExclusive();
             try {
                 node.write(mDatabase.mPageDb);

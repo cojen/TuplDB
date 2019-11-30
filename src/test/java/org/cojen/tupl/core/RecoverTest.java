@@ -89,7 +89,7 @@ public class RecoverTest {
         Transaction txn1 = mDb.newTransaction();
         ix.store(txn1, key, value);
 
-        class Waiter implements Runnable {
+        var waiter = new Runnable() {
             volatile Throwable ex;
 
             public void run() {
@@ -103,8 +103,7 @@ public class RecoverTest {
             }
         };
 
-        var w = new Waiter();
-        var t = new Thread(w);
+        var t = new Thread(waiter);
         startAndWaitUntilBlocked(t);
 
         Thread.sleep(1000);
@@ -112,7 +111,7 @@ public class RecoverTest {
 
         t.join();
 
-        assertTrue(w.ex instanceof LockInterruptedException);
+        assertTrue(waiter.ex instanceof LockInterruptedException);
 
         // Any exception should be suppressed.
         txn1.exit();

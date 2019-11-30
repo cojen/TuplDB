@@ -341,7 +341,7 @@ public class CompactTest {
             }
         }
 
-        class Obs extends CompactionObserver {
+        final var obs = new CompactionObserver() {
             private int count;
             private boolean resume;
 
@@ -365,9 +365,7 @@ public class CompactTest {
             }
         };
 
-        final var obs = new Obs();
-
-        class Compactor extends Thread {
+        var comp = new Thread() {
             volatile Object result;
 
             @Override
@@ -383,7 +381,6 @@ public class CompactTest {
             }
         };
 
-        var comp = new Compactor();
         comp.start();
 
         // Compaction will abort because of database growth.
@@ -432,7 +429,7 @@ public class CompactTest {
                                        .minCacheSize(10_000_000).maxCacheSize(100_000_000)
                                        .durabilityMode(DurabilityMode.NO_FLUSH)));
 
-        class Compactor extends Thread {
+        var comp = new Thread() {
             volatile boolean stop;
             volatile int success;
             volatile int abort;
@@ -458,7 +455,6 @@ public class CompactTest {
             }
         };
 
-        var comp = new Compactor();
         comp.start();
 
         final Index ix = openTestIndex();

@@ -377,7 +377,7 @@ public class FileTermLogTest {
 
         final int seed = 762390;
 
-        class Reader extends Thread {
+        final var r = new Thread() {
             volatile Throwable mEx;
             volatile long mTotal;
 
@@ -407,9 +407,8 @@ public class FileTermLogTest {
                     mEx = e;
                 }
             }
-        }
+        };
 
-        final var r = new Reader();
         TestUtils.startAndWaitUntilBlocked(r);
 
         final var buf = new byte[10000];
