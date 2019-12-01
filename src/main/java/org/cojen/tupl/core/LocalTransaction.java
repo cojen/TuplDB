@@ -627,9 +627,6 @@ public final class LocalTransaction extends Locker implements Transaction {
         doRollback(hasState);
     }
 
-    /**
-     * Should only be called when parentScope is null.
-     */
     private void doRollback(int hasState) throws IOException {
         try {
             if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
@@ -1309,19 +1306,42 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * Always rethrows the given exception or a replacement. No rollback is performed.
+     * Called when an operation against the transaction failed with an exception. This variant
+     * never attempts a rollback, and it never rethrows the exception. The "borked" state is
+     * set only when the database is closed.
+     *
+     * <p>By convention, this variant is the typical one to call when a transaction operation
+     * fails. By minimizing alteration of the transaction state, an application is permitted to
+     * fully rollback later when it calls reset or exit. Otherwise, locks and undo actions
+     * might be applied sooner than expected, causing confusing outcomes as the application
+     * attempts to perform it's own exception handling and reporting.
+     *
+     * @param borked non-null exception which might be rethrown, possibly with a cause or
+     * suppressed exception tacked on
      */
     final void borked(Throwable borked) {
         borked(borked, false, true); // rollback = false, rethrow = true
     }
 
     /**
-     * Rethrows the given exception or a replacement, unless the database is closed. A rollback
-     * is attempted only if specified.
+     * Called when an operation against the transaction failed with an exception. Rollback and
+     * rethrowing of the exception is attempted only when requested. As a side-effect, the
+     * transaction might be assigned a "borked" state, and then the check method always throws
+     * an InvalidTransactionException.
      *
-     * @param rollback rollback should only be performed by operations which don't hold tree
-     * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
+     * <p>By convention, rollback is requested when a top-level commit or exit operation
+     * failed. More strictly, rollback should only be performed by operations which don't hold
+     * tree node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
      * apply compensating actions against the tree nodes.
+     *
+     * <p>Rethrow should always be requested, except when exit and reset operations fail. If an
+     * exit or retry operation failed and the database is closed, rethrowing the exception
+     * doesn't provide much utility. The transaction will reset exactly as expected when the
+     * database is reopened.
+     *
+     * @param borked non-null exception which might be rethrown, possibly with a cause or
+     * suppressed exception tacked on
+     * @param rollback pass true to attempt a rollback, unless the database is closed
      * @param rethrow pass true to always throw an exception; pass null to suppress rethrowing
      * if database is known to be closed; pass false to never throw an exception
      */
@@ -1347,7 +1367,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                 try {
                     rollback();
                 } catch (Throwable rollbackFailed) {
-                    if (isRecoverable(borked) && rethrow) {
+                    if (rethrow && isRecoverable(borked) && isRecoverable(rollbackFailed)) {
                         // Allow application to try again later.
                         Utils.rethrow(borked);
                     }
