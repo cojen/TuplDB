@@ -556,7 +556,7 @@ public final class LocalTransaction extends Locker implements Transaction {
             try {
                 doRollback(mHasState);
             } catch (Throwable e) {
-                borked(e, true, false); // rollback = true, rethrow = false
+                borked(e, true, null); // rollback = true, rethrow = maybe
             }
         } else {
             try {
@@ -584,7 +584,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                 mHasState |= parentScope.mHasState;
                 mSavepoint = parentScope.mSavepoint;
             } catch (Throwable e) {
-                borked(e, false, false); // rollback = false, rethrow = false
+                borked(e, false, null); // rollback = false, rethrow = maybe
             }
         }
     }
@@ -595,7 +595,7 @@ public final class LocalTransaction extends Locker implements Transaction {
             try {
                 rollback();
             } catch (Throwable e) {
-                borked(e, true, false); // rollback = true, rethrow = false
+                borked(e, true, null); // rollback = true, rethrow = maybe
             }
         } else {
             super.scopeExitAll();
@@ -604,15 +604,16 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     @Override
     public final void reset(Throwable cause) {
-        try {
-            if (cause == null) {
+        if (cause == null) {
+            try {
                 reset();
-            } else {
-                borked(cause, true, false); // rollback = true, rethrow = false
+                return;
+            } catch (Throwable e) {
+                cause = e;
             }
-        } catch (Throwable e) {
-            // Ignore. Transaction is borked as a side-effect.
         }
+
+        borked(cause, true, false); // rollback = true, rethrow = false
     }
 
     private void rollback() throws IOException {
@@ -1321,10 +1322,10 @@ public final class LocalTransaction extends Locker implements Transaction {
      * @param rollback rollback should only be performed by operations which don't hold tree
      * node latches; otherwise a latch deadlock can occur as the undo rollback attempts to
      * apply compensating actions against the tree nodes.
-     * @param rethrow pass true to always throw an exception; pass false to suppress rethrowing
-     * if database is known to be closed
+     * @param rethrow pass true to always throw an exception; pass null to suppress rethrowing
+     * if database is known to be closed; pass false to never throw an exception
      */
-    private void borked(Throwable borked, boolean rollback, boolean rethrow) {
+    private void borked(Throwable borked, boolean rollback, Boolean rethrow) {
         // Note: The mBorked field is set only if the database is closed or if some action in
         // this method altered the state of the transaction. Leaving the field alone in all
         // other cases permits an application to fully rollback later when reset or exit is
@@ -1332,6 +1333,10 @@ public final class LocalTransaction extends Locker implements Transaction {
         // rollback operation to the undo log.
 
         boolean closed = mDatabase == null ? false : mDatabase.isClosed();
+
+        if (rethrow == null) {
+            rethrow = !closed;
+        }
 
         if (mBorked == null) {
             if (closed) {
@@ -1342,7 +1347,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                 try {
                     rollback();
                 } catch (Throwable rollbackFailed) {
-                    if (isRecoverable(borked) && (rethrow || !closed)) {
+                    if (isRecoverable(borked) && rethrow) {
                         // Allow application to try again later.
                         Utils.rethrow(borked);
                     }
@@ -1370,7 +1375,7 @@ public final class LocalTransaction extends Locker implements Transaction {
             }
         }
 
-        if (rethrow || !closed) {
+        if (rethrow) {
             Utils.rethrow(borked);
         }
     }

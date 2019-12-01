@@ -166,13 +166,7 @@ public interface Transaction extends Flushable {
      * @param cause pass a cause to reset and disable the transaction; pass null to simply
      * reset the transaction and ignore any exception when doing so
      */
-    default void reset(Throwable cause) {
-        try {
-            reset();
-        } catch (Throwable e) {
-            // Ignore.
-        }
-    }
+    void reset(Throwable cause);
 
     /**
      * Attempts to acquire a shared lock for the given key, denying exclusive
