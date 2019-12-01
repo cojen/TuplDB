@@ -797,7 +797,6 @@ class Locker implements DatabaseAccess { // weak access to database
     final void scopeExitAll() {
         mParentScope = null;
         scopeUnlockAll();
-        mTailBlock = null;
     }
 
     /**
