@@ -1692,7 +1692,7 @@ final class _UndoLog implements _DatabaseAccess {
         if (mNode != null && mNodeTopPos == 0) {
             // The checkpoint captured a committed log in the middle of truncation. The
             // recoveryCleanup method will finish the truncation.
-            return new _LocalTransaction(mDatabase, mTxnId, 0);
+            return new _LocalTransaction(mDatabase, mTxnId);
         }
 
         var popper = new PopOne();
@@ -1704,9 +1704,6 @@ final class _UndoLog implements _DatabaseAccess {
         scopes.addFirst(scope);
 
         int depth = 1;
-
-        // Blindly assume trash must be deleted. No harm if none exists.
-        int hasState = _LocalTransaction.HAS_TRASH;
 
         while (mLength > 0) {
             if (!pop(false, popper)) {
@@ -1800,7 +1797,7 @@ final class _UndoLog implements _DatabaseAccess {
             }
         }
 
-        var txn = new _LocalTransaction(mDatabase, mTxnId, hasState);
+        var txn = new _LocalTransaction(mDatabase, mTxnId);
 
         scope = scopes.pollFirst();
         scope.acquireLocks(txn);

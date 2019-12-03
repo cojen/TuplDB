@@ -5272,6 +5272,15 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     /**
+     * Try to obtain the trash for transactionally deleting fragmented values. Returns null if
+     * it doesn't exist.
+     */
+    _BTree tryFragmentedTrash() throws IOException {
+        _BTree trash = mFragmentedTrash;
+        return trash != null ? trash : openFragmentedTrash(IX_FIND);
+    }
+
+    /**
      * @param ixOption IX_FIND or IX_CREATE
      */
     private _BTree openFragmentedTrash(long ixOption) throws IOException {

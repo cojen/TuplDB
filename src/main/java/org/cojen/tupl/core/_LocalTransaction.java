@@ -86,10 +86,11 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     // Constructor for undo recovery.
-    _LocalTransaction(_LocalDatabase db, long txnId, int hasState) {
+    _LocalTransaction(_LocalDatabase db, long txnId) {
         this(db, null, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, 0);
         mTxnId = txnId;
-        mHasState = hasState;
+        // Blindly assume that trash must be deleted. No harm if none exists.
+        mHasState = _LocalTransaction.HAS_TRASH;
     }
 
     // Constructor for BOGUS transaction.
@@ -280,8 +281,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
                     int hasState = mHasState;
                     if ((hasState & HAS_TRASH) != 0) {
-                        _FragmentedTrash.emptyTrash(mDatabase.fragmentedTrash(), mTxnId);
-                        mHasState = hasState & ~HAS_TRASH;
+                        emptyTrash(hasState);
                     }
                 }
 
@@ -327,6 +327,14 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         mTxnId = 0;
 
         mRedo.txnCommitPending(pending);
+    }
+
+    private void emptyTrash(int hasState) throws IOException {
+        _BTree trash = mDatabase.tryFragmentedTrash();
+        if (trash != null) {
+            _FragmentedTrash.emptyTrash(trash, mTxnId);
+        }
+        mHasState = hasState & ~HAS_TRASH;
     }
 
     /**
@@ -438,8 +446,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     mUndoLog = null;
 
                     if ((hasState & HAS_TRASH) != 0) {
-                        _FragmentedTrash.emptyTrash(mDatabase.fragmentedTrash(), mTxnId);
-                        mHasState = hasState & ~HAS_TRASH;
+                        emptyTrash(hasState);
                     }
                 }
 
