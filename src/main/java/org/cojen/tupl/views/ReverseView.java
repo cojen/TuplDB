@@ -64,6 +64,11 @@ public final class ReverseView implements View {
     }
 
     @Override
+    public boolean isEmpty() throws IOException {
+        return mSource.isEmpty();
+    }
+
+    @Override
     public long count(byte[] lowKey, boolean lowInclusive,
                       byte[] highKey, boolean highInclusive)
         throws IOException

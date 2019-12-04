@@ -661,6 +661,8 @@ public class CrudTest {
     }
 
     private void testFill(final View ix, final int count) throws Exception {
+        assertTrue(ix.isEmpty());
+
         final long seed1 = 1860635281L + count;
         final long seed2 = 2860635281L + count;
 
@@ -684,6 +686,7 @@ public class CrudTest {
         }
 
         assertTrue(verify(ix));
+        assertFalse(ix.isEmpty());
 
         rnd = new Random(seed1);
 
@@ -719,6 +722,7 @@ public class CrudTest {
         }
 
         assertTrue(verify(ix));
+        assertFalse(ix.isEmpty());
 
         rnd = new Random(seed2);
 
@@ -749,7 +753,7 @@ public class CrudTest {
         }
 
         assertTrue(verify(ix));
-
+        assertEquals(expectedCount == 0, ix.isEmpty());
         assertEquals(expectedCount, count(ix));
 
         // Delete all remaining entries and verify.
@@ -759,7 +763,8 @@ public class CrudTest {
         }
 
         assertTrue(verify(ix));
-
+        assertTrue(ix.isEmpty());
+        assertEquals(0, ix.count(null, null));
         assertEquals(0, count(ix));
     }
 

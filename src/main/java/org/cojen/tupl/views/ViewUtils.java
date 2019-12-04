@@ -50,6 +50,17 @@ public class ViewUtils {
         }
     }
 
+    public static boolean isEmpty(View view) throws IOException {
+        Cursor c = view.newCursor(Transaction.BOGUS);
+        try {
+            c.autoload(false);
+            c.first();
+            return c.key() == null;
+        } finally {
+            c.reset();
+        }
+    }
+
     public static long count(View view, boolean autoload, byte[] lowKey, byte[] highKey)
         throws IOException
     {

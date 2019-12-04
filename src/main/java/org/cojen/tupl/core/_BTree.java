@@ -146,6 +146,15 @@ class _BTree extends Tree implements View, Index {
     }
 
     @Override
+    public boolean isEmpty() throws IOException {
+        _Node root = mRoot;
+        root.acquireShared();
+        boolean empty = root.isLeaf() && !root.hasKeys();
+        root.releaseShared();
+        return empty;
+    }
+
+    @Override
     public long count(byte[] lowKey, boolean lowInclusive,
                       byte[] highKey, boolean highInclusive)
         throws IOException

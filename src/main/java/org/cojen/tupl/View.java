@@ -161,6 +161,16 @@ public interface View {
     }
 
     /**
+     * Non-transactionally determines if the view has nothing in it. If any transactions are
+     * concurrently accessing the view, the implementation might return false even though the
+     * count method would have returned zero. A return value of true always guarantees that the
+     * count is zero. In other words, false negatives are possible, but false positives aren't.
+     */
+    public default boolean isEmpty() throws IOException {
+        return ViewUtils.isEmpty(this);
+    }
+
+    /**
      * Non-transactionally counts the number of entries within the given range. Implementations
      * of this method typically scan over the entries, and so it shouldn't be expected to run
      * in constant time.

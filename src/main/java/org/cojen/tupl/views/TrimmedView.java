@@ -65,6 +65,11 @@ final class TrimmedView implements View {
     }
 
     @Override
+    public boolean isEmpty() throws IOException {
+        return mSource.isEmpty();
+    }
+
+    @Override
     public long count(byte[] lowKey, byte[] highKey) throws IOException {
         return mSource.count(lowKey, highKey);
     }
