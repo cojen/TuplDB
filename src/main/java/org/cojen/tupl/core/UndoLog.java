@@ -864,6 +864,8 @@ final class UndoLog implements DatabaseAccess {
 
             @Override
             public boolean accept(byte op, byte[] entry) throws IOException {
+                byte[] key;
+
                 switch (op) {
                 default:
                     throw new DatabaseException("Unknown undo log entry type: " + op);
@@ -882,26 +884,18 @@ final class UndoLog implements DatabaseAccess {
                 case OP_LOCK_EXCLUSIVE:
                 case OP_LOCK_UPGRADABLE:
                     // Ignore.
-                    break;
+                    return true;
 
                 case OP_INDEX:
                     mActiveIndexId = decodeLongLE(entry, 0);
                     activeIndex = null;
-                    break;
+                    return true;
 
                 case OP_UNDELETE:
                 case OP_UNDELETE_FRAGMENTED:
                     // Since transaction was committed, don't insert an entry
                     // to undo a delete, but instead delete the ghost.
-                    byte[] key = decodeNodeKey(entry);
-                    activeIndex = doUndo(activeIndex, ix -> {
-                        var cursor = new BTreeCursor((BTree) ix, null);
-                        try {
-                            cursor.deleteGhost(key);
-                        } catch (Throwable e) {
-                            throw closeOnFailure(cursor, e);
-                        }
-                    });
+                    key = decodeNodeKey(entry);
                     break;
 
                 case OP_UNDELETE_LK:
@@ -910,16 +904,17 @@ final class UndoLog implements DatabaseAccess {
                     // to undo a delete, but instead delete the ghost.
                     key = new byte[decodeUnsignedVarInt(entry, 0)];
                     arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-                    activeIndex = doUndo(activeIndex, ix -> {
-                        var cursor = new BTreeCursor((BTree) ix, null);
-                        try {
-                            cursor.deleteGhost(key);
-                        } catch (Throwable e) {
-                            throw closeOnFailure(cursor, e);
-                        }
-                    });
                     break;
                 }
+
+                activeIndex = doUndo(activeIndex, ix -> {
+                    var cursor = new BTreeCursor((BTree) ix, null);
+                    try {
+                        cursor.deleteGhost(key);
+                    } catch (Throwable e) {
+                        throw closeOnFailure(cursor, e);
+                    }
+                });
 
                 return true;
             }
