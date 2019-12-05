@@ -74,7 +74,7 @@ final class LockedFile implements Closeable {
         mRaf = raf;
         mLock = lock;
 
-        if (raf != null) {
+        if (!readOnly && raf != null) {
             raf.writeLong(ProcessHandle.current().pid());
         }
     }
