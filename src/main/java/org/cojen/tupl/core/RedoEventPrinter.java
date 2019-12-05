@@ -264,7 +264,7 @@ class RedoEventPrinter implements RedoVisitor {
 
     @Override
     public boolean txnCustom(long txnId, int handlerId, byte[] message) {
-        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d message=%4$s",
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d, message=%4$s",
                          "txnCustom", txnId, handlerId, valueStr(message));
         return true;
     }
@@ -273,7 +273,7 @@ class RedoEventPrinter implements RedoVisitor {
     public boolean txnCustomLock(long txnId, int handlerId, byte[] message,
                                  long indexId, byte[] key)
     {
-        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d message=%4$s, key=%5$s",
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d, message=%4$s, key=%5$s",
                          "txnCustomLock", txnId, handlerId, valueStr(message), keyStr(key));
         return true;
     }
@@ -296,7 +296,7 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     private static String valueStr(byte[] value) {
-        return valueStr(value, 0, value.length);
+        return valueStr(value, 0, value == null ? 0 : value.length);
     }
 
     private static String valueStr(byte[] value, int offset, int length) {
