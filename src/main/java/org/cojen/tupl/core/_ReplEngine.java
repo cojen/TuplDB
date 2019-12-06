@@ -980,7 +980,9 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 if (lock != null) {
                     txn.push(lock);
                 }
-                txn.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
+                // Must write lock request to undo log, ensuring that it survives a checkpoint
+                // and then a recovery. Is more critical for prepared transactions.
+                txn.lockExclusive(indexId, key, INFINITE_TIMEOUT);
             }
         });
 
