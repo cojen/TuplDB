@@ -2722,6 +2722,11 @@ public final class _LocalDatabase extends CoreDatabase {
                     }
                 }
 
+                _UndoLog masterUndoLog = mCommitMasterUndoLog;
+                if (masterUndoLog != null) {
+                    masterUndoLog.delete();
+                }
+
                 nodeMapDeleteAll();
 
                 redoClose(RedoOps.OP_CLOSE, cause);
@@ -5445,6 +5450,10 @@ public final class _LocalDatabase extends CoreDatabase {
                 break loop;
             }
 
+            if (isClosed()) {
+                return;
+            }
+
             // Wait with a sleep. Crude, but it means that no special condition variable is
             // required. Considering that this method is only expected to be called when
             // leadership is lost during a checkpoint, there's no reason to be immediate.
@@ -5622,6 +5631,15 @@ public final class _LocalDatabase extends CoreDatabase {
                         if (txnContext.hasUndoLogs()) {
                             if (masterUndoLog == null) {
                                 masterUndoLog = new _UndoLog(this, 0);
+                                // Stash it to resume after an aborted checkpoint. Assign early
+                                // to ensure that the close method can see it and delete it,
+                                // even if an exception is thrown. Note that this assignment,
+                                // undo log deletion, node allocation, and any accesses into
+                                // the undo log acquire the commit lock. This ensures that
+                                // deletion is safe from race conditions. Once deleted, the
+                                // undo log object can still be used safely, except that it's
+                                // empty, and new node allocations fail with an exception.
+                                mCommitMasterUndoLog = masterUndoLog;
                             }
                             workspace = txnContext.writeToMaster(masterUndoLog, workspace);
                         }
@@ -5635,12 +5653,10 @@ public final class _LocalDatabase extends CoreDatabase {
                     masterUndoLogId = masterUndoLog.persistReady();
                     if (masterUndoLogId == 0) {
                         // Nothing was actually written to the log.
+                        mCommitMasterUndoLog = null;
                         masterUndoLog = null;
                     }
                 }
-
-                // Stash it to resume after an aborted checkpoint.
-                mCommitMasterUndoLog = masterUndoLog;
 
                 p_longPutLE(header, hoff + I_TRANSACTION_ID, txnId);
                 p_longPutLE(header, hoff + I_MASTER_UNDO_LOG_PAGE_ID, masterUndoLogId);
