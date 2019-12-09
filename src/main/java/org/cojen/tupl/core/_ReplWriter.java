@@ -68,6 +68,8 @@ class _ReplWriter extends _RedoWriter {
     // Set if the consumer failed to write to the ReplicationManager.
     private Throwable mConsumerException;
 
+    volatile boolean mUnmodifiable;
+
     /**
      * Caller must call start if a writer is supplied.
      */
@@ -94,16 +96,6 @@ class _ReplWriter extends _RedoWriter {
         } finally {
             mBufferLatch.releaseExclusive();
         }
-    }
-
-    @Override
-    final boolean isLeader() {
-        return mEngine.mManager.isLeader();
-    }
-
-    @Override
-    final void uponLeader(Runnable task) {
-        mEngine.mManager.uponLeader(task);
     }
 
     @Override
@@ -488,6 +480,7 @@ class _ReplWriter extends _RedoWriter {
     }
 
     private UnmodifiableReplicaException nowUnmodifiable() throws DatabaseException {
+        mUnmodifiable = true;
         return mEngine.mController.nowUnmodifiable(mReplWriter);
     }
 

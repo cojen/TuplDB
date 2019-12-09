@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -129,9 +128,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private Channel mLeaderRequestChannel;
 
     private volatile int mLocalMode;
-
-    // Signaled when has become the leader;
-    private LatchCondition mLeaderCondition;
 
     private long mCurrentTerm;
     private int mGrantsRemaining;
@@ -705,38 +701,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         Role role = mGroupFile.localMemberRole();
         releaseShared();
         return role;
-    }
-
-    @Override
-    public boolean isLeader() {
-        return mLocalMode == MODE_LEADER;
-    }
-
-    @Override
-    public void uponLeader(Runnable task) {
-        Objects.requireNonNull(task);
-
-        if (!isLeader()) {
-            acquireExclusive();
-            try {
-                if (!isLeader()) {
-                    if (mLeaderCondition == null) {
-                        mLeaderCondition = new LatchCondition();
-                    }
-
-                    mLeaderCondition.uponSignal(this, () -> {
-                        mScheduler.execute(task);
-                        return true;
-                    });
-
-                    return;
-                }
-            } finally {
-                releaseExclusive();
-            }
-        }
-
-        task.run();
     }
 
     @Override
@@ -2074,11 +2038,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mLeaderLogWriter = mStateLog.openWriter(prevTerm, term, position);
 
             mLocalMode = MODE_LEADER;
-
-            if (mLeaderCondition != null) {
-                mLeaderCondition.signalAll(this);
-                mLeaderCondition = null;
-            }
 
             for (Channel channel : mAllChannels) {
                 channel.peer().mMatchPosition = 0;

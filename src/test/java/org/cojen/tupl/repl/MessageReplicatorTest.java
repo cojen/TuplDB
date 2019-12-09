@@ -110,18 +110,6 @@ public class MessageReplicatorTest {
             }
 
             MessageReplicator repl = MessageReplicator.open(mConfigs[i]);
-
-            var callback = new Runnable() {
-                volatile Thread called;
-
-                @Override
-                public void run() {
-                    called = Thread.currentThread();
-                }
-            };
-
-            repl.uponLeader(callback);
-
             mReplicators[i] = repl;
             repl.start();
 
@@ -133,10 +121,6 @@ public class MessageReplicatorTest {
                         // Wait to become leader.
                         Reader reader = repl.newReader(0, false);
                         if (reader == null) {
-                            assertNotNull(callback.called);
-                            callback.called = null;
-                            repl.uponLeader(callback);
-                            assertEquals(Thread.currentThread(), callback.called);
                             break readyCheck;
                         }
                         reader.close();

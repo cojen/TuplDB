@@ -599,9 +599,9 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract boolean isLeader();
 
     /**
-     * Invokes the given task when the database instance has become the leader, at most once.
-     * If already the leader when this method is called, then the current thread runs the task
-     * immediately.
+     * Invokes the given task when the database instance has become the leader, at most once
+     * per registration. If already the leader when this method is called, then the current
+     * thread runs the task immediately.
      */
     public abstract void uponLeader(Runnable task);
 

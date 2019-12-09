@@ -488,7 +488,8 @@ byte[]&nbsp;newName)</code></th>
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</code></th>
 <td class="colLast">
-<div class="block">Invokes the given task when the database instance has become the leader, at most once.</div>
+<div class="block">Invokes the given task when the database instance has become the leader, at most once
+ per registration.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i41">
@@ -1081,9 +1082,9 @@ double&nbsp;target)</span>
 <section class="detail">
 <h3><a id="uponLeader(java.lang.Runnable)">uponLeader</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</span></div>
-<div class="block">Invokes the given task when the database instance has become the leader, at most once.
- If already the leader when this method is called, then the current thread runs the task
- immediately.</div>
+<div class="block">Invokes the given task when the database instance has become the leader, at most once
+ per registration. If already the leader when this method is called, then the current
+ thread runs the task immediately.</div>
 </section>
 </li>
 <li class="blockList">

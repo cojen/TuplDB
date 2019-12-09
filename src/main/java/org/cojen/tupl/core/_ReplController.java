@@ -22,6 +22,10 @@ import java.lang.invoke.VarHandle;
 
 import java.io.IOException;
 
+import java.util.Objects;
+
+import java.util.concurrent.ForkJoinPool;
+
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
@@ -53,7 +57,6 @@ final class _ReplController extends _ReplWriter {
 
     final ReplicationManager mManager;
 
-    // Only used during startup.
     private LatchCondition mLeaderNotifyCondition;
 
     private volatile _ReplWriter mTxnRedoWriter;
@@ -71,6 +74,7 @@ final class _ReplController extends _ReplWriter {
         mManager = engine.mManager;
         // Use this instance for replica mode.
         mTxnRedoWriter = this;
+        mUnmodifiable = true;
     }
 
     void initCheckpointNumber(long num) {
@@ -272,6 +276,36 @@ final class _ReplController extends _ReplWriter {
         super.force(metadata);
     }
 
+    boolean isLeader() {
+        return !mTxnRedoWriter.mUnmodifiable;
+    }
+
+    void uponLeader(Runnable task) {
+        Objects.requireNonNull(task);
+
+        if (!isLeader()) {
+            acquireExclusive();
+            try {
+                if (!isLeader()) {
+                    if (mLeaderNotifyCondition == null) {
+                        mLeaderNotifyCondition = new LatchCondition();
+                    }
+
+                    mLeaderNotifyCondition.uponSignal(this, () -> {
+                        ForkJoinPool.commonPool().execute(task);
+                        return true;
+                    });
+
+                    return;
+                }
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        task.run();
+    }
+
     /**
      * Called by _ReplEngine when local instance has become the leader.
      *
@@ -280,6 +314,7 @@ final class _ReplController extends _ReplWriter {
     _ReplWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
         acquireExclusive();
         try {
+            // Note: Signal isn't delivered until after latch is released.
             if (mLeaderNotifyCondition != null) {
                 mLeaderNotifyCondition.signalAll(this);
                 mLeaderNotifyCondition = null;

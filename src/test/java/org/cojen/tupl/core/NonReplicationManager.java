@@ -97,16 +97,6 @@ class NonReplicationManager implements ReplicationManager {
     }
 
     @Override
-    public boolean isLeader() {
-        return mState == LEADER;
-    }
-
-    @Override
-    public void uponLeader(Runnable task) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public boolean failover() throws IOException {
         return mState == REPLICA;
     }

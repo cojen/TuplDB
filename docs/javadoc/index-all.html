@@ -1773,14 +1773,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns true of the database instance is currently the leader.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#isLeader()">isLeader()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Returns true of the database instance is currently the leader.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#isLeader()">isLeader()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
-<dd>
-<div class="block">Returns true of the local group member is currently the leader.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/View.html#isModifyAtomic()">isModifyAtomic()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns true if the value-modifying methods of this view are atomic, even when not using
@@ -3594,15 +3586,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#uponLeader(java.lang.Runnable)">uponLeader(Runnable)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
-<div class="block">Invokes the given task when the database instance has become the leader, at most once.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#uponLeader(java.lang.Runnable)">uponLeader(Runnable)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Invokes the given task when the database instance has become the leader, at most once.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#uponLeader(java.lang.Runnable)">uponLeader(Runnable)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
-<dd>
-<div class="block">Invokes the given task when the local group member has become the leader, at most once.</div>
+<div class="block">Invokes the given task when the database instance has become the leader, at most once
+ per registration.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal(Latch, Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
