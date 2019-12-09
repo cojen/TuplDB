@@ -2560,6 +2560,18 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    public boolean isLeader() {
+        return mRedoWriter == null ? true : mRedoWriter.isLeader();
+    }
+
+    @Override
+    public void uponLeader(Runnable task) {
+        if (mRedoWriter != null) {
+            mRedoWriter.uponLeader(task);
+        }
+    }
+
+    @Override
     public boolean failover() throws IOException {
         return mRedoWriter == null ? false : mRedoWriter.failover();
     }

@@ -43,6 +43,18 @@ public interface Replicator extends Closeable {
     Role getLocalRole();
 
     /**
+     * Returns true of the local group member is currently the leader.
+     */
+    boolean isLeader();
+
+    /**
+     * Invokes the given task when the local group member has become the leader, at most once.
+     * If already the leader when this method is called, then the current thread runs the task
+     * immediately.
+     */
+    void uponLeader(Runnable task);
+
+    /**
      * Connect to any replication group member, for any particular use. An {@linkplain
      * #socketAcceptor acceptor} must be installed on the group member being connected to for
      * the connect to succeed.

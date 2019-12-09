@@ -37,7 +37,7 @@ import org.cojen.tupl.ext.ReplicationManager;
 class NonReplicationManager implements ReplicationManager {
     private static final int REPLICA = 0, LEADER = 1, CLOSED = 2;
 
-    private int mState;
+    private volatile int mState;
     private NonWriter mWriter;
 
     synchronized void asReplica() throws InterruptedException {
@@ -94,6 +94,16 @@ class NonReplicationManager implements ReplicationManager {
 
     @Override
     public void syncConfirm(long position, long timeoutNanos) {
+    }
+
+    @Override
+    public boolean isLeader() {
+        return mState == LEADER;
+    }
+
+    @Override
+    public void uponLeader(Runnable task) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

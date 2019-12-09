@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":1,"i14":6,"i15":6,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":18,"i26":6,"i27":1,"i28":6,"i29":18,"i30":6,"i31":6,"i32":18,"i33":1,"i34":6,"i35":6,"i36":6,"i37":6,"i38":6,"i39":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":1,"i14":6,"i15":6,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":18,"i27":6,"i28":1,"i29":6,"i30":18,"i31":6,"i32":6,"i33":18,"i34":1,"i35":6,"i36":6,"i37":6,"i38":6,"i39":6,"i40":6,"i41":6};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -359,6 +359,13 @@ double&nbsp;target)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i23">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isLeader()">isLeader</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns true of the database instance is currently the leader.</div>
+</td>
+</tr>
+<tr class="altColor" id="i24">
 <td class="colFirst"><code><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newSorter(java.util.concurrent.Executor)">newSorter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/Executor.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">Executor</a>&nbsp;executor)</code></th>
 <td class="colLast">
@@ -366,14 +373,14 @@ double&nbsp;target)</code></th>
  tasks.</div>
 </td>
 </tr>
-<tr class="altColor" id="i24">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTemporaryIndex()">newTemporaryIndex</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Creates a new unnamed temporary index.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i25">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction()">newTransaction</a></span>()</code></th>
 <td class="colLast">
@@ -381,42 +388,42 @@ double&nbsp;target)</code></th>
  durability mode.</div>
 </td>
 </tr>
-<tr class="altColor" id="i26">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="colLast">
 <div class="block">Returns a new Transaction with the given durability mode.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i27">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open(org.cojen.tupl.DatabaseConfig)">open</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
 <td class="colLast">
 <div class="block">Open a database, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="altColor" id="i28">
+<tr class="rowColor" id="i29">
 <td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndex(byte%5B%5D)">openIndex</a></span>&#8203;(byte[]&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i29">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndex(java.lang.String)">openIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="altColor" id="i30">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#preallocate(long)">preallocate</a></span>&#8203;(long&nbsp;bytes)</code></th>
 <td class="colLast">
 <div class="block">Preallocates pages for immediate use.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i31">
+<tr class="altColor" id="i32">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#renameIndex(org.cojen.tupl.Index,byte%5B%5D)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
 byte[]&nbsp;newName)</code></th>
@@ -424,7 +431,7 @@ byte[]&nbsp;newName)</code></th>
 <div class="block">Renames the given index to the one given.</div>
 </td>
 </tr>
-<tr class="altColor" id="i32">
+<tr class="rowColor" id="i33">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#renameIndex(org.cojen.tupl.Index,java.lang.String)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;newName)</code></th>
@@ -432,7 +439,7 @@ byte[]&nbsp;newName)</code></th>
 <div class="block">Renames the given index to the one given.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
+<tr class="altColor" id="i34">
 <td class="colFirst"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
@@ -441,28 +448,28 @@ byte[]&nbsp;newName)</code></th>
  given configuration.</div>
 </td>
 </tr>
-<tr class="altColor" id="i34">
+<tr class="rowColor" id="i35">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#resumeCheckpoints()">resumeCheckpoints</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Resume automatic checkpoints after having been temporarily <a href="#suspendCheckpoints()"><code>suspended</code></a>.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i35">
+<tr class="altColor" id="i36">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#shutdown()">shutdown</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Cleanly closes the database, ensuring durability of all modifications.</div>
 </td>
 </tr>
-<tr class="altColor" id="i36">
+<tr class="rowColor" id="i37">
 <td class="colFirst"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#stats()">stats</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a collection of database statistics.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i37">
+<tr class="altColor" id="i38">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#suspendCheckpoints()">suspendCheckpoints</a></span>()</code></th>
 <td class="colLast">
@@ -470,14 +477,21 @@ byte[]&nbsp;newName)</code></th>
  to complete.</div>
 </td>
 </tr>
-<tr class="altColor" id="i38">
+<tr class="rowColor" id="i39">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all committed transactions.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i39">
+<tr class="altColor" id="i40">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</code></th>
+<td class="colLast">
+<div class="block">Invokes the given task when the database instance has become the leader, at most once.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i41">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#verify(org.cojen.tupl.VerificationObserver)">verify</a></span>&#8203;(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></th>
 <td class="colLast">
@@ -1054,6 +1068,22 @@ double&nbsp;target)</span>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="isLeader()">isLeader</a></h3>
+<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isLeader</span>()</div>
+<div class="block">Returns true of the database instance is currently the leader.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="uponLeader(java.lang.Runnable)">uponLeader</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</span></div>
+<div class="block">Invokes the given task when the database instance has become the leader, at most once.
+ If already the leader when this method is called, then the current thread runs the task
+ immediately.</div>
 </section>
 </li>
 <li class="blockList">

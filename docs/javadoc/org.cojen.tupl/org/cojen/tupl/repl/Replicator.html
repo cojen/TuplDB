@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -158,6 +158,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="rowColor" id="i5">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isLeader()">isLeader</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns true of the local group member is currently the leader.</div>
+</td>
+</tr>
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
@@ -165,11 +172,18 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
  group member.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Durably persist all data up to the highest position.</div>
+</td>
+</tr>
+<tr class="altColor" id="i8">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</code></th>
+<td class="colLast">
+<div class="block">Invokes the given task when the local group member has become the leader, at most once.</div>
 </td>
 </tr>
 </tbody>
@@ -212,6 +226,22 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <div class="memberSignature"><span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">getLocalRole</span>()</div>
 <div class="block">Returns the effective local role, as known by the group. Changes to the role don't
  become effective until proposed by the leader, committed, and then applied.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="isLeader()">isLeader</a></h3>
+<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isLeader</span>()</div>
+<div class="block">Returns true of the local group member is currently the leader.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="uponLeader(java.lang.Runnable)">uponLeader</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</span></div>
+<div class="block">Invokes the given task when the local group member has become the leader, at most once.
+ If already the leader when this method is called, then the current thread runs the task
+ immediately.</div>
 </section>
 </li>
 <li class="blockList">

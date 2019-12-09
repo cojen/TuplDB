@@ -97,6 +97,16 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
+    final boolean isLeader() {
+        return mEngine.mManager.isLeader();
+    }
+
+    @Override
+    final void uponLeader(Runnable task) {
+        mEngine.mManager.uponLeader(task);
+    }
+
+    @Override
     final boolean failover() throws IOException {
         return mEngine.mManager.failover();
     }

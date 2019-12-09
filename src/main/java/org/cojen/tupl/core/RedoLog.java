@@ -330,6 +330,17 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
+    boolean isLeader() {
+        // Never a leader.
+        return false;
+    }
+
+    @Override
+    void uponLeader(Runnable task) {
+        // Never a leader.
+    }
+
+    @Override
     boolean failover() {
         return false;
     }

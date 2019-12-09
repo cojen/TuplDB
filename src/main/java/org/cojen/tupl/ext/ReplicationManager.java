@@ -230,6 +230,18 @@ public interface ReplicationManager extends Closeable {
     void syncConfirm(long position, long timeoutNanos) throws IOException;
 
     /**
+     * Returns true of the database instance is currently the leader.
+     */
+    boolean isLeader();
+
+    /**
+     * Invokes the given task when the database instance has become the leader, at most once.
+     * If already the leader when this method is called, then the current thread runs the task
+     * immediately.
+     */
+    void uponLeader(Runnable task);
+
+    /**
      * Attempt to switch the replication role from leader to replica. If successful, or if
      * already a replica, true is returned. When false is returned, the role is likely still
      * the leader, possibly because no replicas exist to failover to.

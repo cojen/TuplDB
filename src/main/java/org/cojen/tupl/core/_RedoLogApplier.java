@@ -121,6 +121,12 @@ final class _RedoLogApplier extends _ReplEngine implements ReplicationManager {
     public void syncConfirm(long position, long timeoutNanos) { }
 
     @Override
+    public boolean isLeader() { return false; }
+
+    @Override
+    public void uponLeader(Runnable task) { }
+
+    @Override
     public boolean failover() { return true; }
 
     @Override

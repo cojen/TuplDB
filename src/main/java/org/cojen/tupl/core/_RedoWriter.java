@@ -53,6 +53,18 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
     }
 
     /**
+     * Returns true of the database instance is currently the leader.
+     */
+    abstract boolean isLeader();
+
+    /**
+     * Invokes the given task when the database instance has become the leader, at most once.
+     * If already the leader when this method is called, then the current thread runs the task
+     * immediately.
+     */
+    abstract void uponLeader(Runnable task);
+
+    /**
      * @return true if now a replica; false if likely still the leader
      */
     abstract boolean failover() throws IOException;

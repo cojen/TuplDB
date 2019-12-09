@@ -132,6 +132,16 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
+    public boolean isLeader() {
+        return mWriter != null;
+    }
+
+    @Override
+    public void uponLeader(Runnable task) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public boolean failover() throws IOException {
         return mReader != null;
     }

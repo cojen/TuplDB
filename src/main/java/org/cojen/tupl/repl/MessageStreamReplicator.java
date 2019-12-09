@@ -72,6 +72,16 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public boolean isLeader() {
+        return mRepl.isLeader();
+    }
+
+    @Override
+    public void uponLeader(Runnable task) {
+        mRepl.uponLeader(task);
+    }
+
+    @Override
     public Socket connect(SocketAddress addr) throws IOException {
         return mRepl.connect(addr);
     }

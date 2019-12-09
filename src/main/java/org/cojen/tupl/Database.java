@@ -594,6 +594,18 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract boolean verify(VerificationObserver observer) throws IOException;
 
     /**
+     * Returns true of the database instance is currently the leader.
+     */
+    public abstract boolean isLeader();
+
+    /**
+     * Invokes the given task when the database instance has become the leader, at most once.
+     * If already the leader when this method is called, then the current thread runs the task
+     * immediately.
+     */
+    public abstract void uponLeader(Runnable task);
+
+    /**
      * If the database instance is currently acting as a leader, attempt to give up leadership
      * and become a replica. If the database is a replica, or if failover is successful, true
      * is returned. When false is returned, the database is likely still the leader, either
