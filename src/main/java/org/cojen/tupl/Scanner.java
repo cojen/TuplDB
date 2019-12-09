@@ -25,8 +25,8 @@ import org.cojen.tupl.core.Utils;
 
 /**
  * Scans through all entries in a view and passes them to a consumer. Scanner implementations
- * which perform pre-fetching can be more efficient than a {@link Cursor cursor}. Any exception
- * thrown by a scan action automatically closes the Scanner.
+ * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
+ * exception thrown by a scan action automatically closes the Scanner.
  *
  * <p>Scanner instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a

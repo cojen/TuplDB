@@ -63,8 +63,8 @@ public interface ReplicationManager extends Closeable {
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.
      *
-     * <p>After started, the reported {@link #readPosition position} can differ from the one
-     * provided to this method.
+     * <p>After started, the reported {@linkplain #readPosition position} can differ from the
+     * one provided to this method.
      *
      * @param position position to start reading from; 0 is the lowest position
      * @throws IllegalArgumentException if position is negative
@@ -255,8 +255,8 @@ public interface ReplicationManager extends Closeable {
 
     /**
      * Notification to replica after an index is renamed. The current thread is free to perform
-     * any blocking operations &mdash; it will not suspend replication processing unless {@link
-     * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
+     * any blocking operations &mdash; it will not suspend replication processing unless
+     * {@linkplain DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
      *
      * @param index non-null index reference
      * @param oldName non-null old index name
@@ -266,8 +266,8 @@ public interface ReplicationManager extends Closeable {
 
     /**
      * Notification to replica after an index is dropped. The current thread is free to perform
-     * any blocking operations &mdash; it will not suspend replication processing unless {@link
-     * DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
+     * any blocking operations &mdash; it will not suspend replication processing unless
+     * {@linkplain DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
      *
      * @param index non-null closed and dropped index reference
      */

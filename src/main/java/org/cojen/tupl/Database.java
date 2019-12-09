@@ -45,7 +45,7 @@ import static org.cojen.tupl.core.Utils.*;
  * Database db = Database.open(config);
  * </pre>
  *
- * <p>Open a regular database, with a fixed cache size, and a weak {@link DurabilityMode
+ * <p>Open a regular database, with a fixed cache size, and a weak {@linkplain DurabilityMode
  * durability mode} for the best transactional commit performance.
  *
  * <pre>
@@ -65,8 +65,8 @@ import static org.cojen.tupl.core.Utils.*;
  * <li><code>/var/lib/tupl/myapp.redo.0</code> &ndash; first transaction redo log file
  * </ul>
  *
- * <p>New redo log files are created by {@link #checkpoint checkpoints}, which
- * also delete the old files. When {@link #beginSnapshot snapshots} are in
+ * <p>New redo log files are created by {@linkplain #checkpoint checkpoints}, which
+ * also delete the old files. When {@linkplain #beginSnapshot snapshots} are in
  * progress, one or more numbered temporary files are created. For example:
  * <code>/var/lib/tupl/myapp.temp.123</code>.
  *
@@ -174,7 +174,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Fully closes and deletes the given index, but does not immediately reclaim the pages it
      * occupied. Run the returned task in any thread to reclaim the pages.
      *
-     * <p>Once deleted, the index reference appears empty and {@link ClosedIndexException
+     * <p>Once deleted, the index reference appears empty and {@linkplain ClosedIndexException
      * unmodifiable}. A new index by the original name can be created, which will be assigned a
      * different unique identifier. Any transactions still referring to the old index will not
      * affect the new index.
@@ -201,21 +201,21 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Index newTemporaryIndex() throws IOException;
 
     /**
-     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
-     * index names to identifiers. Identifiers are long integers, {@link
+     * Returns an {@linkplain UnmodifiableViewException unmodifiable} View which maps all
+     * available index names to identifiers. Identifiers are long integers, {@linkplain
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
      */
     public abstract View indexRegistryByName() throws IOException;
 
     /**
-     * Returns an {@link UnmodifiableViewException unmodifiable} View which maps all available
-     * index identifiers to names. Identifiers are long integers, {@link
+     * Returns an {@linkplain UnmodifiableViewException unmodifiable} View which maps all
+     * available index identifiers to names. Identifiers are long integers, {@linkplain
      * org.cojen.tupl.io.Utils#decodeLongBE big-endian} encoded.
      */
     public abstract View indexRegistryById() throws IOException;
 
     /**
-     * Returns a new Transaction with the {@link DatabaseConfig#durabilityMode default}
+     * Returns a new Transaction with the {@linkplain DatabaseConfig#durabilityMode default}
      * durability mode.
      */
     public default Transaction newTransaction() {
@@ -224,7 +224,7 @@ public interface Database extends CauseCloseable, Flushable {
 
     /**
      * Returns a new Transaction with the given durability mode. If null, the
-     * {@link DatabaseConfig#durabilityMode default} is used.
+     * {@linkplain DatabaseConfig#durabilityMode default} is used.
      */
     public abstract Transaction newTransaction(DurabilityMode durabilityMode);
 
@@ -263,7 +263,7 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * <p>Even with a capacity limit, the database file can still slowly grow in size.
      * Explicit overrides and critical operations can allocate space which can only be
-     * reclaimed by {@link #compactFile compaction}.
+     * reclaimed by {@linkplain #compactFile compaction}.
      *
      * @param bytes maximum capacity, in bytes; pass -1 for no limit
      */
@@ -314,9 +314,9 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Snapshot beginSnapshot() throws IOException;
 
     /**
-     * Restore from a {@link #beginSnapshot snapshot}, into the data files defined by the given
-     * configuration. All existing data and redo log files at the snapshot destination are
-     * deleted before the restore begins.
+     * Restore from a {@linkplain #beginSnapshot snapshot}, into the data files defined by the
+     * given configuration. All existing data and redo log files at the snapshot destination
+     * are deleted before the restore begins.
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
@@ -327,8 +327,8 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Writes a cache priming set into the given stream, which can then be used later to {@link
-     * #applyCachePrimer prime} the cache.
+     * Writes a cache priming set into the given stream, which can then be used later to
+     * {@linkplain #applyCachePrimer prime} the cache.
      *
      * @param out cache priming destination; buffering is recommended; not auto-closed
      * @see DatabaseConfig#cachePriming
@@ -336,7 +336,7 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void createCachePrimer(OutputStream out) throws IOException;
 
     /**
-     * Prime the cache, from a set encoded {@link #createCachePrimer earlier}.
+     * Prime the cache, from a set encoded {@linkplain #createCachePrimer earlier}.
      *
      * @param in caching priming source; buffering is recommended; not auto-closed
      * @see DatabaseConfig#cachePriming
@@ -349,7 +349,7 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract Stats stats();
 
     /**
-     * Collection of database {@link Database#stats statistics}.
+     * Collection of database {@linkplain Database#stats statistics}.
      */
     public static class Stats implements Cloneable, Serializable {
         private static final long serialVersionUID = 3L;
@@ -499,9 +499,9 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Flushes all committed transactions, but not durably. Transactions committed with {@link
-     * DurabilityMode#NO_FLUSH no-flush} effectively become {@link DurabilityMode#NO_SYNC
-     * no-sync} durable.
+     * Flushes all committed transactions, but not durably. Transactions committed with
+     * {@linkplain DurabilityMode#NO_FLUSH no-flush} effectively become {@linkplain
+     * DurabilityMode#NO_SYNC no-sync} durable.
      *
      * <p>When the database is replicated, the no-flush mode is identical to the no-sync mode.
      * Calling this method on a replicated database has no effect.
@@ -510,15 +510,15 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void flush() throws IOException;
 
     /**
-     * Durably flushes all committed transactions. Transactions committed with {@link
-     * DurabilityMode#NO_FLUSH no-flush} and {@link DurabilityMode#NO_SYNC no-sync} effectively
-     * become {@link DurabilityMode#SYNC sync} durable.
+     * Durably flushes all committed transactions. Transactions committed with {@linkplain
+     * DurabilityMode#NO_FLUSH no-flush} and {@linkplain DurabilityMode#NO_SYNC no-sync}
+     * effectively become {@linkplain DurabilityMode#SYNC sync} durable.
      *
      * <p>When the database is replicated, no-flush and no-sync transactions commit
      * asynchronously, and this method doesn't wait for them to be fully committed. The
-     * transaction must use the {@link DurabilityMode#SYNC sync} mode when commit assurance is
-     * required, and then this method can be called afterwards to achieve a stronger durability
-     * guarantee.
+     * transaction must use the {@linkplain DurabilityMode#SYNC sync} mode when commit
+     * assurance is required, and then this method can be called afterwards to achieve a
+     * stronger durability guarantee.
      */
     public abstract void sync() throws IOException;
 
@@ -526,14 +526,14 @@ public interface Database extends CauseCloseable, Flushable {
      * Durably sync and checkpoint all changes to the database. In addition to ensuring that
      * all committed transactions are durable, checkpointing ensures that non-transactional
      * modifications are durable. Checkpoints are performed automatically by a background
-     * thread, at a {@link DatabaseConfig#checkpointRate configurable} rate.
+     * thread, at a {@linkplain DatabaseConfig#checkpointRate configurable} rate.
      */
     public abstract void checkpoint() throws IOException;
 
     /**
      * Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
      * to complete. Suspend may be invoked multiple times, but each must be paired with a
-     * {@link #resumeCheckpoints resume} call to enable automatic checkpoints again.
+     * {@linkplain #resumeCheckpoints resume} call to enable automatic checkpoints again.
      *
      * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
      */
@@ -617,8 +617,8 @@ public interface Database extends CauseCloseable, Flushable {
      * Closes the database after an unexpected failure. No checkpoint is performed by this
      * method, and so non-transactional modifications can be lost.
      *
-     * @param cause if non-null, delivers a {@link EventType#PANIC_UNHANDLED_EXCEPTION panic}
-     * event and future database accesses will rethrow the cause
+     * @param cause if non-null, delivers a {@linkplain EventType#PANIC_UNHANDLED_EXCEPTION
+     * panic} event and future database accesses will rethrow the cause
      * @see #shutdown
      */
     @Override

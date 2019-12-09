@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Describes entry ordering in {@link View views} and {@link Cursor cursors}.
+ * Describes entry ordering in {@linkplain View views} and {@linkplain Cursor cursors}.
  *
  * @author Brian S O'Neill
  */

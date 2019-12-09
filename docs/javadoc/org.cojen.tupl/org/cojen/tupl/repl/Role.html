@@ -141,7 +141,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#NORMAL">NORMAL</a></span></code></th>
 <td class="colLast">
-<div class="block">Normal members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, they provide consensus, and they can become the leader.</div>
+<div class="block">Normal members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, they provide consensus, and they can become
+ the leader.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -153,7 +154,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#PROXY">PROXY</a></span></code></th>
 <td class="colLast">
-<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>.</div>
+<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -166,7 +167,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#STANDBY">STANDBY</a></span></code></th>
 <td class="colLast">
-<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus.</div>
+<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, and they provide consensus.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -244,29 +245,33 @@ the order they are declared.</div>
 <section class="detail">
 <h3><a id="NORMAL">NORMAL</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">NORMAL</span></div>
-<div class="block">Normal members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, they provide consensus, and they can become the leader.</div>
+<div class="block">Normal members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, they provide consensus, and they can become
+ the leader.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="STANDBY">STANDBY</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">STANDBY</span></div>
-<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they provide consensus. They can only become an interim leader, to
- permit a normal member to catch up. An interim leader doesn't accept any new writes.</div>
+<div class="block">Standby members receive replicated data, they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, and they provide consensus. They can only
+ become an interim leader, to permit a normal member to catch up. An interim leader
+ doesn't accept any new writes.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="PROXY">PROXY</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">PROXY</span></div>
-<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>. They don't provide consensus, and they cannot become the leader.</div>
+<div class="block">Proxy members receive replicated data, and they can <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>. They don't provide consensus, and they
+ cannot become the leader.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="OBSERVER">OBSERVER</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">OBSERVER</span></div>
-<div class="block">Observers only receive replicated data. They don't <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, they don't provide consensus, and they cannot become the leader.</div>
+<div class="block">Observers only receive replicated data. They don't <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, they don't provide consensus, and they
+ cannot become the leader.</div>
 </section>
 </li>
 <li class="blockList">
@@ -281,7 +286,9 @@ the order they are declared.</div>
 <section class="detail">
 <h3><a id="VOTER">VOTER</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></span>&nbsp;<span class="memberName">VOTER</span></div>
-<div class="block">Voters only provide consensus. They don't receive replicated data, they don't <a href="ReplicatorConfig.html#proxyWrites(boolean)"><code>proxy writes</code></a>, and they cannot become the leader.
+<div class="block">Voters only provide consensus. They don't receive replicated data, they don't
+ <a href="ReplicatorConfig.html#proxyWrites(boolean)">proxy writes</a>, and they cannot become the
+ leader.
 
  <p><i>Note: Experimental feature.</i></div>
 </section>

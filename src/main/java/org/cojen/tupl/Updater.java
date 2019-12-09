@@ -24,8 +24,8 @@ import org.cojen.tupl.core.Utils;
 
 /**
  * Scans through all entries in a view, updating them along the way. Updater implementations
- * which perform pre-fetching can be more efficient than a {@link Cursor cursor}. Any exception
- * thrown by an updating action automatically closes the Updater.
+ * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
+ * exception thrown by an updating action automatically closes the Updater.
  *
  * <p>Updater instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a

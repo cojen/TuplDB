@@ -39,7 +39,7 @@ import org.cojen.tupl.io.StripedPageArray;
 import org.cojen.tupl.repl.ReplicatorConfig;
 
 /**
- * Configuration options used when {@link Database#open opening} a database.
+ * Configuration options used when {@linkplain Database#open opening} a database.
  *
  * @author Brian S O'Neill
  */
@@ -217,9 +217,9 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set the rate at which {@link Database#checkpoint checkpoints} are
-     * automatically performed. Default rate is 1 second. Pass a negative value
-     * to disable automatic checkpoints.
+     * Set the rate at which {@linkplain Database#checkpoint checkpoints} are automatically
+     * performed. Default rate is 1 second. Pass a negative value to disable automatic
+     * checkpoints.
      *
      * @param unit required unit if rate is more than zero
      */
@@ -229,7 +229,7 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set the minimum redo log size required for an automatic {@link Database#checkpoint
+     * Set the minimum redo log size required for an automatic {@linkplain Database#checkpoint
      * checkpoint} to actually be performed. Default is 1 MiB. If database is used primarily
      * for non-transactional operations, the threshold should be set to zero.
      */
@@ -239,7 +239,7 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Set the maximum delay before an automatic {@link Database#checkpoint checkpoint} is
+     * Set the maximum delay before an automatic {@linkplain Database#checkpoint checkpoint} is
      * performed, regardless of the redo log size threshold. Default is 1 minute, and a
      * negative delay is infinite. If database is used primarily for non-transactional
      * operations, the threshold should be set to zero.
@@ -285,7 +285,7 @@ public class DatabaseConfig implements Cloneable {
      * Set true to ensure all writes to the main database file are immediately durable,
      * although not checkpointed. This option typically reduces overall performance, but
      * checkpoints complete more quickly. As a result, the main database file requires less
-     * pre-allocated pages and is smaller. Also consider specifying more {@link
+     * pre-allocated pages and is smaller. Also consider specifying more {@linkplain
      * #maxCheckpointThreads checkpoint threads} when using this option.
      */
     public DatabaseConfig syncWrites(boolean fileSync) {

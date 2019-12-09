@@ -244,7 +244,7 @@ public class Worker {
     }
 
     /**
-     * One-shot {@link Worker worker} task instance.
+     * One-shot {@linkplain Worker worker} task instance.
      */
     public static abstract class Task {
         volatile Task mNext;

@@ -180,11 +180,11 @@ public class ReplicatorConfig implements Cloneable {
     }
 
     /**
-     * Set the desired local member role, which is {@link Role#NORMAL normal} by default, and
-     * for the primoridal group member. Members can join an existing group only by consensus,
-     * which implies that the group has a leader. All joining members start out as {@link
-     * Role#RESTORING restoring}, and then the role is updated after the replicator has
-     * started. Role changes also require consensus.
+     * Set the desired local member role, which is {@linkplain Role#NORMAL normal} by default,
+     * and for the primoridal group member. Members can join an existing group only by
+     * consensus, which implies that the group has a leader. All joining members start out as
+     * {@linkplain Role#RESTORING restoring}, and then the role is updated after the replicator
+     * has started. Role changes also require consensus.
      *
      * @throws IllegalArgumentException if role is null
      */

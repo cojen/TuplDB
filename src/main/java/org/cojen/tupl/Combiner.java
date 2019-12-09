@@ -47,7 +47,8 @@ public interface Combiner {
 
     /**
      * Returns a Combiner that discards both values (always returns null). When used with a
-     * {@link View#viewUnion union}, this causes it to compute the <i>symmetric set difference</i>.
+     * {@linkplain View#viewUnion union}, this causes it to compute the <i>symmetric set
+     * difference</i>.
      */
     public static Combiner discard() {
         return SelectCombiner.Discard.THE;

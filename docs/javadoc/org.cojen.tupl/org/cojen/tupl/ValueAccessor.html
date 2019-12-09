@@ -106,7 +106,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation. This interface permits values to be larger than what can fit in main memory.
- When using a <a href="Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a> to access values, <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a> should be disabled to prevent values from being fully loaded automatically
+ When using a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a> to access values, <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a> should be disabled to prevent values from being fully loaded automatically
 
  <p>When making transactional changes through this interface, undo actions may require that
  copies be made of the original value. Partial truncation of a large value isn't optimized to

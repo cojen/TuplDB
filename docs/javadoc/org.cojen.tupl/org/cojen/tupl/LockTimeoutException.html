@@ -117,9 +117,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <hr>
 <pre>public class <span class="typeNameLabel">LockTimeoutException</span>
 extends <a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></pre>
-<div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl"><code>transaction</code></a> timed out. A
- <a href="DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)"><code>default</code></a> timeout is defined, which can be
- <a href="Transaction.html#lockTimeout(long,java.util.concurrent.TimeUnit)"><code>overridden</code></a> by a transaction.</div>
+<div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out. A
+ <a href="DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)">default</a> timeout is defined, which can be
+ <a href="Transaction.html#lockTimeout(long,java.util.concurrent.TimeUnit)">overridden</a> by a transaction.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="LockResult.html#TIMED_OUT_LOCK"><code>LockResult.TIMED_OUT_LOCK</code></a>, 
@@ -185,8 +185,8 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOwnerAttachment()">getOwnerAttachment</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)"><code>attached</code></a> to the current lock
- owner shortly after the timeout occurred.</div>
+<div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
+ lock owner shortly after the timeout occurred.</div>
 </td>
 </tr>
 <tr class="altColor" id="i2">
@@ -282,9 +282,9 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <section class="detail">
 <h3><a id="getOwnerAttachment()">getOwnerAttachment</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">getOwnerAttachment</span>()</div>
-<div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)"><code>attached</code></a> to the current lock
- owner shortly after the timeout occurred. If an exclusive lock request failed because
- any shared locks were held, only the first discovered attachment is provided.</div>
+<div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
+ lock owner shortly after the timeout occurred. If an exclusive lock request failed
+ because any shared locks were held, only the first discovered attachment is provided.</div>
 </section>
 </li>
 <li class="blockList">

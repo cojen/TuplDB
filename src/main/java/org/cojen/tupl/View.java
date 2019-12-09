@@ -123,7 +123,7 @@ public interface View {
     }
 
     /**
-     * Returns a cursor intended for {@link ValueAccessor accessing} values in chunks,
+     * Returns a cursor intended for {@linkplain ValueAccessor accessing} values in chunks,
      * permitting them to be larger than what can fit in main memory. Essentially, this is a
      * convenience method which disables {@link Cursor#autoload(boolean) autoload}, and then
      * positions the cursor at the given key.
@@ -822,7 +822,7 @@ public interface View {
      * href="https://en.wikipedia.org/wiki/Symmetric_difference"><cite>symmetric set
      * difference</cite></a> instead.
      *
-     * <p>Storing entries in the union is permitted, if the combiner supports {@link
+     * <p>Storing entries in the union is permitted, if the combiner supports {@linkplain
      * Combiner#separate separation}. The separator must supply at least one non-null value, or
      * else a {@link ViewConstraintException} will be thrown.
      *
@@ -846,9 +846,9 @@ public interface View {
      * intersection</cite></a> of this view and a second one. An intersection eliminates
      * duplicate keys, by relying on a combiner to decide how to deal with them.
      *
-     * <p>Storing entries in the intersection is permitted, if the combiner supports {@link
-     * Combiner#separate separation}. The separator must supply two non-null values, or else a
-     * {@link ViewConstraintException} will be thrown.
+     * <p>Storing entries in the intersection is permitted, if the combiner supports
+     * {@linkplain Combiner#separate separation}. The separator must supply two non-null
+     * values, or else a {@link ViewConstraintException} will be thrown.
      *
      * @param combiner combines common entries together; pass null to always choose the {@link
      * Combiner#first first}

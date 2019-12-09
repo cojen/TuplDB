@@ -141,7 +141,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointDelayThreshold(long,java.util.concurrent.TimeUnit)">checkpointDelayThreshold</a></span>&#8203;(long&nbsp;delay,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
-<div class="block">Set the maximum delay before an automatic <a href="../Database.html#checkpoint()"><code>checkpoint</code></a> is
+<div class="block">Set the maximum delay before an automatic <a href="../Database.html#checkpoint()">checkpoint</a> is
  performed, regardless of the redo log size threshold.</div>
 </td>
 </tr>
@@ -150,15 +150,15 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate</a></span>&#8203;(long&nbsp;rate,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
-<div class="block">Set the rate at which <a href="../Database.html#checkpoint()"><code>checkpoints</code></a> are
- automatically performed.</div>
+<div class="block">Set the rate at which <a href="../Database.html#checkpoint()">checkpoints</a> are automatically
+ performed.</div>
 </td>
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../DatabaseConfig.html#checkpointSizeThreshold(long)">checkpointSizeThreshold</a></span>&#8203;(long&nbsp;bytes)</code></th>
 <td class="colLast">
-<div class="block">Set the minimum redo log size required for an automatic <a href="../Database.html#checkpoint()"><code>checkpoint</code></a> to actually be performed.</div>
+<div class="block">Set the minimum redo log size required for an automatic <a href="../Database.html#checkpoint()">checkpoint</a> to actually be performed.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -374,8 +374,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></span>&#8203;(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
-<div class="block">Restore from a <a href="../Database.html#beginSnapshot()"><code>snapshot</code></a>, into the data files defined by the given
- configuration.</div>
+<div class="block">Restore from a <a href="../Database.html#beginSnapshot()">snapshot</a>, into the data files defined by the
+ given configuration.</div>
 </td>
 </tr>
 </tbody>

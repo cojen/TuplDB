@@ -25,7 +25,7 @@ import java.io.OutputStream;
 /**
  * Accesses database values without requiring that they be fully loaded or stored in a single
  * operation. This interface permits values to be larger than what can fit in main memory.
- * When using a {@link Cursor cursor} to access values, {@link Cursor#autoload(boolean)
+ * When using a {@linkplain Cursor cursor} to access values, {@link Cursor#autoload(boolean)
  * autoload} should be disabled to prevent values from being fully loaded automatically
  *
  * <p>When making transactional changes through this interface, undo actions may require that

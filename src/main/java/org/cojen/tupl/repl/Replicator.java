@@ -43,7 +43,7 @@ public interface Replicator extends Closeable {
     Role getLocalRole();
 
     /**
-     * Connect to any replication group member, for any particular use. An {@link
+     * Connect to any replication group member, for any particular use. An {@linkplain
      * #socketAcceptor acceptor} must be installed on the group member being connected to for
      * the connect to succeed.
      *

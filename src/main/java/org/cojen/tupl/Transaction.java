@@ -59,10 +59,10 @@ import org.cojen.tupl.core.LocalTransaction;
  */
 public interface Transaction extends Flushable {
     /**
-     * Transaction instance which isn't a transaction at all. It always
-     * operates in an {@link LockMode#UNSAFE unsafe} lock mode and a {@link
-     * DurabilityMode#NO_REDO no-redo} durability mode. For safe auto-commit
-     * transactions, pass null for the transaction argument.
+     * Transaction instance which isn't a transaction at all. It always operates in an
+     * {@linkplain LockMode#UNSAFE unsafe} lock mode and a {@linkplain DurabilityMode#NO_REDO
+     * no-redo} durability mode. For safe auto-commit transactions, pass null for the
+     * transaction argument.
      */
     public static final Transaction BOGUS = LocalTransaction.BOGUS;
 
@@ -169,10 +169,9 @@ public interface Transaction extends Flushable {
     void reset(Throwable cause);
 
     /**
-     * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isAlreadyOwned owned}, transaction
-     * already owns a strong enough lock, and no extra unlock should be
-     * performed.
+     * Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+     * value is {@linkplain LockResult#isAlreadyOwned owned}, transaction already owns a strong
+     * enough lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -189,10 +188,10 @@ public interface Transaction extends Flushable {
     LockResult lockShared(long indexId, byte[] key) throws LockFailureException;
 
     /**
-     * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#isAlreadyOwned owned}, transaction already owns a strong enough
-     * lock, and no extra unlock should be performed.
+     * Attempts to acquire an upgradable lock for the given key, denying exclusive and
+     * additional upgradable locks. If return value is {@linkplain LockResult#isAlreadyOwned
+     * owned}, transaction already owns a strong enough lock, and no extra unlock should be
+     * performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -207,10 +206,9 @@ public interface Transaction extends Flushable {
     LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException;
 
     /**
-     * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isAlreadyOwned owned},
-     * transaction already owns exclusive lock, and no extra unlock should be
-     * performed.
+     * Attempts to acquire an exclusive lock for the given key, denying any additional
+     * locks. If return value is {@linkplain LockResult#isAlreadyOwned owned}, transaction
+     * already owns exclusive lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -234,10 +232,9 @@ public interface Transaction extends Flushable {
     int nestingLevel();
 
     /**
-     * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isAlreadyOwned owned}, transaction
-     * already owns a strong enough lock, and no extra unlock should be
-     * performed.
+     * Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+     * value is {@linkplain LockResult#isAlreadyOwned owned}, transaction already owns a strong
+     * enough lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -256,10 +253,9 @@ public interface Transaction extends Flushable {
         throws DeadlockException, LockFailureException;
 
     /**
-     * Attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If return value is {@link LockResult#isAlreadyOwned owned}, transaction
-     * already owns a strong enough lock, and no extra unlock should be
-     * performed.
+     * Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+     * value is {@linkplain LockResult#isAlreadyOwned owned}, transaction already owns a strong
+     * enough lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -278,11 +274,10 @@ public interface Transaction extends Flushable {
         throws LockFailureException;
 
     /**
-     * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#isAlreadyOwned owned}, transaction already owns a strong enough
-     * lock, and no extra unlock should be performed. If {@link
-     * LockResult#ILLEGAL ILLEGAL} is returned, transaction holds a shared
+     * Attempts to acquire an upgradable lock for the given key, denying exclusive and
+     * additional upgradable locks. If return value is {@linkplain LockResult#isAlreadyOwned
+     * owned}, transaction already owns a strong enough lock, and no extra unlock should be
+     * performed. If {@link LockResult#ILLEGAL ILLEGAL} is returned, transaction holds a shared
      * lock, which cannot be upgraded.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
@@ -301,10 +296,10 @@ public interface Transaction extends Flushable {
         throws DeadlockException, LockFailureException;
 
     /**
-     * Attempts to acquire an upgradable lock for the given key, denying
-     * exclusive and additional upgradable locks. If return value is {@link
-     * LockResult#isAlreadyOwned owned}, transaction already owns a strong enough
-     * lock, and no extra unlock should be performed.
+     * Attempts to acquire an upgradable lock for the given key, denying exclusive and
+     * additional upgradable locks. If return value is {@linkplain LockResult#isAlreadyOwned
+     * owned}, transaction already owns a strong enough lock, and no extra unlock should be
+     * performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
@@ -322,7 +317,7 @@ public interface Transaction extends Flushable {
 
     /**
      * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isAlreadyOwned
+     * additional locks. If return value is {@linkplain LockResult#isAlreadyOwned
      * owned}, transaction already owns exclusive lock, and no extra unlock
      * should be performed. If {@link LockResult#ILLEGAL ILLEGAL} is returned,
      * transaction holds a shared lock, which cannot be upgraded.
@@ -343,10 +338,9 @@ public interface Transaction extends Flushable {
         throws DeadlockException, LockFailureException;
 
     /**
-     * Attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If return value is {@link LockResult#isAlreadyOwned owned},
-     * transaction already owns exclusive lock, and no extra unlock should be
-     * performed.
+     * Attempts to acquire an exclusive lock for the given key, denying any additional
+     * locks. If return value is {@linkplain LockResult#isAlreadyOwned owned}, transaction
+     * already owns exclusive lock, and no extra unlock should be performed.
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *

@@ -18,8 +18,8 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when opening a database which wasn't completely {@link Database#restoreFromSnapshot
- * restored}.
+ * Thrown when opening a database which wasn't completely {@linkplain
+ * Database#restoreFromSnapshot restored}.
  *
  * @author Brian S O'Neill
  */

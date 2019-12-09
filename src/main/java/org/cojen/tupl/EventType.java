@@ -20,8 +20,7 @@ package org.cojen.tupl;
 import java.util.logging.Level;
 
 /**
- * Defines the various types of events that an {@link EventListener
- * EventListener} can receive.
+ * Defines the various types of events that an {@link EventListener EventListener} can receive.
  *
  * @author Brian S O'Neill
  */

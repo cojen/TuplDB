@@ -20,7 +20,7 @@ package org.cojen.tupl;
 import org.cojen.tupl.core.LockManager;
 
 /**
- * Various lock modes for use within {@link Transaction transactions}. Except
+ * Various lock modes for use within {@linkplain Transaction transactions}. Except
  * for {@link #UNSAFE}, all modes follow the same policy when modifying
  * entries. They all differ with respect to entries which are being read.
  *

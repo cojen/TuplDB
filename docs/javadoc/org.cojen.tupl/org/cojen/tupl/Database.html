@@ -109,7 +109,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  Database db = Database.open(config);
  </pre>
 
- <p>Open a regular database, with a fixed cache size, and a weak <a href="DurabilityMode.html" title="enum in org.cojen.tupl"><code>durability mode</code></a> for the best transactional commit performance.
+ <p>Open a regular database, with a fixed cache size, and a weak <a href="DurabilityMode.html" title="enum in org.cojen.tupl">durability mode</a> for the best transactional commit performance.
 
  <pre>
  var config = new DatabaseConfig()
@@ -128,8 +128,8 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  <li><code>/var/lib/tupl/myapp.redo.0</code> &ndash; first transaction redo log file
  </ul>
 
- <p>New redo log files are created by <a href="#checkpoint()"><code>checkpoints</code></a>, which
- also delete the old files. When <a href="#beginSnapshot()"><code>snapshots</code></a> are in
+ <p>New redo log files are created by <a href="#checkpoint()">checkpoints</a>, which
+ also delete the old files. When <a href="#beginSnapshot()">snapshots</a> are in
  progress, one or more numbered temporary files are created. For example:
  <code>/var/lib/tupl/myapp.temp.123</code>.</div>
 <dl>
@@ -160,7 +160,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <td class="colFirst"><code>static class&nbsp;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span></code></th>
 <td class="colLast">
-<div class="block">Collection of database <a href="#stats()"><code>statistics</code></a>.</div>
+<div class="block">Collection of database <a href="#stats()">statistics</a>.</div>
 </td>
 </tr>
 </tbody>
@@ -190,7 +190,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#applyCachePrimer(java.io.InputStream)">applyCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
-<div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)"><code>earlier</code></a>.</div>
+<div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)">earlier</a>.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
@@ -265,7 +265,8 @@ double&nbsp;target)</code></th>
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#createCachePrimer(java.io.OutputStream)">createCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
 <td class="colLast">
-<div class="block">Writes a cache priming set into the given stream, which can then be used later to <a href="#applyCachePrimer(java.io.InputStream)"><code>prime</code></a> the cache.</div>
+<div class="block">Writes a cache priming set into the given stream, which can then be used later to
+ <a href="#applyCachePrimer(java.io.InputStream)">prime</a> the cache.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i11">
@@ -338,16 +339,16 @@ double&nbsp;target)</code></th>
 <td class="colFirst"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexRegistryById()">indexRegistryById</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
- index identifiers to names.</div>
+<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
+ available index identifiers to names.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i21">
 <td class="colFirst"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexRegistryByName()">indexRegistryByName</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
- index names to identifiers.</div>
+<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
+ available index names to identifiers.</div>
 </td>
 </tr>
 <tr class="altColor" id="i22">
@@ -376,7 +377,7 @@ double&nbsp;target)</code></th>
 <td class="colFirst"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction()">newTransaction</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)"><code>default</code></a>
+<div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a>
  durability mode.</div>
 </td>
 </tr>
@@ -436,8 +437,8 @@ byte[]&nbsp;newName)</code></th>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
-<div class="block">Restore from a <a href="#beginSnapshot()"><code>snapshot</code></a>, into the data files defined by the given
- configuration.</div>
+<div class="block">Restore from a <a href="#beginSnapshot()">snapshot</a>, into the data files defined by the
+ given configuration.</div>
 </td>
 </tr>
 <tr class="altColor" id="i34">
@@ -662,7 +663,7 @@ byte[]&nbsp;newName)</span>
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied. Run the returned task in any thread to reclaim the pages.
 
- <p>Once deleted, the index reference appears empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a>. A new index by the original name can be created, which will be assigned a
+ <p>Once deleted, the index reference appears empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl">unmodifiable</a>. A new index by the original name can be created, which will be assigned a
  different unique identifier. Any transactions still referring to the old index will not
  affect the new index.
 
@@ -704,8 +705,8 @@ byte[]&nbsp;newName)</span>
 <h3><a id="indexRegistryByName()">indexRegistryByName</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="memberName">indexRegistryByName</span>()
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
- index names to identifiers. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)"><code>big-endian</code></a> encoded.</div>
+<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
+ available index names to identifiers. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)">big-endian</a> encoded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -717,8 +718,8 @@ byte[]&nbsp;newName)</span>
 <h3><a id="indexRegistryById()">indexRegistryById</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="memberName">indexRegistryById</span>()
                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>unmodifiable</code></a> View which maps all available
- index identifiers to names. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)"><code>big-endian</code></a> encoded.</div>
+<div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
+ available index identifiers to names. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)">big-endian</a> encoded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -729,7 +730,7 @@ byte[]&nbsp;newName)</span>
 <section class="detail">
 <h3><a id="newTransaction()">newTransaction</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="memberName">newTransaction</span>()</div>
-<div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)"><code>default</code></a>
+<div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a>
  durability mode.</div>
 </section>
 </li>
@@ -738,7 +739,7 @@ byte[]&nbsp;newName)</span>
 <h3><a id="newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="memberName">newTransaction</span>&#8203;(<span class="arguments"><a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</span></div>
 <div class="block">Returns a new Transaction with the given durability mode. If null, the
- <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)"><code>default</code></a> is used.</div>
+ <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a> is used.</div>
 </section>
 </li>
 <li class="blockList">
@@ -799,7 +800,7 @@ byte[]&nbsp;newName)</span>
 
  <p>Even with a capacity limit, the database file can still slowly grow in size.
  Explicit overrides and critical operations can allocate space which can only be
- reclaimed by <a href="#compactFile(org.cojen.tupl.CompactionObserver,double)"><code>compaction</code></a>.</div>
+ reclaimed by <a href="#compactFile(org.cojen.tupl.CompactionObserver,double)">compaction</a>.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>bytes</code> - maximum capacity, in bytes; pass -1 for no limit</dd>
@@ -864,9 +865,9 @@ byte[]&nbsp;newName)</span>
 <div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="memberName">restoreFromSnapshot</span>&#8203;(<span class="arguments"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Restore from a <a href="#beginSnapshot()"><code>snapshot</code></a>, into the data files defined by the given
- configuration. All existing data and redo log files at the snapshot destination are
- deleted before the restore begins.</div>
+<div class="block">Restore from a <a href="#beginSnapshot()">snapshot</a>, into the data files defined by the
+ given configuration. All existing data and redo log files at the snapshot destination
+ are deleted before the restore begins.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>in</code> - snapshot source; does not require extra buffering; auto-closed</dd>
@@ -880,7 +881,8 @@ byte[]&nbsp;newName)</span>
 <h3><a id="createCachePrimer(java.io.OutputStream)">createCachePrimer</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">createCachePrimer</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</span>
                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Writes a cache priming set into the given stream, which can then be used later to <a href="#applyCachePrimer(java.io.InputStream)"><code>prime</code></a> the cache.</div>
+<div class="block">Writes a cache priming set into the given stream, which can then be used later to
+ <a href="#applyCachePrimer(java.io.InputStream)">prime</a> the cache.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>out</code> - cache priming destination; buffering is recommended; not auto-closed</dd>
@@ -896,7 +898,7 @@ byte[]&nbsp;newName)</span>
 <h3><a id="applyCachePrimer(java.io.InputStream)">applyCachePrimer</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">applyCachePrimer</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)"><code>earlier</code></a>.</div>
+<div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)">earlier</a>.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>in</code> - caching priming source; buffering is recommended; not auto-closed</dd>
@@ -919,7 +921,8 @@ byte[]&nbsp;newName)</span>
 <h3><a id="flush()">flush</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">flush</span>()
     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Flushes all committed transactions, but not durably. Transactions committed with <a href="DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> effectively become <a href="DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> durable.
+<div class="block">Flushes all committed transactions, but not durably. Transactions committed with
+ <a href="DurabilityMode.html#NO_FLUSH">no-flush</a> effectively become <a href="DurabilityMode.html#NO_SYNC">no-sync</a> durable.
 
  <p>When the database is replicated, the no-flush mode is identical to the no-sync mode.
  Calling this method on a replicated database has no effect.</div>
@@ -936,14 +939,14 @@ byte[]&nbsp;newName)</span>
 <h3><a id="sync()">sync</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">sync</span>()
    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Durably flushes all committed transactions. Transactions committed with <a href="DurabilityMode.html#NO_FLUSH"><code>no-flush</code></a> and <a href="DurabilityMode.html#NO_SYNC"><code>no-sync</code></a> effectively
- become <a href="DurabilityMode.html#SYNC"><code>sync</code></a> durable.
+<div class="block">Durably flushes all committed transactions. Transactions committed with <a href="DurabilityMode.html#NO_FLUSH">no-flush</a> and <a href="DurabilityMode.html#NO_SYNC">no-sync</a>
+ effectively become <a href="DurabilityMode.html#SYNC">sync</a> durable.
 
  <p>When the database is replicated, no-flush and no-sync transactions commit
  asynchronously, and this method doesn't wait for them to be fully committed. The
- transaction must use the <a href="DurabilityMode.html#SYNC"><code>sync</code></a> mode when commit assurance is
- required, and then this method can be called afterwards to achieve a stronger durability
- guarantee.</div>
+ transaction must use the <a href="DurabilityMode.html#SYNC">sync</a> mode when commit
+ assurance is required, and then this method can be called afterwards to achieve a
+ stronger durability guarantee.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -958,7 +961,7 @@ byte[]&nbsp;newName)</span>
 <div class="block">Durably sync and checkpoint all changes to the database. In addition to ensuring that
  all committed transactions are durable, checkpointing ensures that non-transactional
  modifications are durable. Checkpoints are performed automatically by a background
- thread, at a <a href="DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)"><code>configurable</code></a> rate.</div>
+ thread, at a <a href="DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">configurable</a> rate.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
@@ -971,7 +974,7 @@ byte[]&nbsp;newName)</span>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">suspendCheckpoints</span>()</div>
 <div class="block">Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
  to complete. Suspend may be invoked multiple times, but each must be paired with a
- <a href="#resumeCheckpoints()"><code>resume</code></a> call to enable automatic checkpoints again.</div>
+ <a href="#resumeCheckpoints()">resume</a> call to enable automatic checkpoints again.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if suspended more than 2<sup>31</sup> times</dd>
@@ -1099,8 +1102,7 @@ double&nbsp;target)</span>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="io/CauseCloseable.html#close(java.lang.Throwable)">close</a></code>&nbsp;in interface&nbsp;<code><a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>cause</code> - if non-null, delivers a <a href="EventType.html#PANIC_UNHANDLED_EXCEPTION"><code>panic</code></a>
- event and future database accesses will rethrow the cause</dd>
+<dd><code>cause</code> - if non-null, delivers a <a href="EventType.html#PANIC_UNHANDLED_EXCEPTION">panic</a> event and future database accesses will rethrow the cause</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>

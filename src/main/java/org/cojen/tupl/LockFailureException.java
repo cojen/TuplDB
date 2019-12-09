@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a lock request by a {@link Transaction transaction} failed.
+ * Thrown when a lock request by a {@linkplain Transaction transaction} failed.
  *
  * @author Brian S O'Neill
  */

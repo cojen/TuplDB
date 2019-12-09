@@ -104,7 +104,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public class <span class="typeNameLabel">DatabaseConfig</span>
 extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
 implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a></pre>
-<div class="block">Configuration options used when <a href="Database.html#open(org.cojen.tupl.DatabaseConfig)"><code>opening</code></a> a database.</div>
+<div class="block">Configuration options used when <a href="Database.html#open(org.cojen.tupl.DatabaseConfig)">opening</a> a database.</div>
 </section>
 <section class="summary">
 <ul class="blockList">
@@ -187,7 +187,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointDelayThreshold(long,java.util.concurrent.TimeUnit)">checkpointDelayThreshold</a></span>&#8203;(long&nbsp;delay,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
-<div class="block">Set the maximum delay before an automatic <a href="Database.html#checkpoint()"><code>checkpoint</code></a> is
+<div class="block">Set the maximum delay before an automatic <a href="Database.html#checkpoint()">checkpoint</a> is
  performed, regardless of the redo log size threshold.</div>
 </td>
 </tr>
@@ -196,15 +196,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate</a></span>&#8203;(long&nbsp;rate,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
-<div class="block">Set the rate at which <a href="Database.html#checkpoint()"><code>checkpoints</code></a> are
- automatically performed.</div>
+<div class="block">Set the rate at which <a href="Database.html#checkpoint()">checkpoints</a> are automatically
+ performed.</div>
 </td>
 </tr>
 <tr class="altColor" id="i6">
 <td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpointSizeThreshold(long)">checkpointSizeThreshold</a></span>&#8203;(long&nbsp;bytes)</code></th>
 <td class="colLast">
-<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()"><code>checkpoint</code></a> to actually be performed.</div>
+<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()">checkpoint</a> to actually be performed.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i7">
@@ -584,9 +584,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <h3><a id="checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">checkpointRate</span>&#8203;(<span class="arguments">long&nbsp;rate,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
-<div class="block">Set the rate at which <a href="Database.html#checkpoint()"><code>checkpoints</code></a> are
- automatically performed. Default rate is 1 second. Pass a negative value
- to disable automatic checkpoints.</div>
+<div class="block">Set the rate at which <a href="Database.html#checkpoint()">checkpoints</a> are automatically
+ performed. Default rate is 1 second. Pass a negative value to disable automatic
+ checkpoints.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>unit</code> - required unit if rate is more than zero</dd>
@@ -597,7 +597,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <section class="detail">
 <h3><a id="checkpointSizeThreshold(long)">checkpointSizeThreshold</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">checkpointSizeThreshold</span>&#8203;(<span class="arguments">long&nbsp;bytes)</span></div>
-<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()"><code>checkpoint</code></a> to actually be performed. Default is 1 MiB. If database is used primarily
+<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()">checkpoint</a> to actually be performed. Default is 1 MiB. If database is used primarily
  for non-transactional operations, the threshold should be set to zero.</div>
 </section>
 </li>
@@ -606,7 +606,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <h3><a id="checkpointDelayThreshold(long,java.util.concurrent.TimeUnit)">checkpointDelayThreshold</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">checkpointDelayThreshold</span>&#8203;(<span class="arguments">long&nbsp;delay,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
-<div class="block">Set the maximum delay before an automatic <a href="Database.html#checkpoint()"><code>checkpoint</code></a> is
+<div class="block">Set the maximum delay before an automatic <a href="Database.html#checkpoint()">checkpoint</a> is
  performed, regardless of the redo log size threshold. Default is 1 minute, and a
  negative delay is infinite. If database is used primarily for non-transactional
  operations, the threshold should be set to zero.</div>
@@ -650,7 +650,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <div class="block">Set true to ensure all writes to the main database file are immediately durable,
  although not checkpointed. This option typically reduces overall performance, but
  checkpoints complete more quickly. As a result, the main database file requires less
- pre-allocated pages and is smaller. Also consider specifying more <a href="#maxCheckpointThreads(int)"><code>checkpoint threads</code></a> when using this option.</div>
+ pre-allocated pages and is smaller. Also consider specifying more <a href="#maxCheckpointThreads(int)">checkpoint threads</a> when using this option.</div>
 </section>
 </li>
 <li class="blockList">

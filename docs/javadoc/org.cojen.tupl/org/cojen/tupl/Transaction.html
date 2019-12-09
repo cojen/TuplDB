@@ -296,8 +296,8 @@ byte[]&nbsp;key)</code></th>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockExclusive(long,byte%5B%5D)">lockExclusive</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire an exclusive lock for the given key, denying any
- additional locks.</div>
+<div class="block">Attempts to acquire an exclusive lock for the given key, denying any additional
+ locks.</div>
 </td>
 </tr>
 <tr class="altColor" id="i16">
@@ -306,8 +306,8 @@ byte[]&nbsp;key)</code></th>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire an exclusive lock for the given key, denying any
- additional locks.</div>
+<div class="block">Attempts to acquire an exclusive lock for the given key, denying any additional
+ locks.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i17">
@@ -329,8 +329,7 @@ long&nbsp;nanosTimeout)</code></th>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockShared(long,byte%5B%5D)">lockShared</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks.</div>
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
 <tr class="altColor" id="i20">
@@ -339,8 +338,7 @@ byte[]&nbsp;key)</code></th>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks.</div>
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i21">
@@ -363,8 +361,8 @@ long&nbsp;nanosTimeout)</code></th>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockUpgradable(long,byte%5B%5D)">lockUpgradable</a></span>&#8203;(long&nbsp;indexId,
 byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks.</div>
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks.</div>
 </td>
 </tr>
 <tr class="altColor" id="i24">
@@ -373,8 +371,8 @@ byte[]&nbsp;key)</code></th>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks.</div>
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i25">
@@ -414,8 +412,7 @@ long&nbsp;nanosTimeout)</code></th>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks.</div>
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
 <tr class="altColor" id="i30">
@@ -424,8 +421,8 @@ long&nbsp;nanosTimeout)</code></th>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks.</div>
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i31">
@@ -471,9 +468,9 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="BOGUS">BOGUS</a></h3>
 <div class="memberSignature"><span class="modifiers">static final</span>&nbsp;<span class="returnType"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="memberName">BOGUS</span></div>
-<div class="block">Transaction instance which isn't a transaction at all. It always
- operates in an <a href="LockMode.html#UNSAFE"><code>unsafe</code></a> lock mode and a <a href="DurabilityMode.html#NO_REDO"><code>no-redo</code></a> durability mode. For safe auto-commit
- transactions, pass null for the transaction argument.</div>
+<div class="block">Transaction instance which isn't a transaction at all. It always operates in an
+ <a href="LockMode.html#UNSAFE">unsafe</a> lock mode and a <a href="DurabilityMode.html#NO_REDO">no-redo</a> durability mode. For safe auto-commit transactions, pass null for the
+ transaction argument.</div>
 </section>
 </li>
 </ul>
@@ -659,10 +656,9 @@ long&nbsp;nanosTimeout)</code></th>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">lockShared</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key)</span>
                throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction
- already owns a strong enough lock, and no extra unlock should be
- performed.
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+ value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong
+ enough lock, and no extra unlock should be performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -684,9 +680,9 @@ byte[]&nbsp;key)</span>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">lockUpgradable</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key)</span>
                    throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns a strong enough
- lock, and no extra unlock should be performed.
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong enough lock, and no extra unlock should be
+ performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -707,10 +703,9 @@ byte[]&nbsp;key)</span>
 <div class="memberSignature"><span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">lockExclusive</span>&#8203;(<span class="arguments">long&nbsp;indexId,
 byte[]&nbsp;key)</span>
                   throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire an exclusive lock for the given key, denying any
- additional locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>,
- transaction already owns exclusive lock, and no extra unlock should be
- performed.
+<div class="block">Attempts to acquire an exclusive lock for the given key, denying any additional
+ locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction
+ already owns exclusive lock, and no extra unlock should be performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -747,10 +742,9 @@ byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                   throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
 <a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction
- already owns a strong enough lock, and no extra unlock should be
- performed.
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+ value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong
+ enough lock, and no extra unlock should be performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -774,10 +768,9 @@ long&nbsp;nanosTimeout)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive
- locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction
- already owns a strong enough lock, and no extra unlock should be
- performed.
+<div class="block">Attempts to acquire a shared lock for the given key, denying exclusive locks. If return
+ value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong
+ enough lock, and no extra unlock should be performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -802,9 +795,9 @@ byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                       throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
 <a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns a strong enough
- lock, and no extra unlock should be performed. If <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a> is returned, transaction holds a shared
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong enough lock, and no extra unlock should be
+ performed. If <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a> is returned, transaction holds a shared
  lock, which cannot be upgraded.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
@@ -828,9 +821,9 @@ long&nbsp;nanosTimeout)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                    throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire an upgradable lock for the given key, denying
- exclusive and additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns a strong enough
- lock, and no extra unlock should be performed.
+<div class="block">Attempts to acquire an upgradable lock for the given key, denying exclusive and
+ additional upgradable locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns a strong enough lock, and no extra unlock should be
+ performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
@@ -855,7 +848,7 @@ long&nbsp;nanosTimeout)</span>
                      throws <span class="exceptions"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a>,
 <a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
 <div class="block">Attempts to acquire an exclusive lock for the given key, denying any
- additional locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>, transaction already owns exclusive lock, and no extra unlock
+ additional locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction already owns exclusive lock, and no extra unlock
  should be performed. If <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a> is returned,
  transaction holds a shared lock, which cannot be upgraded.
 
@@ -880,10 +873,9 @@ long&nbsp;nanosTimeout)</span>
 byte[]&nbsp;key,
 long&nbsp;nanosTimeout)</span>
                   throws <span class="exceptions"><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></span></div>
-<div class="block">Attempts to acquire an exclusive lock for the given key, denying any
- additional locks. If return value is <a href="LockResult.html#isAlreadyOwned()"><code>owned</code></a>,
- transaction already owns exclusive lock, and no extra unlock should be
- performed.
+<div class="block">Attempts to acquire an exclusive lock for the given key, denying any additional
+ locks. If return value is <a href="LockResult.html#isAlreadyOwned()">owned</a>, transaction
+ already owns exclusive lock, and no extra unlock should be performed.
 
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>

@@ -42,9 +42,10 @@ public interface DirectReplicator extends Replicator {
     void start() throws IOException;
 
     /**
-     * Start by receiving a {@link #requestSnapshot snapshot} from another group member,
-     * expected to be called only by newly joined members. New members are initially {@link
-     * Role#RESTORING restoring}, so call the start method after restoration to update the role.
+     * Start by receiving a {@linkplain #requestSnapshot snapshot} from another group member,
+     * expected to be called only by newly joined members. New members are initially
+     * {@linkplain Role#RESTORING restoring}, so call the start method after restoration to
+     * update the role.
      *
      * @param options requested options; can pass null if none
      * @return null if no snapshot could be found and replicator hasn't started
@@ -55,8 +56,8 @@ public interface DirectReplicator extends Replicator {
 
     /**
      * Connect to a remote replication group member, for receiving a database snapshot. An
-     * {@link #snapshotRequestAcceptor acceptor} must be installed on the group member being
-     * connected to for the request to succeed.
+     * {@linkplain #snapshotRequestAcceptor acceptor} must be installed on the group member
+     * being connected to for the request to succeed.
      * 
      * <p>The sender is selected as the one which has the fewest count of active snapshot
      * sessions. If all the counts are the same, then a sender is instead randomly selected,

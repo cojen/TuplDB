@@ -159,13 +159,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#STRICT">STRICT</a></span></code></th>
 <td class="colLast">
-<div class="block">Rule which rejects any shared lock upgrade as <a href="LockResult.html#ILLEGAL"><code>illegal</code></a>.</div>
+<div class="block">Rule which rejects any shared lock upgrade as <a href="LockResult.html#ILLEGAL">illegal</a>.</div>
 </td>
 </tr>
 <tr class="altColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#UNCHECKED">UNCHECKED</a></span></code></th>
 <td class="colLast">
-<div class="block">Rule which always attempts an upgrade, potentially causing a <a href="DeadlockException.html" title="class in org.cojen.tupl"><code>deadlock</code></a> if multiple transactions are making the same attempt.</div>
+<div class="block">Rule which always attempts an upgrade, potentially causing a <a href="DeadlockException.html" title="class in org.cojen.tupl">deadlock</a> if multiple transactions are making the same attempt.</div>
 </td>
 </tr>
 </tbody>
@@ -237,8 +237,8 @@ the order they are declared.</div>
 <section class="detail">
 <h3><a id="STRICT">STRICT</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a></span>&nbsp;<span class="memberName">STRICT</span></div>
-<div class="block">Rule which rejects any shared lock upgrade as <a href="LockResult.html#ILLEGAL"><code>illegal</code></a>. The
- lock must first be acquired as <a href="LockMode.html#UPGRADABLE_READ"><code>upgradable</code></a>.</div>
+<div class="block">Rule which rejects any shared lock upgrade as <a href="LockResult.html#ILLEGAL">illegal</a>. The
+ lock must first be acquired as <a href="LockMode.html#UPGRADABLE_READ">upgradable</a>.</div>
 </section>
 </li>
 <li class="blockList">
@@ -247,14 +247,14 @@ the order they are declared.</div>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a></span>&nbsp;<span class="memberName">LENIENT</span></div>
 <div class="block">Rule which allows an upgrade to succeed, but only when the acting transaction is the
  sole shared lock owner. If other transactions are also holding the lock, the upgrade
- attempt is <a href="LockResult.html#ILLEGAL"><code>illegal</code></a>.</div>
+ attempt is <a href="LockResult.html#ILLEGAL">illegal</a>.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="UNCHECKED">UNCHECKED</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a></span>&nbsp;<span class="memberName">UNCHECKED</span></div>
-<div class="block">Rule which always attempts an upgrade, potentially causing a <a href="DeadlockException.html" title="class in org.cojen.tupl"><code>deadlock</code></a> if multiple transactions are making the same attempt.</div>
+<div class="block">Rule which always attempts an upgrade, potentially causing a <a href="DeadlockException.html" title="class in org.cojen.tupl">deadlock</a> if multiple transactions are making the same attempt.</div>
 </section>
 </li>
 </ul>

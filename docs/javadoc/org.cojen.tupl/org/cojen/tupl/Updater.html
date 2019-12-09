@@ -101,8 +101,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public interface <span class="typeNameLabel">Updater</span>
 extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
 <div class="block">Scans through all entries in a view, updating them along the way. Updater implementations
- which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a>. Any exception
- thrown by an updating action automatically closes the Updater.
+ which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
+ exception thrown by an updating action automatically closes the Updater.
 
  <p>Updater instances can only be safely used by one thread at a time, and they must be
  closed when no longer needed. Instances can be exchanged by threads, as long as a

@@ -112,8 +112,7 @@ extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl"
  and then only <code>["hello"]</code> is read. If <code>["helloworld"]</code> was written, no tearing
  of the two words can occur. They might both be read or both be dropped, atomically.
 
- <p>StreamReplicators require that a control message <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>
- be installed for supporting group membership changes. Consider using <a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a> instead, although it has slightly higher overhead. In order for control
+ <p>StreamReplicators require that a control message <a href="#controlMessageAcceptor(java.util.function.Consumer)">acceptor</a> be installed for supporting group membership changes. Consider using <a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl"><code>MessageReplicator</code></a> instead, although it has slightly higher overhead. In order for control
  messages to be processed, replicas must be actively reading and calling <a href="#controlMessageReceived(long,byte%5B%5D)"><code>controlMessageReceived</code></a> as necessary.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
@@ -194,7 +193,8 @@ extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl"
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#controlMessageReceived(long,byte%5B%5D)">controlMessageReceived</a></span>&#8203;(long&nbsp;position,
 byte[]&nbsp;message)</code></th>
 <td class="colLast">
-<div class="block">Called to pass along a control message, which was originally provided through an <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>.</div>
+<div class="block">Called to pass along a control message, which was originally provided through an
+ <a href="#controlMessageAcceptor(java.util.function.Consumer)">acceptor</a>.</div>
 </td>
 </tr>
 <tr class="altColor" id="i2">
@@ -347,9 +347,10 @@ boolean&nbsp;follow)</span></div>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">controlMessageReceived</span>&#8203;(<span class="arguments">long&nbsp;position,
 byte[]&nbsp;message)</span>
                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Called to pass along a control message, which was originally provided through an <a href="#controlMessageAcceptor(java.util.function.Consumer)"><code>acceptor</code></a>. Control messages must be passed along in the original
- order in which they were created. A control message cannot be treated as applied until
- after this method returns.</div>
+<div class="block">Called to pass along a control message, which was originally provided through an
+ <a href="#controlMessageAcceptor(java.util.function.Consumer)">acceptor</a>. Control messages must be passed along in
+ the original order in which they were created. A control message cannot be treated as
+ applied until after this method returns.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - log position just after the message</dd>

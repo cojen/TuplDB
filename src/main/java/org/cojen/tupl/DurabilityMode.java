@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Various {@link Transaction transaction} durability modes, which control the durability
+ * Various {@linkplain Transaction transaction} durability modes, which control the durability
  * strength of committed transactions. Strong modes offer safety, but they are also relatively
  * slow. Weak modes are faster, but transactions committed in one of these modes can get lost.
  *

@@ -262,7 +262,7 @@ byte[]&nbsp;key)</code></th>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)">newAccessor</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
 <td class="colLast">
-<div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+<div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl">accessing</a> values in chunks,
  permitting them to be larger than what can fit in main memory.</div>
 </td>
 </tr>
@@ -573,7 +573,7 @@ int&nbsp;trim)</code></th>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></span>&nbsp;<span class="memberName">newAccessor</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</span>
                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl"><code>accessing</code></a> values in chunks,
+<div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl">accessing</a> values in chunks,
  permitting them to be larger than what can fit in main memory. Essentially, this is a
  convenience method which disables <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a>, and then
  positions the cursor at the given key.
@@ -1265,7 +1265,7 @@ int&nbsp;trim)</span></div>
  to decide how to deal with them. If the combiner chooses to <a href="Combiner.html#discard()"><code>discard</code></a> duplicate keys, then the returned view represents the <a href="https://en.wikipedia.org/wiki/Symmetric_difference"><cite>symmetric set
  difference</cite></a> instead.
 
- <p>Storing entries in the union is permitted, if the combiner supports <a href="Combiner.html#separate(byte%5B%5D,byte%5B%5D)"><code>separation</code></a>. The separator must supply at least one non-null value, or
+ <p>Storing entries in the union is permitted, if the combiner supports <a href="Combiner.html#separate(byte%5B%5D,byte%5B%5D)">separation</a>. The separator must supply at least one non-null value, or
  else a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -1287,8 +1287,9 @@ int&nbsp;trim)</span></div>
  intersection</cite></a> of this view and a second one. An intersection eliminates
  duplicate keys, by relying on a combiner to decide how to deal with them.
 
- <p>Storing entries in the intersection is permitted, if the combiner supports <a href="Combiner.html#separate(byte%5B%5D,byte%5B%5D)"><code>separation</code></a>. The separator must supply two non-null values, or else a
- <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
+ <p>Storing entries in the intersection is permitted, if the combiner supports
+ <a href="Combiner.html#separate(byte%5B%5D,byte%5B%5D)">separation</a>. The separator must supply two non-null
+ values, or else a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a> will be thrown.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="Combiner.html#first()"><code>first</code></a></dd>

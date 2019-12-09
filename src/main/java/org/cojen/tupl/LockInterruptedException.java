@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a lock request by a {@link Transaction transaction} was
+ * Thrown when a lock request by a {@linkplain Transaction transaction} was
  * interrupted by another thread.
  *
  * @author Brian S O'Neill

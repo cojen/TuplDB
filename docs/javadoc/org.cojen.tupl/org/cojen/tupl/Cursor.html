@@ -110,9 +110,9 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
  <p>Methods which return <a href="LockResult.html" title="enum in org.cojen.tupl"><code>LockResult</code></a> might acquire a lock to access
  the requested entry. The return type indicates if the lock is still <a href="LockResult.html#isHeld()"><code>held</code></a>, and in what fashion. Except where indicated, a
  <a href="LockTimeoutException.html" title="class in org.cojen.tupl"><code>LockTimeoutException</code></a> is thrown when a lock cannot be acquired in
- time. When cursor is <a href="#link(org.cojen.tupl.Transaction)"><code>linked</code></a> to a transaction, it defines the
+ time. When cursor is <a href="#link(org.cojen.tupl.Transaction)">linked</a> to a transaction, it defines the
  locking behavior and timeout. Otherwise, a lock is always acquired, with the
- <a href="DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)"><code>default</code></a> timeout.
+ <a href="DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)">default</a> timeout.
 
  <p>If a <a href="LockFailureException.html" title="class in org.cojen.tupl"><code>LockFailureException</code></a> is thrown from any method, the Cursor
  is positioned at the desired key, but the value is <a href="#NOT_LOADED"><code>NOT_LOADED</code></a>.</div>
@@ -144,7 +144,7 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <td class="colFirst"><code>static byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#NOT_LOADED">NOT_LOADED</a></span></code></th>
 <td class="colLast">
-<div class="block">Empty marker which indicates that value exists but has not been <a href="#load()"><code>loaded</code></a>.</div>
+<div class="block">Empty marker which indicates that value exists but has not been <a href="#load()">loaded</a>.</div>
 </td>
 </tr>
 </tbody>
@@ -509,7 +509,7 @@ boolean&nbsp;inclusive)</code></th>
 <section class="detail">
 <h3><a id="NOT_LOADED">NOT_LOADED</a></h3>
 <div class="memberSignature"><span class="modifiers">static final</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">NOT_LOADED</span></div>
-<div class="block">Empty marker which indicates that value exists but has not been <a href="#load()"><code>loaded</code></a>.</div>
+<div class="block">Empty marker which indicates that value exists but has not been <a href="#load()">loaded</a>.</div>
 </section>
 </li>
 </ul>
@@ -580,7 +580,7 @@ boolean&nbsp;inclusive)</code></th>
 <h3><a id="autoload(boolean)">autoload</a></h3>
 <div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">autoload</span>&#8203;(<span class="arguments">boolean&nbsp;mode)</span></div>
 <div class="block">By default, values are loaded automatically, as they are seen. When disabled, values
- might need to be <a href="#load()"><code>manually loaded</code></a>. When a <a href="Transformer.html" title="interface in org.cojen.tupl"><code>Transformer</code></a> is
+ might need to be <a href="#load()">manually loaded</a>. When a <a href="Transformer.html" title="interface in org.cojen.tupl"><code>Transformer</code></a> is
  used, the value might still be loaded automatically. When the value exists but hasn't
  been loaded, the value field of the cursor is set to <a href="#NOT_LOADED"><code>NOT_LOADED</code></a>.</div>
 <dl>
@@ -644,7 +644,7 @@ int&nbsp;length)</span></div>
  must perform a full find operation for each modification made in the range.
  Registration isn't useful when using the cursor for single updates.
 
- <p>The cursor is automatically <a href="#unregister()"><code>unregistered</code></a> when <a href="#reset()"><code>reset</code></a>, or when moved to an undefined position, or when moving the cursor
+ <p>The cursor is automatically <a href="#unregister()">unregistered</a> when <a href="#reset()">reset</a>, or when moved to an undefined position, or when moving the cursor
  non-incrementally. Methods whose name starts with "next", "previous", "skip", or
  "findNearby" are considered to move the cursor incrementally. The use of these methods
  generally indicates that registering the cursor might be beneficial.

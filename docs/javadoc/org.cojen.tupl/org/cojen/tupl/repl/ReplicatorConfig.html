@@ -248,8 +248,8 @@ int&nbsp;port)</code></th>
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localRole(org.cojen.tupl.repl.Role)">localRole</a></span>&#8203;(<a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a>&nbsp;role)</code></th>
 <td class="colLast">
-<div class="block">Set the desired local member role, which is <a href="Role.html#NORMAL"><code>normal</code></a> by default, and
- for the primoridal group member.</div>
+<div class="block">Set the desired local member role, which is <a href="Role.html#NORMAL">normal</a> by default,
+ and for the primoridal group member.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i13">
@@ -415,10 +415,11 @@ int&nbsp;port)</code></th>
 <section class="detail">
 <h3><a id="localRole(org.cojen.tupl.repl.Role)">localRole</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localRole</span>&#8203;(<span class="arguments"><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a>&nbsp;role)</span></div>
-<div class="block">Set the desired local member role, which is <a href="Role.html#NORMAL"><code>normal</code></a> by default, and
- for the primoridal group member. Members can join an existing group only by consensus,
- which implies that the group has a leader. All joining members start out as <a href="Role.html#RESTORING"><code>restoring</code></a>, and then the role is updated after the replicator has
- started. Role changes also require consensus.</div>
+<div class="block">Set the desired local member role, which is <a href="Role.html#NORMAL">normal</a> by default,
+ and for the primoridal group member. Members can join an existing group only by
+ consensus, which implies that the group has a leader. All joining members start out as
+ <a href="Role.html#RESTORING">restoring</a>, and then the role is updated after the replicator
+ has started. Role changes also require consensus.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if role is null</dd>

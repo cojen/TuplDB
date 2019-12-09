@@ -38,9 +38,9 @@ import org.cojen.tupl.views.ViewUtils;
  * the requested entry. The return type indicates if the lock is still {@link
  * LockResult#isHeld held}, and in what fashion. Except where indicated, a
  * {@link LockTimeoutException} is thrown when a lock cannot be acquired in
- * time. When cursor is {@link #link linked} to a transaction, it defines the
+ * time. When cursor is {@linkplain #link linked} to a transaction, it defines the
  * locking behavior and timeout. Otherwise, a lock is always acquired, with the
- * {@link DatabaseConfig#lockTimeout default} timeout.
+ * {@linkplain DatabaseConfig#lockTimeout default} timeout.
  *
  * <p>If a {@link LockFailureException} is thrown from any method, the Cursor
  * is positioned at the desired key, but the value is {@link #NOT_LOADED}.
@@ -50,8 +50,8 @@ import org.cojen.tupl.views.ViewUtils;
  */
 public interface Cursor extends ValueAccessor, Closeable {
     /**
-     * Empty marker which indicates that value exists but has not been {@link
-     * #load loaded}.
+     * Empty marker which indicates that value exists but has not been {@linkplain #load
+     * loaded}.
      */
     public static final byte[] NOT_LOADED = new byte[0];
 
@@ -99,7 +99,7 @@ public interface Cursor extends ValueAccessor, Closeable {
 
     /**
      * By default, values are loaded automatically, as they are seen. When disabled, values
-     * might need to be {@link Cursor#load manually loaded}. When a {@link Transformer} is
+     * might need to be {@linkplain Cursor#load manually loaded}. When a {@link Transformer} is
      * used, the value might still be loaded automatically. When the value exists but hasn't
      * been loaded, the value field of the cursor is set to {@link #NOT_LOADED}.
      *
@@ -147,8 +147,8 @@ public interface Cursor extends ValueAccessor, Closeable {
      * must perform a full find operation for each modification made in the range.
      * Registration isn't useful when using the cursor for single updates.
      *
-     * <p>The cursor is automatically {@link #unregister unregistered} when {@link #reset
-     * reset}, or when moved to an undefined position, or when moving the cursor
+     * <p>The cursor is automatically {@linkplain #unregister unregistered} when {@linkplain
+     * #reset reset}, or when moved to an undefined position, or when moving the cursor
      * non-incrementally. Methods whose name starts with "next", "previous", "skip", or
      * "findNearby" are considered to move the cursor incrementally. The use of these methods
      * generally indicates that registering the cursor might be beneficial.

@@ -43,8 +43,8 @@ import java.util.function.Consumer;
  * and then only {@code ["hello"]} is read. If {@code ["helloworld"]} was written, no tearing
  * of the two words can occur. They might both be read or both be dropped, atomically.
  *
- * <p>StreamReplicators require that a control message {@link #controlMessageAcceptor acceptor}
- * be installed for supporting group membership changes. Consider using {@link
+ * <p>StreamReplicators require that a control message {@linkplain #controlMessageAcceptor
+ * acceptor} be installed for supporting group membership changes. Consider using {@link
  * MessageReplicator} instead, although it has slightly higher overhead. In order for control
  * messages to be processed, replicas must be actively reading and calling {@link
  * #controlMessageReceived controlMessageReceived} as necessary.
@@ -149,10 +149,10 @@ public interface StreamReplicator extends DirectReplicator {
     Writer newWriter(long position);
 
     /**
-     * Called to pass along a control message, which was originally provided through an {@link
-     * #controlMessageAcceptor acceptor}. Control messages must be passed along in the original
-     * order in which they were created. A control message cannot be treated as applied until
-     * after this method returns.
+     * Called to pass along a control message, which was originally provided through an
+     * {@linkplain #controlMessageAcceptor acceptor}. Control messages must be passed along in
+     * the original order in which they were created. A control message cannot be treated as
+     * applied until after this method returns.
      *
      * @param position log position just after the message
      */

@@ -33,21 +33,21 @@ package org.cojen.tupl;
  */
 public enum LockUpgradeRule {
     /**
-     * Rule which rejects any shared lock upgrade as {@link LockResult#ILLEGAL illegal}. The
-     * lock must first be acquired as {@link LockMode#UPGRADABLE_READ upgradable}.
+     * Rule which rejects any shared lock upgrade as {@linkplain LockResult#ILLEGAL illegal}. The
+     * lock must first be acquired as {@linkplain LockMode#UPGRADABLE_READ upgradable}.
      */
     STRICT,
 
     /**
      * Rule which allows an upgrade to succeed, but only when the acting transaction is the
      * sole shared lock owner. If other transactions are also holding the lock, the upgrade
-     * attempt is {@link LockResult#ILLEGAL illegal}.
+     * attempt is {@linkplain LockResult#ILLEGAL illegal}.
      */
     LENIENT,
 
     /**
-     * Rule which always attempts an upgrade, potentially causing a {@link DeadlockException
-     * deadlock} if multiple transactions are making the same attempt.
+     * Rule which always attempts an upgrade, potentially causing a {@linkplain
+     * DeadlockException deadlock} if multiple transactions are making the same attempt.
      */
     UNCHECKED
 }

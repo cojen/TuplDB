@@ -23,7 +23,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A group of {@link Worker workers} for running tasks. This class isn't thread safe for
+ * A group of {@linkplain Worker workers} for running tasks. This class isn't thread safe for
  * enqueuing tasks, and so the caller must provide its own mutual exclusion to protect against
  * concurrent enqueues.
  *

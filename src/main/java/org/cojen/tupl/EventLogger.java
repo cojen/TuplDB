@@ -23,7 +23,7 @@ import java.util.logging.LogRecord;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Event listener implementation which passes events to a {@link Logger logger}.
+ * Event listener implementation which passes events to a {@linkplain Logger logger}.
  *
  * @author Brian S O'Neill
  */

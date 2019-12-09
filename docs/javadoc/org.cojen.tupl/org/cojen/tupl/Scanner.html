@@ -105,8 +105,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public interface <span class="typeNameLabel">Scanner</span>
 extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></pre>
 <div class="block">Scans through all entries in a view and passes them to a consumer. Scanner implementations
- which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl"><code>cursor</code></a>. Any exception
- thrown by a scan action automatically closes the Scanner.
+ which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
+ exception thrown by a scan action automatically closes the Scanner.
 
  <p>Scanner instances can only be safely used by one thread at a time, and they must be
  closed when no longer needed. Instances can be exchanged by threads, as long as a

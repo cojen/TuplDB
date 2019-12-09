@@ -336,8 +336,8 @@ long&nbsp;timeoutNanos)</code></th>
  all data lower than the given position is confirmed. All data at or higher than the
  given position might be discarded.
 
- <p>After started, the reported <a href="#readPosition()"><code>position</code></a> can differ from the one
- provided to this method.</div>
+ <p>After started, the reported <a href="#readPosition()">position</a> can differ from the
+ one provided to this method.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - position to start reading from; 0 is the lowest position</dd>
@@ -503,7 +503,8 @@ byte[]&nbsp;message)</span>
 byte[]&nbsp;oldName,
 byte[]&nbsp;newName)</span></div>
 <div class="block">Notification to replica after an index is renamed. The current thread is free to perform
- any blocking operations &mdash; it will not suspend replication processing unless <a href="../DatabaseConfig.html#maxReplicaThreads(int)"><code>all</code></a> replication threads are consumed.</div>
+ any blocking operations &mdash; it will not suspend replication processing unless
+ <a href="../DatabaseConfig.html#maxReplicaThreads(int)">all</a> replication threads are consumed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - non-null index reference</dd>
@@ -517,7 +518,8 @@ byte[]&nbsp;newName)</span></div>
 <h3><a id="notifyDrop(org.cojen.tupl.Index)">notifyDrop</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">notifyDrop</span>&#8203;(<span class="arguments"><a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</span></div>
 <div class="block">Notification to replica after an index is dropped. The current thread is free to perform
- any blocking operations &mdash; it will not suspend replication processing unless <a href="../DatabaseConfig.html#maxReplicaThreads(int)"><code>all</code></a> replication threads are consumed.</div>
+ any blocking operations &mdash; it will not suspend replication processing unless
+ <a href="../DatabaseConfig.html#maxReplicaThreads(int)">all</a> replication threads are consumed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - non-null closed and dropped index reference</dd>

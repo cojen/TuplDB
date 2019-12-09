@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Thrown when a lock request by a {@link Transaction transaction} timed out. A
- * {@link DatabaseConfig#lockTimeout default} timeout is defined, which can be
- * {@link Transaction#lockTimeout overridden} by a transaction.
+ * Thrown when a lock request by a {@linkplain Transaction transaction} timed out. A
+ * {@linkplain DatabaseConfig#lockTimeout default} timeout is defined, which can be
+ * {@linkplain Transaction#lockTimeout overridden} by a transaction.
  *
  * @author Brian S O'Neill
  * @see LockResult#TIMED_OUT_LOCK
@@ -64,9 +64,9 @@ public class LockTimeoutException extends LockFailureException {
     }
 
     /**
-     * Returns the object which was {@link Transaction#attach attached} to the current lock
-     * owner shortly after the timeout occurred. If an exclusive lock request failed because
-     * any shared locks were held, only the first discovered attachment is provided.
+     * Returns the object which was {@linkplain Transaction#attach attached} to the current
+     * lock owner shortly after the timeout occurred. If an exclusive lock request failed
+     * because any shared locks were held, only the first discovered attachment is provided.
      */
     @Override
     public Object getOwnerAttachment() {

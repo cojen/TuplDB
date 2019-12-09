@@ -24,8 +24,8 @@ import java.util.concurrent.TimeUnit;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Exception thrown which indicates a {@link Database database} problem not due
- * to general I/O problems.
+ * Exception thrown which indicates a {@linkplain Database database} problem not due to general
+ * I/O problems.
  *
  * @author Brian S O'Neill
  */

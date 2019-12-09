@@ -212,7 +212,7 @@ boolean&nbsp;follow)</code></th>
 <td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
-<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)"><code>snapshot</code></a> from another group member,
+<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
  expected to be called only by newly joined members.</div>
 </td>
 </tr>
@@ -284,8 +284,10 @@ long&nbsp;nanosTimeout)</code></th>
 <h3><a id="restore(java.util.Map)">restore</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">restore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)"><code>snapshot</code></a> from another group member,
- expected to be called only by newly joined members. New members are initially <a href="Role.html#RESTORING"><code>restoring</code></a>, so call the start method after restoration to update the role.</div>
+<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
+ expected to be called only by newly joined members. New members are initially
+ <a href="Role.html#RESTORING">restoring</a>, so call the start method after restoration to
+ update the role.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>options</code> - requested options; can pass null if none</dd>
@@ -304,8 +306,8 @@ long&nbsp;nanosTimeout)</code></th>
 <div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">requestSnapshot</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot. An
- <a href="#snapshotRequestAcceptor(java.util.function.Consumer)"><code>acceptor</code></a> must be installed on the group member being
- connected to for the request to succeed.
+ <a href="#snapshotRequestAcceptor(java.util.function.Consumer)">acceptor</a> must be installed on the group member
+ being connected to for the request to succeed.
  
  <p>The sender is selected as the one which has the fewest count of active snapshot
  sessions. If all the counts are the same, then a sender is instead randomly selected,
