@@ -2566,7 +2566,9 @@ public final class _LocalDatabase extends CoreDatabase {
 
     @Override
     public void uponLeader(Runnable task) {
-        if (mRedoWriter != null) {
+        if (mRedoWriter == null) {
+            task.run();
+        } else {
             mRedoWriter.uponLeader(task);
         }
     }
