@@ -21,6 +21,8 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 
+import java.util.concurrent.ForkJoinPool;
+
 import org.cojen.tupl.DurabilityMode;
 
 import org.cojen.tupl.util.Latch;
@@ -59,13 +61,8 @@ abstract class _RedoWriter extends Latch implements Closeable, Flushable {
         return true;
     }
 
-    /**
-     * Invokes the given task when the database instance has become the leader, at most once.
-     * If already the leader when this method is called, then the current thread runs the task
-     * immediately.
-     */
     void uponLeader(Runnable task) {
-        task.run();
+        ForkJoinPool.commonPool().execute(task);
     }
 
     /**

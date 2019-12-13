@@ -276,34 +276,30 @@ final class ReplController extends ReplWriter {
         super.force(metadata);
     }
 
+    @Override
     boolean isLeader() {
         return !mTxnRedoWriter.mUnmodifiable;
     }
 
+    @Override
     void uponLeader(Runnable task) {
-        Objects.requireNonNull(task);
-
-        if (!isLeader()) {
-            acquireExclusive();
-            try {
-                if (!isLeader()) {
-                    if (mLeaderNotifyCondition == null) {
-                        mLeaderNotifyCondition = new LatchCondition();
-                    }
-
-                    mLeaderNotifyCondition.uponSignal(this, () -> {
-                        ForkJoinPool.commonPool().execute(task);
-                        return true;
-                    });
-
-                    return;
+        acquireExclusive();
+        try {
+            if (isLeader()) {
+                ForkJoinPool.commonPool().execute(task);
+            } else {
+                if (mLeaderNotifyCondition == null) {
+                    mLeaderNotifyCondition = new LatchCondition();
                 }
-            } finally {
-                releaseExclusive();
-            }
-        }
 
-        task.run();
+                mLeaderNotifyCondition.uponSignal(this, () -> {
+                    ForkJoinPool.commonPool().execute(task);
+                    return true;
+                });
+            }
+        } finally {
+            releaseExclusive();
+        }
     }
 
     /**

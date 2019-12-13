@@ -54,6 +54,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -2567,7 +2568,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public void uponLeader(Runnable task) {
         if (mRedoWriter == null) {
-            task.run();
+            ForkJoinPool.commonPool().execute(task);
         } else {
             mRedoWriter.uponLeader(task);
         }
