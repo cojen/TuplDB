@@ -84,6 +84,10 @@ final class _Lock {
             : ((count != 0 && isSharedLocker(locker)) ? OWNED_SHARED : UNOWNED);
     }
 
+    boolean isPrepareLock() {
+        return mIndexId == Tree.PREPARED_TXNS_ID;
+    }
+
     /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
      * the locker's mWaitingFor field is set to this _Lock as a side-effect.
@@ -582,7 +586,14 @@ final class _Lock {
     }
 
     private IllegalStateException unlockFail() {
-        return new IllegalStateException("Cannot unlock an exclusive lock");
+        String message;
+        if (isPrepareLock()) {
+            // White lie to avoid exposing the special prepare lock.
+            message = "No locks held";
+        } else {
+            message = "Cannot unlock an exclusive lock";
+        }
+        return new IllegalStateException(message);
     }
 
     private static boolean isClosed(_Locker locker) {

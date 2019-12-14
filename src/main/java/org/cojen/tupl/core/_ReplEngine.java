@@ -17,11 +17,13 @@
 
 package org.cojen.tupl.core;
 
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
 import java.lang.ref.SoftReference;
 
 import java.util.Arrays;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -40,6 +42,7 @@ import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 
@@ -73,6 +76,9 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     private final TxnTable mTransactions;
 
+    // Used by stashForRecovery and awaitPreparedTransactions.
+    private LatchCondition mStashedCond;
+
     // Maintain soft references to indexes, allowing them to get closed if not
     // used for awhile. Without the soft references, Database maintains only
     // weak references to indexes. They'd get closed too soon.
@@ -84,7 +90,8 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     /**
      * @param manager already started; if null, assume subclass is the manager
-     * @param txns recovered transactions; can be null; cleared as a side-effect
+     * @param txns recovered transactions; can be null; cleared as a side-effect; keyed by
+     * unscrambled id
      */
     _ReplEngine(ReplicationManager manager, int maxThreads,
                _LocalDatabase db, LHashTable.Obj<_LocalTransaction> txns,
@@ -160,7 +167,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         mCursors = cursorTable;
     }
 
-    public _RedoWriter initWriter(long redoNum) {
+    public _ReplController initWriter(long redoNum) {
         mController.initCheckpointNumber(redoNum);
         return mController;
     }
@@ -197,7 +204,15 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean reset() throws IOException {
-        doReset(false);
+        final LHashTable.Obj<_LocalTransaction> remaining = doReset(false);
+
+        if (remaining != null) {
+            remaining.traverse(entry -> {
+                mTransactions.insert(entry.key).mTxn = entry.value;
+                return false;
+            });
+        }
+
         return true;
     }
 
@@ -205,14 +220,25 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
      * Note: Caller must hold mDecodeLatch exclusively.
      *
      * @param interrupt pass true to interrupt all worker threads such that they exit when done
+     * @return remaining prepared transactions, or null if none; keyed by scrambled id
      */
-    private void doReset(boolean interrupt) throws IOException {
-        if (mTransactions.size() != 0) {
+    private LHashTable.Obj<_LocalTransaction> doReset(boolean interrupt) throws IOException {
+        final LHashTable.Obj<_LocalTransaction> remaining;
+
+        if (mTransactions.size() == 0) {
+            remaining = null;
+        } else {
+            remaining = new LHashTable.Obj<>(16);
+
             mTransactions.traverse(te -> {
                 runTask(te, new Worker.Task() {
                     public void run() throws IOException {
                         _LocalTransaction txn = te.mTxn;
-                        txn.recoveryCleanup(true);
+                        if (!txn.recoveryCleanup(true)) {
+                            synchronized (remaining) {
+                                remaining.insert(te.key).value = txn;
+                            }
+                        }
                     }
                 });
 
@@ -235,13 +261,17 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             });
         }
 
-        mDatabase.emptyLingeringTrash(mTransactions); // only for replicated transactions
+        mDatabase.emptyLingeringTrash(remaining);
+
+        return remaining == null || remaining.size() == 0 ? null : remaining;
     }
 
     /**
      * Reset and interrupt all worker threads. Intended to be used by _RedoLogApplier subclass.
+     *
+     * @return remaining prepared transactions, or null if none; keyed by scrambled id
      */
-    public void finish() throws IOException {
+    public LHashTable.Obj<_LocalTransaction> finish() throws IOException {
         mDecodeLatch.acquireExclusive();
         try {
             EventListener listener = mDatabase.eventListener();
@@ -254,7 +284,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                 }
             }
 
-            doReset(true);
+            return doReset(true);
         } finally {
             mDecodeLatch.releaseExclusive();
         }
@@ -990,8 +1020,45 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean txnPrepare(long txnId, long prepareTxnId, int handlerId, byte[] message)
+        throws IOException
+    {
+        // Run the task against the transaction being prepared, not the carrier transaction.
+        TxnEntry te = getTxnEntry(prepareTxnId);
+        _LocalTransaction txn = te.mTxn;
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                txn.prepareRedo(handlerId, message);
+            }
+        });
+
+        return true;
+    }
+
+    @Override
+    public boolean txnPrepareRollback(long txnId, long prepareTxnId) throws IOException {
+        // Run the task against the transaction being prepared, not the carrier transaction.
+        TxnEntry te = getTxnEntry(prepareTxnId);
+        _LocalTransaction txn = te.mTxn;
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                _BTree preparedTxns = mDatabase.tryPreparedTxns();
+                if (preparedTxns != null) {
+                    var prepareKey = new byte[8];
+                    encodeLongBE(prepareKey, 0, prepareTxnId);
+                    preparedTxns.store(Transaction.BOGUS, prepareKey, null);
+                }
+            }
+        });
+
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException {
-        CustomHandler handler = mDatabase.findCustomHandler(handlerId);
+        CustomHandler handler = mDatabase.findCustomRecoveryHandler(handlerId);
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
@@ -1009,7 +1076,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                                  long indexId, byte[] key)
         throws IOException
     {
-        CustomHandler handler = mDatabase.findCustomHandler(handlerId);
+        CustomHandler handler = mDatabase.findCustomRecoveryHandler(handlerId);
         TxnEntry te = getTxnEntry(txnId);
         _LocalTransaction txn = te.mTxn;
 
@@ -1085,6 +1152,124 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     void resume() {
         mDecodeLatch.releaseExclusive();
+    }
+
+    /**
+     * Called by _ReplWriter.
+     *
+     * @param txn prepared transaction
+     */
+    void stashForRecovery(_LocalTransaction txn) {
+        long scrambledTxnId = mix(txn.getId());
+
+        mDecodeLatch.acquireExclusive();
+        try {
+            mTransactions.insert(scrambledTxnId).mTxn = txn;
+            if (mStashedCond != null) {
+                mStashedCond.signal(mDecodeLatch);
+            }
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
+
+    /**
+     * Called by _ReplController.
+     */
+    void awaitPreparedTransactions() throws IOException {
+        // Report on stuck transactions after timing out.
+        long nanosTimeout = 1_000_000_000L;
+        boolean report = false;
+
+        while (!awaitPreparedTransactions(nanosTimeout, report)) {
+            // Still waiting for prepared transactions to transfer ownership. Double the
+            // timeout each time, up to a maximum of one minute.
+            nanosTimeout = Math.min(nanosTimeout << 1, 60_000_000_000L);
+            report = true;
+        }
+    }
+
+    /**
+     * @return true if not waiting on any prepared transactions
+     */
+    private boolean awaitPreparedTransactions(long nanosTimeout, boolean report)
+        throws IOException
+    {
+        _BTree preparedTxns = mDatabase.tryPreparedTxns();
+
+        if (preparedTxns == null) {
+            return true;
+        }
+
+        long nanosEnd = System.nanoTime() + nanosTimeout;
+
+        while (true) {
+            boolean finished = true;
+
+            try (var c = new _BTreeCursor(preparedTxns)) {
+                c.mTxn = _LocalTransaction.BOGUS;
+                c.autoload(false);
+
+                for (byte[] key = c.firstKey(); key != null; key = c.nextKey()) {
+                    long txnId = decodeLongBE(key, 0);
+
+                    TxnEntry te;
+                    long scrambledTxnId = mix(txnId);
+
+                    mDecodeLatch.acquireExclusive();
+                    try {
+                        te = mTransactions.get(scrambledTxnId);
+                        if (te == null) {
+                            if (mStashedCond == null) {
+                                mStashedCond = new LatchCondition();
+                            }
+                        }
+                    } finally {
+                        mDecodeLatch.releaseExclusive();
+                    }
+
+                    if (te == null) {
+                        finished = false;
+                        if (!report) {
+                            continue;
+                        }
+                    }
+
+                    EventListener listener = mDatabase.eventListener();
+                    if (listener != null) {
+                        listener.notify(EventType.RECOVERY_AWAIT_RELEASE,
+                                        "Prepared transaction must be reset: %1$d", txnId);
+                    }
+                }
+            }
+
+            int result;
+
+            mDecodeLatch.acquireExclusive();
+            try {
+                if (finished) {
+                    mStashedCond = null;
+                    return true;
+                }
+
+                result = mStashedCond.await(mDecodeLatch, nanosTimeout, nanosEnd);
+            } finally {
+                mDecodeLatch.releaseExclusive();
+            }
+
+            if (result <= 0) {
+                if (result == 0) {
+                    // Timed out.
+                    return false;
+                }
+                throw new InterruptedIOException();
+            }
+
+            nanosTimeout = Math.max(nanosEnd - System.nanoTime(), 0);
+
+            // Report again after timing out.
+            report = false;
+        }
     }
 
     /**
@@ -1321,6 +1506,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     private void decode() {
         final ReplDecoder decoder = mDecoder;
+        LHashTable.Obj<_LocalTransaction> remaining;
 
         try {
             while (!decoder.run(this));
@@ -1335,7 +1521,8 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                     // isn't thread-safe.
                     mWorkerGroup.join(false);
                 }
-                doReset(false);
+
+                remaining = doReset(false);
             } finally {
                 mDecodeLatch.releaseExclusive();
             }
@@ -1350,17 +1537,34 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             }
         }
 
+        _RedoWriter redo = null;
+
         try {
-            _RedoWriter redo;
             try {
                 redo = mController.leaderNotify();
             } catch (UnmodifiableReplicaException e) {
                 // Should already be receiving again due to this exception.
-                return;
             }
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
             closeQuietly(mDatabase, e);
+            return;
+        }
+
+        if (remaining != null) {
+            if (redo != null) {
+                final var fredo = redo;
+                ForkJoinPool.commonPool().execute(() -> {
+                    mDatabase.invokeRecoveryHandler(remaining, fredo);
+                });
+            } else {
+                mDatabase.invokeRecoveryHandler(remaining, null);
+
+                remaining.traverse(entry -> {
+                    stashForRecovery(entry.value);
+                    return true;
+                });
+            }
         }
     }
 

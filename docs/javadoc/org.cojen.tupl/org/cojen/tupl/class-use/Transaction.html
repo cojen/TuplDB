@@ -448,13 +448,21 @@ byte[]&nbsp;newValue)</code></th>
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">PrepareHandler.</span><code><span class="memberNameLink"><a href="../ext/PrepareHandler.html#prepare(org.cojen.tupl.Transaction,byte%5B%5D)">prepare</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+byte[]&nbsp;message)</code></th>
+<td class="colLast">
+<div class="block">Called to prepare a transaction or to recover one.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">CustomHandler.</span><code><span class="memberNameLink"><a href="../ext/CustomHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;message)</code></th>
 <td class="colLast">
 <div class="block">Called to write or apply an idempotent redo operation.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">CustomHandler.</span><code><span class="memberNameLink"><a href="../ext/CustomHandler.html#redo(org.cojen.tupl.Transaction,byte%5B%5D,long,byte%5B%5D)">redo</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;message,
@@ -464,7 +472,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Called to write or apply an idempotent redo operation which locked an index key.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">CustomHandler.</span><code><span class="memberNameLink"><a href="../ext/CustomHandler.html#undo(org.cojen.tupl.Transaction,byte%5B%5D)">undo</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;message)</code></th>

@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.ext.CustomHandler;
+import org.cojen.tupl.ext.PrepareHandler;
 
 /**
  * 
@@ -29,35 +29,17 @@ import org.cojen.tupl.ext.CustomHandler;
  * @author Brian S O'Neill
  */
 /*P*/
-final class CustomWriter extends HandlerWriter<CustomHandler> implements CustomHandler {
-    CustomWriter(LocalDatabase db, int handlerId, CustomHandler recoveryHandler) {
+final class PrepareWriter extends HandlerWriter<PrepareHandler> implements PrepareHandler {
+    PrepareWriter(LocalDatabase db, int handlerId, PrepareHandler recoveryHandler) {
         super(db, handlerId, recoveryHandler);
     }
 
     @Override
-    public void redo(Transaction txn, byte[] message) throws IOException {
-        redo(txn, message, 0, null);
-    }
-
-    @Override
-    public void redo(Transaction txn, byte[] message, long indexId, byte[] key) throws IOException {
+    public void prepare(Transaction txn, byte[] message) throws IOException {
         if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
+            LocalTransaction local = (LocalTransaction) txn;
             if (local.mDatabase == mDatabase) {
-                local.customRedo(mHandlerId, message, indexId, key);
-                return;
-            }
-        }
-
-        Utils.invalidTransaction(txn);
-    }
-
-    @Override
-    public void undo(Transaction txn, byte[] message) throws IOException {
-        if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
-            if (local.mDatabase == mDatabase) {
-                local.customUndo(mHandlerId, message);
+                local.prepare(mHandlerId, message);
                 return;
             }
         }

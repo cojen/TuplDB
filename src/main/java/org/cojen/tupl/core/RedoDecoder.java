@@ -582,8 +582,52 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case (OP_TXN_CUSTOM & 0xff):
+            case OP_TXN_PREPARE:
+                long prepareTxnId;
                 int handlerId;
+                try {
+                    txnId = readTxnId(in);
+                    prepareTxnId = in.readLongLE();
+                    handlerId = in.readUnsignedVarInt();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, null))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_PREPARE_MESSAGE:
+                try {
+                    txnId = readTxnId(in);
+                    prepareTxnId = in.readLongLE();
+                    handlerId = in.readUnsignedVarInt();
+                    message = in.readBytes();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in)
+                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, message))
+                {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_PREPARE_ROLLBACK:
+                try {
+                    txnId = readTxnId(in);
+                    prepareTxnId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnPrepareRollback(txnId, prepareTxnId)) {
+                    return false;
+                }
+                break;
+
+            case (OP_TXN_CUSTOM & 0xff):
                 try {
                     txnId = readTxnId(in);
                     handlerId = in.readUnsignedVarInt();

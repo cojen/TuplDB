@@ -20,16 +20,25 @@ package org.cojen.tupl.core;
 import java.io.File;
 import java.io.IOException;
 
+import java.lang.invoke.VarHandle;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.System.arraycopy;
 
+import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.ext.Handler;
 
 /**
  * 
@@ -865,6 +874,55 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     public static DurabilityMode alwaysRedo(DurabilityMode mode) {
         return mode == DurabilityMode.NO_REDO ? DurabilityMode.NO_FLUSH : mode;
+    }
+
+    /**
+     * Calls the init method on all the handlers, checking for duplicates such that init is
+     * called at most once.
+     *
+     * @param handlers can be null or contain null elements
+     */
+    @SafeVarargs
+    static void initHandlers(Database db, Map<?, ? extends Handler>... handlers)
+        throws IOException
+    {
+        if (handlers == null) {
+            return;
+        }
+
+        Set<Handler> combined = null;
+
+        for (var map : handlers) {
+            if (map != null && !map.isEmpty()) {
+                if (combined == null) {
+                    combined = new HashSet<>(map.values());
+                } else {
+                    combined.addAll(map.values());
+                }
+            }
+        }
+
+        if (combined != null) {
+            for (Handler h : combined) {
+                h.init(db);
+            }
+
+            // Ensure that the handlers have a safe reference to the Database instance. Due to
+            // the way recovery dispatches to worker threads, the fence isn't strictly
+            // necessary, but be safe.
+            VarHandle.fullFence();
+        }
+    }
+
+    /**
+     * Always throws an exception.
+     */
+    static void invalidTransaction(Transaction txn) {
+        if (txn == null || txn == Transaction.BOGUS) {
+            throw new IllegalArgumentException("Invalid transaction: " + txn);
+        }
+
+        throw new IllegalStateException("Transaction belongs to a different database");
     }
 
     /**

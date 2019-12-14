@@ -240,6 +240,18 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
+     * @param message optional message
+     */
+    public boolean txnPrepare(long txnId, long prepareTxnId, int handlerId, byte[] message)
+        throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     */
+    public boolean txnPrepareRollback(long txnId, long prepareTxnId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
      * @param message custom message
      */
     public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException;

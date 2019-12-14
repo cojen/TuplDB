@@ -32,13 +32,7 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  * @see DatabaseConfig#customHandlers DatabaseConfig.customHandlers
  */
-public interface CustomHandler {
-    /**
-     * Called once when the database is opened, immediately before recovery is performed.
-     */
-    default void init(Database db) throws IOException {
-    }
-
+public interface CustomHandler extends Handler {
     /**
      * Called to write or apply an idempotent redo operation.
      *

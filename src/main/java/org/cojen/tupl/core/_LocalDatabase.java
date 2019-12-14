@@ -94,6 +94,8 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.ev.SafeEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
+import org.cojen.tupl.ext.Handler;
+import org.cojen.tupl.ext.PrepareHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
@@ -214,6 +216,8 @@ public final class _LocalDatabase extends CoreDatabase {
     static final byte RK_TRASH_ID     = 4; // id to name mapping of trash
     static final byte RK_CUSTOM_NAME  = 5; // name to id mapping for custom handlers
     static final byte RK_CUSTOM_ID    = 6; // id to name mapping for custom handlers
+    static final byte RK_PREPARE_NAME = 7; // name to id mapping for prepare handlers
+    static final byte RK_PREPARE_ID   = 8; // id to name mapping for prepare handlers
 
     // Various mappings, defined by RK_ fields.
     private final _BTree mRegistryKeyMap;
@@ -264,6 +268,13 @@ public final class _LocalDatabase extends CoreDatabase {
     // Registered custom handlers.
     private final Map<String, CustomHandler> mCustomHandlers;
     private final LHashTable.Obj<CustomHandler> mCustomHandlersById;
+
+    // Registered prepare handlers.
+    private final Map<String, PrepareHandler> mPrepareHandlers;
+    private final LHashTable.Obj<PrepareHandler> mPrepareHandlersById;
+
+    // Maps transaction id to the handler id and optional message.
+    private _BTree mPreparedTxns;
 
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
@@ -342,13 +353,11 @@ public final class _LocalDatabase extends CoreDatabase {
         launcher.mEventListener = mEventListener = 
             SafeEventListener.makeSafe(launcher.mEventListener);
 
-        mCustomHandlers = launcher.mCustomHandlers;
+        mCustomHandlers = Launcher.mapClone(launcher.mCustomHandlers);
+        mCustomHandlersById = Launcher.newByIdMap(mCustomHandlers);
 
-        if (mCustomHandlers == null || mCustomHandlers.isEmpty()) {
-            mCustomHandlersById = null;
-        } else {
-            mCustomHandlersById = new LHashTable.Obj<>(mCustomHandlers.size());
-        }
+        mPrepareHandlers = Launcher.mapClone(launcher.mPrepareHandlers);
+        mPrepareHandlersById = Launcher.newByIdMap(mPrepareHandlers);
 
         mBaseFile = launcher.mBaseFile;
         mReadOnly = launcher.mReadOnly;
@@ -798,19 +807,10 @@ public final class _LocalDatabase extends CoreDatabase {
                     cursorRegistry.forceClose();
                 }
 
-                if (mCustomHandlers != null) {
-                    for (CustomHandler handler : mCustomHandlers.values()) {
-                        // Although the handlers shouldn't access the database yet, be safe and
-                        // call this method at the point that the database is mostly
-                        // functional. All other custom methods will be called soon as well.
-                        handler.init(this);
-                    }
-                }
-
-                // Ensure that the handler has a safe reference to the Database instance.  Due
-                // to the way recovery dispatches to worker threads, the fence isn't strictly
-                // necessary, but be safe.
-                VarHandle.fullFence();
+                // Although the handlers shouldn't access the database yet, be safe and call
+                // this method at the point that the database is mostly functional. The handler
+                // methods will be called soon to perform recovery.
+                initHandlers(this, mCustomHandlers, mPrepareHandlers);
 
                 // Must tag the trashed trees before starting replication and recovery.
                 // Otherwise, trees recently deleted might get double deleted.
@@ -885,7 +885,8 @@ public final class _LocalDatabase extends CoreDatabase {
 
                         doCheckpoint |= !redoFiles.isEmpty();
 
-                        applier.finish();
+                        // Finish recovery and collect unfinished prepared transactions.
+                        launcher.mUnfinished = applier.finish();
 
                         // Check if any exceptions were caught by recovery worker threads.
                         checkClosedCause();
@@ -936,6 +937,7 @@ public final class _LocalDatabase extends CoreDatabase {
     /**
      * Post construction, allow additional threads access to the database.
      */
+    @SuppressWarnings("unchecked")
     private void finishInit(Launcher launcher) throws IOException {
         if (mCheckpointer == null) {
             // Nothing is durable and nothing to ever clean up.
@@ -969,7 +971,13 @@ public final class _LocalDatabase extends CoreDatabase {
 
         emptyLingeringTrash(null); // only for non-replicated transactions
 
-        if (mRedoWriter instanceof _ReplController) {
+        if (!(mRedoWriter instanceof _ReplController)) {
+            LHashTable.Obj<_LocalTransaction> unfinished = launcher.mUnfinished;
+            if (unfinished != null) {
+                new Thread(() -> invokeRecoveryHandler(unfinished, mRedoWriter)).start();
+                launcher.mUnfinished = null;
+            }
+        } else {
             // Start replication and recovery.
             var controller = (_ReplController) mRedoWriter;
 
@@ -1033,6 +1041,56 @@ public final class _LocalDatabase extends CoreDatabase {
         } finally {
             shared.release();
         }
+    }
+
+    /**
+     * @param txns must not be null
+     * @param redo _RedoWriter assigned to each transaction; pass null to perform partial
+     * rollback but don't invoke the handler
+     */
+    void invokeRecoveryHandler(LHashTable.Obj<_LocalTransaction> txns, _RedoWriter redo) {
+        // Note: Even if the recovery handler isn't called, looking it up performs validation.
+
+        txns.traverse(entry -> {
+            _LocalTransaction txn = entry.value;
+
+            try {
+                _UndoLog.RTP rtp = txn.rollbackForRecovery
+                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+
+                int handlerId = rtp.handlerId;
+                byte[] message = rtp.message;
+
+                if (handlerId == 0 && message == null) {
+                    // FIXME: Can probably just roll it all back.
+                    throw new CorruptDatabaseException("Malformed prepared transaction");
+                }
+
+                PrepareHandler recovery = findPrepareRecoveryHandler(handlerId);
+
+                if (redo != null) {
+                    try {
+                        recovery.prepare(txn, message);
+                    } catch (UnmodifiableReplicaException e) {
+                        // Ensure that it can be handed off again.
+                        txn.reset(e);
+                    }
+                }
+            } catch (Throwable e) {
+                if (!isClosed()) {
+                    EventListener listener = mEventListener;
+                    if (listener == null) {
+                        uncaught(e);
+                    } else {
+                        listener.notify
+                            (EventType.RECOVERY_HANDLER_UNCAUGHT,
+                             "Uncaught exception when recovering a prepared transaction: %1$s", e);
+                    }
+                }
+            }
+
+            return true;
+        });
     }
 
     private void applyCachePrimer(Launcher launcher) {
@@ -1220,6 +1278,8 @@ public final class _LocalDatabase extends CoreDatabase {
             return mRegistryKeyMap;
         } else if (id == Tree.FRAGMENTED_TRASH_ID) {
             return fragmentedTrash();
+        } else if (id == Tree.PREPARED_TXNS_ID) {
+            return preparedTxns();
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
         }
@@ -1875,18 +1935,123 @@ public final class _LocalDatabase extends CoreDatabase {
 
     @Override
     public CustomHandler customHandler(String name) throws IOException {
+        return (CustomHandler) findOrCreateHandler(name, RK_CUSTOM_NAME, mCustomHandlers);
+    }
+
+    /**
+     * @return the recovery handler instance
+     * @throws CorruptDatabaseException if name isn't found
+     * @throws IllegalStateException if not installed
+     */
+    CustomHandler findCustomRecoveryHandler(int handlerId) throws IOException {
+        return findRecoveryHandler(handlerId, RK_CUSTOM_ID,
+                                   mCustomHandlers, mCustomHandlersById);
+    }
+
+    @Override
+    public PrepareHandler prepareHandler(String name) throws IOException {
+        return (PrepareHandler) findOrCreateHandler(name, RK_PREPARE_NAME, mPrepareHandlers);
+    }
+
+    /**
+     * @return the recovery handler instance
+     * @throws CorruptDatabaseException if name isn't found
+     * @throws IllegalStateException if not installed
+     */
+    PrepareHandler findPrepareRecoveryHandler(int handlerId) throws IOException {
+        return findRecoveryHandler(handlerId, RK_PREPARE_ID,
+                                   mPrepareHandlers, mPrepareHandlersById);
+    }
+
+    /**
+     * @param rkIdPrefix RK_CUSTOM_ID or RK_PREPARE_ID
+     * @return null if not found
+     */
+    String findHandlerName(int handlerId, byte rkIdPrefix) throws IOException {
+        byte[] idKey = newKey(rkIdPrefix, handlerId);
+        byte[] nameBytes = mRegistryKeyMap.load(null, idKey);
+
+        if (nameBytes == null) {
+            // Possible race condition with creation of the handler entry by another
+            // transaction during recovery. Try again with an upgradable lock, which will wait
+            // for the entry lock.
+            Transaction txn = newNoRedoTransaction();
+            try {
+                nameBytes = mRegistryKeyMap.load(txn, idKey);
+            } finally {
+                txn.reset();
+            }
+        }
+
+        return nameBytes == null ? null : new String(nameBytes, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * @param rkNamePrefix RK_CUSTOM_NAME or RK_PREPARE_NAME
+     */
+    @SuppressWarnings("unchecked")
+    private <H extends Handler> _HandlerWriter findOrCreateHandler(String name, byte rkNamePrefix,
+                                                                  Map<String, H> handlers)
+        throws IOException
+    {
+        if (handlers == null) {
+            throw new IllegalStateException("Recovery handler not installed: " + name);
+        }
+
+        Handler handler;
+        synchronized (handlers) {
+            // Can probably cheat and not synchronize access, but the behavior is undefined.
+            handler = handlers.get(name);
+        }
+
+        if (handler instanceof _HandlerWriter) {
+            return (_HandlerWriter) handler;
+        }
+
+        int handlerId = findOrCreateHandlerId(name, rkNamePrefix, handlers);
+
+        switch (rkNamePrefix) {
+        case RK_CUSTOM_NAME:
+            handler = new _CustomWriter(this, handlerId, (CustomHandler) handler);
+            break;
+        case RK_PREPARE_NAME:
+            handler = new _PrepareWriter(this, handlerId, (PrepareHandler) handler);
+            break;
+        default:
+            throw new AssertionError();
+        }
+
+        synchronized (handlers) {
+            Handler existing = handlers.get(name);
+            if (existing instanceof _HandlerWriter) {
+                return (_HandlerWriter) existing;
+            }
+            handlers.put(name, (H) handler);
+        }
+
+        return (_HandlerWriter) handler;
+    }
+
+    /**
+     * @param rkNamePrefix RK_CUSTOM_NAME or RK_PREPARE_NAME
+     * @return handlerId
+     */
+    private int findOrCreateHandlerId(String name, byte rkNamePrefix,
+                                      Map<String, ? extends Handler> handlers)
+        throws IOException
+    {
         final byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
-        final byte[] nameKey = newKey(RK_CUSTOM_NAME, nameBytes);
+        final byte[] nameKey = newKey(rkNamePrefix, nameBytes);
 
         byte[] idBytes = mRegistryKeyMap.load(null, nameKey);
 
         if (idBytes == null) define: {
             // Throws IllegalStateException if not found.
-            findCustomHandler(name);
+            findRecoveryHandler(name, handlers);
 
             // Assume first use, so define a new handler id.
 
-            _LocalTransaction txn = newAlwaysRedoTransaction();
+            final _LocalTransaction txn = newAlwaysRedoTransaction();
             try (Cursor nameCursor = mRegistryKeyMap.newCursor(txn)) {
                 nameCursor.find(nameKey);
                 idBytes = nameCursor.value();
@@ -1896,7 +2061,10 @@ public final class _LocalDatabase extends CoreDatabase {
                     break define;
                 }
 
-                final View byId = mRegistryKeyMap.viewPrefix(new byte[] {RK_CUSTOM_ID}, 1);
+                // Assumes that corresponding _ID prefix is one more than _NAME prefix.
+                final byte rkIdPrefix = (byte) (rkNamePrefix + 1);
+
+                final View byId = mRegistryKeyMap.viewPrefix(new byte[] {rkIdPrefix}, 1);
 
                 try (Cursor idCursor = byId.newCursor(txn)) {
                     idCursor.autoload(false);
@@ -1919,74 +2087,75 @@ public final class _LocalDatabase extends CoreDatabase {
             }
         }
 
-        return new _CustomWriter(this, decodeIntBE(idBytes, 0));
+        return decodeIntBE(idBytes, 0);
     }
 
     /**
-     * @return the recovery handler instance
-     * @throws IllegalStateException if not installed
-     */
-    private CustomHandler findCustomHandler(String name) {
-        CustomHandler handler;
-        if (mCustomHandlers == null || (handler = mCustomHandlers.get(name)) == null) {
-            throw new IllegalStateException("No installed custom handler is named \"" + name + '"');
-        }
-        return handler;
-    }
-
-    /**
+     * @param rkIdPrefix RK_CUSTOM_ID or RK_PREPARE_ID
      * @return the recovery handler instance
      * @throws CorruptDatabaseException if name isn't found
      * @throws IllegalStateException if not installed
      */
-    CustomHandler findCustomHandler(int handlerId) throws IOException {
+    private <H extends Handler> H findRecoveryHandler(int handlerId, byte rkIdPrefix,
+                                                      Map<String, H> handlers,
+                                                      LHashTable.Obj<H> handlersById)
+        throws IOException
+    {
         long scrambledId = scramble(handlerId);
 
-        if (mCustomHandlersById != null) {
-            CustomHandler handler;
-            synchronized (mCustomHandlersById) {
-                handler = mCustomHandlersById.getValue(scrambledId);
+        if (handlersById != null) {
+            H handler;
+            synchronized (handlersById) {
+                handler = handlersById.getValue(scrambledId);
             }
             if (handler != null) {
                 return handler;
             }
         }
 
-        String name = findCustomHandlerName(handlerId);
+        String name = findHandlerName(handlerId, rkIdPrefix);
+
         if (name == null) {
+            String type;
+            switch (rkIdPrefix) {
+            case RK_CUSTOM_ID: type = "custom"; break;
+            case RK_PREPARE_ID: type = "prepare"; break;
+            default: type = String.valueOf(rkIdPrefix); break;
+            }
+
             throw new CorruptDatabaseException
-                ("Unable to find custom handler name for id " + handlerId);
+                ("Unable to find " + type + " handler name for id " + handlerId);
         }
 
-        CustomHandler handler = findCustomHandler(name);
+        H handler = findRecoveryHandler(name, handlers);
 
-        synchronized (mCustomHandlers) {
-            mCustomHandlersById.insert(scrambledId).value = handler;
+        synchronized (handlersById) {
+            handlersById.insert(scrambledId).value = handler;
         }
 
         return handler;
     }
 
     /**
-     * @return null if not found
+     * @return the recovery handler instance
+     * @throws IllegalStateException if not installed
      */
-    String findCustomHandlerName(int handlerId) throws IOException {
-        byte[] idKey = newKey(RK_CUSTOM_ID, handlerId);
-        byte[] nameBytes = mRegistryKeyMap.load(null, idKey);
-
-        if (nameBytes == null) {
-            // Possible race condition with creation of the handler entry by another
-            // transaction during recovery. Try again with an upgradable lock, which will wait
-            // for the entry lock.
-            Transaction txn = newNoRedoTransaction();
-            try {
-                nameBytes = mRegistryKeyMap.load(txn, idKey);
-            } finally {
-                txn.reset();
+    @SuppressWarnings("unchecked")
+    private static <H extends Handler> H findRecoveryHandler(String name, Map<String, H> handlers) {
+        if (handlers != null) {
+            H handler;
+            synchronized (handlers) {
+                // Can probably cheat and not synchronize access, but the behavior is undefined.
+                handler = handlers.get(name);
+            }
+            if (handler instanceof _HandlerWriter) {
+                return (H) ((_HandlerWriter) handler).mRecoveryHandler;
+            } else if (handler != null) {
+                return handler;
             }
         }
 
-        return nameBytes == null ? null : new String(nameBytes, StandardCharsets.UTF_8);
+        throw new IllegalStateException("Recovery handler not installed: " + name);
     }
 
     @Override
@@ -2209,7 +2378,8 @@ public final class _LocalDatabase extends CoreDatabase {
             }
 
             cursorCount += countCursors(mRegistry) + countCursors(mRegistryKeyMap)
-                + countCursors(mFragmentedTrash) + countCursors(mCursorRegistry);
+                + countCursors(mFragmentedTrash) + countCursors(mCursorRegistry)
+                + countCursors(mPreparedTxns);
 
             stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
@@ -2533,7 +2703,8 @@ public final class _LocalDatabase extends CoreDatabase {
     private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
             || !scan(visitor, openFragmentedTrash(IX_FIND))
-            || !scan(visitor, openCursorRegistry(IX_FIND)))
+            || !scan(visitor, openCursorRegistry(IX_FIND))
+            || !scan(visitor, openPreparedTxns(IX_FIND)))
         {
             return false;
         }
@@ -2687,6 +2858,9 @@ public final class _LocalDatabase extends CoreDatabase {
 
                     trees.add(mCursorRegistry);
                     mCursorRegistry = null;
+
+                    trees.add(mPreparedTxns);
+                    mPreparedTxns = null;
                 } finally {
                     mOpenTreesLatch.releaseExclusive();
                     if (lock != null) {
@@ -3066,6 +3240,38 @@ public final class _LocalDatabase extends CoreDatabase {
         } catch (Throwable e) {
             // Database is borked, cleanup later.
         }
+    }
+
+    _BTree preparedTxns() throws IOException {
+        _BTree preparedTxns = mPreparedTxns;
+        return preparedTxns != null ? preparedTxns : openPreparedTxns(IX_CREATE);
+    }
+
+    /**
+     * Returns null if the index doesn't exist.
+     */
+    _BTree tryPreparedTxns() throws IOException {
+        _BTree preparedTxns = mPreparedTxns;
+        return preparedTxns != null ? preparedTxns : openPreparedTxns(IX_FIND);
+    }
+
+    /**
+     * @param ixOption IX_FIND or IX_CREATE
+     */
+    private _BTree openPreparedTxns(long ixOption) throws IOException {
+        _BTree preparedTxns;
+
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            if ((preparedTxns = mPreparedTxns) == null) {
+                mPreparedTxns = preparedTxns =
+                    openInternalTree(Tree.PREPARED_TXNS_ID, ixOption);
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        return preparedTxns;
     }
 
     /**

@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import org.cojen.tupl.core.Launcher;
 
 import org.cojen.tupl.ext.CustomHandler;
+import org.cojen.tupl.ext.PrepareHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
@@ -381,6 +382,15 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig customHandlers(Map<String, ? extends CustomHandler> handlers) {
         mLauncher.customHandlers(handlers);
+        return this;
+    }
+
+    /**
+     * Provide handlers for recovering prepared transactions. The name assigned to each handler
+     * must be unique and never change.
+     */
+    public DatabaseConfig prepareHandlers(Map<String, ? extends PrepareHandler> handlers) {
+        mLauncher.prepareHandlers(handlers);
         return this;
     }
 

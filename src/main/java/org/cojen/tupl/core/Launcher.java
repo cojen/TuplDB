@@ -44,6 +44,7 @@ import org.cojen.tupl.ev.ChainedEventListener;
 import org.cojen.tupl.ev.ReplicationEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
+import org.cojen.tupl.ext.PrepareHandler;
 import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
@@ -92,9 +93,13 @@ public final class Launcher implements Cloneable {
     int mMaxReplicaThreads;
     Crypto mCrypto;
     Map<String, CustomHandler> mCustomHandlers;
+    Map<String, PrepareHandler> mPrepareHandlers;
 
     // Set only when calling debugOpen, and then it's discarded.
     Map<String, ? extends Object> mDebugOpen;
+
+    // Set only when not replicated and unfinished transactions were recovered.
+    LHashTable.Obj mUnfinished;
 
     // These fields are set as a side-effect of constructing a replicated Database.
     long mReplRecoveryStartNanos;
@@ -253,11 +258,22 @@ public final class Launcher implements Cloneable {
     }
 
     public void customHandlers(Map<String, ? extends CustomHandler> handlers) {
-        if (handlers == null || handlers.isEmpty()) {
-            mCustomHandlers = null;
-        } else {
-            mCustomHandlers = new HashMap<>(handlers);
-        }
+        mCustomHandlers = mapClone(handlers);
+    }
+
+    public void prepareHandlers(Map<String, ? extends PrepareHandler> handlers) {
+        mPrepareHandlers = mapClone(handlers);
+    }
+
+    /**
+     * @return null if map is null or empty
+     */
+    static <H> Map<String, H> mapClone(Map<String, ? extends H> map) {
+        return map == null || map.isEmpty() ? null : new HashMap<>(map);
+    }
+
+    static <H> LHashTable.Obj<H> newByIdMap(Map<String, ? extends H> map) {
+        return map == null || map.isEmpty() ? null : new LHashTable.Obj<>(map.size());
     }
 
     public void debugOpen(PrintStream out, Map<String, ? extends Object> properties)

@@ -46,8 +46,9 @@ public final class LocalTransaction extends Locker implements Transaction {
     static final int
         HAS_SCOPE   = 1, // When set, scope has been entered and logged.
         HAS_COMMIT  = 2, // When set, transaction has committable changes.
-        HAS_TRASH   = 4; /* When set, fragmented values are in the trash and must be
+        HAS_TRASH   = 4, /* When set, fragmented values are possibly in the trash and must be
                             fully deleted after committing the top-level scope. */
+        HAS_PREPARE = 8; // When set, transaction is possibly prepared for two-phase commit.
 
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
@@ -86,11 +87,21 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     // Constructor for undo recovery.
-    LocalTransaction(LocalDatabase db, long txnId) {
+    LocalTransaction(LocalDatabase db, long txnId, int hasState) {
         this(db, null, DurabilityMode.NO_REDO, LockMode.UPGRADABLE_READ, 0);
         mTxnId = txnId;
         // Blindly assume that trash must be deleted. No harm if none exists.
-        mHasState = LocalTransaction.HAS_TRASH;
+        mHasState = hasState | HAS_TRASH;
+    }
+
+    // Constructor for carrier transaction used to prepare or rollback prepared transactions.
+    private LocalTransaction(LocalTransaction txn) {
+        super(txn.mDatabase.mLockManager, txn.mHash);
+        mDatabase = txn.mDatabase;
+        mContext = txn.mContext; // same context means common flush buffer
+        mRedo = txn.mRedo;
+        mDurabilityMode = DurabilityMode.SYNC;
+        mLockMode = LockMode.UNSAFE;
     }
 
     // Constructor for BOGUS transaction.
@@ -635,13 +646,20 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     private void doRollback(int hasState) throws IOException {
-        try {
-            if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
-                mContext.redoRollbackFinal(mRedo, mTxnId);
+        if (hasState != 0) {
+            if ((hasState & HAS_PREPARE) != 0 && tryPreparedRollback()) {
+                return;
             }
+
+            if ((hasState & (HAS_SCOPE | HAS_COMMIT)) != 0) {
+                try {
+                    mContext.redoRollbackFinal(mRedo, mTxnId);
+                } catch (UnmodifiableReplicaException e) {
+                    // Suppress and let undo proceed.
+                }
+            }
+
             mHasState = 0;
-        } catch (UnmodifiableReplicaException e) {
-            // Suppress and let undo proceed.
         }
 
         UndoLog undo = mUndoLog;
@@ -659,6 +677,93 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
 
         mTxnId = 0;
+    }
+
+    /**
+     * Rollback of a prepared transaction requires consensus.
+     *
+     * @return false if not actually prepared
+     */
+    private boolean tryPreparedRollback() throws IOException {
+        BTreeCursor c = checkPrepared();
+        if (c == null) {
+            return false;
+        }
+
+        try {
+            // Perform partial rollback to the prepare state, which doesn't require consensus.
+            mUndoLog.rollbackToPrepare();
+            unlockToPrepare();
+
+            // Commit a carrier transaction to safely attain consensus.
+            var carrier = new LocalTransaction(this);
+            try {
+                CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+                try {
+                    // The undo operation undeletes the prepare entry, without locking it.
+                    carrier.undoLog().pushPreparedUnrollback(c.key());
+
+                    // Replace the ghost with an empty value, to signify rollback.
+                    c.store(EMPTY_BYTES);
+
+                    // Note: Both transactions have the same context and redo.
+                    mContext.redoPrepareRollback(mRedo, carrier.getId(), mTxnId);
+                    carrier.mHasState |= HAS_COMMIT;
+                } finally {
+                    shared.release();
+                }
+
+                carrier.commit();
+            } catch (Throwable e) {
+                carrier.reset(e);
+
+                if (e instanceof UnmodifiableReplicaException) {
+                    preparedHandoff(e);
+                }
+
+                throw e;
+            }
+
+            mHasState = 0;
+            mUndoLog.rollback();
+
+            // Exit and release all locks.
+            super.scopeExitAll();
+
+            mSavepoint = 0;
+            mContext.unregister(mUndoLog);
+            mUndoLog = null;
+            mTxnId = 0;
+
+            // Delete the rollback marker, now that rollback is complete.
+            c.store(null);
+
+            return true;
+        } finally {
+            c.reset();
+        }
+    }
+
+    /**
+     * Transfers the state of this transaction to a new one, which is then handed off to be
+     * recovered later.
+     */
+    private void preparedHandoff(Throwable cause) {
+        var txn = new LocalTransaction(mDatabase, mTxnId, LockMode.UPGRADABLE_READ, 0);
+        // No redo log, so this state must be cleared.
+        txn.mHasState = mHasState & ~(HAS_COMMIT | HAS_SCOPE);
+        txn.mUndoLog = mUndoLog;
+        txn.mAttachment = mAttachment;
+
+        transferExclusive(txn);
+
+        mRedo.stashForRecovery(txn);
+
+        mRedo = null;
+        mHasState = 0;
+        mTxnId = 0;
+        mUndoLog = null;
+        mBorked = cause;
     }
 
     @Override
@@ -693,6 +798,14 @@ public final class LocalTransaction extends Locker implements Transaction {
         if (att != null) {
             b.append(", ");
             b.append("attachment").append(": ").append(att);
+        }
+
+        try {
+            if (isPrepared()) {
+                b.append(", ").append("prepared");
+            }
+        } catch (IOException e) {
+            // Ignore.
         }
 
         Object borked = mBorked;
@@ -912,6 +1025,223 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
+    /**
+     * Called by the PrepareWriter class.
+     */
+    void prepare(int handlerId, byte[] message) throws IOException {
+        check();
+
+        long txnId = mTxnId;
+
+        if (mRedo == null || mDurabilityMode == DurabilityMode.NO_REDO || txnId < 0) {
+            // Although this could probably be made to work, it doesn't make much sense.
+            throw new IllegalStateException("Cannot prepare a no-redo transaction");
+        }
+
+        if (mParentScope != null) {
+            // This could probably be made to work too, but recovery would be a mess.
+            throw new IllegalStateException("Cannot prepare within a nested scope");
+        }
+
+        if (txnId == 0) {
+            txnId = assignTransactionId();
+        }
+
+        var prepareKey = new byte[8];
+        encodeLongBE(prepareKey, 0, txnId);
+
+        // Ensure an UndoLog instance exists or is created.
+        UndoLog undo = undoLog();
+
+        BTree preparedTxns = mDatabase.preparedTxns();
+
+        if ((mHasState & HAS_SCOPE) == 0) {
+            mContext.redoEnter(mRedo, txnId);
+            mHasState |= HAS_SCOPE;
+        }
+
+        // Enter a pseudo scope to clean things up if an exception is thrown. The difference
+        // being that the scope isn't written to the redo log.
+        super.scopeEnter();
+        long savepoint = undo.savepoint();
+
+        try {
+            // Lock in this transaction to keep it after the consensus transaction commits.
+            // Note that this must be a logged operation, because most of the other undo and
+            // redo operations against the prepare key won't lock it.
+            if (lockExclusive(preparedTxns.mId, prepareKey).isAlreadyOwned()) {
+                // The could be made to work, but it requires that the prepare lock be
+                // repositioned within the list of owned locks. Otherwise, a call to
+                // unlockToPrepare unlocks too much.
+                throw new IllegalStateException("Transaction is already prepared");
+            }
+
+            // Commit a carrier transaction to safely attain consensus.
+            var carrier = new LocalTransaction(this);
+            try (var c = new BTreeCursor(preparedTxns)) {
+                c.mTxn = LocalTransaction.BOGUS;
+                c.autoload(false);
+                c.find(prepareKey);
+
+                CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+                try {
+                    // The undo operation uninserts the prepare entry, without locking it.
+                    carrier.undoLog().pushUnprepare(prepareKey);
+
+                    // The prepare entry isn't actually stored in the prepared transactions
+                    // index, except as a ghost.
+                    c.storeGhost(new GhostFrame());
+
+                    // Note: Both transactions have the same context and redo.
+                    mContext.redoPrepare(mRedo, carrier.getId(), txnId, handlerId, message);
+                    carrier.mHasState |= HAS_COMMIT;
+
+                    // Following a checkpoint, this operation will store the only copy of the
+                    // prepare entry. It also defines the partial rollback location, and so it
+                    // must be the last operation pushed to the undo log.
+                    undo.pushPrepared(handlerId, message);
+                } finally {
+                    shared.release();
+                }
+
+                carrier.commit();
+            } catch (Throwable e) {
+                carrier.reset(e);
+                throw e;
+            }
+
+            mHasState |= HAS_COMMIT | HAS_PREPARE;
+
+            super.promote();
+
+            // Releasing non-exclusive locks provides consistency with the recovery handler,
+            // which only recovers exclusive locks. After calling prepare, an application might
+            // choose to call the recovery handler immediately.
+            super.unlockNonExclusive();
+        } catch (Throwable e) {
+            try {
+                undo.scopeRollback(savepoint);
+            } catch (Throwable e2) {
+                suppress(e, e2);
+            }
+
+            throw e;
+        } finally {
+            super.scopeExit();
+        }
+    }
+
+    /**
+     * Called by the ReplEngine class. It's a reduced form of the full prepare method above.
+     */
+    void prepareRedo(int handlerId, byte[] message) throws IOException {
+        var prepareKey = new byte[8];
+        encodeLongBE(prepareKey, 0, mTxnId);
+
+        UndoLog undo = undoLog();
+
+        BTree preparedTxns = mDatabase.preparedTxns();
+
+        try (var c = new BTreeCursor(preparedTxns)) {
+            c.mTxn = LocalTransaction.BOGUS;
+            c.autoload(false);
+            c.find(prepareKey);
+
+            CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+            try {
+                c.storeGhost(new GhostFrame());
+                undo.pushPrepared(handlerId, message);
+            } finally {
+                shared.release();
+            }
+        }
+
+        mHasState |= HAS_PREPARE;
+    }
+
+    private boolean isPrepared() throws IOException {
+        BTreeCursor c = checkPrepared();
+        if (c == null) {
+            return false;
+        }
+        c.reset();
+        return true;
+    }
+
+    /**
+     * @return null if not prepared; positioned cursor (not loaded) at prepare entry otherwise
+     */
+    private BTreeCursor checkPrepared() throws IOException {
+        if ((mHasState & HAS_PREPARE) == 0) {
+            return null;
+        }
+
+        BTree preparedTxns = mDatabase.tryPreparedTxns();
+        if (preparedTxns != null) {
+            var prepareKey = new byte[8];
+            encodeLongBE(prepareKey, 0, mTxnId);
+
+            var c = new BTreeCursor(preparedTxns);
+            try {
+                c.mTxn = LocalTransaction.BOGUS;
+                c.autoload(false);
+                c.find(prepareKey);
+
+                // Check against the frame to account for the entry being ghosted.
+                // FIXME: Should acquire the latch. Create an isGhost method or something.
+                if (c.mFrame.mNotFoundKey == null) {
+                    if (c.value() == null) {
+                        // Key exists, but a null value a indicates ghost.
+                        return c;
+                    }
+                    // Transaction was rolled back, so delete the rollback marker.
+                    c.store(null);
+                }
+
+                c.reset();
+            } catch (Throwable e) {
+                c.reset();
+                throw e;
+            }
+        }
+
+        mHasState &= ~HAS_PREPARE;
+        return null;
+    }
+
+    /**
+     * Should only be called for transactions known to be prepared.
+     *
+     * @return object with handler id and message
+     */
+    UndoLog.RTP rollbackForRecovery(RedoWriter redo, DurabilityMode durabilityMode,
+                                    LockMode lockMode, long timeoutNanos)
+        throws IOException
+    {
+        mRedo = redo;
+        mDurabilityMode = durabilityMode;
+        mLockMode = lockMode;
+        mLockTimeoutNanos = timeoutNanos;
+        mAttachment = null;
+
+        // When recovered from the undo log only, the HAS_COMMIT state won't be set. Set it
+        // explicitly now, in order for commit and rollback operations to actually work. Also
+        // set the HAS_SCOPE state, which is always set for even the outermost scope when
+        // anything is written to the transaction.
+        mHasState |= HAS_COMMIT | HAS_SCOPE | HAS_PREPARE;
+
+        if (redo == null || durabilityMode == DurabilityMode.NO_REDO) {
+            // Oops. HAS_COMMIT also implies that a redo log exists and can be written to.
+            mHasState &= ~(HAS_COMMIT | HAS_SCOPE);
+        }
+
+        UndoLog.RTP rtp = mUndoLog.rollbackToPrepare();
+
+        unlockToPrepare();
+
+        return rtp;
+    }
+
     @Override
     public final long getId() {
         long txnId = mTxnId;
@@ -938,7 +1268,12 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
 
         if (finish) {
-            reset();
+            if (isPrepared()) {
+                // Can't reset; must instead hand off to a recovery handler.
+                finish = false;
+            } else {
+                reset();
+            }
         }
 
         return finish;
@@ -1365,7 +1700,7 @@ public final class LocalTransaction extends Locker implements Transaction {
             rethrow = !closed;
         }
 
-        if (mBorked == null) {
+        if (mBorked == null) doBorked: {
             if (closed) {
                 Utils.initCause(borked, mDatabase.closedCause());
                 mBorked = borked;
@@ -1374,6 +1709,11 @@ public final class LocalTransaction extends Locker implements Transaction {
                 try {
                     rollback();
                 } catch (Throwable rollbackFailed) {
+                    if (mBorked != null) {
+                        // Rollback already took care of borking the transaction.
+                        break doBorked;
+                    }
+
                     if (rethrow && isRecoverable(borked) && isRecoverable(rollbackFailed)) {
                         // Allow application to try again later.
                         Utils.rethrow(borked);

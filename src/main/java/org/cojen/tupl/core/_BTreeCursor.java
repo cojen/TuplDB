@@ -268,6 +268,20 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     /**
+     * Non-transactionally moves the cursor to the first key, which might refer to a ghost. The
+     * value isn't loaded.
+     *
+     * @return null if nothing left
+     */
+    byte[] firstKey() throws IOException {
+        reset();
+        if (toFirst(new _CursorFrame(), latchRootNode())) {
+            tryCopyCurrent(_LocalTransaction.BOGUS);
+        }
+        return mKey;
+    }
+
+    /**
      * Non-transactionally moves the cursor to the first leaf node, which might be empty or
      * full of ghosts. Key and value are not loaded.
      */
@@ -595,6 +609,21 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             }
             frame = mFrame;
         }
+    }
+
+    /**
+     * Non-transactionally moves the cursor to the next key, which might refer to a ghost. The
+     * value isn't loaded.
+     *
+     * @return null if nothing left
+     */
+    byte[] nextKey() throws IOException {
+        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
+        mValue = NOT_LOADED;
+        if (toNext(frameSharedNotSplit())) {
+            tryCopyCurrent(_LocalTransaction.BOGUS);
+        }
+        return mKey;
     }
 
     /**
@@ -3376,6 +3405,54 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
             }
         } catch (Throwable e) {
             throw handleException(e, true);
+        }
+    }
+
+    /**
+     * Non-transactionally store a ghost value. Also see _Node.txnDeleteLeafEntry.
+     *
+     * @param ghost frame to bind; can be null to not bind anything
+     */
+    final void storeGhost(_GhostFrame ghost) throws IOException {
+        CommitLock.Shared shared = prepareStore();
+
+        // Keeping the exclusive latch is ideal, but I'd rather not have to create special
+        // modifications for an infrequent operation. Releasing the latch permits a concurrent
+        // modificiation, which is checked by ensuring that a value exists and is empty.
+        storeNoRedo(null, mFrame, EMPTY_BYTES);
+
+        _CursorFrame leaf;
+        try {
+            leaf = frameExclusive();
+
+            // Releases leaf latch if an exception is thrown.
+            notSplitDirty(leaf);
+
+            _Node node = leaf.mNode;
+            int pos = leaf.mNodePos;
+
+            try {
+                if (pos >= 0) { // value must still exist
+                    var page = node.mPage;
+                    int loc = p_ushortGetLE(page, node.searchVecStart() + pos);
+
+                    // Skip the key.
+                    loc += _Node.keyLengthAtLoc(page, loc);
+
+                    if (p_byteGet(page, loc) == 0) { // value must still be empty
+                        if (ghost != null) {
+                            ghost.bind(node, pos);
+                            mTree.mLockManager.ghosted(mTree.mId, mKey, keyHash(), ghost);
+                        }
+                        p_bytePut(page, loc, -1); // ghost value
+                        mValue = null;
+                    }
+                }
+            } finally {
+                node.releaseExclusive();
+            }
+        } finally {
+            shared.release();
         }
     }
 

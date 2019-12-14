@@ -40,6 +40,8 @@ public class TestUtils {
     private static File cBaseDir;
     private static volatile File cDeleteTempDir;
 
+    static volatile boolean traceUndo = false;
+
     static {
         // Force this class to be loaded early, to avoid shutdown hook loading
         // it later. It can cause problems with coverage frameworks which
@@ -470,11 +472,10 @@ public class TestUtils {
                 }
             }
 
-            if (false) {
+            if (traceUndo) {
                 var props = new HashMap<String, Object>();
                 props.put("traceUndo", true);
                 config.debugOpen(null, props);
-                System.exit(1);
             }
 
             if (destroy) {

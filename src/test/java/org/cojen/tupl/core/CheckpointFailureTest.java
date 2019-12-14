@@ -389,6 +389,7 @@ public class CheckpointFailureTest {
                 } else {
                     try {
                         ix.load(null, key);
+                        // FIXME: Fails here randomly.
                         fail();
                     } catch (LockTimeoutException e) {
                         // Only the new leader can roll it back.

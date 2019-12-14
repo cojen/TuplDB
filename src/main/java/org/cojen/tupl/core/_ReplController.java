@@ -404,6 +404,15 @@ final class _ReplController extends _ReplWriter {
 
         redo.flipped(pos);
 
+        // Cannot start receiving until all prepared transactions have been safely transferred.
+        try {
+            mEngine.awaitPreparedTransactions();
+        } catch (IOException e) {
+            // Panic.
+            mEngine.fail(e);
+            return;
+        }
+
         // Start receiving if not, but does nothing if already receiving. A reset op is
         // expected, and so the initial transaction id can be zero.
         mEngine.startReceiving(pos, 0);

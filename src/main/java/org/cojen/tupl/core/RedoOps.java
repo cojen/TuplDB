@@ -146,10 +146,20 @@ class RedoOps {
         /** cursorId: delta, txnId: delta, pos: varLong, length: varLong */
         OP_CURSOR_VALUE_CLEAR = 47,
 
-        /** txnId: delta, handlerId: varInt, dataLength: varInt, data: bytes */
+        /** txnId: delta, prepareTxnId: long, handlerId: varInt */
+        OP_TXN_PREPARE = 48,
+
+        /** txnId: delta, prepareTxnId: long, handlerId: varInt,
+            messageLength: varInt, message: bytes */
+        OP_TXN_PREPARE_MESSAGE = 49,
+
+        /** txnId: delta, prepareTxnId: long */
+        OP_TXN_PREPARE_ROLLBACK = 50,
+
+        /** txnId: delta, handlerId: varInt, messageLength: varInt, message: bytes */
         OP_TXN_CUSTOM = (byte) 128,
 
         /** txnId: delta, handlerId: varInt, indexId: long, keyLength: varInt, key: bytes,
-            dataLength: varInt, data: bytes */
+            messageLength: varInt, message: bytes */
         OP_TXN_CUSTOM_LOCK = (byte) 129;
 }

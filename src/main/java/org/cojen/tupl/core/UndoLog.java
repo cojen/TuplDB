@@ -160,6 +160,17 @@ final class UndoLog implements DatabaseAccess {
     // Payload is key to delete to recover an upgradable lock.
     static final byte OP_LOCK_UPGRADABLE = 35;
 
+    // Payload is key to delete to undo an insert. No lock is acquired.
+    static final byte OP_UNPREPARE = 36;
+
+    // Payload is handler id and optional message, to tag undelete a prepared transaction
+    // entry. No lock is acquired.
+    static final byte OP_PREPARED = 37;
+
+    // Payload is key to insert a ghost to undo a prepared transaction rollback. No lock is
+    // acquired.
+    static final byte OP_PREPARED_UNROLLBACK = 38;
+
     private final LocalDatabase mDatabase;
     final long mTxnId;
 
@@ -502,6 +513,41 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Caller must hold db commit lock.
+     */
+    final void pushUnprepare(byte[] key) throws IOException {
+        doPush(OP_UNPREPARE, key);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    final void pushPrepared(int handlerId, byte[] message) throws IOException {
+        int handlerLen = calcUnsignedVarIntLength(handlerId);
+
+        byte[] payload;
+        if (message == null) {
+            payload = new byte[handlerLen];
+        } else {
+            // A zero byte in between the handler id and message indicates it's non-null.
+            int offset = handlerLen + 1;
+            payload = new byte[offset + message.length];
+            arraycopy(message, 0, payload, offset, message.length);
+        }
+
+        encodeUnsignedVarInt(payload, 0, handlerId);
+
+        doPush(OP_PREPARED, payload);
+    }
+
+    /**
+     * Caller must hold db commit lock.
+     */
+    final void pushPreparedUnrollback(byte[] key) throws IOException {
+        doPush(OP_PREPARED_UNROLLBACK, key);
+    }
+
+    /**
      * @return true if active index and key already match
      */
     private boolean setActiveIndexIdAndKey(long indexId, byte[] key) throws IOException {
@@ -707,6 +753,13 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Return a savepoint that can be passed to scopeRollback.
+     */
+    final long savepoint() {
+        return mLength;
+    }
+
+    /**
      * Caller does not need to hold db commit lock.
      *
      * @return savepoint
@@ -855,6 +908,52 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * RTP: "Rollback To Prepare" helper class.
+     */
+    class RTP extends IOException implements Popper {
+        private Index activeIndex;
+
+        // Decoded recovery handler and message.
+        int handlerId;
+        byte[] message;
+
+        @Override
+        public boolean accept(byte op, byte[] entry) throws IOException {
+            if (op == OP_PREPARED) {
+                handlerId = decodeUnsignedVarInt(entry, 0);
+                int messageLoc = calcUnsignedVarIntLength(handlerId) + 1;
+                if (messageLoc <= entry.length) {
+                    message = Arrays.copyOfRange(entry, messageLoc, entry.length);
+                }
+                // Found the prepare operation, but don't pop it.
+                throw this;
+            }
+
+            activeIndex = undo(activeIndex, op, entry);
+            return true;
+        }
+
+        // Disable stack trace capture, since it's not required.
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
+    }
+
+    final RTP rollbackToPrepare() throws IOException {
+        RTP rtp = new RTP();
+
+        try {
+            while (pop(true, rtp));
+            throw new IllegalStateException("Prepare operation not found");
+        } catch (RTP r) {
+            // Expected.
+        }
+
+        return rtp;
+    }
+
+    /**
      * Truncate all log entries, and delete any ghosts that were created. Only
      * to be called during recovery.
      */
@@ -872,6 +971,7 @@ final class UndoLog implements DatabaseAccess {
 
                 case OP_SCOPE_ENTER:
                 case OP_SCOPE_COMMIT:
+                case OP_UNPREPARE:
                 case OP_UNCREATE:
                 case OP_UNINSERT:
                 case OP_UNUPDATE:
@@ -883,12 +983,22 @@ final class UndoLog implements DatabaseAccess {
                 case OP_UNWRITE:
                 case OP_LOCK_EXCLUSIVE:
                 case OP_LOCK_UPGRADABLE:
+                case OP_PREPARED_UNROLLBACK:
                     // Ignore.
                     return true;
 
                 case OP_INDEX:
                     mActiveIndexId = decodeLongLE(entry, 0);
                     activeIndex = null;
+                    return true;
+
+                case OP_PREPARED:
+                    BTree preparedTxns = mDatabase.tryPreparedTxns();
+                    if (preparedTxns != null) {
+                        key = new byte[8];
+                        encodeLongBE(key, 0, mTxnId);
+                        deleteGhost(preparedTxns, key);
+                    }
                     return true;
 
                 case OP_UNDELETE:
@@ -907,18 +1017,20 @@ final class UndoLog implements DatabaseAccess {
                     break;
                 }
 
-                activeIndex = doUndo(activeIndex, ix -> {
-                    var cursor = new BTreeCursor((BTree) ix, null);
-                    try {
-                        cursor.deleteGhost(key);
-                    } catch (Throwable e) {
-                        throw closeOnFailure(cursor, e);
-                    }
-                });
+                activeIndex = doUndo(activeIndex, ix -> deleteGhost((BTree) ix, key));
 
                 return true;
             }
         }.go(true, 0);
+    }
+
+    private static void deleteGhost(BTree tree, byte[] key) throws IOException {
+        var cursor = new BTreeCursor(tree, null);
+        try {
+            cursor.deleteGhost(key);
+        } catch (Throwable e) {
+            throw closeOnFailure(cursor, e);
+        }
     }
 
     /**
@@ -1000,7 +1112,7 @@ final class UndoLog implements DatabaseAccess {
             int messageLoc = calcUnsignedVarIntLength(handlerId);
             var message = new byte[entry.length - messageLoc];
             arraycopy(entry, messageLoc, message, 0, message.length);
-            mDatabase.findCustomHandler(handlerId).undo(null, message);
+            mDatabase.findCustomRecoveryHandler(handlerId).undo(null, message);
             break;
 
         case OP_ACTIVE_KEY:
@@ -1036,6 +1148,29 @@ final class UndoLog implements DatabaseAccess {
                     c.valueWrite(pos, entry, off, entry.length - off);
                 }
             });
+            break;
+
+        case OP_UNPREPARE:
+            BTree preparedTxns = mDatabase.tryPreparedTxns();
+            if (preparedTxns != null) {
+                // The entry is the prepare key. Delete it.
+                preparedTxns.store(Transaction.BOGUS, entry, null);
+            }
+            break;
+
+        case OP_PREPARED:
+            // Just a tag.
+            break;
+
+        case OP_PREPARED_UNROLLBACK:
+            // The entry is the prepare key. Replace the ghost entry.
+            preparedTxns = mDatabase.preparedTxns();
+            try (var c = new BTreeCursor(preparedTxns)) {
+                c.mTxn = LocalTransaction.BOGUS;
+                c.autoload(false);
+                c.find(entry);
+                c.storeGhost(null);
+            }
             break;
         }
 
@@ -1093,31 +1228,6 @@ final class UndoLog implements DatabaseAccess {
             activeIndex = mDatabase.anyIndexById(mActiveIndexId);
         }
         return activeIndex;
-    }
-
-    /**
-     * @param delete true to delete empty nodes
-     * @return last pushed op, or 0 if empty
-     */
-    @Deprecated
-    private byte peek(boolean delete) throws IOException {
-        Node node = mNode;
-        if (node == null) {
-            return (mBuffer == null || mBufferPos >= mBuffer.length) ? 0 : mBuffer[mBufferPos];
-        }
-
-        node.acquireExclusive();
-        while (true) {
-            var page = node.mPage;
-            if (mNodeTopPos < pageSize(page)) {
-                byte op = p_byteGet(page, mNodeTopPos);
-                node.releaseExclusive();
-                return op;
-            }
-            if ((node = popNode(node, delete)) == null) {
-                return 0;
-            }
-        }
     }
 
     private static interface Popper {
@@ -1687,7 +1797,7 @@ final class UndoLog implements DatabaseAccess {
         if (mNode != null && mNodeTopPos == 0) {
             // The checkpoint captured a committed log in the middle of truncation. The
             // recoveryCleanup method will finish the truncation.
-            return new LocalTransaction(mDatabase, mTxnId);
+            return new LocalTransaction(mDatabase, mTxnId, 0);
         }
 
         var popper = new PopOne();
@@ -1699,6 +1809,8 @@ final class UndoLog implements DatabaseAccess {
         scopes.addFirst(scope);
 
         int depth = 1;
+
+        int hasState = 0;
 
         while (mLength > 0) {
             if (!pop(false, popper)) {
@@ -1773,6 +1885,12 @@ final class UndoLog implements DatabaseAccess {
             }
 
             case OP_CUSTOM:
+            case OP_UNPREPARE:
+            case OP_PREPARED_UNROLLBACK:
+                break;
+
+            case OP_PREPARED:
+                hasState |= LocalTransaction.HAS_PREPARE;
                 break;
 
             case OP_ACTIVE_KEY:
@@ -1792,7 +1910,7 @@ final class UndoLog implements DatabaseAccess {
             }
         }
 
-        var txn = new LocalTransaction(mDatabase, mTxnId);
+        var txn = new LocalTransaction(mDatabase, mTxnId, hasState);
 
         scope = scopes.pollFirst();
         scope.acquireLocks(txn);
@@ -1875,7 +1993,7 @@ final class UndoLog implements DatabaseAccess {
             opStr = "CUSTOM";
             int handlerId = decodeUnsignedVarInt(entry, 0);
             int messageLoc = calcUnsignedVarIntLength(handlerId);
-            String handlerName = mDatabase.findCustomHandlerName(handlerId);
+            String handlerName = mDatabase.findHandlerName(handlerId, LocalDatabase.RK_CUSTOM_ID);
             payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName +
                 ", message=0x" + toHex(entry, messageLoc, entry.length - messageLoc);
             break;
@@ -1934,6 +2052,27 @@ final class UndoLog implements DatabaseAccess {
         case OP_LOCK_EXCLUSIVE:
             opStr = "LOCK_EXCLUSIVE";
             payloadStr = "key=0x" + toHex(entry) + " (" + utf8(entry) + ')';
+            break;
+
+        case OP_UNPREPARE:
+            opStr = "UNPREPARE";
+            payloadStr = "txnId=" + decodeLongBE(entry, 0);
+            break;
+
+        case OP_PREPARED:
+            opStr = "PREPARED";
+            handlerId = decodeUnsignedVarInt(entry, 0);
+            handlerName = mDatabase.findHandlerName(handlerId, LocalDatabase.RK_PREPARE_ID);
+            payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName;
+            messageLoc = calcUnsignedVarIntLength(handlerId) + 1;
+            if (messageLoc <= entry.length) {
+                payloadStr += ", message=0x" + toHex(entry, messageLoc, entry.length - messageLoc);
+            }
+            break;
+
+        case OP_PREPARED_UNROLLBACK:
+            opStr = "PREPARED_UNROLLBACK";
+            payloadStr = "txnId=" + decodeLongBE(entry, 0);
             break;
         }
 

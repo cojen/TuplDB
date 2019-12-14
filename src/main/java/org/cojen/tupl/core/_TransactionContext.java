@@ -629,6 +629,46 @@ final class _TransactionContext extends Latch implements Flushable {
         }
     }
 
+    /**
+     * @param message optional
+     */
+    void redoPrepare(_RedoWriter redo, long txnId, long prepareTxnId, int handlerId, byte[] message)
+        throws IOException
+    {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            if (message == null) {
+                redoWriteTxnOp(redo, OP_TXN_PREPARE, txnId);
+                redoWriteLongLE(prepareTxnId);
+                redoWriteUnsignedVarInt(handlerId);
+            } else {
+                redoWriteTxnOp(redo, OP_TXN_PREPARE_MESSAGE, txnId);
+                redoWriteLongLE(prepareTxnId);
+                redoWriteUnsignedVarInt(handlerId);
+                redoWriteUnsignedVarInt(message.length);
+                redoWriteBytes(message, true);
+            }
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
+    void redoPrepareRollback(_RedoWriter redo, long txnId, long prepareTxnId) throws IOException {
+        redo.opWriteCheck(null);
+
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_TXN_PREPARE_ROLLBACK, txnId);
+            redoWriteLongLE(prepareTxnId);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     void redoCustom(_RedoWriter redo, long txnId, int handlerId, byte[] message) throws IOException {
         if (message == null) {
             throw new NullPointerException("Message is null");

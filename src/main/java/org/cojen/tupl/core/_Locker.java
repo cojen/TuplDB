@@ -732,6 +732,42 @@ class _Locker implements _DatabaseAccess { // weak access to database
     }
 
     /**
+     * Releases all locks until a prepare lock is found, keeping it. If no prepare is found,
+     * then all locks are released.
+     *
+     * @throws IllegalStateException if in a scope
+     */
+    final void unlockToPrepare() {
+        if (mParentScope != null) {
+            throw new IllegalStateException();
+        }
+
+        while (true) {
+            Object tailObj = mTailBlock;
+            if (tailObj instanceof _Lock) {
+                _Lock lock = (_Lock) tailObj;
+                if (!lock.isPrepareLock()) {
+                    mManager.doUnlock(this, lock);
+                    mTailBlock = null;
+                }
+                return;
+            }
+            Block tail = (Block) tailObj;
+            if (tail == null || tail.last().isPrepareLock()) {
+                return;
+            }
+            Block.doUnlockLast(tail, this);
+        }
+    }
+
+    /**
+     * Releases all non-exclusive locks which are held. Assumes that no parent scope exists.
+     */
+    final void unlockNonExclusive() {
+        transferExclusive(this);
+    }
+
+    /**
      * Transfers all exclusive locks to a new owner and releases the rest, breaking apart all
      * combined locks. Assumes that no parent scope exists.
      *
