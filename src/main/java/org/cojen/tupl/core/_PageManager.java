@@ -55,6 +55,7 @@ final class _PageManager {
     static final int I_RESERVE_QUEUE     = I_RECYCLE_QUEUE + _PageQueue.HEADER_SIZE;
 
     private final PageArray mPageArray;
+    private final int mPageSize;
 
     // One remove lock for all queues.
     private final ReentrantLock mRemoveLock;
@@ -69,6 +70,8 @@ final class _PageManager {
     private long mCompactionTargetPageCount = Long.MAX_VALUE;
     private _PageQueue mReserveList;
     private long mReclaimUpperBound = Long.MIN_VALUE;
+
+    private _LocalDatabase mPageQueueCache;
 
     static final int
         ALLOC_TRY_RESERVE = -1, // Create pages: no.  Compaction zone: yes
@@ -98,11 +101,8 @@ final class _PageManager {
                         boolean restored, PageArray array, long header, int offset)
         throws IOException
     {
-        if (array == null) {
-            throw new IllegalArgumentException("PageArray is null");
-        }
-
         mPageArray = array;
+        mPageSize = array.pageSize();
 
         // _Lock must be reentrant and unfair. See notes in _PageQueue.
         mRemoveLock = new ReentrantLock(false);
@@ -200,8 +200,67 @@ final class _PageManager {
         return DirectPageOps.p_longGetLE(header, offset + I_TOTAL_PAGE_COUNT);
     }
 
-    public PageArray pageArray() {
-        return mPageArray;
+    /**
+     * Called by _PageQueue.
+     */
+    int pageSize() {
+        return mPageSize;
+    }
+
+    /**
+     * Called by _PageQueue.
+     */
+    int directPageSize() {
+        return mPageArray.directPageSize();
+    }
+
+    /**
+     * Install a cache for _PageQueue nodes.
+     */
+    void pqCache(_LocalDatabase cache) {
+        fullLock();
+        mPageQueueCache = cache;
+        fullUnlock();
+    }
+
+    /**
+     * Called by _PageQueue, typically with remove lock held. Might return a cached page.
+     */
+    void pqReadPage(long index, long dst) throws IOException {
+        _LocalDatabase cache = mPageQueueCache;
+
+        if (cache != null) {
+            _Node node = cache.nodeMapGetAndRemove(index);
+            if (node != null) {
+                DirectPageOps.p_copy(node.mPage, 0, dst, 0, mPageSize);
+                node.unused();
+                return;
+            }
+        }
+
+        mPageArray.readPage(index, dst);
+    }
+
+    /**
+     * Called by _PageQueue, with append lock held. Might write to a write-back cache.
+     */
+    void pqWritePage(long index, long src) throws IOException {
+        _LocalDatabase cache = mPageQueueCache;
+
+        if (cache != null) {
+            // Note that commit lock isn't held, but the append lock is held. Switching
+            // _LocalDatabase.mCommitState is always performed with the commit lock held AND all
+            // append locks of all PageQueues. The correct state should be captured.
+            _Node node = cache.tryAllocRawDirtyNode(index);
+            if (node != null) {
+                DirectPageOps.p_copy(src, 0, node.mPage, 0, mPageSize);
+                cache.nodeMapPut(node);
+                node.releaseExclusive();
+                return;
+            }
+        }
+
+        mPageArray.writePage(index, src);
     }
 
     /**

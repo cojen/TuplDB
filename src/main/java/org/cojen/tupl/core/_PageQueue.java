@@ -142,14 +142,12 @@ final class _PageQueue implements IntegerRef {
     private _PageQueue(_PageManager manager, int allocMode, boolean aggressive,
                       ReentrantLock appendLock)
     {
-        PageArray array = manager.pageArray();
-
         mManager = manager;
-        mPageSize = array.pageSize();
+        mPageSize = manager.pageSize();
         mAllocMode = allocMode;
         mAggressive = aggressive;
 
-        mRemoveHead = p_callocPage(array.directPageSize());
+        mRemoveHead = p_callocPage(manager.directPageSize());
 
         if (appendLock == null) {
             // This lock must be reentrant. The appendPage method can call into
@@ -164,7 +162,7 @@ final class _PageQueue implements IntegerRef {
         }
 
         mAppendHeap = new _IdHeap(mPageSize - I_NODE_START);
-        mAppendTail = p_callocPage(array.directPageSize());
+        mAppendTail = p_callocPage(manager.directPageSize());
     }
 
     /**
@@ -245,7 +243,7 @@ final class _PageQueue implements IntegerRef {
         if (mRemoveHeadId == 0) {
             mRemoveStoppedId = mAppendHeadId;
         } else {
-            mManager.pageArray().readPage(mRemoveHeadId, mRemoveHead);
+            mManager.pqReadPage(mRemoveHeadId, mRemoveHead);
             if (mRemoveHeadFirstPageId == 0) {
                 mRemoveHeadFirstPageId = p_longGetBE(mRemoveHead, I_FIRST_PAGE_ID);
             }
@@ -379,7 +377,7 @@ final class _PageQueue implements IntegerRef {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         var head = mRemoveHead;
-        mManager.pageArray().readPage(id, head);
+        mManager.pqReadPage(id, head);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
         mRemoveHeadFirstPageId = p_longGetBE(head, I_FIRST_PAGE_ID);
@@ -471,7 +469,7 @@ final class _PageQueue implements IntegerRef {
             p_clear(tailBuf, end, pageSize(tailBuf));
 
             try {
-                mManager.pageArray().writePage(mAppendTailId, tailBuf);
+                mManager.pqWritePage(mAppendTailId, tailBuf);
             } catch (IOException e) {
                 // Undo.
                 appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
@@ -592,8 +590,7 @@ final class _PageQueue implements IntegerRef {
         long nodeId = mRemoveHeadId;
 
         if (nodeId != 0) {
-            PageArray pa = mManager.pageArray();
-            var node = p_clonePage(mRemoveHead, pa.directPageSize());
+            var node = p_clonePage(mRemoveHead, mManager.directPageSize());
             try {
                 long pageId = mRemoveHeadFirstPageId;
                 var nodeOffsetRef = new IntegerRef.Value();
@@ -629,7 +626,7 @@ final class _PageQueue implements IntegerRef {
                         break;
                     }
 
-                    pa.readPage(nodeId, node);
+                    mManager.pqReadPage(nodeId, node);
                     pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
                     nodeOffsetRef.value = I_NODE_START;
                 }

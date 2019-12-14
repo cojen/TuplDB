@@ -63,6 +63,10 @@ final class _NonPageDb extends _PageDb {
     }
 
     @Override
+    void pqCache(_LocalDatabase db) {
+    }
+
+    @Override
     void delete() {
     }
 

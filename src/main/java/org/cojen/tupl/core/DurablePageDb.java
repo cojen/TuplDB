@@ -332,6 +332,11 @@ final class DurablePageDb extends PageDb {
         }
     }
 
+    @Override
+    void pqCache(LocalDatabase db) {
+        mPageManager.pqCache(db);
+    }
+
     /**
      * Must be called when object is no longer referenced.
      */

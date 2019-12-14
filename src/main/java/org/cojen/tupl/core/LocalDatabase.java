@@ -727,6 +727,10 @@ public final class LocalDatabase extends CoreDatabase {
 
             mFragmentInodeLevelCaps = calculateInodeLevelCaps(mPageSize);
 
+            // Enable caching of PageQueue nodes before recovery begins, because it will be
+            // deleting pages, and caching helps performance.
+            mPageDb.pqCache(this);
+
             long recoveryStart = 0;
             if (mBaseFile == null) {
                 mRedoWriter = null;
@@ -3706,6 +3710,8 @@ public final class LocalDatabase extends CoreDatabase {
 
     /**
      * Put a node into the map, but caller must confirm that node is not already present.
+     *
+     * @param node must be latched
      */
     void nodeMapPut(final Node node) {
         nodeMapPut(node, Long.hashCode(node.id()));
@@ -3713,6 +3719,8 @@ public final class LocalDatabase extends CoreDatabase {
 
     /**
      * Put a node into the map, but caller must confirm that node is not already present.
+     *
+     * @param node must be latched
      */
     void nodeMapPut(final Node node, final int hash) {
         final Latch[] latches = mNodeMapLatches;
@@ -3744,6 +3752,7 @@ public final class LocalDatabase extends CoreDatabase {
      * Returns unconfirmed node if an existing node is found. Caller must latch and confirm
      * that node identifier matches, in case an eviction snuck in.
      *
+     * @param node must be latched
      * @return null if node was inserted, existing node otherwise
      */
     Node nodeMapPutIfAbsent(final Node node) {
@@ -4179,13 +4188,13 @@ public final class LocalDatabase extends CoreDatabase {
         mode |= mPageDb.allocMode();
 
         NodeGroup[] groups = mNodeGroups;
-        int listIx = ((int) anyNodeId) & (groups.length - 1);
+        int groupIx = ((int) anyNodeId) & (groups.length - 1);
         IOException fail = null;
 
         for (int trial = 1; trial <= 3; trial++) {
             for (int i=0; i<groups.length; i++) {
                 try {
-                    Node node = groups[listIx].tryAllocLatchedNode(trial, mode);
+                    Node node = groups[groupIx].tryAllocLatchedNode(trial, mode);
                     if (node != null) {
                         return node;
                     }
@@ -4194,8 +4203,8 @@ public final class LocalDatabase extends CoreDatabase {
                         fail = e;
                     }
                 }
-                if (--listIx < 0) {
-                    listIx = groups.length - 1;
+                if (--groupIx < 0) {
+                    groupIx = groups.length - 1;
                 }
             }
 
@@ -4219,6 +4228,46 @@ public final class LocalDatabase extends CoreDatabase {
         } else {
             throw new DatabaseFullException(fail);
         }
+    }
+
+    /**
+     * Returns a new or recycled Node instance, latched exclusively, marked dirty, and with the
+     * given id. Caller must be certain that the page with the given id can be written to.
+     * Caller must also hold commit lock.
+     *
+     * The intent of this method is to reduce write stalls when the PageQueue drains full
+     * nodes. If it needs to write another node in the process, then that's obviously not
+     * helpful.
+     *
+     * When running in the fully memory mapped mode, this method always returns null because
+     * writing to a mapped file is just a memory copy anyhow. There's no immediate write stall,
+     * unless out of memory and swapping.
+     *
+     * @return null if another dirty node would need to be evicted
+     */
+    Node tryAllocRawDirtyNode(long id) throws IOException {
+        /*P*/ // [|
+        /*P*/ // if (mFullyMapped) {
+        /*P*/ //     return null;
+        /*P*/ // }
+        /*P*/ // ]
+
+        NodeGroup[] groups = mNodeGroups;
+        int groupIx = ThreadLocalRandom.current().nextInt(groups.length);
+
+        Node node = groups[groupIx].tryAllocLatchedNode(1, NodeGroup.MODE_NO_EVICT);
+
+        if (node != null) {
+            /*P*/ // [
+            node.type(Node.TYPE_FRAGMENT);
+            /*P*/ // |
+            /*P*/ // node.type(Node.TYPE_NONE);
+            /*P*/ // ]
+            node.id(id);
+            node.mGroup.addDirty(node, mCommitState);
+        }
+
+        return node;
     }
 
     /**
