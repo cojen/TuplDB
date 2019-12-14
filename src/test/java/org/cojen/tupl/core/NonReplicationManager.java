@@ -198,17 +198,14 @@ class NonReplicationManager implements ReplicationManager {
                         if (mPosition >= position) {
                             return true;
                         }
-                        if (mClosed) {
-                            return false;
-                        }
                     }
+                }
+                if (mClosed) {
+                    return false;
                 }
                 try {
                     wait();
                 } catch (InterruptedException e) {
-                }
-                if (mClosed) {
-                    return false;
                 }
             }
         }
@@ -244,12 +241,14 @@ class NonReplicationManager implements ReplicationManager {
         }
 
         synchronized void close() {
-            mClosed = true;
-            for (Runnable r : mCallbacks) {
-                r.run();
+            if (!mClosed) {
+                mClosed = true;
+                notifyAll();
+                mSuspended.clear();
+                for (Runnable r : mCallbacks) {
+                    r.run();
+                }
             }
-            mSuspended.clear();
-            notifyAll();
         }
 
         synchronized void close(long position) {
