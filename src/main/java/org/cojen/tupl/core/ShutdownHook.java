@@ -28,7 +28,7 @@ interface ShutdownHook {
     void shutdown();
 
     /**
-     * ShutdownHook must not maintain a strong reference to the Database.
+     * ShutdownHook must not maintain a strong reference to the LocalDatabase.
      */
     static abstract class Weak<A> extends WeakReference<A> implements ShutdownHook {
         Weak(A obj) {

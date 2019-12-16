@@ -907,8 +907,8 @@ public class Utils extends org.cojen.tupl.io.Utils {
                 h.init(db);
             }
 
-            // Ensure that the handlers have a safe reference to the Database instance. Due to
-            // the way recovery dispatches to worker threads, the fence isn't strictly
+            // Ensure that the handlers have a safe reference to the LocalDatabase instance.
+            // Due to the way recovery dispatches to worker threads, the fence isn't strictly
             // necessary, but be safe.
             VarHandle.fullFence();
         }

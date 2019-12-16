@@ -18,7 +18,7 @@
 package org.cojen.tupl.core;
 
 /**
- * Interface for an object that can access a Database instance.
+ * Interface for an object that can access a LocalDatabase instance.
  *
  * @author Brian S O'Neill
  */

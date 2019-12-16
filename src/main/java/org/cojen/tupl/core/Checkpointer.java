@@ -199,9 +199,9 @@ final class Checkpointer implements Runnable {
     }
 
     /**
-     * Register to close the given object on shutdown or when the Database is
-     * no longer referenced. The Shutdown object must not maintain a strong
-     * reference to the Database.
+     * Register to close the given object on shutdown or when the CoreDatabase is no longer
+     * referenced. The Shutdown object must not maintain a strong reference to the
+     * CoreDatabase.
      *
      * @param obj ignored if null
      * @return false if immediately shutdown

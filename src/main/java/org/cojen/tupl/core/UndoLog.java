@@ -45,7 +45,7 @@ import static org.cojen.tupl.core.Utils.*;
  * @author Brian S O'Neill
  */
 final class UndoLog implements DatabaseAccess {
-    // Linked list of UndoLogs registered with Database.
+    // Linked list of UndoLogs registered with a TransactionContext.
     UndoLog mPrev;
     UndoLog mNext;
 

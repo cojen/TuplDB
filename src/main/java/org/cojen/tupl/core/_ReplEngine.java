@@ -79,9 +79,9 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     // Used by stashForRecovery and awaitPreparedTransactions.
     private LatchCondition mStashedCond;
 
-    // Maintain soft references to indexes, allowing them to get closed if not
-    // used for awhile. Without the soft references, Database maintains only
-    // weak references to indexes. They'd get closed too soon.
+    // Maintain soft references to indexes, allowing them to get closed if not used for
+    // awhile. Without the soft references, _LocalDatabase maintains only weak references to
+    // indexes. They'd get closed too soon.
     private final LHashTable.Obj<SoftReference<Index>> mIndexes;
 
     private final CursorTable mCursors;

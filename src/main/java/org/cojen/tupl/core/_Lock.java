@@ -613,10 +613,10 @@ final class _Lock {
         Object obj = mSharedLockersObj;
         if (obj instanceof _GhostFrame) {
             mSharedLockersObj = null;
-            // Note that the Database is obtained via a weak reference, but no null check needs
-            // to be performed. The Database would have to have been closed first, but doing
-            // this transfers lock ownership. Ghosts cannot be deleted if the ownership has
-            // changed, and this is checked by the caller of this method.
+            // Note that the _LocalDatabase is obtained via a weak reference, but no null check
+            // needs to be performed. The _LocalDatabase would have to have been closed first,
+            // but doing this transfers lock ownership. Ghosts cannot be deleted if the
+            // ownership has changed, and this is checked by the caller of this method.
             ((_GhostFrame) obj).action(mOwner.getDatabase(), latch, this);
         }
     }
