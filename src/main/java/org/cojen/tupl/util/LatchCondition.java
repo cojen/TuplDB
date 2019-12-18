@@ -218,12 +218,16 @@ public class LatchCondition {
     }
 
     /**
-     * Clears out all waiting threads and interrupts them. Caller must hold exclusive latch.
+     * Clears out all waiters and interrupts those that are threads. Caller must hold exclusive
+     * latch.
      */
     public final void clear() {
         WaitNode node = mHead;
         while (node != null) {
-            ((Thread) cWaiterHandle.get(node)).interrupt();
+            Object waiter = cWaiterHandle.get(node);
+            if (waiter instanceof Thread) {
+                ((Thread) waiter).interrupt();
+            }
             cPrevHandle.set(node, null);
             WaitNode next = (WaitNode) cNextHandle.get(node);
             cNextHandle.set(node, null);

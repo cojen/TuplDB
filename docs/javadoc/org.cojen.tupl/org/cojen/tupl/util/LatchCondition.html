@@ -193,7 +193,7 @@ long&nbsp;nanosEnd)</code></th>
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#clear()">clear</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Clears out all waiting threads and interrupts them.</div>
+<div class="block">Clears out all waiters and interrupts those that are threads.</div>
 </td>
 </tr>
 <tr class="altColor" id="i6">
@@ -441,7 +441,8 @@ long&nbsp;nanosEnd)</span></div>
 <section class="detail">
 <h3><a id="clear()">clear</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">clear</span>()</div>
-<div class="block">Clears out all waiting threads and interrupts them. Caller must hold exclusive latch.</div>
+<div class="block">Clears out all waiters and interrupts those that are threads. Caller must hold exclusive
+ latch.</div>
 </section>
 </li>
 </ul>
