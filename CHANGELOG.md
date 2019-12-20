@@ -24,8 +24,9 @@ v1.5.0
 * Fix writer starvation issue when there are a lot of active readers.
 * Fix in replication hole fill request handling which dropped them too soon, leading to a flood
   of duplicate requests.
-* Fix potential deadlock in the count and skip methods.	
+* Fix potential deadlock in the count and skip methods.
 * Fix where the cache primer creation task could stall behind a long running cursor.
+* Fix trashed tree race condition with recovery of a non-replicated database.
 * Replace "unsafe" usage with VarHandles.
 * Guard against a flood of duplicate hole fill requests. De-duplicate them and handle them in
   at most one thread per remote peer.
@@ -53,19 +54,24 @@ v1.5.0
   ones, to prevent possible false address collisions.
 * Reduce object allocations and copies within the replication subsystem.
 * Provide public access to the commit lock.
+* Added a View.isEmpty method.
 * Free up more memory when closing the database in case something refers to the instance for a
   long time. Usually this is caused by a thread local reference somewhere.
 * Remove spare page pool and keep a spare page within each node group instead. This eliminates
   some contention when many threads are simultaneously compacting pages.
 * Added support for proxying writes from the replication leader via a peer. Experimental for now.
+* Add ability to check if current member is the leader.
 * Boost the size of the replication writer cache when creating non-contiguous writers, to
   ensure that they don't get lost. When they're lost, additional hole filling requests are
   performed.
 * Added non-blocking replication read support.
 * Added more replication roles and refine exitsing ones.
 * Redesign custom transaction handler such that multiple named handlers can be installed.
+* Redesign prepare transaction support to match custom handler and to fix failover defects.
 * Include database stats when throwing a cache exhausted exception.
 * Added a convenience method to set the cache size.
+* Attempt to reduce write stalls when draining the PageQueue by relying on the main database
+  cache to postpone the write until the next checkpoint.
 * LatchCondition now unparks the signaled waiter as the latch is released. Earlier behavior
   could result in extra context switches (thundering herd).
 * Latching performance improvements when parking/unparking threads.
