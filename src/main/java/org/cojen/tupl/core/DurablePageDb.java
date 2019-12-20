@@ -735,7 +735,7 @@ final class DurablePageDb extends PageDb {
                                       PageCache cache, Crypto crypto, InputStream in)
         throws IOException
     {
-        try {
+        try (in) {
             if (options.contains(OpenOption.READ_ONLY)) {
                 throw new DatabaseException("Cannot restore into a read-only file");
             }
@@ -779,8 +779,6 @@ final class DurablePageDb extends PageDb {
             }
 
             return restoreFromSnapshot(cache, crypto, in, buffer, pa);
-        } finally {
-            closeQuietly(in);
         }
     }
 
@@ -792,7 +790,7 @@ final class DurablePageDb extends PageDb {
     static PageDb restoreFromSnapshot(PageArray pa, PageCache cache, Crypto crypto, InputStream in)
         throws IOException
     {
-        try {
+        try (in) {
             if (!pa.isEmpty()) {
                 closeQuietly(pa);
                 throw new DatabaseException("Cannot restore into a non-empty file");
@@ -819,8 +817,6 @@ final class DurablePageDb extends PageDb {
             }
 
             return restoreFromSnapshot(cache, crypto, in, buffer, pa);
-        } finally {
-            closeQuietly(in);
         }
     }
 

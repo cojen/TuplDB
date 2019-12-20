@@ -349,7 +349,7 @@ public interface Database extends CauseCloseable, Flushable {
     /**
      * Prime the cache, from a set encoded {@linkplain #createCachePrimer earlier}.
      *
-     * @param in caching priming source; buffering is recommended; not auto-closed
+     * @param in caching priming source; buffering is recommended; auto-closed
      * @see DatabaseConfig#cachePriming
      */
     public abstract void applyCachePrimer(InputStream in) throws IOException;

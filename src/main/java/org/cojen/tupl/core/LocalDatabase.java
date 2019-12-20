@@ -2322,38 +2322,40 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public void applyCachePrimer(InputStream in) throws IOException {
-        if (!(mPageDb.isDurable())) {
-            throw new UnsupportedOperationException
-                ("Cache priming only allowed for durable databases");
-        }
-
-        in = ((DurablePageDb) mPageDb).decrypt(in);
-
-        DataInput din;
-        if (in instanceof DataInput) {
-            din = (DataInput) in;
-        } else {
-            din = new DataInputStream(in);
-        }
-
-        long magic = din.readLong();
-        if (magic != PRIMER_MAGIC_NUMBER) {
-            throw new DatabaseException("Wrong cache primer magic number: " + magic);
-        }
-
-        while (true) {
-            int len = din.readInt();
-            if (len < 0) {
-                break;
+    public void applyCachePrimer(final InputStream fin) throws IOException {
+        try (fin) {
+            if (!(mPageDb.isDurable())) {
+                throw new UnsupportedOperationException
+                    ("Cache priming only allowed for durable databases");
             }
-            var name = new byte[len];
-            din.readFully(name);
-            Tree tree = openTree(name, IX_FIND);
-            if (tree != null) {
-                tree.applyCachePrimer(din);
+
+            InputStream in = ((DurablePageDb) mPageDb).decrypt(fin);
+
+            DataInput din;
+            if (in instanceof DataInput) {
+                din = (DataInput) in;
             } else {
-                BTree.skipCachePrimer(din);
+                din = new DataInputStream(in);
+            }
+
+            long magic = din.readLong();
+            if (magic != PRIMER_MAGIC_NUMBER) {
+                throw new DatabaseException("Wrong cache primer magic number: " + magic);
+            }
+
+            while (true) {
+                int len = din.readInt();
+                if (len < 0) {
+                    break;
+                }
+                var name = new byte[len];
+                din.readFully(name);
+                Tree tree = openTree(name, IX_FIND);
+                if (tree != null) {
+                    tree.applyCachePrimer(din);
+                } else {
+                    BTree.skipCachePrimer(din);
+                }
             }
         }
     }
