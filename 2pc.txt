@@ -9,22 +9,21 @@ be chosen by any means, possibly randomly. The other clusters involved in the tr
 designated as participants, as per the usual two-phase commit protocol definition.
 
 1. A transaction is created on each cluster in the usual fashion, and updates are applied to them.
-2. The coordinator encodes a message which consists of all the cluster names involved in the
-   two-phase commit transaction, and sends the message to each participant, along with the
-   coordinator's transaction id.
+2. The coordinator encodes a message which consists of its transaction id and all of the
+   cluster names involved, and then sends it to each participant.
 3. Each participant prepares its own transaction with the message provided by the
    coordinator. It's not strictly required that each participant record all the other
-   participants, but it must record the coordinator cluster name and it's transaction
+   participants, but it must record the coordinator cluster name and its transaction
    id. Knowing the other participants can be used for certain recovery scenarios, so it's a
-   good idea to record it anyhow. The participant replies back with it's own transaction id.
-4. Upon receiving replies from all participants, the coordinator then prepares it's own
+   good idea to record it anyhow. The participant replies back with its own transaction id.
+4. Upon receiving replies from all participants, the coordinator then prepares its own
    transaction, recording the participant cluster names and their transaction ids. Once the
    coordinator's transaction is prepared, the coordinator is now "committed" to committing the
    entire transaction, and the second phase begins. If the coordinator wanted to roll back, it
-   shouldn't have prepared it's own transaction.
-5. The coordinator sends a commit message to each participant, which commits it's own
+   shouldn't have prepared its own transaction.
+5. The coordinator sends a commit message to each participant, which commits its own
    transaction and replies success. The participants cannot roll back.
-6. Upon receiving replies from all participants, the coordinator commits it's own transaction,
+6. Upon receiving replies from all participants, the coordinator commits its own transaction,
    and now the entire two-phase commit is complete.
 
 Failure handling:
@@ -63,7 +62,7 @@ commits the original transaction. This auxillary state must linger until all par
 acknowledged and committed too. If some of the participants have been decomissioned, then their
 input isn't required.
 
-A failure after step 4 requires that the coordinator continue it's job to fully commit the
+A failure after step 4 requires that the coordinator continue its job to fully commit the
 transaction, by completing steps 5 and 6. The prepared message encodes a state which indicates
 that the cluster was chosen as a coordinator, or else it would recover as a participant. The
 coordinator sweeps through all the participants and asks them to commit the transaction. If
@@ -73,10 +72,13 @@ keeps trying to contact participants which haven't responded, and it never gives
 back. If a participant cluster is decomissioned, then the coordinator can simply skip it,
 treating it as a success.
 
+The coordinator must only contact participant instances which are leaders, or those which are
+known to be caught up. If the participant is a replica, then it cannot commit anyhow.
+
 Prior to step 4, the coordinator can choose to roll back the transaction, if for example one of
 the participants didn't respond in time. All it needs to do is roll back its own transaction
 (which hasn't been prepared yet), and then it sends a message to all participants to roll back
-as well. If the coordinator crashes before it can roll back it's own transaction or send
+as well. If the coordinator crashes before it can roll back its own transaction or send
 messages to the participants, the two-phase commit transaction will still roll back, although
 this is dependent on the polling interval and how long it takes for the coordinator's cluster
 to elect a new leader. When a new leader is elected, the coordinator's transaction rolls back
