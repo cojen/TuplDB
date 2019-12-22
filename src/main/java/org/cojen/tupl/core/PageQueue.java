@@ -453,10 +453,26 @@ final class PageQueue implements IntegerRef {
 
         mDrainInProgress = true;
         try {
+            // Can throw an IOException, so do this before changing any state.
             long newTailId = mManager.allocPage(mAllocMode);
-            long firstPageId = appendHeap.remove();
 
-            var tailBuf = mAppendTail;
+            /*P*/ byte[] tailBuf;
+            Node node;
+
+            LocalDatabase cache = mManager.mPageCache;
+            if (cache == null) {
+                tailBuf = mAppendTail;
+                node = null;
+            } else {
+                // Note that commit lock isn't held, but the append lock is held. Switching
+                // LocalDatabase.mCommitState is always performed with the commit lock held AND
+                // all append locks of all PageQueues. The correct state should be captured.
+                // Can throw an IOException, so do this before changing any state.
+                node = cache.tryAllocRawDirtyNode(mAppendTailId);
+                tailBuf = node == null ? mAppendTail : node.mPage;
+            }
+
+            long firstPageId = appendHeap.remove();
             p_longPutBE(tailBuf, I_NEXT_NODE_ID, newTailId);
             p_longPutBE(tailBuf, I_FIRST_PAGE_ID, firstPageId);
 
@@ -468,13 +484,18 @@ final class PageQueue implements IntegerRef {
             // Clean out any cruft from previous usage and ensure delta terminator.
             p_clear(tailBuf, end, pageSize(tailBuf));
 
-            try {
-                mManager.pqWritePage(mAppendTailId, tailBuf);
-            } catch (IOException e) {
-                // Undo.
-                appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
-                mManager.recyclePage(newTailId);
-                throw WriteFailureException.from(e);
+            if (node != null) {
+                cache.nodeMapPut(node);
+                node.releaseExclusive();
+            } else {
+                try {
+                    mManager.mPageArray.writePage(mAppendTailId, tailBuf);
+                } catch (IOException e) {
+                    // Undo.
+                    appendHeap.undrain(firstPageId, tailBuf, I_NODE_START, end);
+                    mManager.recyclePage(newTailId);
+                    throw WriteFailureException.from(e);
+                }
             }
 
             mAppendNodeCount++;

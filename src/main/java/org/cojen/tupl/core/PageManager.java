@@ -54,7 +54,7 @@ final class PageManager {
     static final int I_RECYCLE_QUEUE     = I_REGULAR_QUEUE + PageQueue.HEADER_SIZE;
     static final int I_RESERVE_QUEUE     = I_RECYCLE_QUEUE + PageQueue.HEADER_SIZE;
 
-    private final PageArray mPageArray;
+    final PageArray mPageArray;
     private final int mPageSize;
 
     // One remove lock for all queues.
@@ -71,7 +71,8 @@ final class PageManager {
     private PageQueue mReserveList;
     private long mReclaimUpperBound = Long.MIN_VALUE;
 
-    private LocalDatabase mPageQueueCache;
+    // Accessed by PageQueue with append or remove lock held.
+    LocalDatabase mPageCache;
 
     static final int
         ALLOC_TRY_RESERVE = -1, // Create pages: no.  Compaction zone: yes
@@ -219,15 +220,15 @@ final class PageManager {
      */
     void pqCache(LocalDatabase cache) {
         fullLock();
-        mPageQueueCache = cache;
+        mPageCache = cache;
         fullUnlock();
     }
 
     /**
-     * Called by PageQueue, typically with remove lock held. Might return a cached page.
+     * Called by PageQueue, typically with remove lock held. Might read a cached page.
      */
     void pqReadPage(long index, /*P*/ byte[] dst) throws IOException {
-        LocalDatabase cache = mPageQueueCache;
+        LocalDatabase cache = mPageCache;
 
         if (cache != null) {
             Node node = cache.nodeMapGetAndRemove(index);
@@ -239,28 +240,6 @@ final class PageManager {
         }
 
         mPageArray.readPage(index, dst);
-    }
-
-    /**
-     * Called by PageQueue, with append lock held. Might write to a write-back cache.
-     */
-    void pqWritePage(long index, /*P*/ byte[] src) throws IOException {
-        LocalDatabase cache = mPageQueueCache;
-
-        if (cache != null) {
-            // Note that commit lock isn't held, but the append lock is held. Switching
-            // LocalDatabase.mCommitState is always performed with the commit lock held AND all
-            // append locks of all PageQueues. The correct state should be captured.
-            Node node = cache.tryAllocRawDirtyNode(index);
-            if (node != null) {
-                PageOps.p_copy(src, 0, node.mPage, 0, mPageSize);
-                cache.nodeMapPut(node);
-                node.releaseExclusive();
-                return;
-            }
-        }
-
-        mPageArray.writePage(index, src);
     }
 
     /**
