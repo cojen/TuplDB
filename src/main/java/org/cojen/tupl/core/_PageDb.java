@@ -41,7 +41,7 @@ abstract class _PageDb implements CauseCloseable {
     /**
      * Install a cache for _PageQueue nodes.
      */
-    abstract void pqCache(_LocalDatabase db);
+    abstract void pageCache(_LocalDatabase db);
 
     /**
      * Must be called when object is no longer referenced.

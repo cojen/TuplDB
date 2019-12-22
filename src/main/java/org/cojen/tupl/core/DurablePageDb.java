@@ -333,8 +333,8 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    void pqCache(LocalDatabase db) {
-        mPageManager.pqCache(db);
+    void pageCache(LocalDatabase db) {
+        mPageManager.pageCache(db);
     }
 
     /**

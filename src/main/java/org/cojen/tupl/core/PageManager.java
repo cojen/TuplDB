@@ -218,28 +218,10 @@ final class PageManager {
     /**
      * Install a cache for PageQueue nodes.
      */
-    void pqCache(LocalDatabase cache) {
+    void pageCache(LocalDatabase cache) {
         fullLock();
         mPageCache = cache;
         fullUnlock();
-    }
-
-    /**
-     * Called by PageQueue, typically with remove lock held. Might read a cached page.
-     */
-    void pqReadPage(long index, /*P*/ byte[] dst) throws IOException {
-        LocalDatabase cache = mPageCache;
-
-        if (cache != null) {
-            Node node = cache.nodeMapGetAndRemove(index);
-            if (node != null) {
-                PageOps.p_copy(node.mPage, 0, dst, 0, mPageSize);
-                node.unused();
-                return;
-            }
-        }
-
-        mPageArray.readPage(index, dst);
     }
 
     /**

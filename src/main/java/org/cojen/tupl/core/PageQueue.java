@@ -91,7 +91,7 @@ final class PageQueue implements IntegerRef {
     // These fields are guarded by remove lock provided by caller.
     private long mRemovePageCount;
     private long mRemoveNodeCount;
-    private final /*P*/ byte[] mRemoveHead;
+    private /*P*/ byte[] mRemoveHead;
     private long mRemoveHeadId;
     private int mRemoveHeadOffset;
     private long mRemoveHeadFirstPageId;
@@ -243,9 +243,9 @@ final class PageQueue implements IntegerRef {
         if (mRemoveHeadId == 0) {
             mRemoveStoppedId = mAppendHeadId;
         } else {
-            mManager.pqReadPage(mRemoveHeadId, mRemoveHead);
+            var head = readRemoveNode(mRemoveHeadId);
             if (mRemoveHeadFirstPageId == 0) {
-                mRemoveHeadFirstPageId = p_longGetBE(mRemoveHead, I_FIRST_PAGE_ID);
+                mRemoveHeadFirstPageId = p_longGetBE(head, I_FIRST_PAGE_ID);
             }
         }
     }
@@ -376,11 +376,51 @@ final class PageQueue implements IntegerRef {
         if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
-        var head = mRemoveHead;
-        mManager.pqReadPage(id, head);
+        var head = readRemoveNode(id);
         mRemoveHeadId = id;
         mRemoveHeadOffset = I_NODE_START;
         mRemoveHeadFirstPageId = p_longGetBE(head, I_FIRST_PAGE_ID);
+    }
+
+    /**
+     * Caller must hold remove lock.
+     *
+     * @return mRemoveHead
+     */
+    private /*P*/ byte[] readRemoveNode(long id) throws IOException {
+        var head = mRemoveHead;
+
+        LocalDatabase cache = mManager.mPageCache;
+        Node node;
+
+        if (cache == null || (node = cache.nodeMapGetAndRemove(id)) == null) {
+            mManager.mPageArray.readPage(id, head);
+        } else {
+            if (node.mCachedState != Node.CACHED_CLEAN) {
+                mManager.mPageArray.writePage(id, node.mPage);
+                node.mCachedState = Node.CACHED_CLEAN;
+            }
+
+            /*P*/ // [
+            // Swap the pages.
+            mRemoveHead = node.mPage;
+            node.mPage = head;
+            head = mRemoveHead;
+            /*P*/ // |
+            /*P*/ // if (cache.mFullyMapped) {
+            /*P*/ //     p_copy(node.mPage, 0, head, 0, mPageSize);
+            /*P*/ // } else {
+            /*P*/ //     // Swap the pages.
+            /*P*/ //     mRemoveHead = node.mPage;
+            /*P*/ //     node.mPage = head;
+            /*P*/ //     head = mRemoveHead;
+            /*P*/ // }
+            /*P*/ // ]
+
+            node.unused();
+        }
+
+        return head;
     }
 
     /**
@@ -597,6 +637,8 @@ final class PageQueue implements IntegerRef {
      * duplicates exist.
      */
     boolean verifyPageRange(long startId, long endId) throws IOException {
+        final LocalDatabase cache = mManager.mPageCache;
+
         // Be extra paranoid and use a hash for duplicate detection.
         long expectedHash = 0;
         for (long i=startId; i<endId; i++) {
@@ -647,7 +689,14 @@ final class PageQueue implements IntegerRef {
                         break;
                     }
 
-                    mManager.pqReadPage(nodeId, node);
+                    Node n;
+                    if (cache != null && (n = cache.nodeMapGetShared(nodeId)) != null) {
+                        p_copy(n.mPage, 0, node, 0, pageSize(node));
+                        n.releaseShared();
+                    } else {
+                        mManager.mPageArray.readPage(nodeId, node);
+                    }
+
                     pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
                     nodeOffsetRef.value = I_NODE_START;
                 }

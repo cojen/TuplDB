@@ -738,7 +738,7 @@ public final class _LocalDatabase extends CoreDatabase {
 
             // Enable caching of _PageQueue nodes before recovery begins, because it will be
             // deleting pages, and caching helps performance.
-            mPageDb.pqCache(this);
+            mPageDb.pageCache(this);
 
             long recoveryStart = 0;
             if (mBaseFile == null) {
