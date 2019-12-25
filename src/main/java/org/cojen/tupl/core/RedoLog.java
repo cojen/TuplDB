@@ -44,6 +44,7 @@ import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FileIO;
 
 import static org.cojen.tupl.core.LocalDatabase.REDO_FILE_SUFFIX;
+import static org.cojen.tupl.core.Utils.*;
 
 /**
  * Implementation of the local (non-replicated) redo log. All redo operations are stored in a
@@ -91,7 +92,7 @@ final class RedoLog extends RedoWriter {
     /**
      * Open for replay.
      *
-     * @param logId first log id to open
+     * @param logId first log id to create
      */
     RedoLog(Launcher launcher, long logId, long redoPos) throws IOException {
         this(launcher.mCrypto, launcher.mBaseFile, launcher.mFileFactory, logId, redoPos, null);
@@ -112,7 +113,7 @@ final class RedoLog extends RedoWriter {
     /**
      * @param crypto optional
      * @param factory optional
-     * @param logId first log id to open
+     * @param logId first log id to create
      * @param context used for creating next log file; pass null for replay mode
      */
     RedoLog(Crypto crypto, File baseFile, FileFactory factory,
@@ -187,21 +188,21 @@ final class RedoLog extends RedoWriter {
                     finished = replay(din, visitor, listener);
                     mPosition = din.mPos;
                 } finally {
-                    Utils.closeQuietly(in);
+                    closeQuietly(in);
                 }
 
                 mLogId++;
 
                 if (!finished) {
                     // Last log file was truncated, so chuck the rest.
-                    Utils.deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, mLogId, Long.MAX_VALUE);
+                    deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, mLogId, Long.MAX_VALUE);
                     break;
                 }
             }
 
             return files;
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCloseCause);
+            throw rethrow(e, mCloseCause);
         } finally {
             releaseExclusive();
         }
@@ -246,10 +247,10 @@ final class RedoLog extends RedoWriter {
             }
 
             int offset = 0;
-            Utils.encodeLongLE(header, offset, MAGIC_NUMBER); offset += 8;
-            Utils.encodeIntLE(header, offset, ENCODING_VERSION); offset += 4;
-            Utils.encodeLongLE(header, offset, logId); offset += 8;
-            Utils.encodeIntLE(header, offset, nextTermRndSeed); offset += 4;
+            encodeLongLE(header, offset, MAGIC_NUMBER); offset += 8;
+            encodeIntLE(header, offset, ENCODING_VERSION); offset += 4;
+            encodeLongLE(header, offset, logId); offset += 8;
+            encodeIntLE(header, offset, nextTermRndSeed); offset += 4;
             if (offset != header.length) {
                 throw new AssertionError();
             }
@@ -259,7 +260,7 @@ final class RedoLog extends RedoWriter {
             // Make sure that parent directory durably records the new log file.
             FileIO.dirSync(file);
         } catch (IOException e) {
-            Utils.closeQuietly(fout);
+            closeQuietly(fout);
             file.delete();
             throw WriteFailureException.from(e);
         }
@@ -313,7 +314,7 @@ final class RedoLog extends RedoWriter {
         }
 
         // Close old file if previous checkpoint aborted.
-        Utils.closeQuietly(mOldOut);
+        closeQuietly(mOldOut);
 
         mOldOut = oldOut;
         mOldChannel = oldChannel;
@@ -336,7 +337,7 @@ final class RedoLog extends RedoWriter {
         try {
             force(false);
         } catch (IOException e) {
-            throw Utils.rethrow(e, mCloseCause);
+            throw rethrow(e, mCloseCause);
         }
     }
 
@@ -402,7 +403,7 @@ final class RedoLog extends RedoWriter {
     @Override
     void checkpointAborted() {
         if (mNextOut != null) {
-            Utils.closeQuietly(mNextOut);
+            closeQuietly(mNextOut);
             mNextOut = null;
         }
     }
@@ -424,7 +425,7 @@ final class RedoLog extends RedoWriter {
             mOldChannel = null;
         }
 
-        Utils.closeQuietly(mOldOut);
+        closeQuietly(mOldOut);
         */
     }
 
@@ -436,14 +437,30 @@ final class RedoLog extends RedoWriter {
     @Override
     void checkpointFinished() throws IOException {
         mOldChannel = null;
-        Utils.closeQuietly(mOldOut);
-        long id = mDeleteLogId;
-        for (; id < mNextLogId; id++) {
+        closeQuietly(mOldOut);
+
+        for (long id = mNextLogId; --id >= mDeleteLogId; ) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
-            Utils.delete(fileFor(mBaseFile, id));
+            delete(fileFor(mBaseFile, id));
         }
+
         // Log will be deleted after next checkpoint finishes.
-        mDeleteLogId = id;
+        mDeleteLogId = mNextLogId;
+    }
+
+    /**
+     * Deletes newly created redo log files that should be effectively empty.
+     */
+    void initialCheckpointFailed(Throwable cause) {
+        try {
+            close();
+            for (long id = mNextLogId; id >= mDeleteLogId; id--) {
+                delete(fileFor(mBaseFile, id));
+            }
+        } catch (Throwable e2) {
+            suppress(cause, e2);
+            rethrow(cause);
+        }
     }
 
     @Override
@@ -557,9 +574,12 @@ final class RedoLog extends RedoWriter {
 
     @Override
     public void close() throws IOException {
-        Utils.closeQuietly(mOldOut);
+        close(mNextOut, mNextChannel);
+        close(mOut, mChannel);
+        close(mOldOut, mOldChannel);
+    }
 
-        FileChannel channel = mChannel;
+    private static void close(OutputStream out, FileChannel channel) throws IOException {
         if (channel != null) {
             try {
                 channel.close();
@@ -568,7 +588,7 @@ final class RedoLog extends RedoWriter {
             }
         }
 
-        Utils.closeQuietly(mOut);
+        closeQuietly(out);
     }
 
     @Override
@@ -578,7 +598,7 @@ final class RedoLog extends RedoWriter {
 
     // Caller must hold exclusive latch (replay is exempt)
     int nextTermRnd() {
-        return mTermRndSeed = Utils.nextRandom(mTermRndSeed);
+        return mTermRndSeed = nextRandom(mTermRndSeed);
     }
 
     private boolean replay(DataIn in, RedoVisitor visitor, EventListener listener)

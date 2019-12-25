@@ -876,7 +876,7 @@ public final class _LocalDatabase extends CoreDatabase {
                     } else {
                         // Make sure old redo logs are deleted. Process might have exited
                         // before last checkpoint could delete them.
-                        deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX, 0, logId - 1);
+                        deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, logId - 1);
 
                         boolean doCheckpoint = txns.size() != 0;
 
@@ -901,17 +901,21 @@ public final class _LocalDatabase extends CoreDatabase {
                         txnId = applier.highestTxnId(txnId);
 
                         // New redo logs begin with identifiers one higher than last scanned.
-                        mRedoWriter = new _RedoLog(launcher, replayLog, mTxnContexts[0]);
-
-                        // TODO: If any exception is thrown before checkpoint is complete,
-                        // delete the newly created redo log file.
+                        var log = new _RedoLog(launcher, replayLog, mTxnContexts[0]);
+                        mRedoWriter = log;
 
                         if (doCheckpoint) {
                             // Do this early for checkpoint to store correct transaction id.
                             resetTransactionContexts(txnId);
                             txnId = -1;
 
-                            forceCheckpoint();
+                            try {
+                                forceCheckpoint();
+                            } catch (Throwable e) {
+                                // Delete the newly created redo log files.
+                                log.initialCheckpointFailed(e);
+                                throw e;
+                            }
 
                             // Only cleanup after successful checkpoint.
                             deleteReverseOrder(redoFiles);
