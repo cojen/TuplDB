@@ -463,19 +463,27 @@ public final class _LocalDatabase extends CoreDatabase {
             }
         }
 
+        LockedFile attemptCreate = null;
+
         try {
             // Create lock file, preventing database from being opened multiple times.
             if (mBaseFile == null || openMode == OPEN_TEMP) {
                 mLockFile = null;
             } else {
-                var lockFile = new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX);
+                var lockFile = new File(lockFilePath());
 
                 FileFactory factory = launcher.mFileFactory;
                 if (factory != null && !mReadOnly) {
                     factory.createFile(lockFile);
                 }
 
+                boolean didExist = lockFile.exists();
+
                 mLockFile = new LockedFile(lockFile, mReadOnly);
+
+                if (!didExist) {
+                    attemptCreate = mLockFile;
+                }
             }
 
             if (openMode == OPEN_DESTROY) {
@@ -926,8 +934,23 @@ public final class _LocalDatabase extends CoreDatabase {
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
             closeQuietly(this);
+
+            // Clean up the mess by deleting the lock file if it was just created.
+            deleteLockFile(attemptCreate, null);
+
             throw e;
         }
+    }
+
+    private String lockFilePath() {
+        return mBaseFile.getPath() + LOCK_FILE_SUFFIX;
+    }
+
+    private IOException deleteLockFile(LockedFile file, IOException ex) {
+        if (file != null) {
+            ex = file.delete(lockFilePath(), ex);
+        }
+        return ex;
     }
 
     /**
@@ -2928,8 +2951,7 @@ public final class _LocalDatabase extends CoreDatabase {
 
                 if (shutdown && mBaseFile != null && !mReadOnly) {
                     deleteRedoLogFiles();
-                    ex = closeQuietly(ex, mLockFile, cause);
-                    new File(mBaseFile.getPath() + LOCK_FILE_SUFFIX).delete();
+                    ex = deleteLockFile(mLockFile, ex);
                 } else {
                     ex = closeQuietly(ex, mLockFile, cause);
                 }

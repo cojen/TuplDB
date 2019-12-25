@@ -34,6 +34,7 @@ public class Verify extends VerificationObserver {
      */
     public static void main(String[] args) throws Exception {
         var config = new DatabaseConfig()
+            .createFilePath(false)
             .baseFilePath(args[0])
             .eventListener(new EventPrinter());
 

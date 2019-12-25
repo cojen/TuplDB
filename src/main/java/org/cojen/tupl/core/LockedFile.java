@@ -88,4 +88,16 @@ final class LockedFile implements Closeable {
             mRaf.close();
         }
     }
+
+    /**
+     * Quietly closes the file and deletes it.
+     *
+     * @param ex returned if non-null
+     * @return IOException which was caught, unless first was non-null
+     */
+    IOException delete(String path, IOException ex) {
+        ex = Utils.closeQuietly(ex, this);
+        new File(path).delete();
+        return ex;
+    }
 }
