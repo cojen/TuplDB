@@ -85,4 +85,8 @@ to elect a new leader. When a new leader is elected, the coordinator's transacti
 automatically because it was never prepared. The polling participants eventually learn that the
 coordinator's transaction is gone, and then they roll back too.
 
+Possible enhancement: After the coordinator has prepared it's transaction, it can release all
+of its locks except for the internal prepare lock, and also truncate its undo log. This avoids
+some of the issues caused by a non-responsive participant.
+
 ---
