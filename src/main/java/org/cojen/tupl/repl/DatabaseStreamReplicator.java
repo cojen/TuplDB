@@ -234,6 +234,11 @@ final class DatabaseStreamReplicator implements DatabaseReplicator {
     }
 
     @Override
+    public boolean isReadable(long position) {
+        return mRepl.isReadable(position);
+    }
+
+    @Override
     public void start(long position) throws IOException {
         if (mStreamReader != null) {
             throw new IllegalStateException();

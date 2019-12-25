@@ -416,6 +416,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public boolean isReadable(long position) {
+        return mStateLog.isReadable(position);
+    }
+
+    @Override
     public Reader newReader(long position, boolean follow) {
         if (follow) {
             return doNewReader(position);

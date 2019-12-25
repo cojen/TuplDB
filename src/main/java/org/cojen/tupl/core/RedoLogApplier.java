@@ -103,6 +103,9 @@ final class RedoLogApplier extends ReplEngine implements ReplicationManager {
     public long encoding() { return 0; }
 
     @Override
+    public boolean isReadable(long position) { return false; }
+
+    @Override
     public void start(long position) { }
 
     @Override

@@ -1188,6 +1188,11 @@ public final class LocalDatabase extends CoreDatabase {
         }
     }
 
+    private boolean hasRedoLogFiles() throws IOException {
+        return mBaseFile != null
+            && !findNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, Long.MAX_VALUE).isEmpty();
+    }
+
     @Override
     public Index findIndex(byte[] name) throws IOException {
         return openTree(name.clone(), IX_FIND);
@@ -3370,38 +3375,52 @@ public final class LocalDatabase extends CoreDatabase {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
 
-            long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
-
-            if (launcher.mDebugOpen != null) {
-                mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
-            }
-
-            ReplicationManager rm = launcher.mReplManager;
-
-            if (rm == null) {
-                if (replEncoding != 0) {
-                    throw new DatabaseException
-                        ("Database must be configured with a replication manager, " +
-                         "identified by: " + replEncoding);
-                }
-            } else {
-                if (replEncoding == 0) {
-                    throw new DatabaseException
-                        ("Database was created initially without a replication manager");
-                }
-                long expectedReplEncoding = rm.encoding();
-                if (replEncoding != expectedReplEncoding) {
-                    throw new DatabaseException
-                        ("Database was created initially with a different replication manager, " +
-                         "identified by: " + replEncoding);
-                }
-            }
-
             rootId = decodeLongLE(header, I_ROOT_PAGE_ID);
 
             if (launcher.mDebugOpen != null) {
                 mEventListener.notify(EventType.DEBUG, "ROOT_PAGE_ID: %1$d", rootId);
             }
+        }
+
+        long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
+        ReplicationManager rm = launcher.mReplManager;
+
+        if ((replEncoding != 0 || rm != null) && launcher.mDebugOpen != null) {
+            mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
+        }
+
+        if (rm == null) {
+            if (replEncoding != 0 && !hasRedoLogFiles()) {
+                // Conversion to non-replicated mode is allowed by simply touching redo file 0.
+                throw new DatabaseException
+                    ("Database must be configured with a replication manager, " +
+                     "identified by: " + replEncoding);
+            }
+        } else if (replEncoding == 0) {
+            // Check if conversion to replicated mode is allowed. The replication log must have
+            // data starting at position 0, and no redo log files can exist.
+
+            String msg = "Database was created initially without a replication manager. " +
+                "Conversion isn't possible ";
+
+            if (!rm.isReadable(0)) {
+                msg += "without complete replication data.";
+                throw new DatabaseException(msg);
+            }
+
+            if (hasRedoLogFiles()) {
+                msg += "when redo log files exist. A clean shutdown is required.";
+                throw new DatabaseException(msg);
+            }
+
+            // The redo position passed to the ReplicationManager must be 0, but what's in the
+            // header might be higher. Since we have the header data passed to us already, we
+            // can modify it without persisting it.
+            encodeLongLE(header, I_REDO_POSITION, 0);
+        } else if (replEncoding != rm.encoding()) {
+            throw new DatabaseException
+                ("Database was created initially with a different replication manager, " +
+                 "identified by: " + replEncoding);
         }
 
         return loadTreeRoot(0, rootId);

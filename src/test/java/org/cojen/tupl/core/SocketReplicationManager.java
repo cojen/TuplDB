@@ -77,6 +77,11 @@ class SocketReplicationManager implements ReplicationManager {
     }
 
     @Override
+    public boolean isReadable(long position) {
+        return true;
+    }
+
+    @Override
     public void start(long position) throws IOException {
         mPos = position;
         if (mServerSocket != null) {

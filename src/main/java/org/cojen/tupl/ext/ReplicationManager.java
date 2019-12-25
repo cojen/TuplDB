@@ -59,6 +59,13 @@ public interface ReplicationManager extends Closeable {
     }
 
     /**
+     * Returns true if committed data exists at the given position.
+     *
+     * @throws IllegalStateException if closed
+     */
+    boolean isReadable(long position);
+
+    /**
      * Start the replication manager in replica mode. Invocation of this method implies that
      * all data lower than the given position is confirmed. All data at or higher than the
      * given position might be discarded.

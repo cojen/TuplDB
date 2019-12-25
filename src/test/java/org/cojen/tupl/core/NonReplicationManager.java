@@ -40,6 +40,8 @@ class NonReplicationManager implements ReplicationManager {
     private volatile int mState;
     private NonWriter mWriter;
 
+    private long mInitPos;
+
     synchronized void asReplica() throws InterruptedException {
         mState = REPLICA;
         if (mWriter != null) {
@@ -59,6 +61,15 @@ class NonReplicationManager implements ReplicationManager {
     @Override
     public long encoding() {
         return 1;
+    }
+
+    @Override
+    public boolean isReadable(long position) {
+        return mInitPos <= position;
+    }
+
+    void setInitialPosition(long position) {
+        mInitPos = position;
     }
 
     @Override

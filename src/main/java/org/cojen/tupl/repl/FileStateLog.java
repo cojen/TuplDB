@@ -310,7 +310,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         if (!mTermLogs.isEmpty()) {
             Iterator<LKey<TermLog>> it = mTermLogs.iterator();
-            TermLog termLog = (TermLog) it.next();
+            var termLog = (TermLog) it.next();
 
             while (true) {
                 TermLog next;
@@ -441,7 +441,7 @@ final class FileStateLog extends Latch implements StateLog {
         }
 
         while (true) {
-            TermLog nextLog = (TermLog) mTermLogs.higher(highestLog); // findGt
+            var nextLog = (TermLog) mTermLogs.higher(highestLog); // findGt
 
             highestLog.captureHighest(info);
 
@@ -488,7 +488,7 @@ final class FileStateLog extends Latch implements StateLog {
         // from going too far ahead. Descending order commit is simpler.
 
         Iterator<LKey<TermLog>> it = mTermLogs.descendingIterator();
-        final TermLog highestLog = (TermLog) it.next();
+        final var highestLog = (TermLog) it.next();
         TermLog termLog = highestLog;
 
         while (true) {
@@ -500,7 +500,7 @@ final class FileStateLog extends Latch implements StateLog {
                 releaseShared();
                 return;
             }
-            TermLog lowerLog = (TermLog) it.next();
+            var lowerLog = (TermLog) it.next();
             if (termLog == highestLog && lowerLog.isFinished()) {
                 break;
             }
@@ -570,7 +570,7 @@ final class FileStateLog extends Latch implements StateLog {
     public void compact(long position) throws IOException {
         Iterator<LKey<TermLog>> it = mTermLogs.iterator();
         while (it.hasNext()) {
-            TermLog termLog = (TermLog) it.next();
+            var termLog = (TermLog) it.next();
             if (termLog.compact(position)) {
                 termLog.close();
                 it.remove();
@@ -895,7 +895,7 @@ final class FileStateLog extends Latch implements StateLog {
                 throw new IllegalStateException("Closed");
             }
 
-            TermLog termLog = (TermLog) mTermLogs.floor(key); // findLe
+            var termLog = (TermLog) mTermLogs.floor(key); // findLe
 
             if (termLog != null) {
                 return termLog.openReader(position);
@@ -909,7 +909,22 @@ final class FileStateLog extends Latch implements StateLog {
         } finally {
             releaseShared();
         }
+    }
 
+    @Override
+    public boolean isReadable(long position) {
+        LKey<TermLog> key = new LKey.Finder<>(position);
+
+        acquireShared();
+        try {
+            if (mClosed) {
+                throw new IllegalStateException("Closed");
+            }
+            var termLog = (TermLog) mTermLogs.floor(key); // findLe
+            return termLog == null ? false : termLog.isReadable(position);
+        } finally {
+            releaseShared();
+        }
     }
 
     @Override

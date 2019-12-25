@@ -140,6 +140,13 @@ interface StateLog extends Closeable {
     LogReader openReader(long position);
 
     /**
+     * Returns true if committed data exists at the given position.
+     *
+     * @throws IllegalStateException if replicator is closed
+     */
+    boolean isReadable(long position);
+
+    /**
      * Durably persist all data up to the highest position. The highest term, the highest position,
      * and the durable commit position are all recovered when reopening the state log. Incomplete
      * data beyond this is discarded.

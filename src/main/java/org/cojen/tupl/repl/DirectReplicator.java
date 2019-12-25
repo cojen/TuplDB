@@ -77,6 +77,13 @@ public interface DirectReplicator extends Replicator {
     void snapshotRequestAcceptor(Consumer<SnapshotSender> acceptor);
 
     /**
+     * Returns true if committed data exists at the given position.
+     *
+     * @throws IllegalStateException if replicator is closed
+     */
+    boolean isReadable(long position);
+
+    /**
      * Returns a new reader which accesses data starting from the given position. The reader
      * returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
      * new writer to determine if the local member has become the leader.

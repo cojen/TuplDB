@@ -157,6 +157,11 @@ interface TermLog extends LKey<TermLog>, Closeable {
     LogReader openReader(long position);
 
     /**
+     * Returns true if committed data exists at the given position.
+     */
+    boolean isReadable(long position);
+
+    /**
      * Durably persist all data up to the highest position.
      */
     void sync() throws IOException;

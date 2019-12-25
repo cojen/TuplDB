@@ -811,6 +811,11 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
+    public boolean isReadable(long position) {
+        return position >= mLogStartPosition && position <= appliableCommitPosition();
+    }
+
+    @Override
     public void sync() throws IOException {
         IOException ex = null;
 

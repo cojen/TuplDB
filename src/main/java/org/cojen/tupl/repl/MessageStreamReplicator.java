@@ -135,6 +135,11 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public boolean isReadable(long position) {
+        return mRepl.isReadable(position);
+    }
+
+    @Override
     public Reader newReader(long position, boolean follow) {
         StreamReplicator.Reader source = mRepl.newReader(position, follow);
         if (source == null) {
