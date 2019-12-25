@@ -48,7 +48,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
-import java.util.Set;
+import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
@@ -868,9 +868,7 @@ public final class LocalDatabase extends CoreDatabase {
                     } else {
                         // Make sure old redo logs are deleted. Process might have exited
                         // before last checkpoint could delete them.
-                        for (int i=1; i<=2; i++) {
-                            RedoLog.deleteOldFile(launcher.mBaseFile, logId - i);
-                        }
+                        deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX, 0, logId - 1);
 
                         boolean doCheckpoint = txns.size() != 0;
 
@@ -879,7 +877,7 @@ public final class LocalDatabase extends CoreDatabase {
                         var replayLog = new RedoLog(launcher, logId, redoPos);
 
                         // As a side-effect, log id is set one higher than last file scanned.
-                        Set<File> redoFiles = replayLog.replay
+                        TreeMap<Long, File> redoFiles = replayLog.replay
                             (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
                              "Applying redo log: %1$d");
 
@@ -908,9 +906,7 @@ public final class LocalDatabase extends CoreDatabase {
                             forceCheckpoint();
 
                             // Only cleanup after successful checkpoint.
-                            for (File file : redoFiles) {
-                                file.delete();
-                            }
+                            deleteReverseOrder(redoFiles);
                         }
                     }
 
@@ -2267,7 +2263,7 @@ public final class LocalDatabase extends CoreDatabase {
         } else {
             for (File f : dataFiles) {
                 // Delete old data file.
-                f.delete();
+                Utils.delete(f);
                 if (launcher.mMkdirs) {
                     f.getParentFile().mkdirs();
                 }

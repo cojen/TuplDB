@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +38,8 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.io.FileIO;
 
 import org.cojen.tupl.ext.Handler;
 
@@ -827,30 +830,71 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     /**
-     * Deletes all files in the base file's directory which are named like
-     * {@literal "base<pattern><number>"}. For example, mybase.redo.123
+     * @throws IOException if unable to delete the file
      */
-    public static void deleteNumberedFiles(File baseFile, String pattern) throws IOException {
-        deleteNumberedFiles(baseFile, pattern, 0);
+    public static void delete(File file) throws IOException {
+        if (!file.delete() && file.exists()) {
+            throw new IOException("Unable to delete file: " + file);
+        }
+    }
+
+    /**
+     * Deletes all the files in reverse order. This is a safer way of deleting redo log files,
+     * in case of a failure. The log will appear to be truncated instead of corrupt.
+     */
+    public static void deleteReverseOrder(TreeMap<Long, File> files) throws IOException {
+        for (File file : files.descendingMap().values()) {
+            delete(file);
+            FileIO.dirSync(file);
+        }
     }
 
     /**
      * Deletes all files in the base file's directory which are named like
      * {@literal "base<pattern><number>"}. For example, mybase.redo.123
      *
-     * @param min delete numbers greater than or equal to this
+     * @param pattern example: ".redo."
      */
-    public static void deleteNumberedFiles(File baseFile, String pattern, long min)
+    public static void deleteNumberedFiles(File baseFile, String pattern) throws IOException {
+        deleteNumberedFiles(baseFile, pattern, 0, Long.MAX_VALUE);
+    }
+
+    /**
+     * Deletes all files in the base file's directory which are named like
+     * {@literal "base<pattern><number>"}. For example, mybase.redo.123
+     *
+     * @param pattern example: ".redo."
+     * @param min delete numbers greater than or equal to this
+     * @param min delete numbers less than or equal to this
+     */
+    public static void deleteNumberedFiles(File baseFile, String pattern, long min, long max)
         throws IOException
     {
-        if (baseFile == null) {
-            return;
+        deleteReverseOrder(findNumberedFiles(baseFile, pattern, min, max));
+    }
+
+    /**
+     * Finds all files in the base file's directory which are named like
+     * {@literal "base<pattern><number>"}. For example, mybase.redo.123
+     *
+     * @param pattern example: ".redo."
+     * @param min find numbers greater than or equal to this
+     * @param min find numbers less than or equal to this
+     */
+    public static TreeMap<Long, File> findNumberedFiles(File baseFile, String pattern,
+                                                        long min, long max)
+        throws IOException
+    {
+        var found = new TreeMap<Long, File>();
+
+        if (max < min || baseFile == null) {
+            return found;
         }
 
         File parentFile = baseFile.getParentFile();
         File[] files;
         if (parentFile == null || (files = parentFile.listFiles()) == null) {
-            return;
+            return found;
         }
 
         String prefix = baseFile.getName() + pattern;
@@ -865,11 +909,13 @@ public class Utils extends org.cojen.tupl.io.Utils {
                 } catch (NumberFormatException e) {
                     continue;
                 }
-                if (num >= min) {
-                    file.delete();
+                if (min <= num && num <= max) {
+                    found.put(num, file);
                 }
             }
         }
+
+        return found;
     }
 
     public static DurabilityMode alwaysRedo(DurabilityMode mode) {

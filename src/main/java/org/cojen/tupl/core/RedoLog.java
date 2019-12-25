@@ -26,8 +26,7 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.TreeMap;
 
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
@@ -43,6 +42,8 @@ import org.cojen.tupl.WriteFailureException;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FileIO;
+
+import static org.cojen.tupl.core.LocalDatabase.REDO_FILE_SUFFIX;
 
 /**
  * Implementation of the local (non-replicated) redo log. All redo operations are stored in a
@@ -142,7 +143,8 @@ final class RedoLog extends RedoWriter {
     /**
      * @return all the files which were replayed
      */
-    Set<File> replay(RedoVisitor visitor, EventListener listener, EventType type, String message)
+    TreeMap<Long, File> replay(RedoVisitor visitor,
+                               EventListener listener, EventType type, String message)
         throws IOException
     {
         if (!mReplayMode || mBaseFile == null) {
@@ -151,7 +153,7 @@ final class RedoLog extends RedoWriter {
 
         acquireExclusive();
         try {
-            var files = new LinkedHashSet<File>(2);
+            var files = new TreeMap<Long, File>();
 
             while (true) {
                 File file = fileFor(mBaseFile, mLogId);
@@ -179,7 +181,7 @@ final class RedoLog extends RedoWriter {
                         listener.notify(type, message, mLogId);
                     }
 
-                    files.add(file);
+                    files.put(mLogId, file);
 
                     var din = new DataIn.Stream(mPosition, in);
                     finished = replay(din, visitor, listener);
@@ -192,7 +194,7 @@ final class RedoLog extends RedoWriter {
 
                 if (!finished) {
                     // Last log file was truncated, so chuck the rest.
-                    Utils.deleteNumberedFiles(mBaseFile, LocalDatabase.REDO_FILE_SUFFIX, mLogId);
+                    Utils.deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, mLogId, Long.MAX_VALUE);
                     break;
                 }
             }
@@ -203,10 +205,6 @@ final class RedoLog extends RedoWriter {
         } finally {
             releaseExclusive();
         }
-    }
-
-    static void deleteOldFile(File baseFile, long logId) {
-        fileFor(baseFile, logId).delete();
     }
 
     private void openNextFile(long logId) throws IOException {
@@ -325,8 +323,7 @@ final class RedoLog extends RedoWriter {
      * @return null if non-durable
      */
     private static File fileFor(File base, long logId) {
-        return base == null ? null : new File
-            (base.getPath() + LocalDatabase.REDO_FILE_SUFFIX + logId);
+        return base == null ? null : new File(base.getPath() + REDO_FILE_SUFFIX + logId);
     }
 
     @Override
@@ -443,7 +440,7 @@ final class RedoLog extends RedoWriter {
         long id = mDeleteLogId;
         for (; id < mNextLogId; id++) {
             // Typically deletes one file, but more will accumulate if checkpoints abort.
-            deleteOldFile(mBaseFile, id);
+            Utils.delete(fileFor(mBaseFile, id));
         }
         // Log will be deleted after next checkpoint finishes.
         mDeleteLogId = id;
