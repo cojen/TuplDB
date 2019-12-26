@@ -1181,27 +1181,32 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             var prepareKey = new byte[8];
             encodeLongBE(prepareKey, 0, mTxnId);
 
-            var c = new _BTreeCursor(preparedTxns);
-            try {
-                c.mTxn = _LocalTransaction.BOGUS;
-                c.autoload(false);
-                c.find(prepareKey);
+            // Double check that the transaction actually owns the prepare lock before
+            // potentially performing an odd concurrent operation.
+            if (lockCheck(preparedTxns.mId, prepareKey) == LockResult.OWNED_EXCLUSIVE) {
+                var c = new _BTreeCursor(preparedTxns);
+                try {
+                    c.mTxn = _LocalTransaction.BOGUS;
+                    c.autoload(false);
+                    c.find(prepareKey);
 
-                // Check against the frame to account for the entry being ghosted.
-                // FIXME: Should acquire the latch. Create an isGhost method or something.
-                if (c.mFrame.mNotFoundKey == null) {
-                    if (c.value() == null) {
-                        // Key exists, but a null value a indicates ghost.
-                        return c;
+                    // Check against the frame to account for the entry being ghosted. No need
+                    // to latch the node to protect against concurrent deletes because the
+                    // prepare lock should be guarding it.
+                    if (c.mFrame.mNotFoundKey == null) {
+                        if (c.value() == null) {
+                            // Key exists, but a null value a indicates ghost.
+                            return c;
+                        }
+                        // Transaction was rolled back, so delete the rollback marker.
+                        c.store(null);
                     }
-                    // Transaction was rolled back, so delete the rollback marker.
-                    c.store(null);
-                }
 
-                c.reset();
-            } catch (Throwable e) {
-                c.reset();
-                throw e;
+                    c.reset();
+                } catch (Throwable e) {
+                    c.reset();
+                    throw e;
+                }
             }
         }
 
