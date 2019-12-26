@@ -1084,11 +1084,6 @@ public final class LocalDatabase extends CoreDatabase {
                 int handlerId = rtp.handlerId;
                 byte[] message = rtp.message;
 
-                if (handlerId == 0 && message == null) {
-                    // FIXME: Can probably just roll it all back.
-                    throw new CorruptDatabaseException("Malformed prepared transaction");
-                }
-
                 PrepareHandler recovery = findPrepareRecoveryHandler(handlerId);
 
                 if (redo != null) {
@@ -1101,6 +1096,8 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             } catch (Throwable e) {
                 if (!isClosed()) {
+                    e = new CorruptDatabaseException("Malformed prepared transaction: " + txn, e);
+
                     EventListener listener = mEventListener;
                     if (listener == null) {
                         uncaught(e);
