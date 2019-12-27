@@ -1223,6 +1223,10 @@ public final class LocalTransaction extends Locker implements Transaction {
                                     LockMode lockMode, long timeoutNanos)
         throws IOException
     {
+        if ((mHasState & HAS_PREPARE) == 0) {
+            throw new AssertionError();
+        }
+
         mRedo = redo;
         mDurabilityMode = durabilityMode;
         mLockMode = lockMode;
@@ -1233,7 +1237,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         // explicitly now, in order for commit and rollback operations to actually work. Also
         // set the HAS_SCOPE state, which is always set for even the outermost scope when
         // anything is written to the transaction.
-        mHasState |= HAS_COMMIT | HAS_SCOPE | HAS_PREPARE;
+        mHasState |= HAS_COMMIT | HAS_SCOPE;
 
         if (redo == null || durabilityMode == DurabilityMode.NO_REDO) {
             // Oops. HAS_COMMIT also implies that a redo log exists and can be written to.
