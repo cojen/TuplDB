@@ -61,4 +61,28 @@ public interface PrepareHandler extends Handler {
      * @throws NullPointerException if transaction or message is null
      */
     void prepare(Transaction txn, byte[] message) throws IOException;
+
+    /**
+     * A prepare variant intended to be called by a two-phase commit coordinator after all
+     * participants have prepared their transactions. All changes made up to the prepare are
+     * effectively committed, their locks are released, and the changes cannot be rolled
+     * back. This permits the changes to be observed outside the transaction.
+     *
+     * <p>To fully complete the prepared transaction, a commit operation must still be called
+     * to finish it, but only after all participants have committed their transactions. If not
+     * finished, the recovery handler will be invoked after each failover. A rollback operation
+     * can also finish the prepared transaction, although it will not roll back any changes
+     * made before the prepare.
+     *
+     * <p>Strictly speaking, this variant isn't required. The benefit is that a coordinator can
+     * perform the second phase of a two-phase commit without its own transaction getting
+     * "stuck" while waiting for participants to commit. Another benefit is that no special
+     * state needs to encoded in the prepare message to inform the recovery handler that it
+     * should act as a coordinator. Being invoked by this method alone is all that's needed.
+     *
+     * @param txn transaction the prepare applies to, which can be modified
+     * @param message optional message
+     * @throws NullPointerException if transaction or message is null
+     */
+    void prepareCommit(Transaction txn, byte[] message) throws IOException;
 }

@@ -167,9 +167,12 @@ final class UndoLog implements DatabaseAccess {
     // entry. No lock is acquired.
     static final byte OP_PREPARED = 37;
 
+    // Same encoding as OP_PREPARED.
+    static final byte OP_PREPARED_COMMIT = 38;
+
     // Payload is key to insert a ghost to undo a prepared transaction rollback. No lock is
     // acquired.
-    static final byte OP_PREPARED_UNROLLBACK = 38;
+    static final byte OP_PREPARED_UNROLLBACK = 39;
 
     private final LocalDatabase mDatabase;
     final long mTxnId;
@@ -522,7 +525,7 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Caller must hold db commit lock.
      */
-    final void pushPrepared(int handlerId, byte[] message) throws IOException {
+    final void pushPrepared(int handlerId, byte[] message, boolean commit) throws IOException {
         int handlerLen = calcUnsignedVarIntLength(handlerId);
 
         byte[] payload;
@@ -537,7 +540,7 @@ final class UndoLog implements DatabaseAccess {
 
         encodeUnsignedVarInt(payload, 0, handlerId);
 
-        doPush(OP_PREPARED, payload);
+        doPush(commit ? OP_PREPARED_COMMIT : OP_PREPARED, payload);
     }
 
     /**
@@ -917,13 +920,19 @@ final class UndoLog implements DatabaseAccess {
         int handlerId;
         byte[] message;
 
+        // True if prepareCommit was called on the transaction.
+        boolean commit;
+
         @Override
         public boolean accept(byte op, byte[] entry) throws IOException {
-            if (op == OP_PREPARED) {
+            if (op == OP_PREPARED || op == OP_PREPARED_COMMIT) {
                 handlerId = decodeUnsignedVarInt(entry, 0);
                 int messageLoc = calcUnsignedVarIntLength(handlerId) + 1;
                 if (messageLoc <= entry.length) {
                     message = Arrays.copyOfRange(entry, messageLoc, entry.length);
+                }
+                if (op == OP_PREPARED_COMMIT) {
+                    commit = true;
                 }
                 // Found the prepare operation, but don't pop it.
                 throw this;
@@ -992,7 +1001,7 @@ final class UndoLog implements DatabaseAccess {
                     activeIndex = null;
                     return true;
 
-                case OP_PREPARED:
+                case OP_PREPARED: case OP_PREPARED_COMMIT:
                     BTree preparedTxns = mDatabase.tryPreparedTxns();
                     if (preparedTxns != null) {
                         key = new byte[8];
@@ -1158,7 +1167,7 @@ final class UndoLog implements DatabaseAccess {
             }
             break;
 
-        case OP_PREPARED:
+        case OP_PREPARED: case OP_PREPARED_COMMIT:
             // Just a tag.
             break;
 
@@ -1893,6 +1902,10 @@ final class UndoLog implements DatabaseAccess {
                 hasState |= LocalTransaction.HAS_PREPARE;
                 break;
 
+            case OP_PREPARED_COMMIT:
+                hasState |= LocalTransaction.HAS_PREPARE | LocalTransaction.HAS_PREPARE_COMMIT;
+                break;
+
             case OP_ACTIVE_KEY:
                 mActiveKey = entry;
                 break;
@@ -2059,8 +2072,8 @@ final class UndoLog implements DatabaseAccess {
             payloadStr = "txnId=" + decodeLongBE(entry, 0);
             break;
 
-        case OP_PREPARED:
-            opStr = "PREPARED";
+        case OP_PREPARED: case OP_PREPARED_COMMIT:
+            opStr = op == OP_PREPARED_COMMIT ? "PREPARED_COMMIT" : "PREPARED";
             handlerId = decodeUnsignedVarInt(entry, 0);
             handlerName = mDatabase.findHandlerName(handlerId, LocalDatabase.RK_PREPARE_ID);
             payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName;

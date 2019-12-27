@@ -1339,5 +1339,9 @@ public class ReplicationTest {
         @Override
         public void prepare(Transaction txn, byte[] message) {
         }
+
+        @Override
+        public void prepareCommit(Transaction txn, byte[] message) {
+        }
     }
 }

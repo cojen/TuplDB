@@ -632,7 +632,8 @@ final class TransactionContext extends Latch implements Flushable {
     /**
      * @param message optional
      */
-    void redoPrepare(RedoWriter redo, long txnId, long prepareTxnId, int handlerId, byte[] message)
+    void redoPrepare(RedoWriter redo, long txnId, long prepareTxnId,
+                     int handlerId, byte[] message, boolean commit)
         throws IOException
     {
         redo.opWriteCheck(null);
@@ -640,11 +641,13 @@ final class TransactionContext extends Latch implements Flushable {
         acquireRedoLatch();
         try {
             if (message == null) {
-                redoWriteTxnOp(redo, OP_TXN_PREPARE, txnId);
+                byte op = commit ? OP_TXN_PREPARE_COMMIT : OP_TXN_PREPARE;
+                redoWriteTxnOp(redo, op, txnId);
                 redoWriteLongLE(prepareTxnId);
                 redoWriteUnsignedVarInt(handlerId);
             } else {
-                redoWriteTxnOp(redo, OP_TXN_PREPARE_MESSAGE, txnId);
+                byte op = commit ? OP_TXN_PREPARE_COMMIT_MESSAGE : OP_TXN_PREPARE_MESSAGE;
+                redoWriteTxnOp(redo, op, txnId);
                 redoWriteLongLE(prepareTxnId);
                 redoWriteUnsignedVarInt(handlerId);
                 redoWriteUnsignedVarInt(message.length);

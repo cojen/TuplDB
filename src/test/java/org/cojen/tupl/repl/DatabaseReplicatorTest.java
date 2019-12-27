@@ -43,6 +43,7 @@ import org.cojen.tupl.EventPrinter;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
@@ -314,6 +315,11 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
                 } catch (Exception e) {
                     throw Utils.rethrow(e);
                 }
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepare(txn, message);
             }
         };
 
@@ -606,6 +612,15 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
     @Test
     public void prepareTransfer() throws Exception {
+        prepareTransfer(false);
+    }
+
+    @Test
+    public void prepareCommitTransfer() throws Exception {
+        prepareTransfer(true);
+    }
+
+    private void prepareTransfer(boolean prepareCommit) throws Exception {
         // Prepared transaction should be transfered to replica and finish.
 
         var dbQueue = new LinkedBlockingQueue<Database>();
@@ -623,6 +638,11 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
             public void prepare(Transaction txn, byte[] message) throws IOException {
                 dbQueue.add(mDb);
                 txnQueue.add(txn);
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepare(txn, message);
             }
         };
 
@@ -642,7 +662,18 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         byte[] k1 = "k1".getBytes();
         byte[] v1 = "v1".getBytes();
         leaderIx.store(txn1, k1, v1);
-        handler.prepare(txn1, null);
+
+        if (prepareCommit) {
+            handler.prepareCommit(txn1, null);
+            fastAssertArrayEquals(v1, leaderIx.load(null, k1));
+        } else {
+            handler.prepare(txn1, null);
+            try {
+                leaderIx.load(null, k1);
+                fail();
+            } catch (LockTimeoutException e) {
+            }
+        }
 
         leaderDb.failover();
 
@@ -659,6 +690,16 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         byte[] k2 = "k2".getBytes();
         byte[] v2 = "v2".getBytes();
         replicaIx.store(txn2, k2, v2);
+
+        if (prepareCommit) {
+            fastAssertArrayEquals(v1, replicaIx.load(null, k1));
+        } else {
+            try {
+                replicaIx.load(null, k1);
+                fail();
+            } catch (LockTimeoutException e) {
+            }
+        }
 
         txn2.commit();
 
@@ -683,7 +724,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         fence(replicaDb, leaderDb);
 
         // Verify that the old leader observes the committed changes.
-        fastAssertArrayEquals(v1, leaderIx.load(null, k1)); // FIXME: rolled back this one?
+        fastAssertArrayEquals(v1, leaderIx.load(null, k1));
         fastAssertArrayEquals(v2, leaderIx.load(null, k2));
     }
 
@@ -709,6 +750,11 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
                 dbQueue.add(mDb);
                 txnQueue.add(txn);
                 msgQueue.add(message);
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepare(txn, message);
             }
         };
 
@@ -812,12 +858,22 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
     @Test
     public void prepareBlank() throws Exception {
+        prepareBlank(false);
+    }
+
+    @Test
+    public void prepareCommitBlank() throws Exception {
+        prepareBlank(true);
+    }
+
+    private void prepareBlank(boolean prepareCommit) throws Exception {
         // Test against a prepared transaction that has no changes. It should still ensure that
         // the transaction is created properly on the replica.
 
         var dbQueue = new LinkedBlockingQueue<Database>();
         var txnQueue = new LinkedBlockingQueue<Transaction>();
         var msgQueue = new LinkedBlockingQueue<byte[]>();
+        var pcQueue = new LinkedBlockingQueue<Boolean>();
 
         Supplier<PrepareHandler> supplier = () -> new PrepareHandler() {
             private Database mDb;
@@ -829,9 +885,21 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
             @Override
             public void prepare(Transaction txn, byte[] message) throws IOException {
+                doPrepare(txn, message, false);
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                doPrepare(txn, message, true);
+            }
+
+            private void doPrepare(Transaction txn, byte[] message, boolean commit)
+                throws IOException
+            {
                 dbQueue.add(mDb);
                 txnQueue.add(txn);
                 msgQueue.add(message);
+                pcQueue.add(commit);
             }
         };
 
@@ -848,7 +916,12 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
         Transaction txn1 = leaderDb.newTransaction();
         PrepareHandler handler = leaderDb.prepareHandler("TestHandler");
-        handler.prepare(txn1, "message".getBytes());
+
+        if (prepareCommit) {
+            handler.prepareCommit(txn1, "message".getBytes());
+        } else {
+            handler.prepare(txn1, "message".getBytes());
+        }
 
         leaderDb.failover();
 
@@ -871,6 +944,8 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         assertEquals(txnId, txn2.getId());
 
         fastAssertArrayEquals("message".getBytes(), msgQueue.take());
+
+        assertEquals(prepareCommit, pcQueue.take());
 
         byte[] k1 = "k1".getBytes();
         byte[] v1 = "v1".getBytes();

@@ -36,10 +36,19 @@ final class _PrepareWriter extends _HandlerWriter<PrepareHandler> implements Pre
 
     @Override
     public void prepare(Transaction txn, byte[] message) throws IOException {
+        prepare(txn, message, false);
+    }
+
+    @Override
+    public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+        prepare(txn, message, true);
+    }
+
+    private void prepare(Transaction txn, byte[] message, boolean commit) throws IOException {
         if (txn instanceof _LocalTransaction) {
-            _LocalTransaction local = (_LocalTransaction) txn;
+            var local = (_LocalTransaction) txn;
             if (local.mDatabase == mDatabase) {
-                local.prepare(mHandlerId, message);
+                local.prepare(mHandlerId, message, commit);
                 return;
             }
         }

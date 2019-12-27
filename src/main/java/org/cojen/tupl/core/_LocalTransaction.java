@@ -43,12 +43,21 @@ import static org.cojen.tupl.core.Utils.*;
 public final class _LocalTransaction extends _Locker implements Transaction {
     public static final _LocalTransaction BOGUS = new _LocalTransaction();
 
-    static final int
-        HAS_SCOPE   = 1, // When set, scope has been entered and logged.
-        HAS_COMMIT  = 2, // When set, transaction has committable changes.
-        HAS_TRASH   = 4, /* When set, fragmented values are possibly in the trash and must be
-                            fully deleted after committing the top-level scope. */
-        HAS_PREPARE = 8; // When set, transaction is possibly prepared for two-phase commit.
+    // When set, scope has been entered and logged.
+    private static final int HAS_SCOPE = 1;
+
+    // When set, transaction has committable changes.
+    private static final int HAS_COMMIT = 2;
+
+    // When set, fragmented values are possibly in the trash and must be fully deleted after
+    // committing the top-level scope.
+    static final int HAS_TRASH = 4;
+                            
+    // When set, transaction is possibly prepared for two-phase commit.
+    static final int HAS_PREPARE = 8;
+
+    // Must be set with HAS_PREPARE to indicate that prepareCommit was called.
+    static final int HAS_PREPARE_COMMIT = 16;
 
     final _LocalDatabase mDatabase;
     final _TransactionContext mContext;
@@ -802,7 +811,8 @@ public final class _LocalTransaction extends _Locker implements Transaction {
 
         try {
             if (isPrepared()) {
-                b.append(", ").append("prepared");
+                b.append(", ");
+                b.append((mHasState & HAS_PREPARE_COMMIT) != 0 ? "preparedCommit" : "prepared");
             }
         } catch (IOException e) {
             // Ignore.
@@ -1028,7 +1038,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     /**
      * Called by the _PrepareWriter class.
      */
-    void prepare(int handlerId, byte[] message) throws IOException {
+    void prepare(int handlerId, byte[] message, boolean commit) throws IOException {
         check();
 
         long txnId = mTxnId;
@@ -1093,13 +1103,13 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     c.storeGhost(new _GhostFrame());
 
                     // Note: Both transactions have the same context and redo.
-                    mContext.redoPrepare(mRedo, carrier.getId(), txnId, handlerId, message);
+                    mContext.redoPrepare(mRedo, carrier.getId(), txnId, handlerId, message, commit);
                     carrier.mHasState |= HAS_COMMIT;
 
                     // Following a checkpoint, this operation will store the only copy of the
                     // prepare entry. It also defines the partial rollback location, and so it
                     // must be the last operation pushed to the undo log.
-                    undo.pushPrepared(handlerId, message);
+                    undo.pushPrepared(handlerId, message, commit);
                 } finally {
                     shared.release();
                 }
@@ -1129,12 +1139,16 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         } finally {
             super.scopeExit();
         }
+
+        if (commit) {
+            finishPrepareCommit(prepareKey, handlerId, message);
+        }
     }
 
     /**
      * Called by the _ReplEngine class. It's a reduced form of the full prepare method above.
      */
-    void prepareRedo(int handlerId, byte[] message) throws IOException {
+    void prepareRedo(int handlerId, byte[] message, boolean commit) throws IOException {
         var prepareKey = new byte[8];
         encodeLongBE(prepareKey, 0, mTxnId);
 
@@ -1150,13 +1164,63 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
             try {
                 c.storeGhost(new _GhostFrame());
-                undo.pushPrepared(handlerId, message);
+                undo.pushPrepared(handlerId, message, commit);
             } finally {
                 shared.release();
             }
         }
 
         mHasState |= HAS_PREPARE;
+
+        if (commit) {
+            finishPrepareCommit(prepareKey, handlerId, message);
+        }
+    }
+
+    private void finishPrepareCommit(byte[] prepareKey, int handlerId, byte[] message)
+        throws IOException
+    {
+        mHasState |= HAS_PREPARE_COMMIT;
+        doFinishPrepareCommit(prepareKey, handlerId, message);
+    }
+
+    private void doFinishPrepareCommit(int handlerId, byte[] message) throws IOException {
+        var prepareKey = new byte[8];
+        encodeLongBE(prepareKey, 0, mTxnId);
+        doFinishPrepareCommit(prepareKey, handlerId, message);
+    }
+
+    private void doFinishPrepareCommit(byte[] prepareKey, int handlerId, byte[] message)
+        throws IOException
+    {
+        // Calling this deletes any ghosts too.
+        unlockAllExceptPrepare();
+
+        // Truncate the existing undo log and replace it with a new one that just contains the
+        // prepareCommit operation.
+
+        _UndoLog oldUndo = mUndoLog;
+        var newUndo = new _UndoLog(mDatabase, mTxnId);
+        newUndo.pushLock(_UndoLog.OP_LOCK_EXCLUSIVE, Tree.PREPARED_TXNS_ID, prepareKey);
+        newUndo.pushPrepared(handlerId, message, true);
+
+        CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            oldUndo.commit();
+            mContext.unregister(oldUndo);
+            mContext.register(newUndo);
+        } finally {
+            shared.release();
+        }
+
+        mUndoLog = newUndo;
+
+        oldUndo.truncate();
+
+        int hasState = mHasState;
+        if ((hasState & HAS_TRASH) != 0) {
+            emptyTrash(hasState);
+        }
     }
 
     private boolean isPrepared() throws IOException {
@@ -1210,7 +1274,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
             }
         }
 
-        mHasState &= ~HAS_PREPARE;
+        mHasState &= ~(HAS_PREPARE | HAS_PREPARE_COMMIT);
         return null;
     }
 
@@ -1247,6 +1311,15 @@ public final class _LocalTransaction extends _Locker implements Transaction {
         _UndoLog.RTP rtp = mUndoLog.rollbackToPrepare();
 
         unlockToPrepare();
+
+        if (rtp.commit) {
+            if ((mHasState & HAS_PREPARE_COMMIT) == 0) {
+                throw new AssertionError();
+            }
+            doFinishPrepareCommit(rtp.handlerId, rtp.message);
+        } else if ((mHasState & HAS_PREPARE_COMMIT) != 0) {
+            throw new AssertionError();
+        }
 
         return rtp;
     }

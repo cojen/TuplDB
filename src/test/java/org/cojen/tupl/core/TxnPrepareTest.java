@@ -65,6 +65,20 @@ public class TxnPrepareTest {
         return TestUtils.newTempDatabase(getClass(), config);
     }
 
+    protected boolean isPrepareCommit() {
+        return false;
+    }
+
+    protected void prepare(PrepareHandler handler, Transaction txn, byte[] message)
+        throws IOException
+    {
+        if (isPrepareCommit()) {
+            handler.prepareCommit(txn, message);
+        } else {
+            handler.prepare(txn, message);
+        }
+    }
+
     @Test
     public void noHandler() throws Exception {
         Database db = newTempDatabase(newConfig(null));
@@ -82,7 +96,7 @@ public class TxnPrepareTest {
         PrepareHandler handler = db.prepareHandler("TestHandler");
 
         try {
-            handler.prepare(Transaction.BOGUS, null);
+            prepare(handler, Transaction.BOGUS, null);
             fail();
         } catch (IllegalArgumentException e) {
         }
@@ -90,7 +104,7 @@ public class TxnPrepareTest {
         Transaction txn = db.newTransaction();
         txn.durabilityMode(DurabilityMode.NO_REDO);
         try {
-            handler.prepare(txn, null);
+            prepare(handler, txn, null);
             fail();
         } catch (IllegalStateException e) {
         }
@@ -99,6 +113,8 @@ public class TxnPrepareTest {
     static class NonHandler implements PrepareHandler {
         @Override
         public void prepare(Transaction txn, byte[] message) {}
+        @Override
+        public void prepareCommit(Transaction txn, byte[] message) {}
     }
 
     @Test
@@ -109,7 +125,7 @@ public class TxnPrepareTest {
         Transaction txn = db.newTransaction();
         txn.enter();
         try {
-            handler.prepare(txn, null);
+            prepare(handler, txn, null);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("nested") > 0);
@@ -124,7 +140,7 @@ public class TxnPrepareTest {
         PrepareHandler handler = db.prepareHandler("TestHandler");
         Transaction txn = db.newTransaction();
 
-        handler.prepare(txn, null);
+        prepare(handler, txn, null);
 
         try {
             txn.unlock();
@@ -142,7 +158,7 @@ public class TxnPrepareTest {
         assertEquals(LockResult.UPGRADED, txn.lockExclusive(0, "hello".getBytes()));
 
         try {
-            handler.prepare(txn, null);
+            prepare(handler, txn, null);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("already prepared") > 0);
@@ -173,9 +189,15 @@ public class TxnPrepareTest {
         ix.load(txn, k3);
         assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.getId(), k3));
 
-        handler.prepare(txn, null);
+        prepare(handler, txn, null);
 
-        assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.getId(), key));
+        if (isPrepareCommit()) {
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), key));
+            fastAssertArrayEquals(value, ix.load(null, key));
+        } else {
+            assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.getId(), key));
+        }
+
         assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), k2));
         assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), k3));
 
@@ -301,6 +323,8 @@ public class TxnPrepareTest {
 
         var recovery = new PrepareHandler() {
             private Database db;
+            volatile boolean prepareCommit;
+            private boolean finished;
 
             @Override
             public void init(Database db) {
@@ -333,6 +357,28 @@ public class TxnPrepareTest {
                 case "commit":
                     txn.commit();
                     break;
+                }
+
+                synchronized (this) {
+                    finished = true;
+                    notifyAll();
+                }
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepareCommit = true;
+                prepare(txn, message);
+            }
+
+            synchronized void reset() {
+                prepareCommit = false;
+                finished = false;
+            }
+
+            synchronized void waitUntilFinished() throws Exception {
+                while (!finished) {
+                    wait();
                 }
             }
         };
@@ -368,15 +414,21 @@ public class TxnPrepareTest {
             }
 
             txnId = txn.getId();
-            handler.prepare(txn, null);
+            prepare(handler, txn, null);
         }
 
         for (int i=0; i<3; i++) {
+            recovery.reset();
+
             db = reopenTempDatabase(getClass(), db, config);
 
             Recovered recovered = recoveredQueue.take();
             assertEquals(txnId, recovered.mTxnId);
             assertTrue(recoveredQueue.isEmpty());
+
+            assertEquals(isPrepareCommit(), recovery.prepareCommit);
+
+            recovery.waitUntilFinished();
 
             Index ix1 = db.openIndex("test1");
             Index ix2 = db.openIndex("test2");
@@ -387,18 +439,23 @@ public class TxnPrepareTest {
                 break;
 
             case "none": case "sticky":
-                // Locks are retained.
-                try {
-                    ix1.load(null, key1);
-                    fail();
-                } catch (LockTimeoutException e) {
-                    // Expected.
-                }
-                try {
-                    ix2.load(null, key2);
-                    fail();
-                } catch (LockTimeoutException e) {
-                    // Expected.
+                // Locks are retained, unless using prepareCommit.
+                if (isPrepareCommit()) {
+                    fastAssertArrayEquals("value-1".getBytes(), ix1.load(null, key1));
+                    fastAssertArrayEquals("value-2".getBytes(), ix2.load(null, key2));
+                } else {
+                    try {
+                        ix1.load(null, key1);
+                        fail();
+                    } catch (LockTimeoutException e) {
+                        // Expected.
+                    }
+                    try {
+                        ix2.load(null, key2);
+                        fail();
+                    } catch (LockTimeoutException e) {
+                        // Expected.
+                    }
                 }
 
                 if ("sticky".equals(recoveryAction)) {
@@ -410,9 +467,14 @@ public class TxnPrepareTest {
                 // Fallthrough to the next case and verify rollback.
 
             case "reset": case "modify-reset":
-                // Everything was rolled back.
-                fastAssertArrayEquals("v1".getBytes(), ix1.load(null, key1));
-                fastAssertArrayEquals("v2".getBytes(), ix2.load(null, key2));
+                // Everything was rolled back, unless using prepareCommit.
+                if (isPrepareCommit()) {
+                    fastAssertArrayEquals("value-1".getBytes(), ix1.load(null, key1));
+                    fastAssertArrayEquals("value-2".getBytes(), ix2.load(null, key2));
+                } else {
+                    fastAssertArrayEquals("v1".getBytes(), ix1.load(null, key1));
+                    fastAssertArrayEquals("v2".getBytes(), ix2.load(null, key2));
+                }
                 break;
 
             case "modify-commit":
@@ -444,9 +506,16 @@ public class TxnPrepareTest {
         var recovered = new LinkedBlockingQueue<Transaction>();
 
         var recovery = new PrepareHandler() {
+            volatile boolean prepareCommit;
+
             @Override
             public void prepare(Transaction txn, byte[] message) {
                 recovered.add(txn);
+            }
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) {
+                prepareCommit = true;
+                prepare(txn, message);
             }
         };
 
@@ -462,12 +531,12 @@ public class TxnPrepareTest {
         // Should be passed to the handler.
         Transaction txn2 = db.newTransaction();
         ix.store(txn2, "key-2".getBytes(), "value-2".getBytes());
-        handler.prepare(txn2, null);
+        prepare(handler, txn2, null);
 
         // Should be passed to the handler.
         Transaction txn3 = db.newTransaction();
         ix.store(txn3, "key-3".getBytes(), "value-3".getBytes());
-        handler.prepare(txn3, null);
+        prepare(handler, txn3, null);
 
         // Should rollback and not be passed to the handler.
         Transaction txn4 = db.newTransaction();
@@ -476,13 +545,13 @@ public class TxnPrepareTest {
         // Should commit and not be passed to the handler.
         Transaction txn5 = db.newTransaction();
         ix.store(txn5, "key-5".getBytes(), "value-5".getBytes());
-        handler.prepare(txn5, null);
+        prepare(handler, txn5, null);
         txn5.commit();
 
         // Should rollback and not be passed to the handler.
         Transaction txn6 = db.newTransaction();
         ix.store(txn6, "key-6".getBytes(), "value-6".getBytes());
-        handler.prepare(txn6, null);
+        prepare(handler, txn6, null);
         txn6.exit();
 
         db = reopenTempDatabase(getClass(), db, config);
@@ -493,6 +562,8 @@ public class TxnPrepareTest {
         Transaction t2 = recovered.take();
         assertTrue(recovered.isEmpty());
 
+        assertEquals(isPrepareCommit(), recovery.prepareCommit);
+
         // Transactions can be recovered in any order.
         if (t1.getId() == txn2.getId()) {
             assertEquals(t2.getId(), txn3.getId());
@@ -501,24 +572,33 @@ public class TxnPrepareTest {
             assertEquals(t2.getId(), txn2.getId());
         }
 
-        // Rollback of txn1, txn4, and txn6.
+        // Rollback of txn1, txn4, and txn6 (unless prepareCommit)
         assertNull(ix.load(null, "key-1".getBytes()));
         assertNull(ix.load(null, "key-4".getBytes()));
-        assertNull(ix.load(null, "key-6".getBytes()));
+        if (isPrepareCommit()) {
+            fastAssertArrayEquals("value-6".getBytes(), ix.load(null, "key-6".getBytes()));
+        } else {
+            assertNull(ix.load(null, "key-6".getBytes()));
+        }
 
         // Commit of txn5.
         fastAssertArrayEquals("value-5".getBytes(), ix.load(null, "key-5".getBytes()));
 
-        // Recovered transactions are still locked.
-        try {
-            ix.load(null, "key-2".getBytes());
-            fail();
-        } catch (LockTimeoutException e) {
-        }
-        try {
-            ix.load(null, "key-3".getBytes());
-            fail();
-        } catch (LockTimeoutException e) {
+        // Recovered transactions are still locked (unless prepareCommit)
+        if (isPrepareCommit()) {
+            fastAssertArrayEquals("value-2".getBytes(), ix.load(null, "key-2".getBytes()));
+            fastAssertArrayEquals("value-3".getBytes(), ix.load(null, "key-3".getBytes()));
+        } else {
+            try {
+                ix.load(null, "key-2".getBytes());
+                fail();
+            } catch (LockTimeoutException e) {
+            }
+            try {
+                ix.load(null, "key-3".getBytes());
+                fail();
+            } catch (LockTimeoutException e) {
+            }
         }
 
         t1.reset();
@@ -530,7 +610,7 @@ public class TxnPrepareTest {
         ix.lockUpgradable(txn7, "key-8".getBytes());
         ix.lockExclusive(txn7, "key-9".getBytes());
         ix.lockExclusive(txn7, "key-8".getBytes());
-        handler.prepare(txn7, null);
+        prepare(handler, txn7, null);
         db.checkpoint();
 
         db = reopenTempDatabase(getClass(), db, config);
@@ -540,16 +620,28 @@ public class TxnPrepareTest {
         assertEquals(t7.getId(), txn7.getId());
 
         assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-7".getBytes()));
-        assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-8".getBytes()));
-        assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+        if (isPrepareCommit()) {
+            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-8".getBytes()));
+            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+        } else {
+            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-8".getBytes()));
+            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+        }
 
         Transaction txn8 = db.newTransaction();
         assertEquals(LockResult.ACQUIRED,
                      txn8.tryLockExclusive(ix.getId(), "key-7".getBytes(), 0));
-        assertEquals(LockResult.TIMED_OUT_LOCK,
-                     txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
-        assertEquals(LockResult.TIMED_OUT_LOCK,
-                     txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+        if (isPrepareCommit()) {
+            assertEquals(LockResult.ACQUIRED,
+                         txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
+            assertEquals(LockResult.ACQUIRED,
+                         txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+        } else {
+            assertEquals(LockResult.TIMED_OUT_LOCK,
+                         txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
+            assertEquals(LockResult.TIMED_OUT_LOCK,
+                         txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+        }
         txn8.reset();
 
         t7.reset();
@@ -562,11 +654,18 @@ public class TxnPrepareTest {
 
         var recovery = new PrepareHandler() {
             volatile byte[] message;
+            volatile boolean prepareCommit;
 
             @Override
             public void prepare(Transaction txn, byte[] message) throws IOException {
                 this.message = message;
                 txn.commit();
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepareCommit = true;
+                prepare(txn, message);
             }
         };
 
@@ -578,28 +677,47 @@ public class TxnPrepareTest {
         Transaction txn = db.newTransaction();
         byte[] key = "hello".getBytes();
         ix.store(txn, key, "world".getBytes());
-        handler.prepare(txn, "message".getBytes());
+        prepare(handler, txn, "message".getBytes());
 
         // Reopen without the handler.
         config.prepareHandlers(null);
         db = reopenTempDatabase(getClass(), db, config);
 
-        // Still locked.
+        // Still locked (unless prepareCommit)
         ix = db.openIndex("test");
         txn = db.newTransaction();
-        assertEquals(LockResult.TIMED_OUT_LOCK, ix.tryLockShared(txn, key, 0));
+        if (isPrepareCommit()) {
+            assertEquals(LockResult.ACQUIRED, ix.tryLockShared(txn, key, 0));
+        } else {
+            assertEquals(LockResult.TIMED_OUT_LOCK, ix.tryLockShared(txn, key, 0));
+        }
         txn.reset();
 
         // Reopen with the handler installed.
         config.prepareHandlers(Map.of("TestHandler", recovery));
         recovery.message = null;
+        recovery.prepareCommit = false;
         db = reopenTempDatabase(getClass(), db, config);
 
         // Verify that the handler has committed the recovered transaction.
         ix = db.openIndex("test");
         fastAssertArrayEquals("world".getBytes(), ix.load(null, key));
 
+        byte[] message = recovery.message;
+        if (message == null && isPrepareCommit()) {
+            // Wait for it since no lock was held.
+            for (int i=0; i<10; i++) {
+                Thread.sleep(1000);
+                message = recovery.message;
+                if (message != null) {
+                    break;
+                }
+            }
+        }
+
         fastAssertArrayEquals("message".getBytes(), recovery.message);
+
+        assertEquals(isPrepareCommit(), recovery.prepareCommit);
     }
 
     @Test
@@ -612,6 +730,11 @@ public class TxnPrepareTest {
             @Override
             public void prepare(Transaction txn, byte[] message) throws IOException {
                 recoveredQueue.add(txn);
+            }
+
+            @Override
+            public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+                prepare(txn, message);
             }
         };
 
@@ -632,7 +755,7 @@ public class TxnPrepareTest {
 
             Transaction txn = db.newTransaction();
             ix.store(txn, keys[0], values[0]);
-            handler.prepare(txn, null);
+            prepare(handler, txn, null);
             ix.store(txn, keys[1], values[1]);
 
             db.checkpoint();
@@ -649,14 +772,20 @@ public class TxnPrepareTest {
             txn = recoveredQueue.take();
             assertTrue(recoveredQueue.isEmpty());
 
-            // All locks should still be held except for the last key.
-            for (int i=0; i<keys.length; i++) {
-                try {
+            // All locks should still be held except for the last key (unless prepareCommit)
+            if (isPrepareCommit()) {
+                for (int i=0; i<keys.length; i++) {
                     ix.load(null, keys[i]);
-                    if (i < keys.length - 1) {
-                        fail();
+                }
+            } else {
+                for (int i=0; i<keys.length; i++) {
+                    try {
+                        ix.load(null, keys[i]);
+                        if (i < keys.length - 1) {
+                            fail();
+                        }
+                    } catch (LockTimeoutException e) {
                     }
-                } catch (LockTimeoutException e) {
                 }
             }
 
@@ -676,8 +805,13 @@ public class TxnPrepareTest {
 
         txn.reset();
 
-        for (int i=0; i<keys.length; i++) {
-            assertNull(ix.load(null, keys[i]));
+        if (isPrepareCommit()) { 
+            fastAssertArrayEquals(values[0], ix.load(null, keys[0]));
+            assertNull(ix.load(null, keys[1]));
+        } else {
+            for (int i=0; i<keys.length; i++) {
+                assertNull(ix.load(null, keys[i]));
+            }
         }
     }
 }

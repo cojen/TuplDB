@@ -153,8 +153,15 @@ class RedoOps {
             messageLength: varInt, message: bytes */
         OP_TXN_PREPARE_MESSAGE = 49,
 
+        /** txnId: delta, prepareTxnId: long, handlerId: varInt */
+        OP_TXN_PREPARE_COMMIT = 50,
+
+        /** txnId: delta, prepareTxnId: long, handlerId: varInt,
+            messageLength: varInt, message: bytes */
+        OP_TXN_PREPARE_COMMIT_MESSAGE = 51,
+
         /** txnId: delta, prepareTxnId: long */
-        OP_TXN_PREPARE_ROLLBACK = 50,
+        OP_TXN_PREPARE_ROLLBACK = 52,
 
         /** txnId: delta, handlerId: varInt, messageLength: varInt, message: bytes */
         OP_TXN_CUSTOM = (byte) 128,

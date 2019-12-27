@@ -13,15 +13,16 @@ designated as participants, as per the usual two-phase commit protocol definitio
    cluster names involved, and then sends it to each participant.
 3. Each participant prepares its own transaction with the message provided by the
    coordinator. It's not strictly required that each participant record all the other
-   participants, but it must record the coordinator cluster name and its transaction
-   id. Knowing the other participants can be used for certain recovery scenarios, so it's a
-   good idea to record it anyhow. The participant replies back with its own transaction id.
+   participants, but it must record the coordinator cluster name and its transaction id.
+   Knowing the other participants can be used for certain recovery scenarios, so it's a good
+   idea to record it anyhow. The participant replies back with its own transaction id.
 4. Upon receiving replies from all participants, the coordinator then prepares its own
-   transaction, recording the participant cluster names and their transaction ids. Once the
+   transaction, recording the participant cluster names and their transaction ids. It should
+   use the prepareCommit method, but the regular prepare method works too. Once the
    coordinator's transaction is prepared, the coordinator is now "committed" to committing the
    entire transaction, and the second phase begins. If the coordinator wanted to roll back, it
    shouldn't have prepared its own transaction.
-5. The coordinator sends a commit message to each participant, which commits its own
+5. The coordinator sends a commit message to each participant, and each of them commits its own
    transaction and replies success. The participants cannot roll back.
 6. Upon receiving replies from all participants, the coordinator commits its own transaction,
    and now the entire two-phase commit is complete.
@@ -63,9 +64,12 @@ acknowledged and committed too. If some of the participants have been decomissio
 input isn't required.
 
 A failure after step 4 requires that the coordinator continue its job to fully commit the
-transaction, by completing steps 5 and 6. The prepared message encodes a state which indicates
-that the cluster was chosen as a coordinator, or else it would recover as a participant. The
-coordinator sweeps through all the participants and asks them to commit the transaction. If
+transaction, by completing steps 5 and 6. The recovery handler knows it should act as a
+coordinator when the prepareCommit method is called, or else it would recover as a
+participant. If the coordinator called the regular prepare method, it would need to encode
+something in the message to determine if it should act as a coordinator when recovered.
+
+The coordinator sweeps through all the participants and asks them to commit the transaction. If
 they have no knowledge of it, then this imples that they already committed, based on a previous
 attempt by the coordinator. They simply respond with success in this case. The coordinator
 keeps trying to contact participants which haven't responded, and it never gives up or rolls
@@ -84,11 +88,5 @@ this is dependent on the polling interval and how long it takes for the coordina
 to elect a new leader. When a new leader is elected, the coordinator's transaction rolls back
 automatically because it was never prepared. The polling participants eventually learn that the
 coordinator's transaction is gone, and then they roll back too.
-
-Possible enhancement: After the coordinator has prepared it's transaction, it can release all
-of its locks except for the internal prepare lock, and also truncate its undo log. This avoids
-some of the issues caused by a non-responsive participant. To avoid recovery deadlocks, define
-a new method and redo operation: prepareCommit. Should only be called by the coordinator. This
-method can also be used by the recovery handler to detect if it's just a participant.
 
 ---

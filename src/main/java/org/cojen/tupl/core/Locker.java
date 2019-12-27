@@ -745,19 +745,46 @@ class Locker implements DatabaseAccess { // weak access to database
         while (true) {
             Object tailObj = mTailBlock;
             if (tailObj instanceof Lock) {
-                Lock lock = (Lock) tailObj;
+                var lock = (Lock) tailObj;
                 if (!lock.isPrepareLock()) {
                     mManager.doUnlock(this, lock);
                     mTailBlock = null;
                 }
                 return;
             }
-            Block tail = (Block) tailObj;
+            var tail = (Block) tailObj;
             if (tail == null || tail.last().isPrepareLock()) {
                 return;
             }
             Block.doUnlockLast(tail, this);
         }
+    }
+
+    /**
+     * Releases all locks except the prepare lock, which should be on the top of the stack.
+     *
+     * @throws IllegalStateException if in a scope or if the prepare lock isn't the top
+     */
+    final void unlockAllExceptPrepare() {
+        if (mParentScope != null) {
+            throw new IllegalStateException();
+        }
+
+        Object tailObj = mTailBlock;
+
+        if (tailObj instanceof Lock) {
+            if (((Lock) tailObj).isPrepareLock()) {
+                // Nothing to do.
+                return;
+            }
+        } else if (tailObj != null) {
+            Lock lock = ((Block) tailObj).removeLastIfPrepare(this);
+            scopeUnlockAll();
+            mTailBlock = lock;
+            return;
+        }
+
+        throw new IllegalStateException(String.valueOf(tailObj));
     }
 
     /**
@@ -952,6 +979,28 @@ class Locker implements DatabaseAccess { // weak access to database
 
         Lock last() {
             return mLocks[mSize - 1];
+        }
+
+        /**
+         * Note: Caller must not access this Block again if the resulting size is zero.
+         *
+         * @throws IllegalStateException if the last is a prepare lock
+         */
+        Lock removeLastIfPrepare(Locker locker) {
+            int size = mSize - 1;
+            Lock lock = mLocks[size];
+            if (!lock.isPrepareLock()) {
+                throw new IllegalStateException();
+            } else {
+                mLocks[size] = null;
+                if (size == 0) {
+                    locker.mTailBlock = mPrev;
+                    mPrev = null;
+                } else {
+                    mSize = size;
+                }
+            }
+            return lock;
         }
 
         static void unlockLast(Block block, Locker locker) {

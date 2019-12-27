@@ -582,7 +582,7 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_TXN_PREPARE:
+            case OP_TXN_PREPARE: case OP_TXN_PREPARE_COMMIT:
                 long prepareTxnId;
                 int handlerId;
                 try {
@@ -593,13 +593,14 @@ abstract class RedoDecoder {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, null))
+                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, null,
+                                           op == OP_TXN_PREPARE_COMMIT))
                 {
                     return false;
                 }
                 break;
 
-            case OP_TXN_PREPARE_MESSAGE:
+            case OP_TXN_PREPARE_MESSAGE: case OP_TXN_PREPARE_COMMIT_MESSAGE:
                 try {
                     txnId = readTxnId(in);
                     prepareTxnId = in.readLongLE();
@@ -609,7 +610,8 @@ abstract class RedoDecoder {
                     return true;
                 }
                 if (!verifyTerminator(in)
-                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, message))
+                    || !visitor.txnPrepare(txnId, prepareTxnId, handlerId, message,
+                                           op == OP_TXN_PREPARE_COMMIT_MESSAGE))
                 {
                     return false;
                 }

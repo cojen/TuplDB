@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -131,6 +131,15 @@ byte[]&nbsp;message)</code></th>
 <div class="block">Called to prepare a transaction or to recover one.</div>
 </td>
 </tr>
+<tr class="rowColor" id="i1">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepareCommit(org.cojen.tupl.Transaction,byte%5B%5D)">prepareCommit</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+byte[]&nbsp;message)</code></th>
+<td class="colLast">
+<div class="block">A prepare variant intended to be called by a two-phase commit coordinator after all
+ participants have prepared their transactions.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -179,6 +188,38 @@ byte[]&nbsp;message)</span>
  necessary reset is performed automatically. Any other exception is propagated as an
  <a href="../EventType.html#RECOVERY_HANDLER_UNCAUGHT">uncaught</a> exception, and the prepared
  transaction might remain in a stuck state.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>txn</code> - transaction the prepare applies to, which can be modified</dd>
+<dd><code>message</code> - optional message</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="prepareCommit(org.cojen.tupl.Transaction,byte[])">prepareCommit</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">prepareCommit</span>&#8203;(<span class="arguments"><a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+byte[]&nbsp;message)</span>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">A prepare variant intended to be called by a two-phase commit coordinator after all
+ participants have prepared their transactions. All changes made up to the prepare are
+ effectively committed, their locks are released, and the changes cannot be rolled
+ back. This permits the changes to be observed outside the transaction.
+
+ <p>To fully complete the prepared transaction, a commit operation must still be called
+ to finish it, but only after all participants have committed their transactions. If not
+ finished, the recovery handler will be invoked after each failover. A rollback operation
+ can also finish the prepared transaction, although it will not roll back any changes
+ made before the prepare.
+
+ <p>Strictly speaking, this variant isn't required. The benefit is that a coordinator can
+ perform the second phase of a two-phase commit without its own transaction getting
+ "stuck" while waiting for participants to commit. Another benefit is that no special
+ state needs to encoded in the prepare message to inform the recovery handler that it
+ should act as a coordinator. Being invoked by this method alone is all that's needed.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txn</code> - transaction the prepare applies to, which can be modified</dd>

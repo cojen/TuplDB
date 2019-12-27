@@ -263,10 +263,13 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean txnPrepare(long txnId, long prepareTxnId, int handlerId, byte[] message) {
+    public boolean txnPrepare(long txnId, long prepareTxnId,
+                              int handlerId, byte[] message, boolean commit)
+    {
+        String op = commit ? "txnPrepareCommit" : "txnPrepare";
         mListener.notify(mType,
                          "Redo %1$s: txnId=%2$d, prepareTxnId=%3$d, handlerId=%4$d, message=%5$s",
-                         "txnPrepare", txnId, prepareTxnId, handlerId, valueStr(message));
+                         op, txnId, prepareTxnId, handlerId, valueStr(message));
         return true;
     }
 

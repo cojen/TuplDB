@@ -1088,7 +1088,11 @@ public final class _LocalDatabase extends CoreDatabase {
 
                 if (redo != null) {
                     try {
-                        recovery.prepare(txn, message);
+                        if (rtp.commit) {
+                            recovery.prepareCommit(txn, message);
+                        } else {
+                            recovery.prepare(txn, message);
+                        }
                     } catch (UnmodifiableReplicaException e) {
                         // Ensure that it can be handed off again.
                         txn.reset(e);

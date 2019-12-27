@@ -242,7 +242,8 @@ interface RedoVisitor {
      * @param txnId non-zero transaction id
      * @param message optional message
      */
-    public boolean txnPrepare(long txnId, long prepareTxnId, int handlerId, byte[] message)
+    public boolean txnPrepare(long txnId, long prepareTxnId,
+                              int handlerId, byte[] message, boolean commit)
         throws IOException;
 
     /**

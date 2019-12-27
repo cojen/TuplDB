@@ -1020,7 +1020,8 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean txnPrepare(long txnId, long prepareTxnId, int handlerId, byte[] message)
+    public boolean txnPrepare(long txnId, long prepareTxnId,
+                              int handlerId, byte[] message, boolean commit)
         throws IOException
     {
         // Run the task against the transaction being prepared, not the carrier transaction.
@@ -1029,7 +1030,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {
-                txn.prepareRedo(handlerId, message);
+                txn.prepareRedo(handlerId, message, commit);
             }
         });
 
