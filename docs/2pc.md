@@ -1,8 +1,9 @@
 # Notes for implementing two-phase commit
 
 The transaction prepare mechanism provides a building block for supporting distributed
-two-phase commits. Here is a recipe for implementing it fully, assuming that each cluster is
-replicated and independent from each other.
+[two-phase commits](https://en.wikipedia.org/wiki/Two-phase_commit_protocol). Here is a recipe
+for implementing it fully, assuming that each cluster is replicated and independent from each
+other.
 
 One coordinator "owns" the entire workflow, and it belongs to one cluster. The coordinator can
 be chosen by any means, possibly randomly. The other clusters involved in the transaction are
@@ -88,3 +89,11 @@ this is dependent on the polling interval and how long it takes for the coordina
 to elect a new leader. When a new leader is elected, the coordinator's transaction rolls back
 automatically because it was never prepared. The polling participants eventually learn that the
 coordinator's transaction is gone, and then they roll back too.
+
+## More notes
+
+In steps 3 and 4, the participant transaction id is stored in the coordinator's prepare
+message. This isn't strictly necessary, but it might be useful for verification or repair. The
+coordinator can send messages to participants with the coordinator and participant transaction
+ids, and the participant can verify that the mapping is correct. A similar verification can be
+performed when the participants poll the coordinator.
