@@ -1,4 +1,4 @@
-Notes for implementing two-phase commit:
+# Notes for implementing two-phase commit
 
 The transaction prepare mechanism provides a building block for supporting distributed
 two-phase commits. Here is a recipe for implementing it fully, assuming that each cluster is
@@ -27,7 +27,7 @@ designated as participants, as per the usual two-phase commit protocol definitio
 6. Upon receiving replies from all participants, the coordinator commits its own transaction,
    and now the entire two-phase commit is complete.
 
-Failure handling:
+## Failure handling
 
 The first requirement is that all clusters must be replicated. If a prepared transaction fails
 to finish normally, then a recovery handler is required to complete the transaction, based on
@@ -88,5 +88,3 @@ this is dependent on the polling interval and how long it takes for the coordina
 to elect a new leader. When a new leader is elected, the coordinator's transaction rolls back
 automatically because it was never prepared. The polling participants eventually learn that the
 coordinator's transaction is gone, and then they roll back too.
-
----
