@@ -581,6 +581,13 @@ abstract class AbstractFileIO extends FileIO {
             final long currLength = doLength();
             var buf = new byte[1];
             for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
+                if (mAccessLock.hasQueuedThreads()) {
+                    // Let other accesses in. The length won't change concurrently because the
+                    // caller should be holding mRemapLatch exclusively.
+                    mAccessLock.releaseExclusive();
+                    mAccessLock.acquireExclusive();
+                }
+
                 // In order not to be destructive to existing data we read the byte
                 // at the given offset. If it is non-zero then assume the block 
                 // must have been allocated already.
@@ -590,6 +597,9 @@ abstract class AbstractFileIO extends FileIO {
                     if (buf[0] != 0) {
                         continue;
                     }
+                } else {
+                    // Ensure that a forced length extension writes a zero.
+                    buf[0] = 0;
                 }
 
                 // Found zero byte. Either data at pos is really zero, or the block has not been 

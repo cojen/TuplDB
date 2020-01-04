@@ -102,9 +102,9 @@ public class FileIOTest {
     }
 
     private void doPreallocate() throws Exception {
-        // Assuming a filesystem with delayed block allocation,
-        // e.g. ext3 / ext4 on Linux.
-        assumeTrue(Platform.isLinux() || Platform.isMac());
+        // Assuming a filesystem with delayed block allocation, e.g. ext3 / ext4 on Linux.
+        // Test on Windows too, to test the default doPreallocate method.
+        assumeTrue(Platform.isLinux() || Platform.isMac() || Platform.isWindows());
 
         long len = 100L * (1<<20); // 100 MB
         FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE));
