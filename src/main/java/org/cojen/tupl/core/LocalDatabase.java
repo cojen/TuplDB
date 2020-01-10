@@ -4709,8 +4709,6 @@ public final class LocalDatabase extends CoreDatabase {
             boolean removed = nodeMapRemove(node, Long.hashCode(oldId));
 
             try {
-                // TODO: This can hang on I/O; release frame latch if deletePage would block?
-                // Then allow thread to block without node latch held.
                 // No need to force delete when dirtying. Caller is responsible for cleaning up.
                 mPageDb.deletePage(oldId, false);
             } catch (Throwable e) {
