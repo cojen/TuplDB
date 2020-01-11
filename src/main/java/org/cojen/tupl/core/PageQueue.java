@@ -500,7 +500,7 @@ final class PageQueue implements IntegerRef {
             Node node;
 
             LocalDatabase cache = mManager.mPageCache;
-            if (cache == null) {
+            if (cache == null || mAllocMode == ALLOC_RESERVE) {
                 tailBuf = mAppendTail;
                 node = null;
             } else {

@@ -411,18 +411,20 @@ public class CompactTest {
 
     @Test
     public void stress() throws Exception {
-        for (int i=1; i<=3; i++) {
-            try {
-                doStress();
+        for (int i=3; --i>=0; ) {
+            AssertionError e = doStress();
+            if (e == null) {
                 break;
-            } catch (AssertionError e) {
-                // Retry.
-                teardown();
             }
+            if (i == 0) {
+                throw e;
+            }
+            // Retry.
+            teardown();
         }
     }
 
-    private void doStress() throws Exception {
+    private AssertionError doStress() throws Exception {
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()
                                        .pageSize(512)
@@ -489,8 +491,13 @@ public class CompactTest {
 
         assertNull(comp.failed);
         assertTrue(comp.abort > 0);
-        // This assertion might fail on a slower machine.
-        assertTrue(comp.success > 0);
+        try {
+            // This assertion might fail on a slower machine.
+            assertTrue(comp.success > 0);
+            return null;
+        } catch (AssertionError e) {
+            return e;
+        }
     }
 
     @Test
