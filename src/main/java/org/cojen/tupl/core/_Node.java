@@ -322,6 +322,12 @@ final class _Node extends Clutch implements _DatabaseAccess {
         id(id);
     }
 
+    // Construct a simple marker _Node instance, which is otherwise unusable.
+    _Node() {
+        mGroup = null;
+        id(Long.MIN_VALUE);
+    }
+
     /**
      * Must be called when object is no longer referenced.
      */

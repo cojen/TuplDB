@@ -231,7 +231,8 @@ public final class _LocalDatabase extends CoreDatabase {
 
     // Map of all loaded nodes.
     private _Node[] mNodeMapTable;
-    private Latch[] mNodeMapLatches;
+    private static final _Node NM_LOCK = new _Node();
+    private static final VarHandle cNodeMapElementHandle;
 
     final int mMaxKeySize;
     final int mMaxEntrySize;
@@ -293,6 +294,7 @@ public final class _LocalDatabase extends CoreDatabase {
                 (_LocalDatabase.class, "mCommitHeader", long.class);
             /*P*/ // ]
 
+            cNodeMapElementHandle = MethodHandles.arrayElementVarHandle(_Node[].class);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -413,22 +415,13 @@ public final class _LocalDatabase extends CoreDatabase {
         mLockManager = new _LockManager(this, launcher.mLockUpgradeRule, mDefaultLockTimeoutNanos);
         mLocalTransaction = new ThreadLocal<>();
 
-        // Initialize NodeMap, the primary cache of Nodes.
-        final int procCount = Runtime.getRuntime().availableProcessors();
+        // Initialize NodeMapTable, the primary cache of Nodes.
         {
             int capacity = Utils.roundUpPower2(maxCache);
             if (capacity < 0) {
                 capacity = 0x40000000;
             }
-            // The number of latches must not be more than the number of hash buckets. This
-            // ensures that a hash bucket is guarded by exactly one latch, which can be shared
-            // across multiple buckets.
-            int latches = Math.min(capacity, Utils.roundUpPower2(procCount * 16));
             mNodeMapTable = new _Node[capacity];
-            mNodeMapLatches = new Latch[latches];
-            for (int i=0; i<latches; i++) {
-                mNodeMapLatches[i] = new Latch();
-            }
         }
 
         if (mBaseFile != null && !mReadOnly && launcher.mMkdirs) {
@@ -462,6 +455,8 @@ public final class _LocalDatabase extends CoreDatabase {
                 }
             }
         }
+
+        final int procCount = Runtime.getRuntime().availableProcessors();
 
         LockedFile attemptCreate = null;
 
@@ -3916,50 +3911,75 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     /**
-     * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
-     * matches, in case an eviction snuck in.
+     * Returns unconfirmed node if found. Caller must latch and confirm that the node
+     * identifier matches, in case an eviction snuck in.
      */
     _Node nodeMapGet(final long nodeId) {
         return nodeMapGet(nodeId, Long.hashCode(nodeId));
     }
 
     /**
-     * Returns unconfirmed node if found. Caller must latch and confirm that node identifier
-     * matches, in case an eviction snuck in.
+     * Returns unconfirmed node if found. Caller must latch and confirm that the node
+     * identifier matches, in case an eviction snuck in.
      */
     _Node nodeMapGet(final long nodeId, final int hash) {
-        // Quick check without acquiring a partition latch.
-
         final _Node[] table = mNodeMapTable;
-        _Node node = table[hash & (table.length - 1)];
-        while (node != null) {
+        final int slot = hash & (table.length - 1);
+
+        _Node first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+
+        if (first == null) {
+            return null;
+        }
+
+        _Node node = first;
+        do {
             if (node.id() == nodeId) {
                 return node;
             }
             node = node.mNodeMapNext;
+        } while (node != null);
+
+        // Again with lock held.
+
+        first = nodeMapLock(table, slot, first);
+
+        if (first == null) {
+            return null;
         }
 
-        // Again with shared partition latch held.
-
-        final Latch[] latches = mNodeMapLatches;
-        final Latch latch = latches[hash & (latches.length - 1)];
-        latch.acquireShared();
-
-        node = table[hash & (table.length - 1)];
-        while (node != null) {
+        node = first;
+        do {
             if (node.id() == nodeId) {
-                latch.releaseShared();
-                return node;
+                break;
             }
             node = node.mNodeMapNext;
-        }
+        } while (node != null);
 
-        latch.releaseShared();
-        return null;
+        cNodeMapElementHandle.setVolatile(table, slot, first);
+
+        return node;
     }
 
     /**
-     * Put a node into the map, but caller must confirm that node is not already present.
+     * @param first must not be null
+     * @return actual first, which is null if slot is empty and not locked
+     */
+    private static _Node nodeMapLock(final _Node[] table, final int slot, _Node first) {
+        while (first == NM_LOCK
+               || !cNodeMapElementHandle.compareAndSet(table, slot, first, NM_LOCK))
+        {
+            Thread.onSpinWait();
+            first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+            if (first == null) {
+                return null;
+            }
+        }
+        return first;
+    }
+
+    /**
+     * Put a node into the map, but caller must confirm that the node isn't already present.
      *
      * @param node must be latched
      */
@@ -3968,64 +3988,79 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     /**
-     * Put a node into the map, but caller must confirm that node is not already present.
+     * Put a node into the map, but caller must confirm that the node isn't already present.
      *
      * @param node must be latched
      */
     void nodeMapPut(final _Node node, final int hash) {
-        final Latch[] latches = mNodeMapLatches;
-        final Latch latch = latches[hash & (latches.length - 1)];
-        latch.acquireExclusive();
-
         final _Node[] table = mNodeMapTable;
-        final int index = hash & (table.length - 1);
-        _Node e = table[index];
-        while (e != null) {
+        final int slot = hash & (table.length - 1);
+
+        _Node first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+
+        while (true) {
+            if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
+                break;
+            }
+            first = (_Node) cNodeMapElementHandle.compareAndExchange(table, slot, null, node);
+            if (first == null) {
+                return;
+            }
+        }
+
+        _Node e = first;
+        do {
             if (e == node) {
-                latch.releaseExclusive();
+                cNodeMapElementHandle.setVolatile(table, slot, first);
                 return;
             }
             if (e.id() == node.id()) {
-                latch.releaseExclusive();
+                cNodeMapElementHandle.setVolatile(table, slot, first);
                 throw new AssertionError("Already in NodeMap: " + node + ", " + e + ", " + hash);
             }
             e = e.mNodeMapNext;
-        }
+        } while (e != null);
 
-        node.mNodeMapNext = table[index];
-        table[index] = node;
-
-        latch.releaseExclusive();
+        node.mNodeMapNext = first;
+        cNodeMapElementHandle.setVolatile(table, slot, node);
     }
 
     /**
      * Returns unconfirmed node if an existing node is found. Caller must latch and confirm
-     * that node identifier matches, in case an eviction snuck in.
+     * that the node identifier matches, in case an eviction snuck in.
      *
      * @param node must be latched
      * @return null if node was inserted, existing node otherwise
      */
     _Node nodeMapPutIfAbsent(final _Node node) {
         final int hash = Long.hashCode(node.id());
-        final Latch[] latches = mNodeMapLatches;
-        final Latch latch = latches[hash & (latches.length - 1)];
-        latch.acquireExclusive();
-
         final _Node[] table = mNodeMapTable;
-        final int index = hash & (table.length - 1);
-        _Node e = table[index];
-        while (e != null) {
+        final int slot = hash & (table.length - 1);
+
+        _Node first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+
+        while (true) {
+            if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
+                break;
+            }
+            first = (_Node) cNodeMapElementHandle.compareAndExchange(table, slot, null, node);
+            if (first == null) {
+                return null;
+            }
+        }
+
+        _Node e = first;
+        do {
             if (e.id() == node.id()) {
-                latch.releaseExclusive();
+                cNodeMapElementHandle.setVolatile(table, slot, first);
                 return e;
             }
             e = e.mNodeMapNext;
-        }
+        } while (e != null);
 
-        node.mNodeMapNext = table[index];
-        table[index] = node;
+        node.mNodeMapNext = first;
+        cNodeMapElementHandle.setVolatile(table, slot, node);
 
-        latch.releaseExclusive();
         return null;
     }
 
@@ -4034,29 +4069,42 @@ public final class _LocalDatabase extends CoreDatabase {
      */
     void nodeMapReplace(final _Node oldNode, final _Node newNode) {
         final int hash = Long.hashCode(oldNode.id());
-        final Latch[] latches = mNodeMapLatches;
-        final Latch latch = latches[hash & (latches.length - 1)];
-        latch.acquireExclusive();
+        final _Node[] table = mNodeMapTable;
+        final int slot = hash & (table.length - 1);
+
+        _Node first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+        if (first == null || (first = nodeMapLock(table, slot, first)) == null) {
+            if (!isClosed()) {
+                throw new AssertionError("Not found: " + oldNode + ", " + newNode);
+            }
+            return;
+        }
 
         newNode.mNodeMapNext = oldNode.mNodeMapNext;
 
-        final _Node[] table = mNodeMapTable;
-        final int index = hash & (table.length - 1);
-        _Node e = table[index];
-        if (e == oldNode) {
-            table[index] = newNode;
-        } else while (e != null) {
-            _Node next = e.mNodeMapNext;
-            if (next == oldNode) {
-                e.mNodeMapNext = newNode;
-                break;
+        if (first == oldNode) {
+            first = newNode;
+        } else {
+            _Node e = first;
+            while (true) {
+                _Node next = e.mNodeMapNext;
+                if (next == oldNode) {
+                    e.mNodeMapNext = newNode;
+                    break;
+                }
+                e = next;
+                if (e == null) {
+                    if (isClosed()) {
+                        cNodeMapElementHandle.setVolatile(table, slot, first);
+                        return;
+                    }
+                    throw new AssertionError("Not found: " + oldNode + ", " + newNode);
+                }
             }
-            e = next;
         }
 
         oldNode.mNodeMapNext = null;
-
-        latch.releaseExclusive();
+        cNodeMapElementHandle.setVolatile(table, slot, first);
     }
 
     boolean nodeMapRemove(final _Node node) {
@@ -4064,31 +4112,36 @@ public final class _LocalDatabase extends CoreDatabase {
     }
 
     boolean nodeMapRemove(final _Node node, final int hash) {
-        boolean found = false;
-
-        final Latch[] latches = mNodeMapLatches;
-        final Latch latch = latches[hash & (latches.length - 1)];
-        latch.acquireExclusive();
-
         final _Node[] table = mNodeMapTable;
-        final int index = hash & (table.length - 1);
-        _Node e = table[index];
-        if (e == node) {
+        final int slot = hash & (table.length - 1);
+
+        _Node first = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+
+        if (first == null || (first = nodeMapLock(table, slot, first)) == null) {
+            return false;
+        }
+
+        boolean found;
+
+        if (first == node) {
             found = true;
-            table[index] = e.mNodeMapNext;
-        } else while (e != null) {
-            _Node next = e.mNodeMapNext;
-            if (next == node) {
-                found = true;
-                e.mNodeMapNext = next.mNodeMapNext;
-                break;
-            }
-            e = next;
+            first = first.mNodeMapNext;
+        } else {
+            found = false;
+            _Node e = first;
+            do {
+                _Node next = e.mNodeMapNext;
+                if (next == node) {
+                    found = true;
+                    e.mNodeMapNext = next.mNodeMapNext;
+                    break;
+                }
+                e = next;
+            } while (e != null);
         }
 
         node.mNodeMapNext = null;
-
-        latch.releaseExclusive();
+        cNodeMapElementHandle.setVolatile(table, slot, first);
 
         return found;
     }
@@ -4222,44 +4275,42 @@ public final class _LocalDatabase extends CoreDatabase {
      * Remove and delete nodes from map, as part of close sequence.
      */
     void nodeMapDeleteAll() {
-        start: while (true) {
-            for (Latch latch : mNodeMapLatches) {
-                latch.acquireExclusive();
-            }
+        final _Node[] table = mNodeMapTable;
 
-            try {
-                for (int i=mNodeMapTable.length; --i>=0; ) {
-                    _Node e = mNodeMapTable[i];
-                    if (e != null) {
-                        if (!e.tryAcquireExclusive()) {
-                            // Deadlock prevention.
-                            continue start;
-                        }
-                        try {
-                            e.doDelete(this);
-                        } finally {
-                            e.releaseExclusive();
-                        }
-                        _Node next;
-                        while ((next = e.mNodeMapNext) != null) {
-                            e.mNodeMapNext = null;
-                            e = next;
-                        }
-                        mNodeMapTable[i] = null;
+        outer: for (int slot=0; slot<table.length; ) {
+            _Node node = (_Node) cNodeMapElementHandle.getVolatile(table, slot);
+
+            if (node != null && (node = nodeMapLock(table, slot, node)) != null) {
+                do {
+                    if (!node.tryAcquireExclusive()) {
+                        // Deadlock prevention.
+                        cNodeMapElementHandle.setVolatile(table, slot, node);
+                        Thread.yield();
+                        continue outer;
                     }
-                }
-            } finally {
-                for (Latch latch : mNodeMapLatches) {
-                    latch.releaseExclusive();
-                }
+
+                    try {
+                        node.doDelete(this);
+                        node.releaseExclusive();
+                    } catch (Throwable e) {
+                        node.releaseExclusive();
+                        cNodeMapElementHandle.setVolatile(table, slot, node);
+                        throw e;
+                    }
+
+                    _Node next = node.mNodeMapNext;
+                    node.mNodeMapNext = null;
+                    node = next;
+                } while (node != null);
+
+                cNodeMapElementHandle.setVolatile(table, slot, null);
             }
 
-            // Free up more memory in case something refers to this object for a long time.
-            mNodeMapTable = null;
-            mNodeMapLatches = null;
-
-            return;
+            slot++;
         }
+
+        // Free up more memory in case something refers to this object for a long time.
+        mNodeMapTable = null;
     }
 
     /**
