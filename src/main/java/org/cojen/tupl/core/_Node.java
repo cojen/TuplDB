@@ -548,7 +548,7 @@ final class _Node extends Clutch implements _DatabaseAccess {
         try {
             _Node childNode;
             try {
-                childNode = db.allocLatchedNode(childId);
+                childNode = db.allocLatchedNode();
                 childNode.id(childId);
             } catch (Throwable e) {
                 db.nodeMapRemove(lock);

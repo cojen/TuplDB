@@ -366,7 +366,7 @@ final class _DurablePageDb extends _PageDb {
     public _Node allocLatchedNode(_LocalDatabase db, int mode) throws IOException {
         long nodeId = allocPage();
         try {
-            _Node node = db.allocLatchedNode(nodeId, mode);
+            _Node node = db.allocLatchedNode(mode);
             node.id(nodeId);
             return node;
         } catch (Throwable e) {

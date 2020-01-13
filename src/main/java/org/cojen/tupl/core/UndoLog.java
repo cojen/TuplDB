@@ -2193,7 +2193,7 @@ final class UndoLog implements DatabaseAccess {
     private static Node readUndoLogNode(LocalDatabase db, long nodeId, int mode)
         throws IOException
     {
-        Node node = db.allocLatchedNode(nodeId, mode);
+        Node node = db.allocLatchedNode(mode);
         try {
             node.read(db, nodeId);
             if (node.type() != Node.TYPE_UNDO_LOG) {

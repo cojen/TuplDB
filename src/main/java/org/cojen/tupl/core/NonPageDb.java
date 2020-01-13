@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import java.util.Arrays;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -87,7 +85,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public Node allocLatchedNode(LocalDatabase db, int mode) throws IOException {
-        Node node = db.allocLatchedNode(ThreadLocalRandom.current().nextLong(), mode);
+        Node node = db.allocLatchedNode(mode);
         long nodeId = node.id();
         if (nodeId < 0) {
             // Recycle the id.

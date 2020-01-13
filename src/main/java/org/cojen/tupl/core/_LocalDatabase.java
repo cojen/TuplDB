@@ -594,7 +594,7 @@ public final class _LocalDatabase extends CoreDatabase {
                     usedRate = -1;
                 }
 
-                int stripes = roundUpPower2(procCount * 4);
+                int stripes = roundUpPower2(procCount * 16);
 
                 int stripeSize;
                 while (true) {
@@ -1779,7 +1779,7 @@ public final class _LocalDatabase extends CoreDatabase {
 
             _Node root;
             if (rootId != 0) {
-                root = allocLatchedNode(rootId, _NodeGroup.MODE_UNEVICTABLE);
+                root = allocLatchedNode(_NodeGroup.MODE_UNEVICTABLE);
                 root.id(rootId);
                 try {
                     /*P*/ // [|
@@ -3306,8 +3306,7 @@ public final class _LocalDatabase extends CoreDatabase {
      */
     private _Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
         if (rootId == 0) {
-            // Pass tree identifier to spread allocations around.
-            _Node rootNode = allocLatchedNode(treeId, _NodeGroup.MODE_UNEVICTABLE);
+            _Node rootNode = allocLatchedNode(_NodeGroup.MODE_UNEVICTABLE);
 
             try {
                 /*P*/ // [
@@ -3338,7 +3337,7 @@ public final class _LocalDatabase extends CoreDatabase {
                 }
             }
 
-            rootNode = allocLatchedNode(rootId, _NodeGroup.MODE_UNEVICTABLE);
+            rootNode = allocLatchedNode(_NodeGroup.MODE_UNEVICTABLE);
 
             try {
                 try {
@@ -4159,7 +4158,7 @@ public final class _LocalDatabase extends CoreDatabase {
             return node;
         }
 
-        node = allocLatchedNode(nodeId);
+        node = allocLatchedNode();
         node.id(nodeId);
 
         // node is currently exclusively locked. Insert it into the node map so that no other
@@ -4226,7 +4225,7 @@ public final class _LocalDatabase extends CoreDatabase {
             return node;
         }
 
-        node = allocLatchedNode(nodeId);
+        node = allocLatchedNode();
         node.id(nodeId);
 
         while (true) {
@@ -4471,25 +4470,22 @@ public final class _LocalDatabase extends CoreDatabase {
     /**
      * Returns a new or recycled _Node instance, latched exclusively, with an undefined id and a
      * clean state.
-     *
-     * @param anyNodeId id of any node, for spreading allocations around
      */
-    _Node allocLatchedNode(long anyNodeId) throws IOException {
-        return allocLatchedNode(anyNodeId, 0);
+    _Node allocLatchedNode() throws IOException {
+        return allocLatchedNode(0);
     }
 
     /**
      * Returns a new or recycled _Node instance, latched exclusively, with an undefined id and a
      * clean state.
      *
-     * @param anyNodeId id of any node, for spreading allocations around
      * @param mode MODE_UNEVICTABLE if allocated node cannot be automatically evicted
      */
-    _Node allocLatchedNode(long anyNodeId, int mode) throws IOException {
+    _Node allocLatchedNode(int mode) throws IOException {
         mode |= mPageDb.allocMode();
 
         _NodeGroup[] groups = mNodeGroups;
-        int groupIx = ((int) anyNodeId) & (groups.length - 1);
+        int groupIx = ThreadLocalRandom.current().nextInt() & (groups.length - 1);
         IOException fail = null;
 
         for (int trial = 1; trial <= 3; trial++) {
@@ -5562,7 +5558,7 @@ public final class _LocalDatabase extends CoreDatabase {
     private _Node removeInode(long nodeId) throws IOException {
         _Node node = nodeMapGetAndRemove(nodeId);
         if (node == null) {
-            node = allocLatchedNode(nodeId, _NodeGroup.MODE_UNEVICTABLE);
+            node = allocLatchedNode(_NodeGroup.MODE_UNEVICTABLE);
             /*P*/ // [
             // node.type(TYPE_FRAGMENT);
             /*P*/ // ]
@@ -5732,7 +5728,9 @@ public final class _LocalDatabase extends CoreDatabase {
         // lost. A better approach would avoid the optimization if the parent node is clean
         // or doesn't match the current commit state.
 
-        node.mCachedState = mInitialReadState;
+        if ((node.mCachedState = mInitialReadState) != CACHED_CLEAN) {
+            node.mGroup.addDirty(node, node.mCachedState);
+        }
     }
 
     @Override
