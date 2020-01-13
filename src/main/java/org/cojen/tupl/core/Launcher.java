@@ -72,8 +72,8 @@ public final class Launcher implements Cloneable {
     boolean mMapDataFiles;
     PageArray mDataPageArray;
     FileFactory mFileFactory;
-    long mMinCachedBytes;
-    long mMaxCachedBytes;
+    long mMinCacheBytes;
+    long mMaxCacheBytes;
     long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
@@ -153,11 +153,11 @@ public final class Launcher implements Cloneable {
     }
 
     public void minCacheSize(long minBytes) {
-        mMinCachedBytes = minBytes;
+        mMinCacheBytes = minBytes;
     }
 
     public void maxCacheSize(long maxBytes) {
-        mMaxCachedBytes = maxBytes;
+        mMaxCacheBytes = maxBytes;
     }
 
     public void secondaryCacheSize(long size) {

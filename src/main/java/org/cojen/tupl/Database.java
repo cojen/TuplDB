@@ -368,7 +368,7 @@ public interface Database extends CauseCloseable, Flushable {
         public int pageSize;
         public long freePages;
         public long totalPages;
-        public long cachedPages;
+        public long cachePages;
         public long dirtyPages;
         public int openIndexes;
         public long lockCount;
@@ -400,8 +400,8 @@ public interface Database extends CauseCloseable, Flushable {
         /**
          * Returns the current size of the cache, in pages.
          */
-        public long cachedPages() {
-            return cachedPages;
+        public long cachePages() {
+            return cachePages;
         }
 
         /**
@@ -482,7 +482,7 @@ public interface Database extends CauseCloseable, Flushable {
                 return pageSize == other.pageSize
                     && freePages == other.freePages
                     && totalPages == other.totalPages
-                    && cachedPages == other.cachedPages
+                    && cachePages == other.cachePages
                     && dirtyPages == other.dirtyPages
                     && openIndexes == other.openIndexes
                     && lockCount == other.lockCount
@@ -498,7 +498,7 @@ public interface Database extends CauseCloseable, Flushable {
             return "Database.Stats {pageSize=" + pageSize
                 + ", freePages=" + freePages
                 + ", totalPages=" + totalPages
-                + ", cachedPages=" + cachedPages
+                + ", cachePages=" + cachePages
                 + ", dirtyPages=" + dirtyPages
                 + ", openIndexes=" + openIndexes
                 + ", lockCount=" + lockCount
