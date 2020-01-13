@@ -46,8 +46,29 @@ class PageQueueScanner {
     static void scan(PageArray array, long headerId, int headerOffset, LongConsumer dst)
         throws IOException
     {
+        long ptr = 0;
+        int directPageSize = array.directPageSize();
+        if (directPageSize < 0) {
+            ptr = DirectPageOps.p_allocPage(directPageSize);
+        }
+
+        try {
+            doScan(array, headerId, headerOffset, dst, ptr);
+        } catch (Throwable e) {
+            if (ptr != 0) {
+                DirectPageOps.p_delete(ptr);
+            }
+            throw e;
+        }
+    }
+
+    private static void doScan(PageArray array, long headerId, int headerOffset, LongConsumer dst,
+                               long ptr)
+        throws IOException
+    {
         var buf = new byte[array.pageSize()];
-        array.readPage(headerId, buf);
+
+        readPage(array, headerId, buf, ptr);
 
         final long pageCount = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_PAGE_COUNT);
         final long nodeCount = PageOps.p_longGetLE(buf, headerOffset + I_REMOVE_NODE_COUNT);
@@ -64,7 +85,7 @@ class PageQueueScanner {
             return;
         }
 
-        array.readPage(nodeId, buf);
+        readPage(array, nodeId, buf, ptr);
 
         if (pageId == 0) {
             if (nodeOffset != I_NODE_START) {
@@ -101,7 +122,7 @@ class PageQueueScanner {
                 break;
             }
 
-            array.readPage(nodeId, buf);
+            readPage(array, nodeId, buf, ptr);
 
             actualNodeCount++;
             pageId = PageOps.p_longGetBE(buf, I_FIRST_PAGE_ID);
@@ -116,6 +137,17 @@ class PageQueueScanner {
         if (nodeCount != actualNodeCount) {
             throw new CorruptDatabaseException
                 ("Mismatched node count: " + nodeCount + " != " + actualNodeCount);
+        }
+    }
+
+    private static void readPage(PageArray array, long id, byte[] buf, long ptr)
+        throws IOException
+    {
+        if (ptr == 0) {
+            array.readPage(id, buf);
+        } else {
+            array.readPage(id, ptr);
+            DirectPageOps.p_copyToArray(ptr, 0, buf, 0, buf.length);
         }
     }
 }
