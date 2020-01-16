@@ -184,7 +184,7 @@ boolean&nbsp;guilty,
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getDeadlockSet()">getDeadlockSet</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#deadlockSet()">deadlockSet</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i1">
@@ -193,13 +193,13 @@ boolean&nbsp;guilty,
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor" id="i2">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getShortMessage()">getShortMessage</a></span>()</code></th>
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isGuilty()">isGuilty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isGuilty()">isGuilty</a></span>()</code></th>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#shortMessage()">shortMessage</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
@@ -210,7 +210,7 @@ boolean&nbsp;guilty,
 <h3>Methods inherited from class&nbsp;org.cojen.tupl.<a href="LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.LockTimeoutException">
 <!--   -->
-</a><code><a href="LockTimeoutException.html#getOwnerAttachment()">getOwnerAttachment</a>, <a href="LockTimeoutException.html#getTimeout()">getTimeout</a>, <a href="LockTimeoutException.html#getUnit()">getUnit</a></code></div>
+</a><code><a href="LockTimeoutException.html#ownerAttachment()">ownerAttachment</a>, <a href="LockTimeoutException.html#timeout()">timeout</a>, <a href="LockTimeoutException.html#unit()">unit</a></code></div>
 <div class="inheritedList">
 <h3>Methods inherited from class&nbsp;org.cojen.tupl.<a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.LockFailureException">
@@ -297,8 +297,8 @@ boolean&nbsp;guilty,
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getDeadlockSet()">getDeadlockSet</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;</span>&nbsp;<span class="memberName">getDeadlockSet</span>()</div>
+<h3><a id="deadlockSet()">deadlockSet</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Set.html?is-external=true" title="class or interface in java.util" class="externalLink">Set</a>&lt;<a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a>&gt;</span>&nbsp;<span class="memberName">deadlockSet</span>()</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>the set of lock requests which were in a deadlock</dd>
@@ -317,8 +317,8 @@ boolean&nbsp;guilty,
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getShortMessage()">getShortMessage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">getShortMessage</span>()</div>
+<h3><a id="shortMessage()">shortMessage</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">shortMessage</span>()</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>message without deadlock set info</dd>

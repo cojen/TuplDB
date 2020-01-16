@@ -74,7 +74,7 @@ final class _DeadlockDetector {
 
             Index ix = manager.indexById(info.mIndexId);
             if (ix != null) {
-                info.mIndexName = ix.getName();
+                info.mIndexName = ix.name();
             }
 
             byte[] key = lock.mKey;

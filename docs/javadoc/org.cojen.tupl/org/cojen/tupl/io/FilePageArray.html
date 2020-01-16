@@ -182,21 +182,21 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 </td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCount()">getPageCount</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
-</td>
-</tr>
-<tr class="altColor" id="i4">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
+</tr>
+<tr class="rowColor" id="i5">
+<td class="colFirst"><code>long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageCount()">pageCount</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
+</td>
 </tr>
 <tr class="altColor" id="i6">
 <td class="colFirst"><code>void</code></td>
@@ -254,7 +254,7 @@ int&nbsp;offset)</code></th>
 <h3>Methods inherited from class&nbsp;org.cojen.tupl.io.<a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.io.PageArray">
 <!--   -->
-</a><code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#copyPage(long,long)">copyPage</a>, <a href="PageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer</a>, <a href="PageArray.html#directPagePointer(long)">directPagePointer</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a>, <a href="PageArray.html#evictPage(long,long)">evictPage</a>, <a href="PageArray.html#getPageCountLimit()">getPageCountLimit</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#isFullyMapped()">isFullyMapped</a>, <a href="PageArray.html#open()">open</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#syncPage(long)">syncPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></div>
+</a><code><a href="PageArray.html#cachePage(long,byte%5B%5D)">cachePage</a>, <a href="PageArray.html#cachePage(long,byte%5B%5D,int)">cachePage</a>, <a href="PageArray.html#cachePage(long,long)">cachePage</a>, <a href="PageArray.html#cachePage(long,long,int)">cachePage</a>, <a href="PageArray.html#close()">close</a>, <a href="PageArray.html#copyPage(long,long)">copyPage</a>, <a href="PageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer</a>, <a href="PageArray.html#directPagePointer(long)">directPagePointer</a>, <a href="PageArray.html#dirtyPage(long)">dirtyPage</a>, <a href="PageArray.html#evictPage(long,byte%5B%5D)">evictPage</a>, <a href="PageArray.html#evictPage(long,long)">evictPage</a>, <a href="PageArray.html#isDirectIO()">isDirectIO</a>, <a href="PageArray.html#isFullyMapped()">isFullyMapped</a>, <a href="PageArray.html#open()">open</a>, <a href="PageArray.html#pageCountLimit()">pageCountLimit</a>, <a href="PageArray.html#pageSize()">pageSize</a>, <a href="PageArray.html#readPage(long,byte%5B%5D)">readPage</a>, <a href="PageArray.html#readPage(long,long)">readPage</a>, <a href="PageArray.html#syncPage(long)">syncPage</a>, <a href="PageArray.html#uncachePage(long)">uncachePage</a>, <a href="PageArray.html#writePage(long,byte%5B%5D)">writePage</a>, <a href="PageArray.html#writePage(long,long)">writePage</a></code></div>
 <div class="inheritedList">
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
@@ -348,14 +348,14 @@ int&nbsp;offset)</code></th>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getPageCount()">getPageCount</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getPageCount</span>()
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#getPageCount()">PageArray</a></code></span></div>
+<h3><a id="pageCount()">pageCount</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">pageCount</span>()
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="PageArray.html#pageCount()">PageArray</a></code></span></div>
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="PageArray.html#getPageCount()">getPageCount</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+<dd><code><a href="PageArray.html#pageCount()">pageCount</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>

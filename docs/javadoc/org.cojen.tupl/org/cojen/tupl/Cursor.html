@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":18,"i6":6,"i7":6,"i8":18,"i9":18,"i10":18,"i11":18,"i12":18,"i13":18,"i14":18,"i15":18,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":18,"i26":6,"i27":18,"i28":18,"i29":6,"i30":18,"i31":18,"i32":6,"i33":18,"i34":18,"i35":6,"i36":6,"i37":18,"i38":6,"i39":18,"i40":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":18,"i6":18,"i7":6,"i8":6,"i9":18,"i10":18,"i11":18,"i12":18,"i13":18,"i14":18,"i15":18,"i16":18,"i17":18,"i18":6,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":18,"i25":6,"i26":18,"i27":18,"i28":6,"i29":6,"i30":18,"i31":18,"i32":6,"i33":18,"i34":18,"i35":6,"i36":6,"i37":18,"i38":6,"i39":18,"i40":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -199,13 +199,20 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 </td>
 </tr>
 <tr class="altColor" id="i4">
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#comparator()">comparator</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compareKeyTo(byte%5B%5D)">compareKeyTo</a></span>&#8203;(byte[]&nbsp;rkey)</code></th>
 <td class="colLast">
 <div class="block">Compare the current key to the one given.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compareKeyTo(byte%5B%5D,int,int)">compareKeyTo</a></span>&#8203;(byte[]&nbsp;rkey,
 int&nbsp;offset,
@@ -214,7 +221,7 @@ int&nbsp;length)</code></th>
 <div class="block">Compare the current key to the one given.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#copy()">copy</a></span>()</code></th>
 <td class="colLast">
@@ -222,14 +229,14 @@ int&nbsp;length)</code></th>
  linked to the same transaction.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i7">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#find(byte%5B%5D)">find</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the given key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findGe(byte%5B%5D)">findGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -237,14 +244,14 @@ int&nbsp;length)</code></th>
  key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findGt(byte%5B%5D)">findGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the closest available entry greater than the given key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findLe(byte%5B%5D)">findLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -252,14 +259,14 @@ int&nbsp;length)</code></th>
  key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findLt(byte%5B%5D)">findLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the closest available entry less than the given key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearby(byte%5B%5D)">findNearby</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -267,7 +274,7 @@ int&nbsp;length)</code></th>
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyGe(byte%5B%5D)">findNearbyGe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -275,7 +282,7 @@ int&nbsp;length)</code></th>
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyGt(byte%5B%5D)">findNearbyGt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -283,7 +290,7 @@ int&nbsp;length)</code></th>
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyLe(byte%5B%5D)">findNearbyLe</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -291,7 +298,7 @@ int&nbsp;length)</code></th>
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr class="altColor" id="i16">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findNearbyLt(byte%5B%5D)">findNearbyLt</a></span>&#8203;(byte[]&nbsp;key)</code></th>
 <td class="colLast">
@@ -299,28 +306,14 @@ int&nbsp;length)</code></th>
  search steps if the given key is in close proximity to the current one.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#first()">first</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </td>
 </tr>
-<tr class="altColor" id="i18">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getComparator()">getComparator</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
-</td>
-</tr>
 <tr class="rowColor" id="i19">
-<td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOrdering()">getOrdering</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the key ordering for this cursor.</div>
-</td>
-</tr>
-<tr class="altColor" id="i20">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#key()">key</a></span>()</code></th>
 <td class="colLast">
@@ -328,49 +321,49 @@ int&nbsp;length)</code></th>
  unpositioned.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i21">
+<tr class="altColor" id="i20">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#last()">last</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves the Cursor to find the last available entry.</div>
 </td>
 </tr>
-<tr class="altColor" id="i22">
+<tr class="rowColor" id="i21">
 <td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#link()">link</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i23">
+<tr class="altColor" id="i22">
 <td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#link(org.cojen.tupl.Transaction)">link</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </td>
 </tr>
-<tr class="altColor" id="i24">
+<tr class="rowColor" id="i23">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#load()">load</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i25">
+<tr class="altColor" id="i24">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lock()">lock</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Locks the current entry, as if by calling load.</div>
 </td>
 </tr>
-<tr class="altColor" id="i26">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#next()">next</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the next available entry.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i27">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#nextLe(byte%5B%5D)">nextLe</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
@@ -378,12 +371,19 @@ int&nbsp;length)</code></th>
  or equal to the given limit key.</div>
 </td>
 </tr>
-<tr class="altColor" id="i28">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code>default <a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#nextLt(byte%5B%5D)">nextLt</a></span>&#8203;(byte[]&nbsp;limitKey)</code></th>
 <td class="colLast">
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  the given limit key.</div>
+</td>
+</tr>
+<tr class="altColor" id="i28">
+<td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ordering()">ordering</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the key ordering for this cursor.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i29">
@@ -524,15 +524,15 @@ boolean&nbsp;inclusive)</code></th>
 <ul class="blockList">
 <li class="blockList">
 <section class="detail">
-<h3><a id="getOrdering()">getOrdering</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></span>&nbsp;<span class="memberName">getOrdering</span>()</div>
+<h3><a id="ordering()">ordering</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></span>&nbsp;<span class="memberName">ordering</span>()</div>
 <div class="block">Returns the key ordering for this cursor.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getComparator()">getComparator</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">getComparator</span>()</div>
+<h3><a id="comparator()">comparator</a></h3>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">comparator</span>()</div>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </section>
 </li>

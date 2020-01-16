@@ -183,7 +183,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </tr>
 <tr class="rowColor" id="i1">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOwnerAttachment()">getOwnerAttachment</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ownerAttachment()">ownerAttachment</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
  lock owner shortly after the timeout occurred.</div>
@@ -191,12 +191,12 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </tr>
 <tr class="altColor" id="i2">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getTimeout()">getTimeout</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#timeout()">timeout</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i3">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getUnit()">getUnit</a></span>()</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unit()">unit</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
@@ -274,14 +274,14 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getTimeout()">getTimeout</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getTimeout</span>()</div>
+<h3><a id="timeout()">timeout</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">timeout</span>()</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getOwnerAttachment()">getOwnerAttachment</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">getOwnerAttachment</span>()</div>
+<h3><a id="ownerAttachment()">ownerAttachment</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">ownerAttachment</span>()</div>
 <div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
  lock owner shortly after the timeout occurred. If an exclusive lock request failed
  because any shared locks were held, only the first discovered attachment is provided.</div>
@@ -289,8 +289,8 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getUnit()">getUnit</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></span>&nbsp;<span class="memberName">getUnit</span>()</div>
+<h3><a id="unit()">unit</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></span>&nbsp;<span class="memberName">unit</span>()</div>
 </section>
 </li>
 </ul>

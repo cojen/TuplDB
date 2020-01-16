@@ -60,35 +60,35 @@ public final class UnmodifiableView implements Index {
     }
 
     @Override
-    public Ordering getOrdering() {
-        return mSource.getOrdering();
+    public Ordering ordering() {
+        return mSource.ordering();
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return mSource.getComparator();
+    public Comparator<byte[]> comparator() {
+        return mSource.comparator();
     }
 
     @Override
-    public long getId() {
+    public long id() {
         if (mSource instanceof Index) {
-            return ((Index) mSource).getId();
+            return ((Index) mSource).id();
         }
         return 0;
     }
 
     @Override
-    public byte[] getName() {
+    public byte[] name() {
         if (mSource instanceof Index) {
-            return ((Index) mSource).getName();
+            return ((Index) mSource).name();
         }
         return null;
     }
 
     @Override
-    public String getNameString() {
+    public String nameString() {
         if (mSource instanceof Index) {
-            return ((Index) mSource).getNameString();
+            return ((Index) mSource).nameString();
         }
         return null;
     }

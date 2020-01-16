@@ -101,7 +101,7 @@ public class VerificationObserver {
         if (index == null) {
             b.append("null");
         } else {
-            b.append(index.getId());
+            b.append(index.id());
         }
 
         b.append(", node=").append(id).append(", level=").append(level)

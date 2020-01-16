@@ -77,26 +77,26 @@ public class RenameTest {
     public void noChange() throws Exception {
         Index ix1 = mDb.openIndex("a");
         mDb.renameIndex(ix1, "a");
-        assertEquals("a", ix1.getNameString());
+        assertEquals("a", ix1.nameString());
         ix1.close();
         Index ix2 = mDb.openIndex("a");
-        assertEquals(ix1.getId(), ix2.getId());
+        assertEquals(ix1.id(), ix2.id());
     }
 
     @Test
     public void rename() throws Exception {
         Index ix1 = mDb.openIndex("a");
         Index ix2 = mDb.openIndex("b");
-        final long id = ix1.getId();
+        final long id = ix1.id();
         mDb.renameIndex(ix1, "c");
-        assertEquals("c", ix1.getNameString());
-        assertEquals(id, ix1.getId());
+        assertEquals("c", ix1.nameString());
+        assertEquals(id, ix1.id());
         assertNull(mDb.findIndex("a"));
         ix1.close();
         Index ix3 = mDb.openIndex("a");
-        assertFalse(id == ix3.getId());
+        assertFalse(id == ix3.id());
         ix1 = mDb.openIndex("c");
-        assertEquals(id, ix1.getId());
+        assertEquals(id, ix1.id());
         assertEquals(ix1, mDb.indexById(id));
     }
 
@@ -111,8 +111,8 @@ public class RenameTest {
         assertNull(mDb.findIndex("a"));
 
         Index ix2 = mDb.findIndex("b");
-        assertEquals(ix1.getId(), ix2.getId());
-        assertEquals("b", ix2.getNameString());
+        assertEquals(ix1.id(), ix2.id());
+        assertEquals("b", ix2.nameString());
 
         fastAssertArrayEquals("world".getBytes(), ix2.load(null, "hello".getBytes()));
     }

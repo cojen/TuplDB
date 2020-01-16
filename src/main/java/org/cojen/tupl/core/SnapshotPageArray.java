@@ -85,8 +85,8 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCount() throws IOException {
-        return mSource.getPageCount();
+    public long pageCount() throws IOException {
+        return mSource.pageCount();
     }
 
     @Override
@@ -106,8 +106,8 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCountLimit() throws IOException {
-        return mSource.getPageCountLimit();
+    public long pageCountLimit() throws IOException {
+        return mSource.pageCountLimit();
     }
 
     @Override
@@ -259,7 +259,7 @@ final class SnapshotPageArray extends PageArray {
      * @param redoPos redo log position for the snapshot
      */
     Snapshot beginSnapshot(LocalDatabase db, long pageCount, long redoPos) throws IOException {
-        pageCount = Math.min(pageCount, getPageCount());
+        pageCount = Math.min(pageCount, pageCount());
 
         LocalDatabase nodeCache = db;
 
@@ -457,7 +457,7 @@ final class SnapshotPageArray extends PageArray {
                     for (long index = 0; index < count; index++) {
                         var key = new byte[8];
                         encodeLongBE(key, 0, index);
-                        txn.doLockExclusive(mPageCopyIndex.getId(), key);
+                        txn.doLockExclusive(mPageCopyIndex.id(), key);
 
                         c.findNearby(key);
                         byte[] value = c.value();

@@ -32,15 +32,15 @@ import java.util.function.Consumer;
  * @author Brian S O'Neill
  */
 public interface Replicator extends Closeable {
-    long getLocalMemberId();
+    long localMemberId();
 
-    SocketAddress getLocalAddress();
+    SocketAddress localAddress();
 
     /**
      * Returns the effective local role, as known by the group. Changes to the role don't
      * become effective until proposed by the leader, committed, and then applied.
      */
-    Role getLocalRole();
+    Role localRole();
 
     /**
      * Connect to any replication group member, for any particular use. An {@linkplain

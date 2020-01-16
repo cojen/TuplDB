@@ -104,13 +104,13 @@ public class ReplicationTest {
         }
 
         final Index test = mLeader.openIndex("test");
-        long id = test.getId();
+        long id = test.id();
         test.store(null, "hello".getBytes(), "world".getBytes());
 
         fence();
 
         Index rtest = mReplica.openIndex("test");
-        assertEquals(id, rtest.getId());
+        assertEquals(id, rtest.id());
         fastAssertArrayEquals("world".getBytes(), rtest.load(null, "hello".getBytes()));
 
         // Test various forms of delete. First, insert a few more records...
@@ -166,13 +166,13 @@ public class ReplicationTest {
         // Can obtain exclusive locks only for the unmodified keys.
         Transaction txn2 = mLeader.newTransaction();
         try {
-            txn2.lockExclusive(lix.getId(), "k0".getBytes());
+            txn2.lockExclusive(lix.id(), "k0".getBytes());
             fail();
         } catch (LockTimeoutException e) {
             // Expected.
         }
-        txn2.lockExclusive(lix.getId(), "k1".getBytes());
-        txn2.lockExclusive(lix.getId(), "k2".getBytes());
+        txn2.lockExclusive(lix.id(), "k1".getBytes());
+        txn2.lockExclusive(lix.id(), "k2".getBytes());
         txn2.exit();
 
         mLeaderMan.suspendConfirmation(false);
@@ -223,11 +223,11 @@ public class ReplicationTest {
 
         fence();
 
-        assertEquals("newname", rix.getNameString());
+        assertEquals("newname", rix.nameString());
         rix.close();
         assertNull(mReplica.findIndex("test"));
         rix = mReplica.openIndex("newname");
-        assertEquals("newname", rix.getNameString());
+        assertEquals("newname", rix.nameString());
         fastAssertArrayEquals("world".getBytes(), rix.load(null, "hello".getBytes()));
     }
 
@@ -357,7 +357,7 @@ public class ReplicationTest {
     private void mustLock(Transaction ltxn, Index rix, byte[] key)
         throws IOException, InterruptedException
     {
-        assertEquals(LockResult.OWNED_EXCLUSIVE, ltxn.lockCheck(rix.getId(), key));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, ltxn.lockCheck(rix.id(), key));
 
         ltxn.flush();
         fence();
@@ -378,7 +378,7 @@ public class ReplicationTest {
     private void mustNotLock(Transaction ltxn, Index rix, byte[] key)
         throws IOException, InterruptedException
     {
-        assertEquals(LockResult.OWNED_UPGRADABLE, ltxn.lockCheck(rix.getId(), key));
+        assertEquals(LockResult.OWNED_UPGRADABLE, ltxn.lockCheck(rix.id(), key));
 
         ltxn.flush();
         fence();
@@ -655,20 +655,20 @@ public class ReplicationTest {
         Transaction ltxn = mLeader.newTransaction();
 
         try {
-            mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.getId(), "key".getBytes());
+            mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.id(), "key".getBytes());
             fail();
         } catch (IllegalStateException e) {
             // Expected because lock isn't held.
         }
         
-        ltxn.lockExclusive(lix.getId(), "key".getBytes());
-        mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.getId(), "key".getBytes());
+        ltxn.lockExclusive(lix.id(), "key".getBytes());
+        mLeaderWriter.redo(ltxn, "hello".getBytes(), lix.id(), "key".getBytes());
 
         ltxn.flush();
         fence();
 
         fastAssertArrayEquals("hello".getBytes(), mReplicaHandler.mMessage);
-        assertEquals(lix.getId(), mReplicaHandler.mIndexId);
+        assertEquals(lix.id(), mReplicaHandler.mIndexId);
         fastAssertArrayEquals("key".getBytes(), mReplicaHandler.mKey);
 
         // Key is locked.
@@ -1269,7 +1269,7 @@ public class ReplicationTest {
         ix.store(txn, key, "world".getBytes());
         byte[] key2 = "hello2".getBytes();
         ix.load(txn, key2);
-        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.getId(), key2));
+        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.id(), key2));
         mLeaderWriter2.prepare(txn, null);
         fence();
 

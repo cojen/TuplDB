@@ -35,17 +35,17 @@ public interface Index extends View, Closeable {
     /**
      * @return randomly assigned, unique non-zero identifier for this index
      */
-    public long getId();
+    public long id();
 
     /**
      * @return unique user-specified index name
      */
-    public byte[] getName();
+    public byte[] name();
 
     /**
      * @return name decoded as UTF-8
      */
-    public String getNameString();
+    public String nameString();
 
     /**
      * Select a few entries, and delete them from the index. Implementation should attempt to

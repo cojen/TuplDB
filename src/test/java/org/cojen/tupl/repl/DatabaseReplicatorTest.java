@@ -334,7 +334,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
             for (int i=0; i<100; i++) {
                 count = 0;
                 for (DatabaseReplicator repl : mReplicators) {
-                    if (repl.getLocalRole() == Role.NORMAL) {
+                    if (repl.localRole() == Role.NORMAL) {
                         count++;
                     }
                 }
@@ -683,7 +683,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         Transaction txn2 = txnQueue.take();
 
         assertNotEquals(txn1, txn2);
-        assertEquals(txn1.getId(), txn2.getId());
+        assertEquals(txn1.id(), txn2.id());
 
         fastAssertArrayEquals(v1, replicaIx.load(txn2, k1));
 
@@ -779,7 +779,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         leaderDb.failover();
 
         // Must capture the id before it gets replaced.
-        long txnId = txn1.getId();
+        long txnId = txn1.id();
 
         try {
             txn1.commit();
@@ -794,7 +794,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         Transaction txn2 = txnQueue.take();
 
         assertNotEquals(txn1, txn2);
-        assertEquals(txnId, txn2.getId());
+        assertEquals(txnId, txn2.id());
 
         fastAssertArrayEquals("message".getBytes(), msgQueue.take());
 
@@ -828,7 +828,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
         assertNotEquals(txn1, txn3);
         assertNotEquals(txn2, txn3);
-        assertEquals(txnId, txn3.getId());
+        assertEquals(txnId, txn3.id());
 
         fastAssertArrayEquals("message".getBytes(), msgQueue.take());
 
@@ -926,7 +926,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         leaderDb.failover();
 
         // Must capture the id before it gets replaced.
-        long txnId = txn1.getId();
+        long txnId = txn1.id();
 
         try {
             txn1.commit();
@@ -941,7 +941,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         Transaction txn2 = txnQueue.take();
 
         assertNotEquals(txn1, txn2);
-        assertEquals(txnId, txn2.getId());
+        assertEquals(txnId, txn2.id());
 
         fastAssertArrayEquals("message".getBytes(), msgQueue.take());
 

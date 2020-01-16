@@ -51,13 +51,13 @@ public final class TransformedCursor extends CoreValueAccessor implements Cursor
     }
 
     @Override
-    public Ordering getOrdering() {
-        return mTransformer.transformedOrdering(mSource.getOrdering());
+    public Ordering ordering() {
+        return mTransformer.transformedOrdering(mSource.ordering());
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return mTransformer.transformedComparator(mSource.getComparator());
+    public Comparator<byte[]> comparator() {
+        return mTransformer.transformedComparator(mSource.comparator());
     }
 
     @Override

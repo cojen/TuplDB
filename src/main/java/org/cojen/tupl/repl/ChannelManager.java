@@ -200,7 +200,7 @@ final class ChannelManager {
         mGroupId = groupId;
     }
 
-    synchronized long getLocalMemberId() {
+    synchronized long localMemberId() {
         return mLocalMemberId;
     }
 

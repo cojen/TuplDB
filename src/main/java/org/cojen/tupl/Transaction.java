@@ -429,7 +429,7 @@ public interface Transaction extends Flushable {
      *
      * @return a positive transaction identifier, or zero if transaction cannot replicate
      */
-    default long getId() {
+    default long id() {
         return 0;
     }
 

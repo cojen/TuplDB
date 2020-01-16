@@ -86,13 +86,13 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
-    public Ordering getOrdering() {
-        return mSource.getOrdering().reverse();
+    public Ordering ordering() {
+        return mSource.ordering().reverse();
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return mSource.getComparator().reversed();
+    public Comparator<byte[]> comparator() {
+        return mSource.comparator().reversed();
     }
 
     @Override

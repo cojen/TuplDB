@@ -55,13 +55,13 @@ public class TempIndexTest {
     @Test
     public void openClose() throws Exception {
         Index temp = mDb.newTemporaryIndex();
-        assertNull(temp.getName());
-        long id = temp.getId();
+        assertNull(temp.name());
+        long id = temp.id();
         assertTrue(temp == mDb.indexById(id));
         temp.close();
         assertNull(mDb.indexById(id));
         temp = mDb.newTemporaryIndex();
-        assertNotEquals(id, temp.getId());
+        assertNotEquals(id, temp.id());
     }
 
     @Test
@@ -115,14 +115,14 @@ public class TempIndexTest {
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
-        assertNull(mDb.indexById(temp.getId()));
+        assertNull(mDb.indexById(temp.id()));
 
         Index temp2 = mDb.newTemporaryIndex();
 
         if (stableId) {
-            assertEquals(temp.getId(), temp2.getId());
+            assertEquals(temp.id(), temp2.id());
         } else {
-            assertNotEquals(temp.getId(), temp2.getId());
+            assertNotEquals(temp.id(), temp2.id());
         }
 
         assertEquals(0, temp.count(null, null));
@@ -159,9 +159,9 @@ public class TempIndexTest {
         Index temp2 = mDb.newTemporaryIndex();
 
         if (checkpoint) {
-            assertNotEquals(temp.getId(), temp2.getId());
+            assertNotEquals(temp.id(), temp2.id());
         } else {
-            assertEquals(temp.getId(), temp2.getId());
+            assertEquals(temp.id(), temp2.id());
         }
 
         assertEquals(0, temp.count(null, null));

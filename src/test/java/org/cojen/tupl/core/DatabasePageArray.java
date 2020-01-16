@@ -67,7 +67,7 @@ class DatabasePageArray extends PageArray {
     }
 
     @Override
-    public long getPageCount() throws IOException {
+    public long pageCount() throws IOException {
         try (Cursor c = mPages.newCursor(Transaction.BOGUS)) {
             c.last();
             byte[] key = c.key();

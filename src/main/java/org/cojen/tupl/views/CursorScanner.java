@@ -43,8 +43,8 @@ public class CursorScanner implements Scanner {
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return mCursor.getComparator();
+    public Comparator<byte[]> comparator() {
+        return mCursor.comparator();
     }
 
     @Override

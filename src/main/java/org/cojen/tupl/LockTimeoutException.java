@@ -59,8 +59,8 @@ public class LockTimeoutException extends LockFailureException {
     }
 
     @Override
-    public long getTimeout() {
-        return getUnit().convert(mNanosTimeout, TimeUnit.NANOSECONDS);
+    public long timeout() {
+        return unit().convert(mNanosTimeout, TimeUnit.NANOSECONDS);
     }
 
     /**
@@ -69,12 +69,12 @@ public class LockTimeoutException extends LockFailureException {
      * because any shared locks were held, only the first discovered attachment is provided.
      */
     @Override
-    public Object getOwnerAttachment() {
+    public Object ownerAttachment() {
         return mOwnerAttachment;
     }
 
     @Override
-    public TimeUnit getUnit() {
+    public TimeUnit unit() {
         TimeUnit unit = mUnit;
         if (unit != null) {
             return unit;

@@ -183,34 +183,34 @@ public class DeadlockTest {
 
         byte[] key = "hello".getBytes();
 
-        txn1.lockUpgradable(ix.getId(), key);
-        txn2.lockShared(ix.getId(), key);
+        txn1.lockUpgradable(ix.id(), key);
+        txn2.lockShared(ix.id(), key);
 
         try {
-            txn2.lockExclusive(ix.getId(), key);
+            txn2.lockExclusive(ix.id(), key);
             fail();
         } catch (DeadlockException e) {
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
-            assertEquals("txn1", e.getOwnerAttachment());
-            assertEquals("txn1", e.getDeadlockSet().iterator().next().getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
+            assertEquals("txn1", e.deadlockSet().iterator().next().ownerAttachment());
         }
 
         // Deadlock detection works with zero timeout, except with the tryLock variant.
         txn2.lockTimeout(0, null);
         try {
-            txn2.lockExclusive(ix.getId(), key);
+            txn2.lockExclusive(ix.id(), key);
             fail();
         } catch (DeadlockException e) {
-            assertEquals(0, e.getTimeout());
+            assertEquals(0, e.timeout());
             assertTrue(e.getMessage().indexOf("indexName: test") > 0);
             assertTrue(e.getMessage().indexOf("owner attachment: txn1") > 0);
-            assertEquals("txn1", e.getOwnerAttachment());
-            assertEquals("txn1", e.getDeadlockSet().iterator().next().getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
+            assertEquals("txn1", e.deadlockSet().iterator().next().ownerAttachment());
         }
 
         // No deadlock detected here.
-        assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockExclusive(ix.getId(), key, 0));
+        assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockExclusive(ix.id(), key, 0));
     }
 
     @Test
@@ -279,14 +279,14 @@ public class DeadlockTest {
             fail("no deadlock");
         } catch (DeadlockException e) {
             assertFalse(e.isGuilty());
-            assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
 
-            Set<DeadlockInfo> set = e.getDeadlockSet();
+            Set<DeadlockInfo> set = e.deadlockSet();
             assertEquals(2, set.size());
 
             Iterator<DeadlockInfo> it = set.iterator();
-            Object att1 = it.next().getOwnerAttachment();
-            Object att2 = it.next().getOwnerAttachment();
+            Object att1 = it.next().ownerAttachment();
+            Object att2 = it.next().ownerAttachment();
 
             assertTrue(att1 != null && att2 != null);
 
@@ -319,27 +319,27 @@ public class DeadlockTest {
         byte[] key1 = "key1".getBytes();
         byte[] key2 = "key2".getBytes();
 
-        txn1.lockUpgradable(ix.getId(), key1);
-        txn2.lockUpgradable(ix.getId(), key2);
+        txn1.lockUpgradable(ix.id(), key1);
+        txn2.lockUpgradable(ix.id(), key2);
 
         try {
-            txn2.lockUpgradable(ix.getId(), key1);
+            txn2.lockUpgradable(ix.id(), key1);
             fail();
         } catch (DeadlockException e) {
             // Not expected to work.
             throw e;
         } catch (LockTimeoutException e) {
-            assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
         }
 
         try {
-            txn1.lockUpgradable(ix.getId(), key2);
+            txn1.lockUpgradable(ix.id(), key2);
             fail();
         } catch (DeadlockException e) {
             // Not expected to work.
             throw e;
         } catch (LockTimeoutException e) {
-            assertEquals("txn2", e.getOwnerAttachment());
+            assertEquals("txn2", e.ownerAttachment());
         }
 
         // Verify owner attachment when not using an explicit transaction.
@@ -347,7 +347,7 @@ public class DeadlockTest {
             ix.store(null, key1, key1);
             fail();
         } catch (LockTimeoutException e) {
-            assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
         }
     }
 
@@ -365,38 +365,38 @@ public class DeadlockTest {
 
         byte[] key = "key".getBytes();
 
-        txn1.lockShared(ix.getId(), key);
+        txn1.lockShared(ix.id(), key);
 
         // No conflict.
-        txn2.lockUpgradable(ix.getId(), key);
+        txn2.lockUpgradable(ix.id(), key);
         txn2.unlock();
 
         try {
-            txn2.lockExclusive(ix.getId(), key);
+            txn2.lockExclusive(ix.id(), key);
             fail();
         } catch (LockTimeoutException e) {
-            assertEquals("txn1", e.getOwnerAttachment());
+            assertEquals("txn1", e.ownerAttachment());
         }
 
-        txn2.lockShared(ix.getId(), key);
+        txn2.lockShared(ix.id(), key);
  
         Transaction txn3 = db.newTransaction();
         try {
-            txn3.lockExclusive(ix.getId(), key);
+            txn3.lockExclusive(ix.id(), key);
             fail();
         } catch (LockTimeoutException e) {
-            Object att = e.getOwnerAttachment();
+            Object att = e.ownerAttachment();
             assertTrue("txn1".equals(att) || "txn2".equals(att));
         }
 
         // Can still get attachment even when not waited.
         txn3.lockTimeout(0, null);
         try {
-            txn3.lockExclusive(ix.getId(), key);
+            txn3.lockExclusive(ix.id(), key);
             fail();
         } catch (LockTimeoutException e) {
-            assertEquals(0, e.getTimeout());
-            Object att = e.getOwnerAttachment();
+            assertEquals(0, e.timeout());
+            Object att = e.ownerAttachment();
             assertTrue("txn1".equals(att) || "txn2".equals(att));
         }
 
@@ -405,7 +405,7 @@ public class DeadlockTest {
             ix.store(null, key, key);
             fail();
         } catch (LockTimeoutException e) {
-            Object att = e.getOwnerAttachment();
+            Object att = e.ownerAttachment();
             assertTrue("txn1".equals(att) || "txn2".equals(att));
         }
     }
@@ -429,7 +429,7 @@ public class DeadlockTest {
             ix.store(null, key, key);
             fail();
         } catch (LockTimeoutException e) {
-            assertNull(e.getOwnerAttachment());
+            assertNull(e.ownerAttachment());
         }
 
         // Also make sure that attachments can be retrieved.
@@ -438,7 +438,7 @@ public class DeadlockTest {
             ix.store(null, key, key);
             fail();
         } catch (LockTimeoutException e) {
-            assertEquals("foo", e.getOwnerAttachment());
+            assertEquals("foo", e.ownerAttachment());
         }
     }
 

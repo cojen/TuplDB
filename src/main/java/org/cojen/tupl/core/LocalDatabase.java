@@ -1233,7 +1233,7 @@ public final class LocalDatabase extends CoreDatabase {
                 // Lookup name with exclusive lock, to prevent races with concurrent index
                 // creation. If a replicated operation which requires the newly created index
                 // merely acquired a shared lock, then it might not find the index at all.
-                long regId = mRegistryKeyMap.getId();
+                long regId = mRegistryKeyMap.id();
                 Locker locker = mLockManager.lockExclusiveLocal
                     (regId, idKey, LockManager.hash(regId, idKey), -1); // infinite timeout
                 try {
@@ -1672,7 +1672,7 @@ public final class LocalDatabase extends CoreDatabase {
                 mListener.notify(EventType.DELETION_BEGIN,
                                  "Index deletion " + (mResumed ? "resumed" : "begin") +
                                  ": %1$d, name: %2$s",
-                                 mTrashed.getId(), mTrashed.getNameString());
+                                 mTrashed.id(), mTrashed.nameString());
             }
 
             final byte[] idBytes = mTrashed.mIdBytes;
@@ -1693,14 +1693,14 @@ public final class LocalDatabase extends CoreDatabase {
                     mListener.notify(EventType.DELETION_COMPLETE,
                                      "Index deletion complete: %1$d, name: %2$s, " +
                                      "duration: %3$1.3f seconds",
-                                     mTrashed.getId(), mTrashed.getNameString(), duration);
+                                     mTrashed.id(), mTrashed.nameString(), duration);
                 }
             } catch (IOException e) {
                 if (!isClosed() && mListener != null) {
                     mListener.notify
                         (EventType.DELETION_FAILED,
                          "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
-                         mTrashed.getId(), mTrashed.getNameString(), rootCause(e));
+                         mTrashed.id(), mTrashed.nameString(), rootCause(e));
                 }
                 closeQuietly(mTrashed);
                 return;
@@ -2336,7 +2336,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         for (TreeRef treeRef : mOpenTrees.values()) {
             Tree tree = treeRef.get();
-            if (tree != null && !Tree.isInternal(tree.getId())) {
+            if (tree != null && !Tree.isInternal(tree.id())) {
                 tree.writeCachePrimer(dout);
             }
         }
@@ -3621,7 +3621,7 @@ public final class LocalDatabase extends CoreDatabase {
         try {
             txn.lockTimeout(-1, null);
 
-            if (txn.lockCheck(mRegistry.getId(), treeIdBytes) != LockResult.UNOWNED) {
+            if (txn.lockCheck(mRegistry.id(), treeIdBytes) != LockResult.UNOWNED) {
                 throw new LockFailureException("Index open listener self deadlock");
             }
 
@@ -5274,7 +5274,7 @@ public final class LocalDatabase extends CoreDatabase {
         try {
             return reconstruct(fragmented, off, len);
         } catch (LargeValueException e) {
-            throw new LargeKeyException(e.getLength(), e.getCause());
+            throw new LargeKeyException(e.length(), e.getCause());
         }
     }
 

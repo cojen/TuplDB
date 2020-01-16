@@ -33,8 +33,8 @@ class _SortReverseScanner extends _SortScanner {
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return super.getComparator().reversed();
+    public Comparator<byte[]> comparator() {
+        return super.comparator().reversed();
     }
 
     @Override

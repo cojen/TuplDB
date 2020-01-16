@@ -57,11 +57,11 @@ public class RegistryTest {
 
             byte[] idValue = registry.load(null, "ix1".getBytes());
             assertNotNull(idValue);
-            assertEquals(ix1.getId(), Utils.decodeLongBE(idValue, 0));
+            assertEquals(ix1.id(), Utils.decodeLongBE(idValue, 0));
 
             idValue = registry.load(null, "ix2".getBytes());
             assertNotNull(idValue);
-            assertEquals(ix2.getId(), Utils.decodeLongBE(idValue, 0));
+            assertEquals(ix2.id(), Utils.decodeLongBE(idValue, 0));
 
             try {
                 registry.store(null, "hello".getBytes(), "world".getBytes());
@@ -82,15 +82,15 @@ public class RegistryTest {
             View registry = mDb.indexRegistryById();
 
             var idKey = new byte[8];
-            Utils.encodeLongBE(idKey, 0, ix1.getId());
+            Utils.encodeLongBE(idKey, 0, ix1.id());
             byte[] name = registry.load(null, idKey);
             assertNotNull(name);
-            assertEquals(ix1.getNameString(), new String(name));
+            assertEquals(ix1.nameString(), new String(name));
 
-            Utils.encodeLongBE(idKey, 0, ix2.getId());
+            Utils.encodeLongBE(idKey, 0, ix2.id());
             name = registry.load(null, idKey);
             assertNotNull(name);
-            assertEquals(ix2.getNameString(), new String(name));
+            assertEquals(ix2.nameString(), new String(name));
 
             try {
                 registry.store(null, "hello".getBytes(), "world".getBytes());
@@ -101,24 +101,24 @@ public class RegistryTest {
             int compare;
             {
                 // Unsigned comparison.
-                long a = ix1.getId() + Long.MIN_VALUE;
-                long b = ix2.getId() + Long.MIN_VALUE;
+                long a = ix1.id() + Long.MIN_VALUE;
+                long b = ix2.id() + Long.MIN_VALUE;
                 compare = (a < b) ? -1 : ((a == b) ? 0 : 1);
             }
 
             Cursor c = registry.newCursor(null);
             c.first();
             if (compare < 0) {
-                Utils.encodeLongBE(idKey, 0, ix1.getId());
+                Utils.encodeLongBE(idKey, 0, ix1.id());
             } else {
-                Utils.encodeLongBE(idKey, 0, ix2.getId());
+                Utils.encodeLongBE(idKey, 0, ix2.id());
             }
             fastAssertArrayEquals(idKey, c.key());
             c.next();
             if (compare < 0) {
-                Utils.encodeLongBE(idKey, 0, ix2.getId());
+                Utils.encodeLongBE(idKey, 0, ix2.id());
             } else {
-                Utils.encodeLongBE(idKey, 0, ix1.getId());
+                Utils.encodeLongBE(idKey, 0, ix1.id());
             }
             fastAssertArrayEquals(idKey, c.key());
             c.next();

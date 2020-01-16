@@ -58,12 +58,12 @@ public interface Cursor extends ValueAccessor, Closeable {
     /**
      * Returns the key ordering for this cursor.
      */
-    public Ordering getOrdering();
+    public Ordering ordering();
 
     /**
      * Returns a comparator for the ordering of this view, or null if unordered.
      */
-    public default Comparator<byte[]> getComparator() {
+    public default Comparator<byte[]> comparator() {
         return null;
     }
 

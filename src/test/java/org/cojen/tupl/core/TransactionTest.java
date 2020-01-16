@@ -595,7 +595,7 @@ public class TransactionTest {
         c.commit("value".getBytes());
 
         try {
-            txn.lockExclusive(ix.getId(), "test".getBytes());
+            txn.lockExclusive(ix.id(), "test".getBytes());
             fail();
         } catch (IllegalStateException e) {
         }

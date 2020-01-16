@@ -46,13 +46,13 @@ abstract class MergeView implements View {
 
     MergeView(Combiner combiner, View first, View second) {
         // Determining the ordering also validates that no inputs are null.
-        Ordering ordering = first.getOrdering();
-        if (second.getOrdering() != ordering) {
+        Ordering ordering = first.ordering();
+        if (second.ordering() != ordering) {
             ordering = Ordering.UNSPECIFIED;
         }
 
-        Comparator<byte[]> comparator = first.getComparator();
-        if (comparator == null || !comparator.equals(second.getComparator())) {
+        Comparator<byte[]> comparator = first.comparator();
+        if (comparator == null || !comparator.equals(second.comparator())) {
             throw new IllegalArgumentException
                 ("Consistent comparator ordering is required for " + type() + " view");
         }
@@ -65,12 +65,12 @@ abstract class MergeView implements View {
     }
 
     @Override
-    public Ordering getOrdering() {
+    public Ordering ordering() {
         return mOrdering;
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
+    public Comparator<byte[]> comparator() {
         return mComparator;
     }
 

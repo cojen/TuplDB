@@ -215,7 +215,7 @@ public class CloseTest {
     @Test
     public void drop() throws Exception {
         Index ix = mDb.openIndex("drop");
-        long id = ix.getId();
+        long id = ix.id();
 
         assertEquals(ix, mDb.findIndex("drop"));
         assertEquals(ix, mDb.indexById(id));
@@ -234,7 +234,7 @@ public class CloseTest {
         }
 
         ix = mDb.openIndex("drop");
-        long id2 = ix.getId();
+        long id2 = ix.id();
 
         assertFalse(id == id2);
 
@@ -315,7 +315,7 @@ public class CloseTest {
     @Test
     public void delete() throws Exception {
         Index ix = mDb.openIndex("delete");
-        long id = ix.getId();
+        long id = ix.id();
 
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
@@ -324,7 +324,7 @@ public class CloseTest {
         assertNull(mDb.findIndex("delete"));
         Index ix2 = mDb.openIndex("delete");
         assertFalse(ix == ix2);
-        assertFalse(id == ix2.getId());
+        assertFalse(id == ix2.id());
         // New index should be empty, and so drop should work.
         ix2.drop();
 
@@ -404,20 +404,20 @@ public class CloseTest {
         mDb.close();
 
         for (int i=0; i<1000; i++) {
-            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), ("hello-" + i).getBytes()));
-            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), ("lock-" + i).getBytes()));
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.id(), ("hello-" + i).getBytes()));
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.id(), ("lock-" + i).getBytes()));
         }
 
         // Shared/upgradable locks can still be acquired.
         for (int i=0; i<1000; i++) {
             assertEquals(LockResult.ACQUIRED,
-                         txn.tryLockExclusive(ix.getId(), ("lock-" + i).getBytes(), 1000));
+                         txn.tryLockExclusive(ix.id(), ("lock-" + i).getBytes(), 1000));
         }
 
         // Cannot acquire exclusive locks because they're held by a hidden locker.
         for (int i=0; i<1000; i++) {
             assertEquals(LockResult.TIMED_OUT_LOCK,
-                         txn.tryLockExclusive(ix.getId(), ("hello-" + i).getBytes(), 0));
+                         txn.tryLockExclusive(ix.id(), ("hello-" + i).getBytes(), 0));
         }
     }
 }

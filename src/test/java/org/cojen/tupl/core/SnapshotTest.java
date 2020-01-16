@@ -375,7 +375,7 @@ public class SnapshotTest {
 
         Database db = Database.open(config);
         Index index = db.openIndex("test1");
-        final long indexId = index.getId();
+        final long indexId = index.id();
 
         for (int i=0; i<1_000_000; i++) {
             String key = "key-" + i;
@@ -417,7 +417,7 @@ public class SnapshotTest {
 
         assertTrue(restored.verify(null));
         Index restoredIx = restored.openIndex("test1");
-        assertEquals(indexId, restoredIx.getId());
+        assertEquals(indexId, restoredIx.id());
 
         for (int i=0; i<1_000_000; i++) {
             byte[] key = ("key-" + i).getBytes();
@@ -431,7 +431,7 @@ public class SnapshotTest {
 
         restored = reopenTempDatabase(getClass(), restored, restoredConfig);
         restoredIx = restored.openIndex("test1");
-        assertEquals(indexId, restoredIx.getId());
+        assertEquals(indexId, restoredIx.id());
 
         for (int i=0; i<1_000_000; i++) {
             byte[] key = ("key-" + i).getBytes();

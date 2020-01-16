@@ -166,8 +166,8 @@ class WindowsMappedPageArray extends MappedPageArray {
     }
 
     @Override
-    public long getPageCount() {
-        return mEmpty ? 0 : super.getPageCount();
+    public long pageCount() {
+        return mEmpty ? 0 : super.pageCount();
     }
 
     @Override
@@ -178,14 +178,14 @@ class WindowsMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        var pa = new WindowsMappedPageArray(pageSize(), super.getPageCount(), mFile, mOptions);
+        var pa = new WindowsMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions);
         pa.mEmpty = empty;
         return pa;
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {
         if (!mNonDurable) {
-            if (!cKernel.FlushViewOfFile(mappingPtr, super.getPageCount() * pageSize())) {
+            if (!cKernel.FlushViewOfFile(mappingPtr, super.pageCount() * pageSize())) {
                 throw toException(cKernel.GetLastError());
             }
             fsync();

@@ -64,8 +64,8 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCount() throws IOException {
-        return mSource.getPageCount();
+    public long pageCount() throws IOException {
+        return mSource.pageCount();
     }
 
     @Override
@@ -79,8 +79,8 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCountLimit() throws IOException {
-        return mSource.getPageCountLimit();
+    public long pageCountLimit() throws IOException {
+        return mSource.pageCountLimit();
     }
 
     @Override

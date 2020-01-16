@@ -372,7 +372,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             return true;
         }
 
-        byte[] oldName = ix.getName();
+        byte[] oldName = ix.name();
 
         try {
             mDatabase.renameIndex(ix, newName, txnId);
@@ -435,7 +435,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
                         // are received concurrently, then the application is likely doing
                         // concurrent deletes.
                         newThread(task, "IndexDeletion-" +
-                                  (ix == null ? indexId : ix.getNameString())).start();
+                                  (ix == null ? indexId : ix.nameString())).start();
                     } catch (Throwable e) {
                         EventListener listener = mDatabase.eventListener();
                         if (listener != null) {
@@ -1161,7 +1161,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
      * @param txn prepared transaction
      */
     void stashForRecovery(_LocalTransaction txn) {
-        long scrambledTxnId = mix(txn.getId());
+        long scrambledTxnId = mix(txn.id());
 
         mDecodeLatch.acquireExclusive();
         try {

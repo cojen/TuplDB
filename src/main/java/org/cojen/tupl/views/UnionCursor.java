@@ -57,7 +57,7 @@ final class UnionCursor extends MergeCursor {
             mCompare = -2 ^ mDirection; // is 1 when reversed
             return selectFirst(txn, k1);
         } else {
-            final int cmp = getComparator().compare(k1, k2);
+            final int cmp = comparator().compare(k1, k2);
             mCompare = cmp;
             if (cmp == 0) {
                 return selectCombine(txn, k1);

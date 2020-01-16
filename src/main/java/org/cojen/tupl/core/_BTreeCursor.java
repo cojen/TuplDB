@@ -84,12 +84,12 @@ class _BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     @Override
-    public final Ordering getOrdering() {
+    public final Ordering ordering() {
         return Ordering.ASCENDING;
     }
 
     @Override
-    public final Comparator<byte[]> getComparator() {
+    public final Comparator<byte[]> comparator() {
         return KeyComparator.THE;
     }
 

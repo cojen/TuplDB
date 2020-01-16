@@ -61,13 +61,13 @@ abstract class MergeCursor extends CoreValueAccessor implements Cursor {
     }
 
     @Override
-    public Ordering getOrdering() {
+    public Ordering ordering() {
         return mView.mOrdering;
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return mView.getComparator();
+    public Comparator<byte[]> comparator() {
+        return mView.comparator();
     }
 
     @Override

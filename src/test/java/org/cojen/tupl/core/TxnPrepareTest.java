@@ -150,7 +150,7 @@ public class TxnPrepareTest {
         }
 
         var key = new byte[8];
-        Utils.encodeLongBE(key, 0, txn.getId());
+        Utils.encodeLongBE(key, 0, txn.id());
         assertEquals(LockResult.OWNED_EXCLUSIVE,
                      txn.tryLockExclusive(Tree.PREPARED_TXNS_ID, key, 0));
 
@@ -181,25 +181,25 @@ public class TxnPrepareTest {
         Transaction txn = db.newTransaction();
 
         ix.store(txn, key, value);
-        assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.getId(), key));
+        assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.id(), key));
 
         assertEquals(LockResult.ACQUIRED, ix.lockShared(txn, k2));
-        assertEquals(LockResult.OWNED_SHARED, txn.lockCheck(ix.getId(), k2));
+        assertEquals(LockResult.OWNED_SHARED, txn.lockCheck(ix.id(), k2));
 
         ix.load(txn, k3);
-        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.getId(), k3));
+        assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.id(), k3));
 
         prepare(handler, txn, null);
 
         if (isPrepareCommit()) {
-            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), key));
+            assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.id(), key));
             fastAssertArrayEquals(value, ix.load(null, key));
         } else {
-            assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.getId(), key));
+            assertEquals(LockResult.OWNED_EXCLUSIVE, txn.lockCheck(ix.id(), key));
         }
 
-        assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), k2));
-        assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.getId(), k3));
+        assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.id(), k2));
+        assertEquals(LockResult.UNOWNED, txn.lockCheck(ix.id(), k3));
 
         txn.commit();
 
@@ -313,7 +313,7 @@ public class TxnPrepareTest {
 
             Recovered(Transaction txn, byte[] message) {
                 // Capture the transaction id before the transaction is reset.
-                mTxnId = txn.getId();
+                mTxnId = txn.id();
                 mTxn = txn;
                 mMessage = message;
             }
@@ -413,7 +413,7 @@ public class TxnPrepareTest {
                 fail("Unknown recovery type: " + recoveryType);
             }
 
-            txnId = txn.getId();
+            txnId = txn.id();
             prepare(handler, txn, null);
         }
 
@@ -565,11 +565,11 @@ public class TxnPrepareTest {
         assertEquals(isPrepareCommit(), recovery.prepareCommit);
 
         // Transactions can be recovered in any order.
-        if (t1.getId() == txn2.getId()) {
-            assertEquals(t2.getId(), txn3.getId());
+        if (t1.id() == txn2.id()) {
+            assertEquals(t2.id(), txn3.id());
         } else {
-            assertEquals(t1.getId(), txn3.getId());
-            assertEquals(t2.getId(), txn2.getId());
+            assertEquals(t1.id(), txn3.id());
+            assertEquals(t2.id(), txn2.id());
         }
 
         // Rollback of txn1, txn4, and txn6 (unless prepareCommit)
@@ -617,30 +617,30 @@ public class TxnPrepareTest {
         ix = db.openIndex("test");
 
         Transaction t7 = recovered.take();
-        assertEquals(t7.getId(), txn7.getId());
+        assertEquals(t7.id(), txn7.id());
 
-        assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-7".getBytes()));
+        assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.id(), "key-7".getBytes()));
         if (isPrepareCommit()) {
-            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-8".getBytes()));
-            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.id(), "key-8".getBytes()));
+            assertEquals(LockResult.UNOWNED, t7.lockCheck(ix.id(), "key-9".getBytes()));
         } else {
-            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-8".getBytes()));
-            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.getId(), "key-9".getBytes()));
+            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.id(), "key-8".getBytes()));
+            assertEquals(LockResult.OWNED_EXCLUSIVE, t7.lockCheck(ix.id(), "key-9".getBytes()));
         }
 
         Transaction txn8 = db.newTransaction();
         assertEquals(LockResult.ACQUIRED,
-                     txn8.tryLockExclusive(ix.getId(), "key-7".getBytes(), 0));
+                     txn8.tryLockExclusive(ix.id(), "key-7".getBytes(), 0));
         if (isPrepareCommit()) {
             assertEquals(LockResult.ACQUIRED,
-                         txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
+                         txn8.tryLockShared(ix.id(), "key-8".getBytes(), 0));
             assertEquals(LockResult.ACQUIRED,
-                         txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+                         txn8.tryLockExclusive(ix.id(), "key-9".getBytes(), 0));
         } else {
             assertEquals(LockResult.TIMED_OUT_LOCK,
-                         txn8.tryLockShared(ix.getId(), "key-8".getBytes(), 0));
+                         txn8.tryLockShared(ix.id(), "key-8".getBytes(), 0));
             assertEquals(LockResult.TIMED_OUT_LOCK,
-                         txn8.tryLockExclusive(ix.getId(), "key-9".getBytes(), 0));
+                         txn8.tryLockExclusive(ix.id(), "key-9".getBytes(), 0));
         }
         txn8.reset();
 

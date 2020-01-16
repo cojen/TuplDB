@@ -415,12 +415,12 @@ public class ViewUtils {
         var b = new StringBuilder();
         Utils.appendMiniString(b, ix);
         b.append(" {");
-        String nameStr = ix.getNameString();
+        String nameStr = ix.nameString();
         if (nameStr != null) {
             b.append("name").append(": ").append(nameStr);
             b.append(", ");
         }
-        b.append("id").append(": ").append(ix.getId());
+        b.append("id").append(": ").append(ix.id());
         return b.append('}').toString();
     }
 }

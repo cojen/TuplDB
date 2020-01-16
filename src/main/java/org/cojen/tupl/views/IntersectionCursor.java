@@ -51,7 +51,7 @@ final class IntersectionCursor extends MergeCursor {
                 reset();
                 return LockResult.UNOWNED;
             }
-            final int cmp = getComparator().compare(k1, k2);
+            final int cmp = comparator().compare(k1, k2);
             if (cmp == 0) {
                 mCompare = cmp;
                 return selectCombine(txn, k1);

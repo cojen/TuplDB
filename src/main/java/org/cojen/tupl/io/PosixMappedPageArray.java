@@ -128,8 +128,8 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     @Override
-    public long getPageCount() {
-        return mEmpty ? 0 : super.getPageCount();
+    public long pageCount() {
+        return mEmpty ? 0 : super.pageCount();
     }
 
     @Override
@@ -140,14 +140,14 @@ class PosixMappedPageArray extends MappedPageArray {
     @Override
     MappedPageArray doOpen() throws IOException {
         boolean empty = mEmpty;
-        var pa = new PosixMappedPageArray(pageSize(), super.getPageCount(), mFile, mOptions);
+        var pa = new PosixMappedPageArray(pageSize(), super.pageCount(), mFile, mOptions);
         pa.mEmpty = empty;
         return pa;
     }
 
     void doSync(long mappingPtr, boolean metadata) throws IOException {
         if (mFileDescriptor != -1) {
-            PosixFileIO.msyncAddr(mappingPtr, super.getPageCount() * pageSize());
+            PosixFileIO.msyncAddr(mappingPtr, super.pageCount() * pageSize());
             if (metadata) {
                 PosixFileIO.fsyncFd(mFileDescriptor);
             }
@@ -162,7 +162,7 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doClose(long mappingPtr) throws IOException {
-        PosixFileIO.munmap(mappingPtr, super.getPageCount() * pageSize());
+        PosixFileIO.munmap(mappingPtr, super.pageCount() * pageSize());
         if (mFileDescriptor != -1) {
             PosixFileIO.closeFd(mFileDescriptor);
         }

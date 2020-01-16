@@ -557,6 +557,18 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CompactionObserver.html#%3Cinit%3E()">CompactionObserver()</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#comparator()">comparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#comparator()">comparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
+<dd>
+<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/View.html#comparator()">comparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#compareKeyTo(byte%5B%5D)">compareKeyTo(byte[])</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Compare the current key to the one given.</div>
@@ -820,6 +832,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Lock request which was in a deadlock.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#deadlockSet()">deadlockSet()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html#DEBUG">DEBUG</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a></dt>
 <dd>
 <div class="block">General debug category.</div>
@@ -1415,47 +1429,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html#getAddress(java.nio.Buffer)">getAddress(Buffer)</a></span> - Static method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/DirectAccess.html" title="class in org.cojen.tupl.io">DirectAccess</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#getComparator()">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
-<dd>
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#getComparator()">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
-<dd>
-<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/View.html#getComparator()">getComparator()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
-<dd>
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#getDeadlockSet()">getDeadlockSet()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#getId()">getId()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#getId()">getId()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
-<dd>
-<div class="block">Returns the currently assigned identifier for this transaction, which is zero when the
- transaction cannot replicate.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#getIndexId()">getIndexId()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#getIndexName()">getIndexName()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#getIndexNameString()">getIndexNameString()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#getKey()">getKey()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html#getLength()">getLength()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html" title="class in org.cojen.tupl">LargeKeyException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LargeValueException.html#getLength()">getLength()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LargeValueException.html" title="class in org.cojen.tupl">LargeValueException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#getLocalAddress()">getLocalAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#getLocalMemberId()">getLocalMemberId()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#getLocalRole()">getLocalRole()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
-<dd>
-<div class="block">Returns the effective local role, as known by the group.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#getMessage()">getMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#getMessage()">getMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
@@ -1464,58 +1437,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/JoinException.html#getMessage()">getMessage()</a></span> - Method in exception org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/JoinException.html" title="class in org.cojen.tupl.repl">JoinException</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#getName()">getName()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#getNameString()">getNameString()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#getOrdering()">getOrdering()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
-<dd>
-<div class="block">Returns the key ordering for this cursor.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/View.html#getOrdering()">getOrdering()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
-<dd>
-<div class="block">Returns the key ordering for this view.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#getOwnerAttachment()">getOwnerAttachment()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#getOwnerAttachment()">getOwnerAttachment()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
-<dd>
-<div class="block">Returns the object which was <a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#attach(java.lang.Object)">attached</a> to the current
- lock owner shortly after the timeout occurred.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html#getPack()">getPack()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>
 <div class="block">Returns the pack associated with this clutch, which should be shared to reduce the
  overall memory footprint.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#getPageCount()">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#getPageCount()">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#getPageCount()">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>
-<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#getPageCount()">getPageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#getPageCountLimit()">getPageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#getPageCountLimit()">getPageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>
-<div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#getPageCountLimit()">getPageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#getShortMessage()">getShortMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#getTimeout()">getTimeout()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#getTimeout()">getTimeout()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#getUnit()">getUnit()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#getUnit()">getUnit()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#groupToken(long)">groupToken(long)</a></span> - Method in class org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Set a unique group identifier, which acts as a simple security measure to prevent
@@ -1549,6 +1475,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </a>
 <h2 class="title">I</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#id()">id()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#id()">id()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Returns the currently assigned identifier for this transaction, which is zero when the
+ transaction cannot replicate.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventListener.html#ignore(java.util.logging.Level...)">ignore(Level...)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
 <dd>
 <div class="block">Returns a filtered listener which never observes the given event levels.</div>
@@ -1627,6 +1560,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Called after index verification has finished.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#indexId()">indexId()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#indexName()">indexName()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#indexNameString()">indexNameString()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/tools/Verify.html#indexNodeFailed(long,int,java.lang.String)">indexNodeFailed(long, int, String)</a></span> - Method in class org.cojen.tupl.tools.<a href="org.cojen.tupl/org/cojen/tupl/tools/Verify.html" title="class in org.cojen.tupl.tools">Verify</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/VerificationObserver.html#indexNodeFailed(long,int,java.lang.String)">indexNodeFailed(long, int, String)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
@@ -1890,6 +1829,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#key()">key()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#key()">key()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>
 <div class="block">Returns an uncopied reference to the current key, or null if closed.</div>
@@ -1954,6 +1895,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FileIO.html#length()">length()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html#length()">length()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html" title="class in org.cojen.tupl">LargeKeyException</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LargeValueException.html#length()">length()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LargeValueException.html" title="class in org.cojen.tupl">LargeValueException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html#length()">length()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
 <dd>
 <div class="block">Returns the expected length of the snapshot (in bytes) or -1 if unknown.</div>
@@ -2010,13 +1955,21 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">If <a href="org.cojen.tupl/org/cojen/tupl/Combiner.html#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a union.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#localAddress()">localAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#localAddress(java.net.SocketAddress)">localAddress(SocketAddress)</a></span> - Method in class org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Set the local member socket address and port.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#localMemberId()">localMemberId()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#localPort(int)">localPort(int)</a></span> - Method in class org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Set the local member socket port, for accepting connections on any address.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#localRole()">localRole()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Returns the effective local role, as known by the group.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#localRole(org.cojen.tupl.repl.Role)">localRole(Role)</a></span> - Method in class org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
@@ -2235,6 +2188,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </a>
 <h2 class="title">N</h2>
 <dl>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#name()">name()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.html#nameString()">nameString()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#nestingLevel()">nestingLevel()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Counts the current transaction scope nesting level.</div>
@@ -2500,6 +2457,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Options requested by the receiver.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#ordering()">ordering()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
+<dd>
+<div class="block">Returns the key ordering for this cursor.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/View.html#ordering()">ordering()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
+<dd>
+<div class="block">Returns the key ordering for this view.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Ordering.html" title="enum in org.cojen.tupl"><span class="typeNameLink">Ordering</span></a> - Enum in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Describes entry ordering in <a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">views</a> and <a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">cursors</a>.</div>
@@ -2542,6 +2507,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Upgradable lock is already owned, so no extra unlock should be
  performed.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html#ownerAttachment()">ownerAttachment()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#ownerAttachment()">ownerAttachment()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
+<dd>
+<div class="block">Returns the object which was <a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#attach(java.lang.Object)">attached</a> to the current
+ lock owner shortly after the timeout occurred.</div>
+</dd>
 </dl>
 <a id="I:P">
 <!--   -->
@@ -2557,6 +2529,24 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Defines a persistent, array of fixed sized pages.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#%3Cinit%3E(int)">PageArray(int)</a></span> - Constructor for class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#pageCount()">pageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#pageCount()">pageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#pageCount()">pageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>
+<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#pageCount()">pageCount()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#pageCountLimit()">pageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#pageCountLimit()">pageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>
+<div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#pageCountLimit()">pageCountLimit()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#pageSize">pageSize</a></span> - Variable in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
@@ -3098,6 +3088,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#SHARED">SHARED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#shortMessage()">shortMessage()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#shutdown()">shutdown()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Cleanly closes the database, ensuring durability of all modifications.</div>
@@ -3318,6 +3310,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Lock rejection caused by wait timeout or deadlock.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#timeout()">timeout()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#timeout()">timeout()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#toString()">toString()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html#toString()">toString()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
@@ -3509,6 +3505,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Called to write or apply an idempotent undo operation.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#unit()">unit()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#unit()">unit()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#UNLATCHED">UNLATCHED</a></span> - Static variable in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#unlock()">unlock()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>

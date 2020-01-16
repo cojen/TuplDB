@@ -34,8 +34,8 @@ class DefaultView implements View {
     }
 
     @Override
-    public Ordering getOrdering() {
-        return mSource.getOrdering();
+    public Ordering ordering() {
+        return mSource.ordering();
     }
 
     @Override

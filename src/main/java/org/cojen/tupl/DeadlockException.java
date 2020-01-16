@@ -73,7 +73,7 @@ public class DeadlockException extends LockTimeoutException {
     /**
      * @return the set of lock requests which were in a deadlock
      */
-    public Set<DeadlockInfo> getDeadlockSet() {
+    public Set<DeadlockInfo> deadlockSet() {
         return mSet;
     }
 
@@ -85,7 +85,7 @@ public class DeadlockException extends LockTimeoutException {
     /**
      * @return message without deadlock set info
      */
-    public String getShortMessage() {
+    public String shortMessage() {
         return getMessage(false);
     }
 

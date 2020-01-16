@@ -716,7 +716,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     c.store(EMPTY_BYTES);
 
                     // Note: Both transactions have the same context and redo.
-                    mContext.redoPrepareRollback(mRedo, carrier.getId(), mTxnId);
+                    mContext.redoPrepareRollback(mRedo, carrier.id(), mTxnId);
                     carrier.mHasState |= HAS_COMMIT;
                 } finally {
                     shared.release();
@@ -1103,7 +1103,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
                     c.storeGhost(new _GhostFrame());
 
                     // Note: Both transactions have the same context and redo.
-                    mContext.redoPrepare(mRedo, carrier.getId(), txnId, handlerId, message, commit);
+                    mContext.redoPrepare(mRedo, carrier.id(), txnId, handlerId, message, commit);
                     carrier.mHasState |= HAS_COMMIT;
 
                     // Following a checkpoint, this operation will store the only copy of the
@@ -1325,7 +1325,7 @@ public final class _LocalTransaction extends _Locker implements Transaction {
     }
 
     @Override
-    public final long getId() {
+    public final long id() {
         long txnId = mTxnId;
 
         if (txnId == 0 && mRedo != null) {

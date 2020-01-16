@@ -1176,7 +1176,7 @@ public class RecoverTest {
         Transaction txn;
         while (true) {
             txn = db.newTransaction(DurabilityMode.NO_REDO);
-            if (txn.getId() == 0) {
+            if (txn.id() == 0) {
                 // Verified that transaction isn't replicated.
                 break;
             }

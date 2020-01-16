@@ -36,22 +36,22 @@ final class CoreDeadlockInfo implements DeadlockInfo {
     Object mAttachment;
 
     @Override
-    public long getIndexId() {
+    public long indexId() {
         return mIndexId;
     }
 
     @Override
-    public byte[] getIndexName() {
+    public byte[] indexName() {
         return mIndexName;
     }
 
     @Override
-    public byte[] getKey() {
+    public byte[] key() {
         return mKey;
     }
 
     @Override
-    public Object getOwnerAttachment() {
+    public Object ownerAttachment() {
         return mAttachment;
     }
 

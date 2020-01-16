@@ -296,7 +296,7 @@ public class SorterTest {
 
             byte[] prev = prevRef[0];
             if (prev != null) {
-                assertTrue(scanner.getComparator().compare(prev, k) < 0);
+                assertTrue(scanner.comparator().compare(prev, k) < 0);
 
                 int cmp = KeyComparator.THE.compare(prev, k);
                 assertTrue(reverse ? cmp > 0 : cmp < 0);

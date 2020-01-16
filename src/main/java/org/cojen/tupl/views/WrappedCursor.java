@@ -119,16 +119,16 @@ abstract class WrappedCursor implements Cursor {
      * {@inheritDoc}
      */
     @Override
-    public Ordering getOrdering() {
-        return source.getOrdering();
+    public Ordering ordering() {
+        return source.ordering();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public Comparator<byte[]> getComparator() {
-        return source.getComparator();
+    public Comparator<byte[]> comparator() {
+        return source.comparator();
     }
 
     /**

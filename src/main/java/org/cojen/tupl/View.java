@@ -50,12 +50,12 @@ public interface View {
     /**
      * Returns the key ordering for this view.
      */
-    public Ordering getOrdering();
+    public Ordering ordering();
 
     /**
      * Returns a comparator for the ordering of this view, or null if unordered.
      */
-    public default Comparator<byte[]> getComparator() {
+    public default Comparator<byte[]> comparator() {
         return null;
     }
 
@@ -688,7 +688,7 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewGe(byte[] key) {
-        Ordering ordering = getOrdering();
+        Ordering ordering = ordering();
         if (ordering == Ordering.ASCENDING) {
             return BoundedView.viewGe(this, key);
         } else if (ordering == Ordering.DESCENDING) {
@@ -710,7 +710,7 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewGt(byte[] key) {
-        Ordering ordering = getOrdering();
+        Ordering ordering = ordering();
         if (ordering == Ordering.ASCENDING) {
             return BoundedView.viewGt(this, key);
         } else if (ordering == Ordering.DESCENDING) {
@@ -732,7 +732,7 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewLe(byte[] key) {
-        Ordering ordering = getOrdering();
+        Ordering ordering = ordering();
         if (ordering == Ordering.ASCENDING) {
             return BoundedView.viewLe(this, key);
         } else if (ordering == Ordering.DESCENDING) {
@@ -754,7 +754,7 @@ public interface View {
      * @throws NullPointerException if key is null
      */
     public default View viewLt(byte[] key) {
-        Ordering ordering = getOrdering();
+        Ordering ordering = ordering();
         if (ordering == Ordering.ASCENDING) {
             return BoundedView.viewLt(this, key);
         } else if (ordering == Ordering.DESCENDING) {
@@ -778,7 +778,7 @@ public interface View {
      * @throws IllegalArgumentException if trim is longer than prefix
      */
     public default View viewPrefix(byte[] prefix, int trim) {
-        Ordering ordering = getOrdering();
+        Ordering ordering = ordering();
         if (ordering == Ordering.ASCENDING) {
             return BoundedView.viewPrefix(this, prefix, trim);
         } else if (ordering == Ordering.DESCENDING) {

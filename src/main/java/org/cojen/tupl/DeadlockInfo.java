@@ -31,27 +31,27 @@ public interface DeadlockInfo extends Serializable {
     /**
      * @return the lock request index id
      */
-    public long getIndexId();
+    public long indexId();
 
     /**
      * @return the lock request index name, possibly null
      */
-    public byte[] getIndexName();
+    public byte[] indexName();
 
     /**
      * @return the lock request index name string, possibly null
      */
-    public default String getIndexNameString() {
-        return Utils.utf8(getIndexName());
+    public default String indexNameString() {
+        return Utils.utf8(indexName());
     }
 
     /**
      * @return the lock request key
      */
-    public byte[] getKey();
+    public byte[] key();
 
     /**
      * @return the lock owner attachment, possibly null
      */
-    public Object getOwnerAttachment();
+    public Object ownerAttachment();
 }

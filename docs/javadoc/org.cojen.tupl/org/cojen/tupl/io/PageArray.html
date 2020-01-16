@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":6,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":6,"i14":6,"i15":10,"i16":10,"i17":6,"i18":10,"i19":6,"i20":10,"i21":10,"i22":10,"i23":6,"i24":10,"i25":10,"i26":6,"i27":10,"i28":6,"i29":10,"i30":10,"i31":6,"i32":10,"i33":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":6,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":6,"i14":10,"i15":6,"i16":10,"i17":6,"i18":10,"i19":6,"i20":10,"i21":10,"i22":10,"i23":6,"i24":10,"i25":10,"i26":6,"i27":10,"i28":6,"i29":10,"i30":10,"i31":6,"i32":10,"i33":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -258,44 +258,44 @@ long&nbsp;bufPtr)</code></th>
 </td>
 </tr>
 <tr class="altColor" id="i14">
-<td class="colFirst"><code>abstract long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCount()">getPageCount</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i15">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getPageCountLimit()">getPageCountLimit</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
-</td>
-</tr>
-<tr class="altColor" id="i16">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isDirectIO()">isDirectIO</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i18">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isFullyMapped()">isFullyMapped</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i19">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i20">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open()">open</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to open or reopen the page array.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i19">
+<td class="colFirst"><code>abstract long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageCount()">pageCount</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
+</td>
+</tr>
+<tr class="altColor" id="i20">
+<td class="colFirst"><code>long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageCountLimit()">pageCountLimit</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i21">
@@ -479,9 +479,9 @@ int&nbsp;offset)</code></th>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getPageCount()">getPageCount</a></h3>
-<div class="memberSignature"><span class="modifiers">public abstract</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getPageCount</span>()
-                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<h3><a id="pageCount()">pageCount</a></h3>
+<div class="memberSignature"><span class="modifiers">public abstract</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">pageCount</span>()
+                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -519,9 +519,9 @@ int&nbsp;offset)</code></th>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getPageCountLimit()">getPageCountLimit</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getPageCountLimit</span>()
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<h3><a id="pageCountLimit()">pageCountLimit</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">pageCountLimit</span>()
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>

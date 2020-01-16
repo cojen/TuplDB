@@ -57,18 +57,18 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
-    public long getLocalMemberId() {
-        return mRepl.getLocalMemberId();
+    public long localMemberId() {
+        return mRepl.localMemberId();
     }
 
     @Override
-    public SocketAddress getLocalAddress() {
-        return mRepl.getLocalAddress();
+    public SocketAddress localAddress() {
+        return mRepl.localAddress();
     }
 
     @Override
-    public Role getLocalRole() {
-        return mRepl.getLocalRole();
+    public Role localRole() {
+        return mRepl.localRole();
     }
 
     @Override

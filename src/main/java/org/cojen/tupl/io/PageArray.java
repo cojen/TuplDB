@@ -65,7 +65,7 @@ public abstract class PageArray implements CauseCloseable {
     /**
      * Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.
      */
-    public abstract long getPageCount() throws IOException;
+    public abstract long pageCount() throws IOException;
 
     /**
      * Attempt to truncate the total count of pages. Array implementation might not support
@@ -86,7 +86,7 @@ public abstract class PageArray implements CauseCloseable {
     /**
      * Return maximum allowed page count, or -1 if not applicable.
      */
-    public long getPageCountLimit() throws IOException {
+    public long pageCountLimit() throws IOException {
         return -1;
     }
 

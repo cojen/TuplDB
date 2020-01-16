@@ -97,10 +97,10 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCount() throws IOException {
+    public long pageCount() throws IOException {
         long count = 0;
         for (PageArray pa : mArrays) {
-            count += pa.getPageCount();
+            count += pa.pageCount();
             if (count < 0) {
                 return Long.MAX_VALUE;
             }
@@ -132,11 +132,11 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCountLimit() throws IOException {
+    public long pageCountLimit() throws IOException {
         long limit = -1;
 
         for (PageArray pa : mArrays) {
-            long subLimit = pa.getPageCountLimit();
+            long subLimit = pa.pageCountLimit();
             if (subLimit >= 0) {
                 limit = limit < 0 ? subLimit : Math.min(limit, subLimit);
             }

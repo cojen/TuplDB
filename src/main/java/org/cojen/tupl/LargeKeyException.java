@@ -37,7 +37,7 @@ public class LargeKeyException extends DatabaseException {
         mLength = length;
     }
 
-    public long getLength() {
+    public long length() {
         return mLength;
     }
 

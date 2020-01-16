@@ -60,7 +60,7 @@ public class Verify extends VerificationObserver {
 
     @Override
     public boolean indexBegin(Index ix, int height) {
-        System.out.println("Index: " + ix.getNameString() + ", height: " + height);
+        System.out.println("Index: " + ix.nameString() + ", height: " + height);
         return super.indexBegin(ix, height);
     }
 

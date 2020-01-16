@@ -112,11 +112,11 @@ public abstract class MappedPageArray extends PageArray {
 
     @Override
     public boolean isEmpty() {
-        return getPageCount() == 0;
+        return pageCount() == 0;
     }
 
     @Override
-    public long getPageCount() {
+    public long pageCount() {
         return mPageCount;
     }
 
@@ -129,7 +129,7 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public long getPageCountLimit() {
+    public long pageCountLimit() {
         return mPageCount;
     }
 

@@ -49,12 +49,12 @@ public class ConfirmationTimeoutException extends ConfirmationFailureException {
     }
 
     @Override
-    public long getTimeout() {
-        return getUnit().convert(mNanosTimeout, TimeUnit.NANOSECONDS);
+    public long timeout() {
+        return unit().convert(mNanosTimeout, TimeUnit.NANOSECONDS);
     }
 
     @Override
-    public TimeUnit getUnit() {
+    public TimeUnit unit() {
         TimeUnit unit = mUnit;
         if (unit != null) {
             return unit;

@@ -126,7 +126,7 @@ final class _PageManager {
                                          mTotalPageCount);
                 }
 
-                long actualPageCount = array.getPageCount();
+                long actualPageCount = array.pageCount();
                 if (actualPageCount > mTotalPageCount) {
                     if (!array.isReadOnly()) {
                         // Attempt to truncate extra uncommitted pages.
@@ -366,7 +366,7 @@ final class _PageManager {
                 limit = limitObj;
             }
 
-            long max = mPageArray.getPageCountLimit();
+            long max = mPageArray.pageCountLimit();
             if (max > 0 && (limit < 0 || limit > max)) {
                 limit = max;
             }
@@ -438,7 +438,7 @@ final class _PageManager {
         mRemoveLock.lock();
         try {
             if (targetPageCount >= mTotalPageCount
-                && targetPageCount >= mPageArray.getPageCount())
+                && targetPageCount >= mPageArray.pageCount())
             {
                 return false;
             }
@@ -553,7 +553,7 @@ final class _PageManager {
         fullLock();
 
         if (ready && (ready = mCompacting && (mTotalPageCount > mCompactionTargetPageCount
-                                              || mPageArray.getPageCount() > mTotalPageCount)))
+                                              || mPageArray.pageCount() > mTotalPageCount)))
         {
             // When locks are released, compaction is commit-ready. All pages in the compaction
             // zone are accounted for, but the reserve list's queue nodes might be in the valid
@@ -598,7 +598,7 @@ final class _PageManager {
     public boolean truncatePages() throws IOException {
         mRemoveLock.lock();
         try {
-            if (mTotalPageCount < mPageArray.getPageCount()) {
+            if (mTotalPageCount < mPageArray.pageCount()) {
                 try {
                     mPageArray.truncatePageCount(mTotalPageCount);
                     return true;

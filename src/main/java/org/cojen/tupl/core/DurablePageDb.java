@@ -386,7 +386,7 @@ final class DurablePageDb extends PageDb {
 
     @Override
     public long pageCount() throws IOException {
-        return mPageArray.getPageCount();
+        return mPageArray.pageCount();
     }
 
     @Override
@@ -507,7 +507,7 @@ final class DurablePageDb extends PageDb {
         }
 
         // Hint that the underlying file should preallocate as well.
-        mPageArray.expandPageCount(mPageArray.getPageCount() + pageCount);
+        mPageArray.expandPageCount(mPageArray.pageCount() + pageCount);
 
         for (int i=0; i<pageCount; i++) {
             CommitLock.Shared shared = mCommitLock.acquireShared();

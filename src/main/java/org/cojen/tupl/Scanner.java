@@ -41,7 +41,7 @@ public interface Scanner extends AutoCloseable {
     /**
      * Returns a comparator for the ordering of this scanner, or null if unordered.
      */
-    Comparator<byte[]> getComparator();
+    Comparator<byte[]> comparator();
 
     /**
      * Returns an uncopied reference to the current key, or null if closed. Array contents

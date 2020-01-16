@@ -71,7 +71,7 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
-    public long getPageCount() throws IOException {
+    public long pageCount() throws IOException {
         // Always round page count down. A partial last page effectively doesn't exist.
         return mFio.length() / mPageSize;
     }

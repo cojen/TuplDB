@@ -57,21 +57,21 @@ public class DatabaseException extends IOException {
     /*
      * Applicable to timeout exceptions.
      */
-    long getTimeout() {
+    long timeout() {
         return 0;
     }
 
     /*
      * Applicable to timeout exceptions.
      */
-    TimeUnit getUnit() {
+    TimeUnit unit() {
         return null;
     }
 
     /*
      * Applicable to timeout exceptions.
      */
-    Object getOwnerAttachment() {
+    Object ownerAttachment() {
         return null;
     }
 
@@ -83,15 +83,15 @@ public class DatabaseException extends IOException {
             msg = "Infinite wait";
         } else {
             var b = new StringBuilder("Waited ");
-            Utils.appendTimeout(b, getTimeout(), getUnit());
-            Object att = getOwnerAttachment();
+            Utils.appendTimeout(b, timeout(), unit());
+            Object att = ownerAttachment();
             if (att != null) {
                 appendAttachment(b, att);
             }
             return b.toString();
         }
 
-        Object att = getOwnerAttachment();
+        Object att = ownerAttachment();
         if (att != null) {
             var b = new StringBuilder(msg);
             appendAttachment(b, att);

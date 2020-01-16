@@ -688,12 +688,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public long getLocalMemberId() {
-        return mChanMan.getLocalMemberId();
+    public long localMemberId() {
+        return mChanMan.localMemberId();
     }
 
     @Override
-    public SocketAddress getLocalAddress() {
+    public SocketAddress localAddress() {
         acquireShared();
         SocketAddress addr = mGroupFile.localMemberAddress();
         releaseShared();
@@ -701,7 +701,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
-    public Role getLocalRole() {
+    public Role localRole() {
         acquireShared();
         Role role = mGroupFile.localMemberRole();
         releaseShared();
@@ -1405,7 +1405,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Convert to candidate.
             mLocalMode = MODE_CANDIDATE;
 
-            candidateId = mChanMan.getLocalMemberId();
+            candidateId = mChanMan.localMemberId();
 
             try {
                 mCurrentTerm = term = mStateLog.incrementCurrentTerm(1, candidateId);

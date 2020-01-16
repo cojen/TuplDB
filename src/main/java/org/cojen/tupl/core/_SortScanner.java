@@ -47,8 +47,8 @@ class _SortScanner implements Scanner {
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
-        return cursor().getComparator();
+    public Comparator<byte[]> comparator() {
+        return cursor().comparator();
     }
 
     @Override

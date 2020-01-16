@@ -111,27 +111,27 @@ class _BTree extends Tree implements View, Index {
     }
 
     @Override
-    public final Ordering getOrdering() {
+    public final Ordering ordering() {
         return Ordering.ASCENDING;
     }
 
     @Override
-    public Comparator<byte[]> getComparator() {
+    public Comparator<byte[]> comparator() {
         return KeyComparator.THE;
     }
 
     @Override
-    public final long getId() {
+    public final long id() {
         return mId;
     }
 
     @Override
-    public final byte[] getName() {
+    public final byte[] name() {
         return cloneArray(mName);
     }
 
     @Override
-    public final String getNameString() {
+    public final String nameString() {
         return utf8(mName);
     }
 

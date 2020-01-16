@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":18,"i6":6,"i7":18,"i8":18,"i9":18,"i10":6,"i11":18,"i12":6,"i13":6,"i14":6,"i15":6,"i16":18,"i17":6,"i18":18,"i19":18,"i20":18,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18,"i38":18,"i39":18,"i40":18,"i41":18,"i42":18};
+<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":18,"i6":18,"i7":18,"i8":18,"i9":6,"i10":18,"i11":6,"i12":6,"i13":6,"i14":6,"i15":18,"i16":6,"i17":18,"i18":18,"i19":18,"i20":6,"i21":18,"i22":18,"i23":18,"i24":18,"i25":18,"i26":18,"i27":18,"i28":18,"i29":18,"i30":18,"i31":18,"i32":18,"i33":18,"i34":18,"i35":18,"i36":18,"i37":18,"i38":18,"i39":18,"i40":18,"i41":18,"i42":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -127,6 +127,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#comparator()">comparator</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#count(byte%5B%5D,boolean,byte%5B%5D,boolean)">count</a></span>&#8203;(byte[]&nbsp;lowKey,
 boolean&nbsp;lowInclusive,
@@ -136,7 +143,7 @@ boolean&nbsp;highInclusive)</code></th>
 <div class="block">Non-transactionally counts the number of entries within the given range.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i1">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#count(byte%5B%5D,byte%5B%5D)">count</a></span>&#8203;(byte[]&nbsp;lowKey,
 byte[]&nbsp;highKey)</code></th>
@@ -144,7 +151,7 @@ byte[]&nbsp;highKey)</code></th>
 <div class="block">Non-transactionally counts the number of entries within the given range.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(org.cojen.tupl.Transaction,byte%5B%5D)">delete</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -152,7 +159,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Unconditionally removes the entry associated with the given key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>default byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">exchange</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
@@ -161,7 +168,7 @@ byte[]&nbsp;value)</code></th>
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#exists(org.cojen.tupl.Transaction,byte%5B%5D)">exists</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -169,21 +176,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Checks if an entry for the given key exists.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getComparator()">getComparator</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
-</td>
-</tr>
 <tr class="altColor" id="i6">
-<td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getOrdering()">getOrdering</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the key ordering for this view.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i7">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)">insert</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
@@ -193,14 +186,14 @@ byte[]&nbsp;value)</code></th>
  exists.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Non-transactionally determines if the view has nothing in it.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isModifyAtomic()">isModifyAtomic</a></span>()</code></th>
 <td class="colLast">
@@ -208,14 +201,14 @@ byte[]&nbsp;value)</code></th>
  transactions.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isUnmodifiable()">isUnmodifiable</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true if any attempt to modify this view causes an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>UnmodifiableViewException</code></a> to be thrown.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>default byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#load(org.cojen.tupl.Transaction,byte%5B%5D)">load</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -223,7 +216,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)">lockCheck</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -231,7 +224,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Checks the lock ownership for the given key.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)">lockExclusive</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -240,7 +233,7 @@ byte[]&nbsp;key)</code></th>
  locks.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)">lockShared</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -248,7 +241,7 @@ byte[]&nbsp;key)</code></th>
 <div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)">lockUpgradable</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -257,7 +250,7 @@ byte[]&nbsp;key)</code></th>
  additional upgradable locks.</div>
 </td>
 </tr>
-<tr class="altColor" id="i16">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>default <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)">newAccessor</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</code></th>
@@ -266,30 +259,37 @@ byte[]&nbsp;key)</code></th>
  permitting them to be larger than what can fit in main memory.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newCursor(org.cojen.tupl.Transaction)">newCursor</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i18">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>default <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newScanner(org.cojen.tupl.Transaction)">newScanner</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Returns a new scanner over this view.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i19">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="colLast">
 <div class="block">Returns a new transaction which is compatible with this view.</div>
 </td>
 </tr>
-<tr class="altColor" id="i20">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newUpdater(org.cojen.tupl.Transaction)">newUpdater</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Returns a new updater over this view.</div>
+</td>
+</tr>
+<tr class="altColor" id="i20">
+<td class="colFirst"><code><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ordering()">ordering</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns the key ordering for this view.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i21">
@@ -501,15 +501,15 @@ int&nbsp;trim)</code></th>
 <ul class="blockList">
 <li class="blockList">
 <section class="detail">
-<h3><a id="getOrdering()">getOrdering</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></span>&nbsp;<span class="memberName">getOrdering</span>()</div>
+<h3><a id="ordering()">ordering</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Ordering.html" title="enum in org.cojen.tupl">Ordering</a></span>&nbsp;<span class="memberName">ordering</span>()</div>
 <div class="block">Returns the key ordering for this view.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="getComparator()">getComparator</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">getComparator</span>()</div>
+<h3><a id="comparator()">comparator</a></h3>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">comparator</span>()</div>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </section>
 </li>

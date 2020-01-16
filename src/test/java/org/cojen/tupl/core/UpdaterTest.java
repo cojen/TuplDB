@@ -262,7 +262,7 @@ public class UpdaterTest extends ScannerTest {
                 byte[] key = ("key-" + i).getBytes();
                 byte[] value = ("value-" + i + "-v2").getBytes();
                 // Still locked by original transaction.
-                assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockShared(ix.getId(), key, 0));
+                assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockShared(ix.id(), key, 0));
             }
             txn2.exit();
             txn.commit();
