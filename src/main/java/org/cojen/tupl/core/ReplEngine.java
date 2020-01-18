@@ -367,30 +367,17 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     public boolean renameIndex(long txnId, long indexId, byte[] newName) throws IOException {
         Index ix = getIndex(indexId);
 
-        if (ix == null) {
-            // No notification.
-            return true;
-        }
-
-        byte[] oldName = ix.name();
-
-        try {
-            mDatabase.renameIndex(ix, newName, txnId);
-        } catch (RuntimeException e) {
-            EventListener listener = mDatabase.eventListener();
-            if (listener != null) {
-                listener.notify(EventType.REPLICATION_WARNING,
-                                "Unable to rename index: %1$s", rootCause(e));
-                // No notification.
-                return true;
+        if (ix != null) {
+            try {
+                mDatabase.renameIndex(ix, newName, txnId);
+            } catch (RuntimeException e) {
+                EventListener listener = mDatabase.eventListener();
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_WARNING,
+                                    "Unable to rename index: %1$s", rootCause(e));
+                }
             }
         }
-
-        runTaskAnywhere(new Worker.Task() {
-            public void run() {
-                mManager.notifyRename(ix, oldName, newName.clone());
-            }
-        });
 
         return true;
     }
@@ -420,11 +407,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
                 if (ix != null) {
                     ix.close();
-                    try {
-                        mManager.notifyDrop(ix);
-                    } catch (Throwable e) {
-                        uncaught(e);
-                    }
                 }
 
                 Runnable task = mDatabase.replicaDeleteTree(indexId);

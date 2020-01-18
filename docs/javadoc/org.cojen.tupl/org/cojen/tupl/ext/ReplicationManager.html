@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":18,"i2":6,"i3":6,"i4":6,"i5":18,"i6":18,"i7":6,"i8":6,"i9":18,"i10":18,"i11":6,"i12":6,"i13":18,"i14":6,"i15":6};
+<script type="text/javascript">var data = {"i0":6,"i1":18,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":18,"i8":18,"i9":6,"i10":6,"i11":18,"i12":6,"i13":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -200,22 +200,6 @@ byte[]&nbsp;message)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i5">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#notifyDrop(org.cojen.tupl.Index)">notifyDrop</a></span>&#8203;(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></th>
-<td class="colLast">
-<div class="block">Notification to replica after an index is dropped.</div>
-</td>
-</tr>
-<tr class="altColor" id="i6">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#notifyRename(org.cojen.tupl.Index,byte%5B%5D,byte%5B%5D)">notifyRename</a></span>&#8203;(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-byte[]&nbsp;oldName,
-byte[]&nbsp;newName)</code></th>
-<td class="colLast">
-<div class="block">Notification to replica after an index is renamed.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i7">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#read(byte%5B%5D,int,int)">read</a></span>&#8203;(byte[]&nbsp;b,
 int&nbsp;off,
@@ -224,14 +208,14 @@ int&nbsp;len)</code></th>
 <div class="block">Blocks at most once, reading as much replication input as possible.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPosition()">readPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>default boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ready(org.cojen.tupl.ext.ReplicationManager.Accessor)">ready</a></span>&#8203;(<a href="ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a>&nbsp;accessor)</code></th>
 <td class="colLast">
@@ -239,7 +223,7 @@ int&nbsp;len)</code></th>
  replication has sufficiently "caught up".</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restoreRequest(org.cojen.tupl.EventListener)">restoreRequest</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></th>
 <td class="colLast">
@@ -247,21 +231,21 @@ int&nbsp;len)</code></th>
  snapshot from a replication peer.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#start(long)">start</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
 <div class="block">Start the replication manager in replica mode.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all local data to non-volatile storage, up to the current position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncConfirm(long)">syncConfirm</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
@@ -269,7 +253,7 @@ int&nbsp;len)</code></th>
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncConfirm(long,long)">syncConfirm</a></span>&#8203;(long&nbsp;position,
 long&nbsp;timeoutNanos)</code></th>
@@ -278,7 +262,7 @@ long&nbsp;timeoutNanos)</code></th>
  position, and then blocks until fully confirmed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writer()">writer</a></span>()</code></th>
 <td class="colLast">
@@ -511,36 +495,6 @@ byte[]&nbsp;message)</span>
 <dd><code>position</code> - log position just after the message</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="notifyRename(org.cojen.tupl.Index,byte[],byte[])">notifyRename</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">notifyRename</span>&#8203;(<span class="arguments"><a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-byte[]&nbsp;oldName,
-byte[]&nbsp;newName)</span></div>
-<div class="block">Notification to replica after an index is renamed. The current thread is free to perform
- any blocking operations &mdash; it will not suspend replication processing unless
- <a href="../DatabaseConfig.html#maxReplicaThreads(int)">all</a> replication threads are consumed.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - non-null index reference</dd>
-<dd><code>oldName</code> - non-null old index name</dd>
-<dd><code>newName</code> - non-null new index name</dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="notifyDrop(org.cojen.tupl.Index)">notifyDrop</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">notifyDrop</span>&#8203;(<span class="arguments"><a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</span></div>
-<div class="block">Notification to replica after an index is dropped. The current thread is free to perform
- any blocking operations &mdash; it will not suspend replication processing unless
- <a href="../DatabaseConfig.html#maxReplicaThreads(int)">all</a> replication threads are consumed.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - non-null closed and dropped index reference</dd>
 </dl>
 </section>
 </li>

@@ -259,33 +259,4 @@ public interface ReplicationManager extends Closeable {
      * @param position log position just after the message
      */
     default void control(long position, byte[] message) throws IOException {}
-
-    /**
-     * Notification to replica after an index is renamed. The current thread is free to perform
-     * any blocking operations &mdash; it will not suspend replication processing unless
-     * {@linkplain DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
-     *
-     * @param index non-null index reference
-     * @param oldName non-null old index name
-     * @param newName non-null new index name
-     */
-    default void notifyRename(Index index, byte[] oldName, byte[] newName) {}
-
-    /**
-     * Notification to replica after an index is dropped. The current thread is free to perform
-     * any blocking operations &mdash; it will not suspend replication processing unless
-     * {@linkplain DatabaseConfig#maxReplicaThreads all} replication threads are consumed.
-     *
-     * @param index non-null closed and dropped index reference
-     */
-    default void notifyDrop(Index index) {}
-
-    /**
-     * Forward a change from a replica to the leader. Change must arrive back through the input
-     * stream. This method can be invoked concurrently by multiple threads.
-     *
-     * @return false if local instance is not a replica or if no leader has
-     * been established
-     */
-    //boolean forward(byte[] b, int off, int len) throws IOException;
 }
