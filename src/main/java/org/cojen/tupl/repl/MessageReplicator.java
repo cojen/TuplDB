@@ -28,7 +28,7 @@ import java.io.IOException;
  * @author Brian S O'Neill
  * @see StreamReplicator
  */
-public interface MessageReplicator extends DirectReplicator {
+public interface MessageReplicator extends Replicator {
     /**
      * Open a MessageReplicator instance, creating it if necessary.
      *
@@ -67,7 +67,7 @@ public interface MessageReplicator extends DirectReplicator {
      *
      * @see MessageReplicator#newReader newReader
      */
-    public static interface Reader extends DirectReplicator.Reader {
+    public static interface Reader extends Replicator.Reader {
         /**
          * Blocks until a log message is available, never reading past a commit position or term.
          *
@@ -99,7 +99,7 @@ public interface MessageReplicator extends DirectReplicator {
      *
      * @see MessageReplicator#newWriter newWriter
      */
-    public static interface Writer extends DirectReplicator.Writer {
+    public static interface Writer extends Replicator.Writer {
         /**
          * Write a single message to the log. Equivalent to: {@code writeMessage(message, 0,
          * message.length, true)}

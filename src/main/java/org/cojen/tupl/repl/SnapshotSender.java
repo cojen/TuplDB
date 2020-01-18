@@ -31,7 +31,7 @@ import java.util.Map;
  * member which is joining the group.
  *
  * @author Brian S O'Neill
- * @see DirectReplicator#snapshotRequestAcceptor DirectReplicator.snapshotRequestAcceptor
+ * @see Replicator#snapshotRequestAcceptor Replicator.snapshotRequestAcceptor
  * @see SnapshotReceiver
  */
 public interface SnapshotSender extends Closeable {

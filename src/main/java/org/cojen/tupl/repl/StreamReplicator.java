@@ -52,7 +52,7 @@ import java.util.function.Consumer;
  * @author Brian S O'Neill
  * @see MessageReplicator
  */
-public interface StreamReplicator extends DirectReplicator {
+public interface StreamReplicator extends Replicator {
     /**
      * Open a StreamReplicator instance, creating it if necessary.
      *
@@ -183,7 +183,7 @@ public interface StreamReplicator extends DirectReplicator {
      *
      * @see StreamReplicator#newReader newReader
      */
-    public static interface Reader extends DirectReplicator.Reader {
+    public static interface Reader extends Replicator.Reader {
         /**
          * Blocks until log messages are available, never reading past a commit position or
          * term.
@@ -240,7 +240,7 @@ public interface StreamReplicator extends DirectReplicator {
      *
      * @see StreamReplicator#newWriter newWriter
      */
-    public static interface Writer extends DirectReplicator.Writer {
+    public static interface Writer extends Replicator.Writer {
         /**
          * Write complete messages to the log. Equivalent to: {@code write(messages, 0,
          * messages.length, }{@link #position position() + }{@code messages.length)}

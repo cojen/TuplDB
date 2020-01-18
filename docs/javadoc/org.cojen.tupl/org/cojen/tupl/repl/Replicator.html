@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -55,7 +55,7 @@ loadScripts(document, 'script');</script>
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
@@ -99,7 +99,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
-<dd><code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code>, <code><a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></code>, <code><a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></code></dd>
+<dd><code><a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></code>, <code><a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Replicator</span>
@@ -108,6 +108,49 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </section>
 <section class="summary">
 <ul class="blockList">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<li class="blockList">
+<section class="nestedClassSummary"><a id="nested.class.summary">
+<!--   -->
+</a>
+<h2>Nested Class Summary</h2>
+<div class="memberSummary">
+<table>
+<caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
+<thead>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Interface</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></span></code></th>
+<td class="colLast">
+<div class="block">Direct interface for accessing replication data, for a given term.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></span></code></th>
+<td class="colLast">
+<div class="block">Direct interface for reading from a replicator, for a given term.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code>static interface&nbsp;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></span></code></th>
+<td class="colLast">
+<div class="block">Direct interface for writing to a replicator, for a given term.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li class="blockList">
 <section class="methodSummary"><a id="method.summary">
@@ -127,37 +170,97 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compact(long)">compact</a></span>&#8203;(long&nbsp;position)</code></th>
+<td class="colLast">
+<div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#connect(java.net.SocketAddress)">connect</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="colLast">
 <div class="block">Connect to any replication group member, for any particular use.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i1">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#failover()">failover</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to switch the replication role from leader to replica.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadable(long)">isReadable</a></span>&#8203;(long&nbsp;position)</code></th>
+<td class="colLast">
+<div class="block">Returns true if committed data exists at the given position.</div>
+</td>
+</tr>
+<tr class="altColor" id="i4">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localAddress()">localAddress</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localMemberId()">localMemberId</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localRole()">localRole</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the effective local role, as known by the group.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="rowColor" id="i7">
+<td class="colFirst"><code><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;position,
+boolean&nbsp;follow)</code></th>
+<td class="colLast">
+<div class="block">Returns a new reader which accesses data starting from the given position.</div>
+</td>
+</tr>
+<tr class="altColor" id="i8">
+<td class="colFirst"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter()">newWriter</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i9">
+<td class="colFirst"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;position)</code></th>
+<td class="colLast">
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader.</div>
+</td>
+</tr>
+<tr class="altColor" id="i10">
+<td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requestSnapshot(java.util.Map)">requestSnapshot</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
+<td class="colLast">
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i11">
+<td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
+<td class="colLast">
+<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
+ expected to be called only by newly joined members.</div>
+</td>
+</tr>
+<tr class="altColor" id="i12">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code></th>
+<td class="colLast">
+<div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
@@ -165,11 +268,27 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
  group member.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="altColor" id="i14">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#start()">start</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Start accepting replication data, to be called for new or existing members.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Durably persist all data up to the highest position.</div>
+</td>
+</tr>
+<tr class="altColor" id="i16">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncCommit(long,long)">syncCommit</a></span>&#8203;(long&nbsp;position,
+long&nbsp;nanosTimeout)</code></th>
+<td class="colLast">
+<div class="block">Returns immediately if all data up to the given committed position is durable, or else
+ durably persists all data up to the highest position.</div>
 </td>
 </tr>
 </tbody>
@@ -194,6 +313,184 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </a>
 <h2>Method Details</h2>
 <ul class="blockList">
+<li class="blockList">
+<section class="detail">
+<h3><a id="start()">start</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">start</span>()
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Start accepting replication data, to be called for new or existing members. For newly
+ restored members, the start method must be called to update its role.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="restore(java.util.Map)">restore</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">restore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
+ expected to be called only by newly joined members. New members are initially
+ <a href="Role.html#RESTORING">restoring</a>, so call the start method after restoration to
+ update the role.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>options</code> - requested options; can pass null if none</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>null if no snapshot could be found and replicator hasn't started</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if already started</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="requestSnapshot(java.util.Map)">requestSnapshot</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">requestSnapshot</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
+                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Connect to a remote replication group member, for receiving a database snapshot. An
+ <a href="#snapshotRequestAcceptor(java.util.function.Consumer)">acceptor</a> must be installed on the group member
+ being connected to for the request to succeed.
+ 
+ <p>The sender is selected as the one which has the fewest count of active snapshot
+ sessions. If all the counts are the same, then a sender is instead randomly selected,
+ favoring a follower over a leader.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>options</code> - requested options; can pass null if none</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>null if no snapshot could be found</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">snapshotRequestAcceptor</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</span></div>
+<div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>acceptor</code> - acceptor to use, or pass null to disable</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="isReadable(long)">isReadable</a></h3>
+<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isReadable</span>&#8203;(<span class="arguments">long&nbsp;position)</span></div>
+<div class="block">Returns true if committed data exists at the given position.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="newReader(long,boolean)">newReader</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></span>&nbsp;<span class="memberName">newReader</span>&#8203;(<span class="arguments">long&nbsp;position,
+boolean&nbsp;follow)</span></div>
+<div class="block">Returns a new reader which accesses data starting from the given position. The reader
+ returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
+ new writer to determine if the local member has become the leader.
+
+ <p>When passing true for the follow parameter, a reader is always provided at the
+ requested position. When passing false for the follow parameter, null is returned if the
+ current member is the leader for the given position.
+
+ <p><b>Note: Reader instances are not expected to be thread-safe.</b></div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>position</code> - position to start reading from, known to have been committed</dd>
+<dd><code>follow</code> - pass true to obtain an active reader, even if local member is the leader</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>reader or possibly null when follow is false</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if position is lower than the start position, or if
+ position is higher than the commit position</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="newWriter()">newWriter</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></span>&nbsp;<span class="memberName">newWriter</span>()</div>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader. The writer stops accepting messages when the term has ended,
+ and possibly another leader has been elected.
+
+ <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
+<dl>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>writer or null if not the leader</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="newWriter(long)">newWriter</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></span>&nbsp;<span class="memberName">newWriter</span>&#8203;(<span class="arguments">long&nbsp;position)</span></div>
+<div class="block">Returns a new writer for the leader to write into, or else returns null if the local
+ member isn't the leader. The writer stops accepting messages when the term has ended,
+ and possibly another leader has been elected.
+
+ <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>position</code> - expected position to start writing from as leader; method returns null
+ if the given position is lower</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>writer or null if not the leader</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the given position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="syncCommit(long,long)">syncCommit</a></h3>
+<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">syncCommit</span>&#8203;(<span class="arguments">long&nbsp;position,
+long&nbsp;nanosTimeout)</span>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Returns immediately if all data up to the given committed position is durable, or else
+ durably persists all data up to the highest position.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>position</code> - committed position required to be durable</dd>
+<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
+<dt><span class="returnLabel">Returns:</span></dt>
+<dd>false if timed out</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if position is too high</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="compact(long)">compact</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">compact</span>&#8203;(<span class="arguments">long&nbsp;position)</span>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>position</code> - lowest position which must be retained</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="localMemberId()">localMemberId</a></h3>
@@ -301,7 +598,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <div>
 <ul class="subNavList">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>

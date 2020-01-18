@@ -95,7 +95,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code>, <code><a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code>, <code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></dd>
 </dl>
 <dl>
 <dt>Enclosing interface:</dt>
@@ -103,7 +103,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <hr>
 <pre>public static interface <span class="typeNameLabel">MessageReplicator.Writer</span>
-extends <a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></pre>
+extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></pre>
 <div class="block">Interface called by the group leader for proposing messages. When consensus has been
  reached, the messages are committed and become available for all members to read.</div>
 <dl>
@@ -162,15 +162,15 @@ boolean&nbsp;finished)</code></th>
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></h3>
-<a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Accessor">
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></h3>
+<a id="methods.inherited.from.class.org.cojen.tupl.repl.Replicator.Accessor">
 <!--   -->
-</a><code><a href="DirectReplicator.Accessor.html#close()">close</a>, <a href="DirectReplicator.Accessor.html#commitPosition()">commitPosition</a>, <a href="DirectReplicator.Accessor.html#position()">position</a>, <a href="DirectReplicator.Accessor.html#term()">term</a>, <a href="DirectReplicator.Accessor.html#termEndPosition()">termEndPosition</a>, <a href="DirectReplicator.Accessor.html#termStartPosition()">termStartPosition</a>, <a href="DirectReplicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a>, <a href="DirectReplicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></code></div>
+</a><code><a href="Replicator.Accessor.html#close()">close</a>, <a href="Replicator.Accessor.html#commitPosition()">commitPosition</a>, <a href="Replicator.Accessor.html#position()">position</a>, <a href="Replicator.Accessor.html#term()">term</a>, <a href="Replicator.Accessor.html#termEndPosition()">termEndPosition</a>, <a href="Replicator.Accessor.html#termStartPosition()">termStartPosition</a>, <a href="Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a>, <a href="Replicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></code></div>
 <div class="inheritedList">
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.Writer.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Writer</a></h3>
-<a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator.Writer">
+<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></h3>
+<a id="methods.inherited.from.class.org.cojen.tupl.repl.Replicator.Writer">
 <!--   -->
-</a><code><a href="DirectReplicator.Writer.html#waitForCommit(long,long)">waitForCommit</a>, <a href="DirectReplicator.Writer.html#waitForEndCommit(long)">waitForEndCommit</a></code></div>
+</a><code><a href="Replicator.Writer.html#waitForCommit(long,long)">waitForCommit</a>, <a href="Replicator.Writer.html#waitForEndCommit(long)">waitForEndCommit</a></code></div>
 </section>
 </li>
 </ul>

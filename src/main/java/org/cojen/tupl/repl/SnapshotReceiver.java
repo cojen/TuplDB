@@ -31,7 +31,7 @@ import java.util.Map;
  * member which has the complete database.
  *
  * @author Brian S O'Neill
- * @see DirectReplicator#requestSnapshot DirectReplicator.requestSnapshot
+ * @see Replicator#requestSnapshot Replicator.requestSnapshot
  * @see SnapshotSender
  */
 public interface SnapshotReceiver extends Closeable {

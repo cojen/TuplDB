@@ -90,6 +90,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Support for database extensions.</div>
 </td>
 </tr>
+<tr class="altColor">
+<th class="colFirst" scope="row"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></th>
+<td class="colLast">
+<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
+ intended for supporting fully replicated <a href="../Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
+</td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -244,6 +251,32 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Called when the database is created, in an attempt to retrieve an existing database
  snapshot from a replication peer.</div>
 </td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail"><a id="org.cojen.tupl.repl">
+<!--   -->
+</a>
+<h2>Uses of <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a> in <a href="../repl/package-summary.html">org.cojen.tupl.repl</a></h2>
+<div class="useSummary">
+<table>
+<caption><span>Methods in <a href="../repl/package-summary.html">org.cojen.tupl.repl</a> with parameters of type <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span><span class="tabEnd">&nbsp;</span></caption>
+<thead>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Method</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseReplicator.</span><code><span class="memberNameLink"><a href="../repl/DatabaseReplicator.html#restoreRequest(org.cojen.tupl.EventListener)">restoreRequest</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></th>
+<td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
 </table>

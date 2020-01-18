@@ -95,11 +95,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code>, <code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">MessageReplicator</span>
-extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></pre>
+extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></pre>
 <div class="block">Message-oriented replication interface, which is a bit easier to use than <a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a>. Although this replicator has slightly higher overhead, control message
  passing is handled automatically. Replicas are still required to be reading in order for
  control messages to be processed, however.</div>
@@ -145,10 +145,10 @@ extends <a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl"
 </table>
 </div>
 <div class="inheritedList">
-<h2>Nested classes/interfaces inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h2>
-<a id="nested.classes.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
+<h2>Nested classes/interfaces inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></h2>
+<a id="nested.classes.inherited.from.class.org.cojen.tupl.repl.Replicator">
 <!--   -->
-</a><code><a href="DirectReplicator.Accessor.html" title="interface in org.cojen.tupl.repl">DirectReplicator.Accessor</a></code></div>
+</a><code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code></div>
 </section>
 </li>
 <!-- ========== METHOD SUMMARY =========== -->
@@ -210,15 +210,10 @@ boolean&nbsp;follow)</code></th>
 <!--   -->
 </a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code></div>
 <div class="inheritedList">
-<h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></h3>
-<a id="methods.inherited.from.class.org.cojen.tupl.repl.DirectReplicator">
-<!--   -->
-</a><code><a href="DirectReplicator.html#compact(long)">compact</a>, <a href="DirectReplicator.html#isReadable(long)">isReadable</a>, <a href="DirectReplicator.html#requestSnapshot(java.util.Map)">requestSnapshot</a>, <a href="DirectReplicator.html#restore(java.util.Map)">restore</a>, <a href="DirectReplicator.html#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a>, <a href="DirectReplicator.html#start()">start</a>, <a href="DirectReplicator.html#syncCommit(long,long)">syncCommit</a></code></div>
-<div class="inheritedList">
 <h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.repl.Replicator">
 <!--   -->
-</a><code><a href="Replicator.html#connect(java.net.SocketAddress)">connect</a>, <a href="Replicator.html#failover()">failover</a>, <a href="Replicator.html#localAddress()">localAddress</a>, <a href="Replicator.html#localMemberId()">localMemberId</a>, <a href="Replicator.html#localRole()">localRole</a>, <a href="Replicator.html#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a>, <a href="Replicator.html#sync()">sync</a></code></div>
+</a><code><a href="Replicator.html#compact(long)">compact</a>, <a href="Replicator.html#connect(java.net.SocketAddress)">connect</a>, <a href="Replicator.html#failover()">failover</a>, <a href="Replicator.html#isReadable(long)">isReadable</a>, <a href="Replicator.html#localAddress()">localAddress</a>, <a href="Replicator.html#localMemberId()">localMemberId</a>, <a href="Replicator.html#localRole()">localRole</a>, <a href="Replicator.html#requestSnapshot(java.util.Map)">requestSnapshot</a>, <a href="Replicator.html#restore(java.util.Map)">restore</a>, <a href="Replicator.html#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a>, <a href="Replicator.html#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a>, <a href="Replicator.html#start()">start</a>, <a href="Replicator.html#sync()">sync</a>, <a href="Replicator.html#syncCommit(long,long)">syncCommit</a></code></div>
 </section>
 </li>
 </ul>
@@ -261,7 +256,7 @@ boolean&nbsp;follow)</span></div>
  <p><b>Note: Reader instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="DirectReplicator.html#newReader(long,boolean)">newReader</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="Replicator.html#newReader(long,boolean)">newReader</a></code>&nbsp;in interface&nbsp;<code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - position to start reading from, known to have been committed</dd>
 <dd><code>follow</code> - pass true to obtain an active reader, even if local member is the leader</dd>
@@ -283,7 +278,7 @@ boolean&nbsp;follow)</span></div>
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="DirectReplicator.html#newWriter()">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="Replicator.html#newWriter()">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
@@ -302,7 +297,7 @@ boolean&nbsp;follow)</span></div>
  <p><b>Note: Writer instances are not expected to be thread-safe.</b></div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="DirectReplicator.html#newWriter(long)">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="DirectReplicator.html" title="interface in org.cojen.tupl.repl">DirectReplicator</a></code></dd>
+<dd><code><a href="Replicator.html#newWriter(long)">newWriter</a></code>&nbsp;in interface&nbsp;<code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - expected position to start writing from as leader; method returns null
  if the given position is lower</dd>

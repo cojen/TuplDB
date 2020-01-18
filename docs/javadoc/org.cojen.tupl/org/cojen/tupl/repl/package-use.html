@@ -138,32 +138,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/DatabaseReplicator.html#org.cojen.tupl.repl">DatabaseReplicator</a></th>
 <td class="colLast">
-<div class="block">Implementation of a <a href="../ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> for supporting full <a href="../Database.html" title="interface in org.cojen.tupl">database</a> replication.</div>
-</td>
-</tr>
-<tr class="rowColor">
-<th class="colFirst" scope="row"><a href="class-use/DirectReplicator.html#org.cojen.tupl.repl">DirectReplicator</a></th>
-<td class="colLast">
-<div class="block">Replicator interface for applications which directly control the replication data, and are
- also responsible for processing snapshots.</div>
-</td>
-</tr>
-<tr class="altColor">
-<th class="colFirst" scope="row"><a href="class-use/DirectReplicator.Accessor.html#org.cojen.tupl.repl">DirectReplicator.Accessor</a></th>
-<td class="colLast">
-<div class="block">Direct interface for accessing replication data, for a given term.</div>
-</td>
-</tr>
-<tr class="rowColor">
-<th class="colFirst" scope="row"><a href="class-use/DirectReplicator.Reader.html#org.cojen.tupl.repl">DirectReplicator.Reader</a></th>
-<td class="colLast">
-<div class="block">Direct interface for reading from a replicator, for a given term.</div>
-</td>
-</tr>
-<tr class="altColor">
-<th class="colFirst" scope="row"><a href="class-use/DirectReplicator.Writer.html#org.cojen.tupl.repl">DirectReplicator.Writer</a></th>
-<td class="colLast">
-<div class="block">Direct interface for writing to a replicator, for a given term.</div>
+<div class="block">ReplicationManager implementation backed by a StreamReplicator.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -191,44 +166,62 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </td>
 </tr>
 <tr class="rowColor">
+<th class="colFirst" scope="row"><a href="class-use/Replicator.Accessor.html#org.cojen.tupl.repl">Replicator.Accessor</a></th>
+<td class="colLast">
+<div class="block">Direct interface for accessing replication data, for a given term.</div>
+</td>
+</tr>
+<tr class="altColor">
+<th class="colFirst" scope="row"><a href="class-use/Replicator.Reader.html#org.cojen.tupl.repl">Replicator.Reader</a></th>
+<td class="colLast">
+<div class="block">Direct interface for reading from a replicator, for a given term.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<th class="colFirst" scope="row"><a href="class-use/Replicator.Writer.html#org.cojen.tupl.repl">Replicator.Writer</a></th>
+<td class="colLast">
+<div class="block">Direct interface for writing to a replicator, for a given term.</div>
+</td>
+</tr>
+<tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/ReplicatorConfig.html#org.cojen.tupl.repl">ReplicatorConfig</a></th>
 <td class="colLast">
 <div class="block">Configuration options used when opening a replicator.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><a href="class-use/Role.html#org.cojen.tupl.repl">Role</a></th>
 <td class="colLast">
 <div class="block">Supported membership roles.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/SnapshotReceiver.html#org.cojen.tupl.repl">SnapshotReceiver</a></th>
 <td class="colLast">
 <div class="block">Receiver-side object for controlling the transmission of a database snapshot to a new group
  member.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><a href="class-use/SnapshotSender.html#org.cojen.tupl.repl">SnapshotSender</a></th>
 <td class="colLast">
 <div class="block">Sender-side object for controlling the transmission of a database snapshot to a new group
  member.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/StreamReplicator.html#org.cojen.tupl.repl">StreamReplicator</a></th>
 <td class="colLast">
 <div class="block">Low-level replication interface, which receives messages in a non-delineated stream.</div>
 </td>
 </tr>
-<tr class="altColor">
+<tr class="rowColor">
 <th class="colFirst" scope="row"><a href="class-use/StreamReplicator.Reader.html#org.cojen.tupl.repl">StreamReplicator.Reader</a></th>
 <td class="colLast">
 <div class="block">Interface called by any group member for reading committed messages.</div>
 </td>
 </tr>
-<tr class="rowColor">
+<tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/StreamReplicator.Writer.html#org.cojen.tupl.repl">StreamReplicator.Writer</a></th>
 <td class="colLast">
 <div class="block">Interface called by the group leader for proposing messages.</div>
