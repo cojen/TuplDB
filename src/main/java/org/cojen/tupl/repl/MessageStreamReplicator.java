@@ -298,6 +298,11 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
+            return mSource.waitForCommit(position, nanosTimeout);
+        }
+
+        @Override
         public void uponCommit(long position, LongConsumer task) {
             mSource.uponCommit(position, task);
         }

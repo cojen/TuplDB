@@ -19,13 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":18};
-var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
-var altColor = "altColor";
-var rowColor = "rowColor";
-var tableTab = "tableTab";
-var activeTableTab = "activeTableTab";
-var pathtoroot = "../../../../../";
+<script type="text/javascript">var pathtoroot = "../../../../../";
 loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
@@ -64,7 +58,7 @@ loadScripts(document, 'script');</script>
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
-<li><a href="#method.detail">Method</a></li>
+<li>Method</li>
 </ul>
 </div>
 <div class="navListSearch"><label for="search">SEARCH:</label>
@@ -118,91 +112,11 @@ extends <a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.re
 <!--   -->
 </a>
 <h2>Method Summary</h2>
-<div class="memberSummary">
-<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
-<div id="memberSummary_tabpanel" role="tabpanel">
-<table aria-labelledby="t0">
-<thead>
-<tr>
-<th class="colFirst" scope="col">Modifier and Type</th>
-<th class="colSecond" scope="col">Method</th>
-<th class="colLast" scope="col">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="altColor" id="i0">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#waitForCommit(long,long)">waitForCommit</a></span>&#8203;(long&nbsp;position,
-long&nbsp;nanosTimeout)</code></th>
-<td class="colLast">
-<div class="block">Blocks until the commit position reaches the given position.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i1">
-<td class="colFirst"><code>default long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#waitForEndCommit(long)">waitForEndCommit</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
-<td class="colLast">
-<div class="block">Blocks until the commit position reaches the end of the term.</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
 <div class="inheritedList">
 <h3>Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.repl.Replicator.Accessor">
 <!--   -->
-</a><code><a href="Replicator.Accessor.html#close()">close</a>, <a href="Replicator.Accessor.html#commitPosition()">commitPosition</a>, <a href="Replicator.Accessor.html#position()">position</a>, <a href="Replicator.Accessor.html#term()">term</a>, <a href="Replicator.Accessor.html#termEndPosition()">termEndPosition</a>, <a href="Replicator.Accessor.html#termStartPosition()">termStartPosition</a>, <a href="Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a>, <a href="Replicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></code></div>
-</section>
-</li>
-</ul>
-</section>
-<section class="details">
-<ul class="blockList">
-<!-- ============ METHOD DETAIL ========== -->
-<li class="blockList">
-<section class="methodDetails"><a id="method.detail">
-<!--   -->
-</a>
-<h2>Method Details</h2>
-<ul class="blockList">
-<li class="blockList">
-<section class="detail">
-<h3><a id="waitForCommit(long,long)">waitForCommit</a></h3>
-<div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">waitForCommit</span>&#8203;(<span class="arguments">long&nbsp;position,
-long&nbsp;nanosTimeout)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
-<div class="block">Blocks until the commit position reaches the given position.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>current commit position, or -1 if deactivated before the position could be
- reached, or -2 if timed out</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="waitForEndCommit(long)">waitForEndCommit</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">waitForEndCommit</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
-<div class="block">Blocks until the commit position reaches the end of the term.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
-<dd>current commit position, or -1 if closed before the position could be
- reached, or -2 if timed out</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
-</dl>
-</section>
-</li>
-</ul>
+</a><code><a href="Replicator.Accessor.html#close()">close</a>, <a href="Replicator.Accessor.html#commitPosition()">commitPosition</a>, <a href="Replicator.Accessor.html#position()">position</a>, <a href="Replicator.Accessor.html#term()">term</a>, <a href="Replicator.Accessor.html#termEndPosition()">termEndPosition</a>, <a href="Replicator.Accessor.html#termStartPosition()">termStartPosition</a>, <a href="Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a>, <a href="Replicator.Accessor.html#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a>, <a href="Replicator.Accessor.html#waitForCommit(long,long)">waitForCommit</a>, <a href="Replicator.Accessor.html#waitForEndCommit(long)">waitForEndCommit</a></code></div>
 </section>
 </li>
 </ul>
@@ -243,7 +157,7 @@ long&nbsp;nanosTimeout)</span>
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
-<li><a href="#method.detail">Method</a></li>
+<li>Method</li>
 </ul>
 </div>
 </div>

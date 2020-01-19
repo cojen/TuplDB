@@ -251,21 +251,6 @@ public interface Replicator extends Closeable {
             });
         }
 
-        @Override
-        void close();
-    }
-
-    /**
-     * Direct interface for reading from a replicator, for a given term.
-     */
-    public static interface Reader extends Accessor {
-        // This interface is intentionally empty, as a placeholder.
-    }
-
-    /**
-     * Direct interface for writing to a replicator, for a given term.
-     */
-    public static interface Writer extends Accessor {
         /**
          * Blocks until the commit position reaches the given position.
          *
@@ -308,5 +293,22 @@ public interface Replicator extends Closeable {
                 }
             }
         }
+
+        @Override
+        void close();
+    }
+
+    /**
+     * Direct interface for reading from a replicator, for a given term.
+     */
+    public static interface Reader extends Accessor {
+        // This interface is intentionally empty, as a placeholder.
+    }
+
+    /**
+     * Direct interface for writing to a replicator, for a given term.
+     */
+    public static interface Writer extends Accessor {
+        // This interface is intentionally empty, as a placeholder.
     }
 }

@@ -1545,7 +1545,7 @@ final class FileTermLog extends Latch implements TermLog {
                 if (length == 0) {
                     return 0;
                 }
-                commitPosition = waitForCommit(position + 1, -1, this);
+                commitPosition = waitForCommit(position + 1, -1);
                 if (commitPosition < 0) {
                     if (mReaderClosed) {
                         throw new IOException("Closed");
@@ -1711,6 +1711,11 @@ final class FileTermLog extends Latch implements TermLog {
                 throw new IOException("Closed");
             }
             return FileTermLog.this.segmentForReading(position);
+        }
+
+        @Override
+        public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
+            return FileTermLog.this.waitForCommit(position, nanosTimeout, this);
         }
 
         @Override
