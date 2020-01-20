@@ -452,6 +452,13 @@ public final class DatabaseReplicator implements ReplicationManager {
     }
 
     /**
+     * Don't close the ServerSocket when closing this Replicator.
+     */
+    void keepServerSocket() {
+        ((Controller) mRepl).keepServerSocket();
+    }
+
+    /**
      * Enable or disable partitioned mode, which simulates a network partition. New connections
      * are rejected and existing connections are closed.
      */

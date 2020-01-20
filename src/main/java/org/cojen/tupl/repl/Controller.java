@@ -355,6 +355,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return arrays;
     }
 
+    /**
+     * Don't close the ServerSocket when closing this Replicator.
+     */
+    void keepServerSocket() {
+        mChanMan.keepServerSocket();
+    }
+
     @Override
     public void start() throws IOException {
         start(null);

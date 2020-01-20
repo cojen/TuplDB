@@ -81,12 +81,17 @@ public class DatabaseReplicatorTest {
             }
         }
 
+        if (mSockets != null) {
+            for (ServerSocket ss : mSockets) {
+                Utils.closeQuietly(ss);
+            }
+        }
+
         TestUtils.deleteTempFiles(getClass());
     }
 
     private ServerSocket[] mSockets;
     private File[] mReplBaseFiles;
-    private int[] mReplPorts;
     private ReplicatorConfig[] mReplConfigs;
     private DatabaseReplicator[] mReplicators;
     private DatabaseConfig[] mDbConfigs;
@@ -117,7 +122,6 @@ public class DatabaseReplicatorTest {
         }
 
         mReplBaseFiles = new File[members];
-        mReplPorts = new int[members];
         mReplConfigs = new ReplicatorConfig[members];
         mReplicators = new DatabaseReplicator[members];
         mDbConfigs = new DatabaseConfig[members];
@@ -125,7 +129,6 @@ public class DatabaseReplicatorTest {
 
         for (int i=0; i<members; i++) {
             mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
-            mReplPorts[i] = mSockets[i].getLocalPort();
 
             EventListener listener = false ? new EventPrinter() : null;
 
@@ -146,6 +149,8 @@ public class DatabaseReplicatorTest {
             }
 
             mReplicators[i] = DatabaseReplicator.open(mReplConfigs[i]);
+
+            mReplicators[i].keepServerSocket();
 
             mDbConfigs[i] = new DatabaseConfig()
                 .baseFile(mReplBaseFiles[i])
@@ -987,13 +992,6 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
     private Database closeAndReopen(int member) throws Exception {
         mDatabases[member].close();
 
-        // Replace closed socket.
-        SocketAddress addr = mSockets[member].getLocalSocketAddress();
-        var ss = new ServerSocket();
-        ss.setReuseAddress(true);
-        ss.bind(addr);
-
-        mReplConfigs[member].localSocket(ss);
         mReplicators[member] = DatabaseReplicator.open(mReplConfigs[member]);
         mDbConfigs[member].replicate(mReplicators[member]);
 

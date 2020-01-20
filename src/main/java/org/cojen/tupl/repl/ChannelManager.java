@@ -125,6 +125,7 @@ final class ChannelManager {
     private long mGroupId;
     private long mLocalMemberId;
     private ServerSocket mServerSocket;
+    private boolean mKeepServerSocket;
 
     private Channel mLocalServer;
 
@@ -186,6 +187,13 @@ final class ChannelManager {
         }
         mLocalMemberId = localMemberId;
         mServerSocket = ss;
+    }
+
+    /**
+     * Don't close the ServerSocket when closing this ChannelManager.
+     */
+    synchronized void keepServerSocket() {
+        mKeepServerSocket = true;
     }
 
     long getGroupToken() {
@@ -258,12 +266,15 @@ final class ChannelManager {
      * Stop accepting incoming channels, close all existing channels, and disconnect all remote
      * members.
      */
-    synchronized boolean stop() {
+    synchronized void stop() {
         if (mServerSocket == null) {
-            return false;
+            return;
         }
 
-        closeQuietly(mServerSocket);
+        if (!mKeepServerSocket) {
+            closeQuietly(mServerSocket);
+        }
+
         mServerSocket = null;
 
         mLocalServer = null;
@@ -273,8 +284,6 @@ final class ChannelManager {
         }
 
         mChannels.clear();
-
-        return true;
     }
 
     synchronized boolean isStopped() {
