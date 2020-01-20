@@ -53,6 +53,7 @@ import org.cojen.tupl.io.PageArray;
 
 import org.cojen.tupl.repl.DatabaseReplicator;
 import org.cojen.tupl.repl.ReplicatorConfig;
+import org.cojen.tupl.repl.StreamReplicator;
 
 import static org.cojen.tupl.core.Utils.*;
 
@@ -244,8 +245,8 @@ public final class Launcher implements Cloneable {
         mReplManager = null;
     }
 
-    public void replicate(ReplicationManager manager) {
-        mReplManager = manager;
+    public void replicate(StreamReplicator repl) {
+        mReplManager = repl == null ? null : new DatabaseReplicator(repl);
         mReplConfig = null;
     }
 

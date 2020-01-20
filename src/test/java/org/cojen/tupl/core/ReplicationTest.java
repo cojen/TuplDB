@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
@@ -52,8 +53,8 @@ public class ReplicationTest {
 
     @Before
     public void createTempDbs() throws Exception {
-        mReplicaMan = new SocketReplicationManager(null, 0);
-        mLeaderMan = new SocketReplicationManager("localhost", mReplicaMan.getPort());
+        mReplicaRepl = new SocketReplicator(null, 0);
+        mLeaderRepl = new SocketReplicator("localhost", mReplicaRepl.getPort());
 
         mReplicaHandler = new Handler();
         mLeaderHandler = new Handler();
@@ -63,18 +64,22 @@ public class ReplicationTest {
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .customHandlers(Map.of("TestHandler", mLeaderHandler))
             .prepareHandlers(Map.of("TestHandler", mLeaderHandler))
-            .replicate(mLeaderMan);
+            .directPageAccess(false)
+            .replicate(mLeaderRepl);
 
         config = decorate(config);
 
         mLeader = newTempDatabase(getClass(), config);
 
+        var latch = new CountDownLatch(1);
+        mLeader.uponLeader(() -> latch.countDown());
+        assertTrue(latch.await(10, TimeUnit.SECONDS));
+
         config.customHandlers(Map.of("TestHandler", mReplicaHandler));
         config.prepareHandlers(Map.of("TestHandler", mReplicaHandler));
-        config.replicate(mReplicaMan);
+        config.replicate(mReplicaRepl);
         mReplica = newTempDatabase(getClass(), config);
 
-        mLeaderMan.waitForLeadership();
         mLeaderWriter = mLeader.customHandler("TestHandler");
         mLeaderWriter2 = mLeader.prepareHandler("TestHandler");
     }
@@ -82,13 +87,13 @@ public class ReplicationTest {
     @After
     public void teardown() throws Exception {
         deleteTempDatabases(getClass());
-        mReplicaMan = null;
-        mLeaderMan = null;
+        mReplicaRepl = null;
+        mLeaderRepl = null;
         mReplica = null;
         mLeader = null;
     }
 
-    private SocketReplicationManager mReplicaMan, mLeaderMan;
+    private SocketReplicator mReplicaRepl, mLeaderRepl;
     private Database mReplica, mLeader;
     private Handler mReplicaHandler, mLeaderHandler;
     private CustomHandler mLeaderWriter;
@@ -160,7 +165,7 @@ public class ReplicationTest {
         lix.load(txn, "k1".getBytes()); // upgradable lock
         txn.lockMode(LockMode.REPEATABLE_READ);
         lix.load(txn, "k2".getBytes()); // read lock
-        mLeaderMan.suspendConfirmation(true);
+        mLeaderRepl.suspendCommit(true);
         txn.commit();
 
         // Can obtain exclusive locks only for the unmodified keys.
@@ -175,7 +180,7 @@ public class ReplicationTest {
         txn2.lockExclusive(lix.id(), "k2".getBytes());
         txn2.exit();
 
-        mLeaderMan.suspendConfirmation(false);
+        mLeaderRepl.suspendCommit(false);
         fence();
         Index rix = mReplica.openIndex("test");
 
@@ -859,7 +864,7 @@ public class ReplicationTest {
 
         lix.store(null, "k1".getBytes(), "v1".getBytes());
         fence();
-        mLeaderMan.disableWrites();
+        mLeaderRepl.disableWrites();
         lix.store(null, "k2".getBytes(), "v2".getBytes());
 
         fastAssertArrayEquals("v1".getBytes(), lix.load(null, "k1".getBytes()));
@@ -881,7 +886,7 @@ public class ReplicationTest {
         c.commit("v1".getBytes());
 
         fence();
-        mLeaderMan.disableWrites();
+        mLeaderRepl.disableWrites();
 
         c = lix.newCursor(ltxn);
         c.find("k2".getBytes());
@@ -1162,7 +1167,7 @@ public class ReplicationTest {
 
         fence();
 
-        mLeaderMan.disableWrites();
+        mLeaderRepl.disableWrites();
 
         // Force early internal detection of unmodifiable state. No exception is thrown because
         // of NO_FLUSH mode.
@@ -1273,7 +1278,7 @@ public class ReplicationTest {
         mLeaderWriter2.prepare(txn, null);
         fence();
 
-        mLeaderMan.disableWrites();
+        mLeaderRepl.disableWrites();
 
         try {
             txn.exit();
@@ -1311,8 +1316,8 @@ public class ReplicationTest {
      */
     private void fence() throws IOException, InterruptedException {
         byte[] message = ("fence:" + System.nanoTime()).getBytes();
-        long pos = mLeaderMan.writeControl(message);
-        mReplicaMan.waitForControl(pos, message);
+        mLeaderRepl.writeControl(message);
+        mReplicaRepl.waitForControl(message);
     }
 
     private static class Handler implements CustomHandler, PrepareHandler {

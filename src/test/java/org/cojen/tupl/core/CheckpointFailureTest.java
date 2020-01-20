@@ -128,13 +128,13 @@ public class CheckpointFailureTest {
             .directPageAccess(false)
             .checkpointRate(-1, null);
 
-        var replMan = new NonReplicationManager();
-        config.replicate(replMan);
+        var repl = new NonReplicator();
+        config.replicate(repl);
 
         mDb = newTempDatabase(getClass(), config);
 
         // open index
-        replMan.asLeader();
+        repl.asLeader();
         Thread.yield();
         Index ix = null;
         for (int i=0; i<100; i++) {
@@ -168,15 +168,15 @@ public class CheckpointFailureTest {
         ix.store(txn3, keys[3], keys[3]);
         txn3.flush();
 
-        final long pos = replMan.writer().position();
+        final long pos = repl.position();
 
         ix.store(txn2, keys[2], keys[2]);
 
         var exRef = new AtomicReference<Throwable>();
 
         var committer = new Thread(() -> {
-            // Confirm at a lower position.
-            replMan.suspendConfirmation(Thread.currentThread(), pos);
+            // Commit replication at a lower position.
+            repl.suspendCommit(Thread.currentThread(), pos);
 
             try {
                 txn2.commit();
@@ -199,7 +199,8 @@ public class CheckpointFailureTest {
 
         startAndWaitUntilBlocked(checkpointer);
 
-        replMan.toReplica(pos);
+        repl.asReplica();
+        repl.setPosition(pos);
 
         committer.join();
         checkpointer.join();
@@ -217,8 +218,8 @@ public class CheckpointFailureTest {
 
         // Close and re-open to verify that txn 1 committed and txn 2 rolled back.
 
-        var replMan2 = new NonReplicationManager();
-        config.replicate(replMan2);
+        var repl2 = new NonReplicator();
+        config.replicate(repl2);
         mDb = reopenTempDatabase(getClass(), mDb, config);
 
         ix = mDb.openIndex("test");
@@ -244,13 +245,13 @@ public class CheckpointFailureTest {
             .directPageAccess(false)
             .checkpointRate(-1, null);
 
-        var replMan = new NonReplicationManager();
-        config.replicate(replMan);
+        var repl = new NonReplicator();
+        config.replicate(repl);
 
         mDb = newTempDatabase(getClass(), config);
 
         // open index
-        replMan.asLeader();
+        repl.asLeader();
         Thread.yield();
         Index ix = null;
         for (int i=0; i<100; i++) {
@@ -288,7 +289,7 @@ public class CheckpointFailureTest {
                 txn.commit();
                 txn.flush();
             } else if (i == mid) {
-                pos = replMan.writer().position();
+                pos = repl.position();
             }
         }
 
@@ -304,8 +305,8 @@ public class CheckpointFailureTest {
 
             @Override
             public void run() {
-                // Confirm at a lower position.
-                replMan.suspendConfirmation(this, fpos);
+                // Commit replication at a lower position.
+                repl.suspendCommit(this, fpos);
 
                 try {
                     txn.commit();
@@ -336,7 +337,8 @@ public class CheckpointFailureTest {
 
         startAndWaitUntilBlocked(checkpointer);
 
-        replMan.toReplica(pos);
+        repl.asReplica();
+        repl.setPosition(pos);
 
         for (Thread c : committers) {
             c.join();
@@ -370,8 +372,8 @@ public class CheckpointFailureTest {
 
         // Close and re-open to verify the same commits and rollbacks.
 
-        var replMan2 = new NonReplicationManager();
-        config.replicate(replMan2);
+        var repl2 = new NonReplicator();
+        config.replicate(repl2);
         config.lockTimeout(1, TimeUnit.MILLISECONDS);
         mDb = reopenTempDatabase(getClass(), mDb, config);
 

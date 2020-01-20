@@ -35,7 +35,7 @@ import org.cojen.tupl.UnmodifiableReplicaException;
  * durability will not pass through the replication manager.
  *
  * @author Brian S O'Neill
- * @see DatabaseConfig#replicate
+ * @hidden
  */
 public interface ReplicationManager extends Closeable {
     /**

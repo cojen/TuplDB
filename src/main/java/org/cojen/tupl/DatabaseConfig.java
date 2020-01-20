@@ -29,7 +29,6 @@ import org.cojen.tupl.core.Launcher;
 
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
-import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.MappedPageArray;
@@ -38,6 +37,7 @@ import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.StripedPageArray;
 
 import org.cojen.tupl.repl.ReplicatorConfig;
+import org.cojen.tupl.repl.StreamReplicator;
 
 /**
  * Configuration options used when {@linkplain Database#open opening} a database.
@@ -341,10 +341,10 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
-     * Enable replication with an explicit {@link ReplicationManager} instance.
+     * Enable replication with an explicit {@link StreamReplicator} instance.
      */
-    public DatabaseConfig replicate(ReplicationManager manager) {
-        mLauncher.replicate(manager);
+    public DatabaseConfig replicate(StreamReplicator repl) {
+        mLauncher.replicate(repl);
         return this;
     }
 
@@ -364,7 +364,7 @@ public class DatabaseConfig implements Cloneable {
     /**
      * Enable full encryption of the data files, transaction logs, snapshots, and cache priming
      * sets. Option has no effect if database is non-durable. If replication is enabled,
-     * encryption is not applied to the replication stream. A {@link ReplicationManager}
+     * encryption is not applied to the replication stream. A {@link StreamReplicator}
      * implementation must perform its own encryption.
      *
      * <p>Allocated but never used pages within the data files are unencrypted, although they

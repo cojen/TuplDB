@@ -79,6 +79,12 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </thead>
 <tbody>
 <tr class="altColor">
+<th class="colFirst" scope="row"><a href="#org.cojen.tupl">org.cojen.tupl</a></th>
+<td class="colLast">
+<div class="block">See <a href="../../Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
+</td>
+</tr>
+<tr class="rowColor">
 <th class="colFirst" scope="row"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></th>
 <td class="colLast">
 <div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
@@ -90,6 +96,34 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </div>
 <section class="classUses">
 <ul class="blockList">
+<li class="blockList">
+<section class="detail"><a id="org.cojen.tupl">
+<!--   -->
+</a>
+<h2>Uses of <a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a> in <a href="../../package-summary.html">org.cojen.tupl</a></h2>
+<div class="useSummary">
+<table>
+<caption><span>Methods in <a href="../../package-summary.html">org.cojen.tupl</a> with parameters of type <a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></span><span class="tabEnd">&nbsp;</span></caption>
+<thead>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Method</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code><a href="../../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../DatabaseConfig.html#replicate(org.cojen.tupl.repl.StreamReplicator)">replicate</a></span>&#8203;(<a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></th>
+<td class="colLast">
+<div class="block">Enable replication with an explicit <a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</li>
 <li class="blockList">
 <section class="detail"><a id="org.cojen.tupl.repl">
 <!--   -->
@@ -112,6 +146,23 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <td class="colLast">
 <div class="block">Open a StreamReplicator instance, creating it if necessary.</div>
 </td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="useSummary">
+<table>
+<caption><span>Constructors in <a href="../package-summary.html">org.cojen.tupl.repl</a> with parameters of type <a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></span><span class="tabEnd">&nbsp;</span></caption>
+<thead>
+<tr>
+<th class="colFirst" scope="col">Constructor</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor">
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../DatabaseReplicator.html#%3Cinit%3E(org.cojen.tupl.repl.StreamReplicator)">DatabaseReplicator</a></span>&#8203;(<a href="../StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></th>
+<td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
 </table>

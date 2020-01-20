@@ -93,7 +93,7 @@ public class DatabaseReplicatorTest {
     private ServerSocket[] mSockets;
     private File[] mReplBaseFiles;
     private ReplicatorConfig[] mReplConfigs;
-    private DatabaseReplicator[] mReplicators;
+    private StreamReplicator[] mReplicators;
     private DatabaseConfig[] mDbConfigs;
     private Database[] mDatabases;
 
@@ -123,7 +123,7 @@ public class DatabaseReplicatorTest {
 
         mReplBaseFiles = new File[members];
         mReplConfigs = new ReplicatorConfig[members];
-        mReplicators = new DatabaseReplicator[members];
+        mReplicators = new StreamReplicator[members];
         mDbConfigs = new DatabaseConfig[members];
         mDatabases = new Database[members];
 
@@ -148,9 +148,9 @@ public class DatabaseReplicatorTest {
                 mReplConfigs[i].localRole(replicaRole);
             }
 
-            mReplicators[i] = DatabaseReplicator.open(mReplConfigs[i]);
+            mReplicators[i] = StreamReplicator.open(mReplConfigs[i]);
 
-            mReplicators[i].keepServerSocket();
+            ((Controller) mReplicators[i]).keepServerSocket();
 
             mDbConfigs[i] = new DatabaseConfig()
                 .baseFile(mReplBaseFiles[i])
@@ -338,7 +338,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
             int count = 0;
             for (int i=0; i<100; i++) {
                 count = 0;
-                for (DatabaseReplicator repl : mReplicators) {
+                for (StreamReplicator repl : mReplicators) {
                     if (repl.localRole() == Role.NORMAL) {
                         count++;
                     }
@@ -992,7 +992,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
     private Database closeAndReopen(int member) throws Exception {
         mDatabases[member].close();
 
-        mReplicators[member] = DatabaseReplicator.open(mReplConfigs[member]);
+        mReplicators[member] = StreamReplicator.open(mReplConfigs[member]);
         mDbConfigs[member].replicate(mReplicators[member]);
 
         return Database.open(mDbConfigs[member]);

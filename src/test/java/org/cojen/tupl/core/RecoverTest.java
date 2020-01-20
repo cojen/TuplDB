@@ -1141,13 +1141,13 @@ public class RecoverTest {
 
         decorate(config);
 
-        // open database with NonReplicationManager
-        var replMan = new NonReplicationManager();
-        config.replicate(replMan);
+        // open database with NonReplicator
+        var repl = new NonReplicator();
+        config.replicate(repl);
         Database db = newTempDatabase(getClass(), config);
 
         // open index
-        replMan.asLeader();
+        repl.asLeader();
         Thread.yield();
         Index ix = null;
         for (int i=0; i<10; i++) {
@@ -1164,7 +1164,7 @@ public class RecoverTest {
         db.checkpoint();
 
         // switch to replica
-        replMan.asReplica();
+        repl.asReplica();
         try {
             ix.store(null, "somekey".getBytes(), "someval".getBytes());
             fail();
@@ -1188,10 +1188,10 @@ public class RecoverTest {
         db.checkpoint();
         db.close();
 
-        // reopen database as replica; use new ReplicationManager as the existing one is closed
-        replMan = new NonReplicationManager();
-        replMan.asReplica();
-        Database db2 = Database.open(config.replicate(replMan));
+        // reopen database as replica; use new replicator as the existing one is closed
+        repl = new NonReplicator();
+        repl.asReplica();
+        Database db2 = Database.open(config.replicate(repl));
 
         // assert no lingering locks exist on the key after recovery
 
@@ -1217,13 +1217,13 @@ public class RecoverTest {
 
         decorate(config);
 
-        // open database with NonReplicationManager
-        var replMan = new NonReplicationManager();
-        config.replicate(replMan);
+        // open database with NonReplicator
+        var repl = new NonReplicator();
+        config.replicate(repl);
         Database db = newTempDatabase(getClass(), config);
 
         // open index
-        replMan.asLeader();
+        repl.asLeader();
         Thread.yield();
         Index ix1 = null;
         for (int i=0; i<10; i++) {
@@ -1268,8 +1268,8 @@ public class RecoverTest {
         Thread t1 = startAndWaitUntilBlocked(new Thread() {
             @Override
             public void run() {
-                // By suspending confirmation, the commit will hang.
-                replMan.suspendConfirmation(Thread.currentThread());
+                // By suspending replication commit, the transaction commit will hang.
+                repl.suspendCommit(Thread.currentThread());
                 try {
                     txn.commit();
                 } catch (Exception e) {
@@ -1281,7 +1281,7 @@ public class RecoverTest {
         // Force UndoLog to persist, and then close with an unfinished transaction.
         db.checkpoint();
         db.close();
-        replMan.suspendConfirmation(null);
+        repl.suspendCommit(null);
 
         t1.join();
 
@@ -1292,10 +1292,10 @@ public class RecoverTest {
         }
 
         // Close and reopen, forcing clean up.
-        var replMan2 = new NonReplicationManager();
-        config.replicate(replMan2);
+        var repl2 = new NonReplicator();
+        config.replicate(repl2);
         db = reopenTempDatabase(getClass(), db, config);
-        replMan2.asLeader();
+        repl2.asLeader();
 
         Index ix3 = null;
         for (int i=0; i<10; i++) {

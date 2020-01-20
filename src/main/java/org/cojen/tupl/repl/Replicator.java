@@ -37,6 +37,13 @@ import java.util.function.LongConsumer;
  */
 public interface Replicator extends Closeable {
     /**
+     * Return a constant non-zero value which identifies the replicator implementation and its
+     * encoding format. Value should be chosen randomly, so as not to collide with other
+     * implementations.
+     */
+    long encoding();
+
+    /**
      * Start accepting replication data, to be called for new or existing members. For newly
      * restored members, the start method must be called to update its role.
      */

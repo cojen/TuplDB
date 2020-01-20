@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -184,37 +184,45 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="altColor" id="i2">
+<td class="colFirst"><code>long</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#encoding()">encoding</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Return a constant non-zero value which identifies the replicator implementation and its
+ encoding format.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#failover()">failover</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to switch the replication role from leader to replica.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadable(long)">isReadable</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
 <div class="block">Returns true if committed data exists at the given position.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localAddress()">localAddress</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localMemberId()">localMemberId</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localRole()">localRole</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the effective local role, as known by the group.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i7">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;position,
 boolean&nbsp;follow)</code></th>
@@ -222,7 +230,7 @@ boolean&nbsp;follow)</code></th>
 <div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter()">newWriter</a></span>()</code></th>
 <td class="colLast">
@@ -230,7 +238,7 @@ boolean&nbsp;follow)</code></th>
  member isn't the leader.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="colLast">
@@ -238,14 +246,14 @@ boolean&nbsp;follow)</code></th>
  member isn't the leader.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requestSnapshot(java.util.Map)">requestSnapshot</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
@@ -253,14 +261,14 @@ boolean&nbsp;follow)</code></th>
  expected to be called only by newly joined members.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
@@ -268,21 +276,21 @@ boolean&nbsp;follow)</code></th>
  group member.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#start()">start</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Start accepting replication data, to be called for new or existing members.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Durably persist all data up to the highest position.</div>
 </td>
 </tr>
-<tr class="altColor" id="i16">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncCommit(long,long)">syncCommit</a></span>&#8203;(long&nbsp;position,
 long&nbsp;nanosTimeout)</code></th>
@@ -313,6 +321,15 @@ long&nbsp;nanosTimeout)</code></th>
 </a>
 <h2>Method Details</h2>
 <ul class="blockList">
+<li class="blockList">
+<section class="detail">
+<h3><a id="encoding()">encoding</a></h3>
+<div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">encoding</span>()</div>
+<div class="block">Return a constant non-zero value which identifies the replicator implementation and its
+ encoding format. Value should be chosen randomly, so as not to collide with other
+ implementations.</div>
+</section>
+</li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="start()">start</a></h3>

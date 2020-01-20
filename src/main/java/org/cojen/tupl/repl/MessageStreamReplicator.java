@@ -57,6 +57,11 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public long encoding() {
+        return mRepl.encoding() ^ 8018534007786742926L;
+    }
+
+    @Override
     public long localMemberId() {
         return mRepl.localMemberId();
     }

@@ -48,7 +48,7 @@ public class ConvertTest {
         Database db = newTempDatabase(getClass());
 
         var newConfig = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicationManager());
+            .replicate(new NonReplicator());
 
         try {
             db = reopenTempDatabase(getClass(), db, newConfig);
@@ -64,10 +64,10 @@ public class ConvertTest {
 
         Database db = newTempDatabase(getClass());
 
-        var replMan = new NonReplicationManager();
-        replMan.setInitialPosition(100);
+        var repl = new NonReplicator();
+        repl.setInitialPosition(100);
 
-        var newConfig = new DatabaseConfig().directPageAccess(false).replicate(replMan);
+        var newConfig = new DatabaseConfig().directPageAccess(false).replicate(repl);
 
         try {
             db = reopenTempDatabase(getClass(), db, newConfig);
@@ -85,7 +85,7 @@ public class ConvertTest {
         db.shutdown();
 
         var newConfig = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicationManager());
+            .replicate(new NonReplicator());
 
         db = reopenTempDatabase(getClass(), db, newConfig);
 
@@ -98,11 +98,11 @@ public class ConvertTest {
         // Cannot convert to non-replicated mode without special steps.
 
         var config = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicationManager());
+            .replicate(new NonReplicator());
         Database db = newTempDatabase(getClass(), config);
         db.shutdown();
 
-        config.replicate((NonReplicationManager) null);
+        config.replicate((NonReplicator) null);
 
         try {
             db = reopenTempDatabase(getClass(), db, config);
@@ -118,12 +118,12 @@ public class ConvertTest {
         // automatically.
 
         var config = new DatabaseConfig().directPageAccess(false)
-            .replicate(new NonReplicationManager());
+            .replicate(new NonReplicator());
         Database db = newTempDatabase(getClass(), config);
         File base = baseFileForTempDatabase(getClass(), db);
         db.shutdown();
 
-        config.replicate((NonReplicationManager) null);
+        config.replicate((NonReplicator) null);
 
         new File(base.getPath() + ".redo.0").createNewFile();
 

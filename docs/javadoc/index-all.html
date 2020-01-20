@@ -369,11 +369,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Set the maximum delay before an automatic <a href="org.cojen.tupl/org/cojen/tupl/Database.html#checkpoint()">checkpoint</a> is
  performed, regardless of the redo log size threshold.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#checkpointed(long)">checkpointed(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Indicates that all data prior to the given log position has been durably
- checkpointed, and that old data can be discarded.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">checkpointRate(long, TimeUnit)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set the rate at which <a href="org.cojen.tupl/org/cojen/tupl/Database.html#checkpoint()">checkpoints</a> are automatically
@@ -632,11 +627,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html#control(byte%5B%5D)">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
 <dd>
 <div class="block">Attempt to write a replicated control message, and then calls <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#control(long,byte%5B%5D)"><code>control</code></a> when confirmed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#control(long,byte%5B%5D)">control(long, byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called after a control operation has been confirmed by a leader or received by a
- replica.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor(java.util.function.Consumer)">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
@@ -1071,10 +1061,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Encodes a 16-bit integer, in little-endian format.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#encoding()">encoding()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#encoding()">encoding()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
-<div class="block">Return a fixed non-zero value which identifies the replication manager implementation
- and its encoding format.</div>
+<div class="block">Return a constant non-zero value which identifies the replicator implementation and its
+ encoding format.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#encrypt(org.cojen.tupl.Crypto)">encrypt(Crypto)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
@@ -1249,10 +1239,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">If the database instance is currently acting as a leader, attempt to give up leadership
  and become a replica.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#failover()">failover()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Attempt to switch the replication role from leader to replica.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#failover()">failover()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
@@ -1714,10 +1700,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventListener.html#isObserved(org.cojen.tupl.EventType.Category)">isObserved(EventType.Category)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#isReadable(long)">isReadable(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Returns true if committed data exists at the given position.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#isReadable(long)">isReadable(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Returns true if committed data exists at the given position.</div>
@@ -2677,10 +2659,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Blocks until log messages are available, never reading past a commit position or
  term.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#read(byte%5B%5D,int,int)">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Blocks at most once, reading as much replication input as possible.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Reader.html#read(byte%5B%5D,int,int)">read(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
 <div class="block">Blocks until log messages are available, never reading past a commit position or
@@ -2748,15 +2726,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#readPage(long,long,int,int)">readPage(long, long, int, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#readPosition()">readPosition()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Returns the next position a replica will read from, which must be confirmed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#ready(org.cojen.tupl.ext.ReplicationManager.Accessor)">ready(ReplicationManager.Accessor)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called after replication threads have started, providing an opportunity to wait until
- replication has sufficiently "caught up".</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotSender.html#receiverAddress()">receiverAddress()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a></dt>
 <dd>
 <div class="block">Member address which is receiving the snapshot.</div>
@@ -2884,13 +2853,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#replicate(org.cojen.tupl.ext.ReplicationManager)">replicate(ReplicationManager)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
-<dd>
-<div class="block">Enable replication with an explicit <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> instance.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#replicate(org.cojen.tupl.repl.ReplicatorConfig)">replicate(ReplicatorConfig)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable replication using the given configuration.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#replicate(org.cojen.tupl.repl.StreamReplicator)">replicate(StreamReplicator)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Enable replication with an explicit <a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html#REPLICATION">REPLICATION</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a></dt>
 <dd>
@@ -2915,10 +2884,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#REPLICATION_WARNING">REPLICATION_WARNING</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>
 <div class="block">Generic warning message from the replication system.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
-<dd>
-<div class="block">Interface which replaces the redo log, for replicating transactional operations.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Accessor</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>&nbsp;</dd>
@@ -2989,11 +2954,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Restore from a <a href="org.cojen.tupl/org/cojen/tupl/Database.html#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#restoreRequest(org.cojen.tupl.EventListener)">restoreRequest(EventListener)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Called when the database is created, in an attempt to retrieve an existing database
- snapshot from a replication peer.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Role.html#RESTORING">RESTORING</a></span> - org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Role.html" title="enum in org.cojen.tupl.repl">Role</a></dt>
 <dd>
@@ -3145,10 +3105,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Start accepting replication data, to be called for new or existing members.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#start(long)">start(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Start the replication manager in replica mode.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#stats()">stats()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Returns a collection of database statistics.</div>
@@ -3214,10 +3170,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Durably flushes all committed transactions.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#sync()">sync()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Durably flushes all local data to non-volatile storage, up to the current position.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#sync()">sync()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Durably persist all data up to the highest position.</div>
@@ -3249,16 +3201,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns immediately if all data up to the given committed position is durable, or else
  durably persists all data up to the highest position.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#syncConfirm(long)">syncConfirm(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
- position, and then blocks until fully confirmed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#syncConfirm(long,long)">syncConfirm(long, long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Durably flushes all local data to non-volatile storage, up to the given confirmed
- position, and then blocks until fully confirmed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#syncPage(long)">syncPage(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
@@ -3965,10 +3907,6 @@ the order they are declared.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#writePage(long,long,int)">writePage(long, long, int)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#writer()">writer()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext">ReplicationManager</a></dt>
-<dd>
-<div class="block">Returns an object which allows the leader to write changes.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Snapshot.html#writeTo(java.io.OutputStream)">writeTo(OutputStream)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
 <div class="block">Writes out snapshot data, and then closes this object.</div>

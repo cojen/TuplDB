@@ -60,7 +60,6 @@ public final class DatabaseReplicator implements ReplicationManager {
         return new DatabaseReplicator(StreamReplicator.open(config));
     }
 
-    private static final long ENCODING = 7944834171105125288L;
     private static final long RESTORE_EVENT_RATE_MILLIS = 5000;
 
     private final StreamReplicator mRepl;
@@ -68,7 +67,7 @@ public final class DatabaseReplicator implements ReplicationManager {
     private volatile StreamReplicator.Reader mStreamReader;
     private DbWriter mDbWriter;
 
-    private DatabaseReplicator(StreamReplicator repl) {
+    public DatabaseReplicator(StreamReplicator repl) {
         mRepl = repl;
     }
 
@@ -78,7 +77,7 @@ public final class DatabaseReplicator implements ReplicationManager {
 
     @Override
     public long encoding() {
-        return ENCODING;
+        return mRepl.encoding();
     }
 
     @Override
@@ -449,21 +448,6 @@ public final class DatabaseReplicator implements ReplicationManager {
     @Override
     public void close() throws IOException {
         mRepl.close();
-    }
-
-    /**
-     * Don't close the ServerSocket when closing this Replicator.
-     */
-    void keepServerSocket() {
-        ((Controller) mRepl).keepServerSocket();
-    }
-
-    /**
-     * Enable or disable partitioned mode, which simulates a network partition. New connections
-     * are rejected and existing connections are closed.
-     */
-    void partitioned(boolean enable) {
-        ((Controller) mRepl).partitioned(enable);
     }
 
     void toReplica(DbWriter expect, long position) {

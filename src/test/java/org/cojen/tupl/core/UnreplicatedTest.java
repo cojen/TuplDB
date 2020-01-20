@@ -36,12 +36,12 @@ public class UnreplicatedTest {
 
     @Before
     public void createTempDb() throws Exception {
-        mReplManager = new NonReplicationManager();
+        mRepl = new NonReplicator();
         mConfig = new DatabaseConfig()
             .directPageAccess(false)
             .checkpointRate(-1, null)
             .durabilityMode(DurabilityMode.SYNC) // need to wait for commit confirmation
-            .replicate(mReplManager);
+            .replicate(mRepl);
         mDb = newTempDatabase(getClass(), mConfig);
     }
 
@@ -52,7 +52,7 @@ public class UnreplicatedTest {
         mConfig = null;
     }
 
-    protected NonReplicationManager mReplManager;
+    protected NonReplicator mRepl;
     protected DatabaseConfig mConfig;
     protected Database mDb;
 
@@ -72,7 +72,7 @@ public class UnreplicatedTest {
             // Expected.
         }
 
-        mReplManager.asLeader();
+        mRepl.asLeader();
         Thread.yield();
 
         Index ix = null;
@@ -90,7 +90,7 @@ public class UnreplicatedTest {
 
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
-        mReplManager.asReplica();
+        mRepl.asReplica();
 
         try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
@@ -147,7 +147,7 @@ public class UnreplicatedTest {
         // When a write fails do to redo failure, the local transaction still observes the
         // change until the transaction rolls back.
 
-        mReplManager.asLeader();
+        mRepl.asLeader();
         Thread.yield();
 
         Index ix = null;
@@ -165,7 +165,7 @@ public class UnreplicatedTest {
 
         ix.store(null, "key1".getBytes(), "value1".getBytes());
 
-        mReplManager.asReplica();
+        mRepl.asReplica();
 
         Transaction txn = mDb.newTransaction();
 

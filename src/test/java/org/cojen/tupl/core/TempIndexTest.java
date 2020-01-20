@@ -171,7 +171,7 @@ public class TempIndexTest {
     @Test
     public void forReplica() throws Exception {
         mDb.shutdown();
-        mConfig.replicate(new NonReplicationManager());
+        mConfig.replicate(new NonReplicator());
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         try {
@@ -211,7 +211,7 @@ public class TempIndexTest {
 
         mDb.checkpoint();
 
-        mConfig.replicate(new NonReplicationManager());
+        mConfig.replicate(new NonReplicator());
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
     }
 

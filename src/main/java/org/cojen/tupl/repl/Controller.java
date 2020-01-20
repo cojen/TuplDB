@@ -363,6 +363,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     @Override
+    public long encoding() {
+        return 7944834171105125288L;
+    }
+
+    @Override
     public void start() throws IOException {
         start(null);
     }
