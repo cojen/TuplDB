@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import org.cojen.tupl.LockMode;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
  * Used to apply recovered transactions from the redo log, when database isn't replictated.
  * This class extends ReplEngine because it applies transactions using multiple threads,
@@ -31,7 +29,7 @@ import org.cojen.tupl.ext.ReplicationManager;
  * @author Brian S O'Neill
  */
 /*P*/
-final class RedoLogApplier extends ReplEngine implements ReplicationManager {
+final class RedoLogApplier extends ReplEngine {
     private long mHighestTxnId;
 
     /**
@@ -41,9 +39,8 @@ final class RedoLogApplier extends ReplEngine implements ReplicationManager {
                    LHashTable.Obj<BTreeCursor> cursors)
         throws IOException
     {
-        // Passing null for manager implies that this class is the manager. Passing 'this' is
-        // rejected by the compiler.
-        super(null, maxThreads, db, txns, cursors);
+        // Pass a fake ReplManager. It's not expected to be used.
+        super(new ReplManager(null), maxThreads, db, txns, cursors);
     }
 
     /**
@@ -94,41 +91,4 @@ final class RedoLogApplier extends ReplEngine implements ReplicationManager {
     protected Object attachment() {
         return "recovery";
     }
-
-    // Implement all of the abstract ReplicationManager methods instead of passing null for the
-    // ReplicationManager instance to the ReplEngine. It would instead need to have checks
-    // for a null ReplicationManager. These methods aren't expected to be called anyhow.
-
-    @Override
-    public long encoding() { return 0; }
-
-    @Override
-    public boolean isReadable(long position) { return false; }
-
-    @Override
-    public void start(long position) { }
-
-    @Override
-    public long readPosition() { return 0; }
-
-    @Override
-    public int read(byte[] b, int off, int len) { return -1; }
-
-    @Override
-    public Writer writer() { return null; }
-
-    @Override
-    public void sync() { }
-
-    @Override
-    public void syncConfirm(long position, long timeoutNanos) { }
-
-    @Override
-    public boolean failover() { return true; }
-
-    @Override
-    public void checkpointed(long position) { }
-
-    @Override
-    public void close() { }
 }

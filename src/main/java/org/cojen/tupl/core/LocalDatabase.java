@@ -96,7 +96,6 @@ import org.cojen.tupl.ev.SafeEventListener;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.Handler;
 import org.cojen.tupl.ext.PrepareHandler;
-import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
@@ -819,7 +818,7 @@ public final class LocalDatabase extends CoreDatabase {
                 // Otherwise, trees recently deleted might get double deleted.
                 tagTrashedTrees();
 
-                ReplicationManager rm = launcher.mReplManager;
+                ReplManager rm = launcher.mReplManager;
                 if (rm != null) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.REPLICATION_DEBUG,
@@ -1004,25 +1003,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             try {
-                controller.ready(launcher.mReplInitialTxnId, new ReplicationManager.Accessor() {
-                    @Override
-                    public void notify(EventType type, String message, Object... args) {
-                        EventListener listener = mEventListener;
-                        if (listener != null) {
-                            listener.notify(type, message, args);
-                        }
-                    }
-
-                    @Override
-                    public Database database() {
-                        return LocalDatabase.this;
-                    }
-
-                    @Override
-                    public long control(byte[] message) throws IOException {
-                        return writeControlMessage(message);
-                    }
-                });
+                controller.ready(launcher.mReplInitialTxnId);
             } catch (Throwable e) {
                 closeQuietly(this, e);
                 throw e;
@@ -1032,7 +1013,11 @@ public final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    private long writeControlMessage(byte[] message) throws IOException {
+    /**
+     * Called by ReplManager.
+     */
+    @Override
+    long writeControlMessage(byte[] message) throws IOException {
         // Commit lock must be held to prevent a checkpoint from starting. If the control
         // message fails to be applied, panic the database. If the database is kept open after
         // a failure and then a checkpoint completes, the control message would be dropped.
@@ -1048,7 +1033,8 @@ public final class LocalDatabase extends CoreDatabase {
             redo.commitSync(context, commitPos);
 
             try {
-                ((ReplController) mRedoWriter).mManager.control(commitPos, message);
+                ((ReplController) mRedoWriter).mManager.mRepl
+                    .controlMessageReceived(commitPos, message);
             } catch (Throwable e) {
                 // Panic.
                 closeQuietly(this, e);
@@ -3382,7 +3368,7 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
-        ReplicationManager rm = launcher.mReplManager;
+        ReplManager rm = launcher.mReplManager;
 
         if ((replEncoding != 0 || rm != null) && launcher.mDebugOpen != null) {
             mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
@@ -3402,7 +3388,7 @@ public final class LocalDatabase extends CoreDatabase {
             String msg = "Database was created initially without a replication manager. " +
                 "Conversion isn't possible ";
 
-            if (!rm.isReadable(0)) {
+            if (!rm.mRepl.isReadable(0)) {
                 msg += "without complete replication data.";
                 throw new DatabaseException(msg);
             }
@@ -3412,11 +3398,11 @@ public final class LocalDatabase extends CoreDatabase {
                 throw new DatabaseException(msg);
             }
 
-            // The redo position passed to the ReplicationManager must be 0, but what's in the
-            // header might be higher. Since we have the header data passed to us already, we
-            // can modify it without persisting it.
+            // The redo position passed to the ReplManager must be 0, but what's in the header
+            // might be higher. Since we have the header data passed to us already, we can
+            // modify it without persisting it.
             encodeLongLE(header, I_REDO_POSITION, 0);
-        } else if (replEncoding != rm.encoding()) {
+        } else if (replEncoding != rm.mRepl.encoding()) {
             throw new DatabaseException
                 ("Database was created initially with a different replication manager, " +
                  "identified by: " + replEncoding);

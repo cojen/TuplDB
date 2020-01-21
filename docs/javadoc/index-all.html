@@ -572,17 +572,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Compare the current key to the one given.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm(long)">confirm(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Blocks until all data up to the given log position is confirmed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#confirm(long,long)">confirm(long, long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Blocks until all data up to the given log position is confirmed.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationFailureException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Thrown by <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication cannot be confirmed.</div>
+<div class="block">Thrown when replication cannot be confirmed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationFailureException.html#%3Cinit%3E()">ConfirmationFailureException()</a></span> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></dt>
 <dd>&nbsp;</dd>
@@ -594,28 +586,16 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationInterruptedException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationInterruptedException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Thrown by <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when confirmation was interrupted by another thread.</div>
+<div class="block">Thrown when replication confirmation was interrupted by another thread.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationInterruptedException.html#%3Cinit%3E()">ConfirmationInterruptedException()</a></span> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationInterruptedException.html" title="class in org.cojen.tupl">ConfirmationInterruptedException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationTimeoutException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
-<div class="block">Thrown by <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html" title="interface in org.cojen.tupl.ext"><code>ReplicationManager</code></a> when replication confirmation timed out.</div>
+<div class="block">Thrown when replication confirmation timed out.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#%3Cinit%3E(long)">ConfirmationTimeoutException(long)</a></span> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmedPosition()">confirmedPosition()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Returns the current confirmed log position.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd()">confirmEnd()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Blocks until the leadership end is confirmed.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#confirmEnd(long)">confirmEnd(long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Blocks until the leadership end is confirmed.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#connect(java.net.SocketAddress)">connect(SocketAddress)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Connect to any replication group member, for any particular use.</div>
@@ -623,10 +603,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Continuation.html" title="interface in org.cojen.tupl.util"><span class="typeNameLink">Continuation</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
 <div class="block">Function which is registered with the <a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a> <a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)"><code>uponSignal</code></a> method, or the <a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><code>Latch</code></a> <a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)"><code>uponExclusive</code></a> method.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html#control(byte%5B%5D)">control(byte[])</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
-<dd>
-<div class="block">Attempt to write a replicated control message, and then calls <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#control(long,byte%5B%5D)"><code>control</code></a> when confirmed.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor(java.util.function.Consumer)">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
@@ -750,10 +726,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </a>
 <h2 class="title">D</h2>
 <dl>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html#database()">database()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Accessor</a></dt>
-<dd>
-<div class="block">Access the database which is being replicated.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl"><span class="typeNameLink">Database</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
@@ -1854,10 +1826,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#%3Cinit%3E()">LatchCondition()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#leaderNotify(java.lang.Runnable)">leaderNotify(Runnable)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Invokes the given callback upon a leadership change.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FileIO.html#length()">length()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io">FileIO</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html#length()">length()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LargeKeyException.html" title="class in org.cojen.tupl">LargeKeyException</a></dt>
@@ -2548,10 +2516,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Park without performing more checks than necessary.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#position()">position()</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Returns the next position a leader will write to.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the next log position which will be accessed.</div>
@@ -2562,7 +2526,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Snapshot.html#position()">position()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></dt>
 <dd>
-<div class="block">Returns the <a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.html#start(long)">position</a> that the snapshot applies to.</div>
+<div class="block">Returns the log start position that the snapshot applies to.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#preallocate(long)">preallocate(long)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -2885,10 +2849,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Generic warning message from the replication system.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Accessor.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Accessor</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">ReplicationManager.Writer</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">Replicator</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
 <div class="block">Defines common features available to all types of replicators.</div>
@@ -3840,10 +3800,6 @@ the order they are declared.</div>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Writer.html#write(byte%5B%5D,int,int)">write(byte[], int, int)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>
 <div class="block">Write complete messages to the log.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html#write(byte%5B%5D,int,int,long)">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.ext.<a href="org.cojen.tupl/org/cojen/tupl/ext/ReplicationManager.Writer.html" title="interface in org.cojen.tupl.ext">ReplicationManager.Writer</a></dt>
-<dd>
-<div class="block">Fully writes the given data, unless leadership is revoked.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Writer.html#write(byte%5B%5D,int,int,long)">write(byte[], int, int, long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Writer.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Writer</a></dt>
 <dd>

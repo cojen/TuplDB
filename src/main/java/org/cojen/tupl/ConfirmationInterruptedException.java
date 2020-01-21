@@ -17,10 +17,8 @@
 
 package org.cojen.tupl;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
- * Thrown by {@link ReplicationManager} when confirmation was interrupted by another thread.
+ * Thrown when replication confirmation was interrupted by another thread.
  *
  * @author Brian S O'Neill
  */

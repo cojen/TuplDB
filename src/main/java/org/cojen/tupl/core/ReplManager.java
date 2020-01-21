@@ -15,8 +15,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.repl;
+package org.cojen.tupl.core;
 
+import java.io.Closeable;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.io.IOException;
@@ -45,42 +46,44 @@ import org.cojen.tupl.EventType;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.repl.ReplicatorConfig;
+import org.cojen.tupl.repl.Role;
+import org.cojen.tupl.repl.SnapshotReceiver;
+import org.cojen.tupl.repl.SnapshotSender;
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
- * ReplicationManager implementation backed by a StreamReplicator.
+ * Adapts a StreamReplicator to be used by the database.
  *
  * @author Brian S O'Neill
- * @hidden
  */
-public final class DatabaseReplicator implements ReplicationManager {
-    public static DatabaseReplicator open(ReplicatorConfig config) throws IOException {
-        return new DatabaseReplicator(StreamReplicator.open(config));
+final class ReplManager implements Closeable {
+    static ReplManager open(ReplicatorConfig config) throws IOException {
+        return new ReplManager(StreamReplicator.open(config));
     }
 
     private static final long RESTORE_EVENT_RATE_MILLIS = 5000;
 
-    private final StreamReplicator mRepl;
+    final StreamReplicator mRepl;
 
     private volatile StreamReplicator.Reader mStreamReader;
-    private DbWriter mDbWriter;
+    private Writer mWriter;
 
-    public DatabaseReplicator(StreamReplicator repl) {
+    ReplManager(StreamReplicator repl) {
         mRepl = repl;
     }
 
-    public Role localRole() {
-        return mRepl.localRole();
-    }
-
-    @Override
-    public long encoding() {
-        return mRepl.encoding();
-    }
-
-    @Override
+    /**
+     * Called when the database is created, in an attempt to retrieve an existing database
+     * snapshot from a replication peer. If null is returned, the database will try to start
+     * reading replication data at the lowest position.
+     *
+     * @param listener optional restore event listener
+     * @return null if no snapshot could be found
+     * @throws IOException if a snapshot was found, but requesting it failed
+     */
     public InputStream restoreRequest(EventListener listener) throws IOException {
         Map<String, String> options = new HashMap<>();
         options.put("checksum", "CRC32C");
@@ -131,8 +134,7 @@ public final class DatabaseReplicator implements ReplicationManager {
                 }
             }
 
-            if (listener != null && length >= 0 && (mRepl instanceof Controller)) {
-                Scheduler scheduler = ((Controller) mRepl).scheduler();
+            if (listener != null && length >= 0) {
                 var rin = new RestoreInputStream(in);
                 in = rin;
 
@@ -140,7 +142,7 @@ public final class DatabaseReplicator implements ReplicationManager {
                                 "Receiving snapshot: %1$,d bytes from %2$s",
                                 length, receiver.senderAddress());
 
-                scheduler.schedule(new ProgressTask(listener, scheduler, rin, length));
+                new Progress(listener, rin, length).start();
             }
         } catch (Throwable e) {
             Utils.closeQuietly(receiver);
@@ -150,57 +152,53 @@ public final class DatabaseReplicator implements ReplicationManager {
         return in;
     }
 
-    private static final class ProgressTask extends Delayed {
+    private static final class Progress extends Thread {
         private final EventListener mListener;
         private final RestoreInputStream mRestore;
         private final long mLength;
-        private final Scheduler mScheduler;
 
         private long mLastTimeMillis = Long.MIN_VALUE;
         private long mLastReceived;
 
-        ProgressTask(EventListener listener, Scheduler scheduler,
-                     RestoreInputStream in, long length)
-        {
-            super(0);
+        Progress(EventListener listener, RestoreInputStream in, long length) {
             mListener = listener;
-            mScheduler = scheduler;
             mRestore = in;
             mLength = length;
+            setDaemon(true);
         }
 
         @Override
-        protected void doRun(long counter) {
-            if (mRestore.isFinished()) {
-                return;
-            }
+        public void run() {
+            while (!mRestore.isFinished()) {
+                long now = System.currentTimeMillis();
 
-            long now = System.currentTimeMillis();
+                long received = mRestore.received();
+                double percent = 100.0 * (received / (double) mLength);
+                long progess = received - mLastReceived;
 
-            long received = mRestore.received();
-            double percent = 100.0 * (received / (double) mLength);
-            long progess = received - mLastReceived;
+                if (mLastTimeMillis != Long.MIN_VALUE) {
+                    double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
+                    String format = "Receiving snapshot: %1$1.3f%%";
+                    if (rate == 0) {
+                        mListener.notify(EventType.REPLICATION_RESTORE, format, percent);
+                    } else {
+                        format += "  rate: %2$,d bytes/s  remaining: ~%3$s";
+                        long remainingSeconds = (long) ((mLength - received) / rate);
+                        mListener.notify
+                            (EventType.REPLICATION_RESTORE, format,
+                             percent, (long) rate, remainingDuration(remainingSeconds));
+                    }
+                }
 
-            if (mLastTimeMillis != Long.MIN_VALUE) {
-                double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
-                String format = "Receiving snapshot: %1$1.3f%%";
-                if (rate == 0) {
-                    mListener.notify(EventType.REPLICATION_RESTORE, format, percent);
-                } else {
-                    format += "  rate: %2$,d bytes/s  remaining: ~%3$s";
-                    long remainingSeconds = (long) ((mLength - received) / rate);
-                    mListener.notify
-                        (EventType.REPLICATION_RESTORE, format,
-                         percent, (long) rate, remainingDuration(remainingSeconds));
+                mLastTimeMillis = now;
+                mLastReceived = received;
+
+                try {
+                    Thread.sleep(RESTORE_EVENT_RATE_MILLIS);
+                } catch (InterruptedException e) {
+                    break;
                 }
             }
-
-            mCounter = now + RESTORE_EVENT_RATE_MILLIS;
-
-            mLastTimeMillis = now;
-            mLastReceived = received;
-
-            mScheduler.schedule(this);
         }
 
         private static String remainingDuration(long seconds) {
@@ -216,12 +214,18 @@ public final class DatabaseReplicator implements ReplicationManager {
         }
     }
 
-    @Override
-    public boolean isReadable(long position) {
-        return mRepl.isReadable(position);
-    }
-
-    @Override
+    /**
+     * Start the replication manager in replica mode. Invocation of this method implies that
+     * all data lower than the given position is confirmed. All data at or higher than the
+     * given position might be discarded.
+     *
+     * <p>After started, the reported {@linkplain #readPosition position} can differ from the
+     * one provided to this method.
+     *
+     * @param position position to start reading from; 0 is the lowest position
+     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalStateException if already started
+     */
     public void start(long position) throws IOException {
         if (mStreamReader != null) {
             throw new IllegalStateException();
@@ -237,26 +241,32 @@ public final class DatabaseReplicator implements ReplicationManager {
             }
             StreamReplicator.Writer writer = mRepl.newWriter(position);
             if (writer != null) {
-                mDbWriter = new DbWriter(writer);
+                mWriter = new Writer(writer);
                 break;
             }
         }
     }
 
-    @Override
-    public boolean ready(ReplicationManager.Accessor accessor) throws IOException {
+    /**
+     * Called after replication threads have started, providing an opportunity to wait until
+     * replication has sufficiently "caught up". The thread which is opening the database
+     * invokes this method, and so it blocks until recovery completes. Default implementation
+     * does nothing and returns false.
+     *
+     * @return true if local member is expected to become the leader (implies that a thread
+     * calling read has or will have -1 returned to it)
+     */
+    public boolean ready(CoreDatabase db) throws IOException {
         // Can now send control messages.
         mRepl.controlMessageAcceptor(message -> {
             try {
-                accessor.control(message);
+                db.writeControlMessage(message);
             } catch (UnmodifiableReplicaException e) {
                 // Drop it.
             } catch (IOException e) {
                 Utils.uncaught(e);
             }
         });
-
-        Database db = accessor.database();
 
         // Can now accept snapshot requests.
         mRepl.snapshotRequestAcceptor(sender -> {
@@ -368,7 +378,10 @@ public final class DatabaseReplicator implements ReplicationManager {
         }
     }
 
-    @Override
+    /**
+     * Returns the next position a replica will read from, which must be confirmed. Position is
+     * never negative and never retreats.
+     */
     public long readPosition() {
         StreamReplicator.Reader reader = mStreamReader;
         if (reader != null) {
@@ -376,11 +389,17 @@ public final class DatabaseReplicator implements ReplicationManager {
         } else {
             // Might start off as the leader, so return it's start position. Nothing is
             // actually readable, however.
-            return mDbWriter.mWriter.termStartPosition();
+            return mWriter.mWriter.termStartPosition();
         }
     }
 
-    @Override
+    /**
+     * Blocks at most once, reading as much replication input as possible. Returns -1 if local
+     * instance has become the leader, and a writer instance now exists.
+     *
+     * @return amount read, or -1 if leader
+     * @throws IllegalStateException if not started
+     */
     public int read(byte[] b, int off, int len) throws IOException {
         StreamReplicator.Reader reader = mStreamReader;
 
@@ -401,7 +420,7 @@ public final class DatabaseReplicator implements ReplicationManager {
                 StreamReplicator.Writer nextWriter = mRepl.newWriter(reader.position());
                 if (nextWriter != null) {
                     // Switch to leader mode.
-                    mDbWriter = new DbWriter(nextWriter);
+                    mWriter = new Writer(nextWriter);
                     mStreamReader = null;
                     reader.close();
                     return -1;
@@ -413,96 +432,105 @@ public final class DatabaseReplicator implements ReplicationManager {
         }
     }
 
-    @Override
-    public ReplicationManager.Writer writer() throws IOException {
-        return mDbWriter;
+    /**
+     * Returns an object which allows the leader to write changes. A new instance is required
+     * after a leader transition. Returned object can be null if local instance is a replica.
+     */
+    public Writer writer() throws IOException {
+        return mWriter;
     }
 
-    @Override
-    public void sync() throws IOException {
-        mRepl.sync();
-    }
-
-    @Override
-    public void syncConfirm(long position, long timeoutNanos) throws IOException {
-        if (!mRepl.syncCommit(position, timeoutNanos)) {
-            throw new ConfirmationTimeoutException(timeoutNanos);
+    /**
+     * Durably flushes all local data to non-volatile storage, up to the given confirmed
+     * position, and then blocks until fully confirmed.
+     *
+     * @throws ConfirmationFailureException
+     */
+    public void syncConfirm(long position) throws IOException {
+        if (!mRepl.syncCommit(position, -1)) {
+            // Unexpected.
+            throw new ConfirmationTimeoutException(-1);
         }
     }
 
-    @Override
-    public boolean failover() throws IOException {
-        return mRepl.failover();
-    }
-
-    @Override
-    public void checkpointed(long position) throws IOException {
-        mRepl.compact(position);
-    }
-
-    @Override
-    public void control(long position, byte[] message) throws IOException {
-        mRepl.controlMessageReceived(position, message);
-    }
-
-    @Override
     public void close() throws IOException {
         mRepl.close();
     }
 
-    void toReplica(DbWriter expect, long position) {
-        if (mDbWriter != expect) {
-            throw new IllegalStateException("Mismatched writer: " + mDbWriter + " != " + expect);
+    private void toReplica(Writer expect, long position) {
+        if (mWriter != expect) {
+            throw new IllegalStateException("Mismatched writer: " + mWriter + " != " + expect);
         }
 
-        mDbWriter.mWriter.close();
-        mDbWriter = null;
+        mWriter.mWriter.close();
+        mWriter = null;
 
         while ((mStreamReader = mRepl.newReader(position, false)) == null) {
             StreamReplicator.Writer nextWriter = mRepl.newWriter(position);
             if (nextWriter != null) {
                 // Actually the leader now.
-                mDbWriter = new DbWriter(nextWriter);
+                mWriter = new Writer(nextWriter);
                 return;
             }
         }
     }
 
-    private final class DbWriter implements ReplicationManager.Writer {
+    public final class Writer {
         final StreamReplicator.Writer mWriter;
 
         private boolean mEndConfirmed;
 
-        DbWriter(StreamReplicator.Writer writer) {
+        Writer(StreamReplicator.Writer writer) {
             mWriter = writer;
         }
 
-        @Override
+        /**
+         * Returns the next position a leader will write to. Valid only if local instance is
+         * the leader.
+         */
         public long position() {
             return mWriter.position();
         }
 
-        @Override
+        /**
+         * Returns the current confirmed log position.
+         */
         public long confirmedPosition() {
             return mWriter.commitPosition();
         }
 
-        @Override
-        public boolean leaderNotify(Runnable callback) {
-            mWriter.uponCommit(Long.MAX_VALUE, position -> new Thread(callback).start());
-            return true;
-        }
-
-        @Override
+        /**
+         * Fully writes the given data, unless leadership is revoked. When the local instance
+         * loses leadership, all data rolls back to the highest confirmed position.
+         *
+         * <p>An optional commit parameter defines the highest log position which immediately
+         * follows a transaction commit operation. If leadership is lost, the message stream is
+         * guaranteed to be truncated at a position no higher than the highest commit position
+         * ever provided. The given commit position is ignored if it's higher than what has
+         * actually been written.
+         *
+         * @param b message buffer
+         * @param off message buffer offset
+         * @param len message length
+         * @param commitPos highest transaction commit position; pass 0 if nothing changed
+         * @return false only if the writer is deactivated
+         * @throws IllegalArgumentException if commitPos is negative
+         */
         public boolean write(byte[] b, int off, int len, long commitPos) throws IOException {
             return mWriter.write(b, off, len, commitPos);
         }
 
-        @Override
-        public boolean confirm(long commitPos, long nanosTimeout) throws IOException {
+        /**
+         * Blocks until all data up to the given log position is confirmed.
+         *
+         * @param commitPos commit position which was passed to the write method
+         * @return false if not leader at the given position
+         * @throws ConfirmationFailureException
+         */
+        public boolean confirm(long commitPos) throws IOException {
             long pos;
             try {
-                pos = mWriter.waitForCommit(commitPos, nanosTimeout);
+                pos = mWriter.waitForCommit(commitPos, -1);
             } catch (InterruptedIOException e) {
                 throw new ConfirmationInterruptedException();
             }
@@ -512,17 +540,20 @@ public final class DatabaseReplicator implements ReplicationManager {
             if (pos == -1) {
                 return false;
             }
-            if (pos == -2) {
-                throw new ConfirmationTimeoutException(nanosTimeout);
-            }
-            throw new ConfirmationFailureException("Unexpected result: " + pos);
+            throw unexpected(pos);
         }
 
-        @Override
-        public long confirmEnd(long nanosTimeout) throws ConfirmationFailureException {
+        /**
+         * Blocks until the leadership end is confirmed. This method must be called before
+         * switching to replica mode.
+         *
+         * @return the end commit position; same as next read position
+         * @throws ConfirmationFailureException if end position cannot be determined
+         */
+        public long confirmEnd() throws ConfirmationFailureException {
             long pos;
             try {
-                pos = mWriter.waitForEndCommit(nanosTimeout);
+                pos = mWriter.waitForEndCommit(-1);
             } catch (InterruptedIOException e) {
                 throw new ConfirmationInterruptedException();
             }
@@ -540,10 +571,14 @@ public final class DatabaseReplicator implements ReplicationManager {
             if (pos == -1) {
                 throw new ConfirmationFailureException("Closed");
             }
+            throw unexpected(pos);
+        }
+
+        private ConfirmationFailureException unexpected(long pos) {
             if (pos == -2) {
-                throw new ConfirmationTimeoutException(nanosTimeout);
+                return new ConfirmationTimeoutException(-1);
             }
-            throw new ConfirmationFailureException("Unexpected result: " + pos);
+            return new ConfirmationFailureException("Unexpected result: " + pos);
         }
     }
 }

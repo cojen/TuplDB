@@ -39,7 +39,6 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
 import org.cojen.tupl.ext.CustomHandler;
-import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
@@ -65,7 +64,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     // to unsigned 11400714819323198485.
     private static final long HASH_SPREAD = -7046029254386353131L;
 
-    final ReplicationManager mManager;
+    final ReplManager mManager;
     final LocalDatabase mDatabase;
 
     final ReplController mController;
@@ -93,16 +92,11 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @param txns recovered transactions; can be null; cleared as a side-effect; keyed by
      * unscrambled id
      */
-    ReplEngine(ReplicationManager manager, int maxThreads,
+    ReplEngine(ReplManager manager, int maxThreads,
                LocalDatabase db, LHashTable.Obj<LocalTransaction> txns,
                LHashTable.Obj<BTreeCursor> cursors)
         throws IOException
     {
-        if (manager == null) {
-            // Assume subclass is the manager.
-            manager = (ReplicationManager) this;
-        }
-
         if (maxThreads <= 0) {
             int procCount = Runtime.getRuntime().availableProcessors();
             maxThreads = maxThreads == 0 ? procCount : (-maxThreads * procCount);
@@ -319,7 +313,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Call with decode latch held, suspending checkpoints.
-        mManager.control(mDecoder.mIn.mPos, message);
+        mManager.mRepl.controlMessageReceived(mDecoder.mIn.mPos, message);
 
         return true;
     }

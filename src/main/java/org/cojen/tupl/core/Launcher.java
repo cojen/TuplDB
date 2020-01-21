@@ -45,13 +45,11 @@ import org.cojen.tupl.ev.ReplicationEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
-import org.cojen.tupl.ext.ReplicationManager;
 
 import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
-import org.cojen.tupl.repl.DatabaseReplicator;
 import org.cojen.tupl.repl.ReplicatorConfig;
 import org.cojen.tupl.repl.StreamReplicator;
 
@@ -90,7 +88,7 @@ public final class Launcher implements Cloneable {
     Boolean mDirectPageAccess;
     boolean mCachePriming;
     ReplicatorConfig mReplConfig;
-    ReplicationManager mReplManager;
+    ReplManager mReplManager;
     int mMaxReplicaThreads;
     Crypto mCrypto;
     Map<String, CustomHandler> mCustomHandlers;
@@ -246,7 +244,7 @@ public final class Launcher implements Cloneable {
     }
 
     public void replicate(StreamReplicator repl) {
-        mReplManager = repl == null ? null : new DatabaseReplicator(repl);
+        mReplManager = repl == null ? null : new ReplManager(repl);
         mReplConfig = null;
     }
 
@@ -333,7 +331,7 @@ public final class Launcher implements Cloneable {
      */
     File[] dataFiles() {
         if (mReplManager != null) {
-            long encoding = mReplManager.encoding();
+            long encoding = mReplManager.mRepl.encoding();
             if (encoding == 0) {
                 throw new IllegalStateException
                     ("Illegal replication manager encoding: " + encoding);
@@ -408,7 +406,7 @@ public final class Launcher implements Cloneable {
         replConfig.baseFilePath(mBaseFile.getPath() + ".repl");
         replConfig.createFilePath(mMkdirs);
 
-        mReplManager = DatabaseReplicator.open(replConfig);
+        mReplManager = ReplManager.open(replConfig);
 
         return true;
     }
@@ -449,7 +447,7 @@ public final class Launcher implements Cloneable {
                 }
             }
 
-            // ReplicationManager returns null if no restore should be performed.
+            // ReplManager returns null if no restore should be performed.
             restore = mReplManager.restoreRequest(mEventListener);
         }
 

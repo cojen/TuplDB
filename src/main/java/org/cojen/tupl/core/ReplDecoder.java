@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -31,7 +29,7 @@ import org.cojen.tupl.util.Latch;
 final class ReplDecoder extends RedoDecoder {
     volatile boolean mDeactivated;
 
-    ReplDecoder(ReplicationManager manager,
+    ReplDecoder(ReplManager manager,
                 long initialPosition, long initialTxnId,
                 Latch decodeLatch)
     {
@@ -45,13 +43,13 @@ final class ReplDecoder extends RedoDecoder {
     }
 
     static final class In extends DataIn {
-        private final ReplicationManager mManager;
+        private final ReplManager mManager;
 
-        In(long position, ReplicationManager manager) {
+        In(long position, ReplManager manager) {
             this(position, manager, 64 << 10);
         }
 
-        In(long position, ReplicationManager manager, int bufferSize) {
+        In(long position, ReplManager manager, int bufferSize) {
             super(position, bufferSize);
             mManager = manager;
         }

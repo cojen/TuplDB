@@ -21,8 +21,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
  * Control object used to capture a database snapshot.
  *
@@ -37,7 +35,7 @@ public interface Snapshot extends Closeable {
     public long length();
 
     /**
-     * Returns the {@linkplain ReplicationManager#start position} that the snapshot applies to.
+     * Returns the log start position that the snapshot applies to.
      */
     public long position();
 

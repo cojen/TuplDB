@@ -21,10 +21,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.core.Utils;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 /**
- * Thrown by {@link ReplicationManager} when replication confirmation timed out.
+ * Thrown when replication confirmation timed out.
  *
  * @author Brian S O'Neill
  */

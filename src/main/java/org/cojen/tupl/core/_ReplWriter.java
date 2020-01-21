@@ -24,8 +24,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 import org.cojen.tupl.WriteFailureException;
 
-import org.cojen.tupl.ext.ReplicationManager;
-
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Parker;
 
@@ -39,7 +37,7 @@ class _ReplWriter extends _RedoWriter {
     final _ReplEngine mEngine;
 
     // Is non-null if writes are allowed.
-    final ReplicationManager.Writer mReplWriter;
+    final ReplManager.Writer mReplWriter;
 
     // These fields capture the state of the last produced commit, but not yet confirmed.
     // Access is guarded by _RedoWriter latch and mBufferLatch. Both latches must be held to
@@ -65,7 +63,7 @@ class _ReplWriter extends _RedoWriter {
     private int mBufferTail = -1;
     // Absolute log position.
     private long mWritePos;
-    // Set if the consumer failed to write to the ReplicationManager.
+    // Set if the consumer failed to write to the ReplManager.
     private Throwable mConsumerException;
 
     volatile boolean mUnmodifiable;
@@ -73,7 +71,7 @@ class _ReplWriter extends _RedoWriter {
     /**
      * Caller must call start if a writer is supplied.
      */
-    _ReplWriter(_ReplEngine engine, ReplicationManager.Writer writer) {
+    _ReplWriter(_ReplEngine engine, ReplManager.Writer writer) {
         mEngine = engine;
         mReplWriter = writer;
         mBufferLatch = writer == null ? null : new Latch();
@@ -100,12 +98,12 @@ class _ReplWriter extends _RedoWriter {
 
     @Override
     final boolean failover() throws IOException {
-        return mEngine.mManager.failover();
+        return mEngine.mManager.mRepl.failover();
     }
 
     @Override
     public final void commitSync(_TransactionContext context, long commitPos) throws IOException {
-        ReplicationManager.Writer writer = mReplWriter;
+        ReplManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
@@ -116,7 +114,7 @@ class _ReplWriter extends _RedoWriter {
 
     @Override
     public final void txnCommitSync(long commitPos) throws IOException {
-        ReplicationManager.Writer writer = mReplWriter;
+        ReplManager.Writer writer = mReplWriter;
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
@@ -184,7 +182,7 @@ class _ReplWriter extends _RedoWriter {
     final boolean confirm(_PendingTxn pending) {
         // Note: Similar to txnCommitSync.
 
-        ReplicationManager.Writer writer = mReplWriter;
+        ReplManager.Writer writer = mReplWriter;
         if (writer == null) {
             return false;
         }
@@ -206,7 +204,7 @@ class _ReplWriter extends _RedoWriter {
 
     @Override
     public final long encoding() {
-        return mEngine.mManager.encoding();
+        return mEngine.mManager.mRepl.encoding();
     }
 
     @Override
@@ -410,7 +408,7 @@ class _ReplWriter extends _RedoWriter {
 
     @Override
     void force(boolean metadata) throws IOException {
-        // Wait for consumer to finish writing to the ReplicationManager.
+        // Wait for consumer to finish writing to the ReplManager.
         acquireExclusive();
         mBufferLatch.acquireExclusive();
         try {
@@ -435,7 +433,7 @@ class _ReplWriter extends _RedoWriter {
             releaseExclusive();
         }
 
-        mEngine.mManager.sync();
+        mEngine.mManager.mRepl.sync();
     }
 
     @Override
