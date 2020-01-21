@@ -1030,7 +1030,7 @@ public final class LocalDatabase extends CoreDatabase {
 
             // Waiting for confirmation with the shared lock held isn't ideal, but control
             // messages aren't that frequent.
-            redo.commitSync(context, commitPos);
+            redo.txnCommitSync(commitPos);
 
             try {
                 ((ReplController) mRedoWriter).mManager.mRepl

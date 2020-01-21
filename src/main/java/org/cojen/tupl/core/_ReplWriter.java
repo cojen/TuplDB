@@ -102,17 +102,6 @@ class _ReplWriter extends _RedoWriter {
     }
 
     @Override
-    public final void commitSync(_TransactionContext context, long commitPos) throws IOException {
-        ReplManager.Writer writer = mReplWriter;
-        if (writer == null) {
-            throw mEngine.unmodifiable();
-        }
-        if (!writer.confirm(commitPos)) {
-            throw nowUnmodifiable();
-        }
-    }
-
-    @Override
     public final void txnCommitSync(long commitPos) throws IOException {
         ReplManager.Writer writer = mReplWriter;
         if (writer == null) {
