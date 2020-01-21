@@ -17,15 +17,22 @@
 
 package org.cojen.tupl.core;
 
+import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import org.cojen.tupl.ConfirmationFailureException;
+import org.cojen.tupl.ConfirmationInterruptedException;
+import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 import org.cojen.tupl.WriteFailureException;
 
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Parker;
+
 
 /**
  * Implementation of a replicated redo log, used by {@link _ReplController}.
@@ -84,7 +91,7 @@ class _ReplWriter extends _RedoWriter {
                 return;
             }
 
-            mWritePos = mReplWriter.position();
+            mWritePos = mReplWriter.mWriter.position();
             mBuffer = new byte[65536];
 
             mConsumer = new Thread(this::consume);
@@ -107,7 +114,7 @@ class _ReplWriter extends _RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (!writer.confirm(commitPos)) {
+        if (!confirm(writer.mWriter, commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -179,7 +186,7 @@ class _ReplWriter extends _RedoWriter {
         long commitPos = pending.mCommitPos;
 
         try {
-            if (writer.confirm(commitPos)) {
+            if (confirm(writer.mWriter, commitPos)) {
                 return true;
             }
         } catch (IOException e) {
@@ -477,6 +484,36 @@ class _ReplWriter extends _RedoWriter {
     }
 
     /**
+     * Blocks until all data up to the given log position is confirmed.
+     *
+     * @param commitPos commit position which was passed to the write method
+     * @return false if not leader at the given position
+     * @throws ConfirmationFailureException
+     */
+    static boolean confirm(StreamReplicator.Writer writer, long commitPos) throws IOException {
+        long pos;
+        try {
+            pos = writer.waitForCommit(commitPos, -1);
+        } catch (InterruptedIOException e) {
+            throw new ConfirmationInterruptedException();
+        }
+        if (pos >= commitPos) {
+            return true;
+        }
+        if (pos == -1) {
+            return false;
+        }
+        throw unexpectedConfirmation(pos);
+    }
+
+    static ConfirmationFailureException unexpectedConfirmation(long pos) {
+        if (pos == -2) {
+            return new ConfirmationTimeoutException(-1);
+        }
+        return new ConfirmationFailureException("Unexpected result: " + pos);
+    }
+
+    /**
      * Consumes data from the circular buffer and writes into the replication log. Method doesn't
      * exit until leadership is revoked.
      */
@@ -578,6 +615,6 @@ class _ReplWriter extends _RedoWriter {
     }
 
     private boolean replWrite(byte[] buf, int off, int len) throws IOException {
-        return mReplWriter.write(buf, off, len, mLastCommitPos);
+        return mReplWriter.mWriter.write(buf, off, len, mLastCommitPos);
     }
 }

@@ -27,6 +27,7 @@ import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 
 import org.cojen.tupl.ConfirmationFailureException;
+import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
@@ -95,7 +96,7 @@ final class _ReplController extends _ReplWriter {
         mEngine.startReceiving(mManager.readPosition(), initialTxnId);
 
         // Calling the ready method permits the ReplManager to wait until replication has
-        // "caught up", based one its own definition of "caught up".
+        // "caught up", based on its own definition of "caught up".
         boolean isLeader = mManager.ready(mEngine.mDatabase);
 
         // We're not truly caught up until all outstanding redo operations have been applied.
@@ -126,7 +127,7 @@ final class _ReplController extends _ReplWriter {
         acquireShared();
         try {
             ReplManager.Writer writer = mTxnRedoWriter.mReplWriter;
-            long pos = writer == null ? mEngine.decodePosition() : writer.position();
+            long pos = writer == null ? mEngine.decodePosition() : writer.mWriter.position();
             return (pos - checkpointPosition()) >= sizeThreshold;
         } finally {
             releaseShared();
@@ -194,7 +195,7 @@ final class _ReplController extends _ReplWriter {
         _ReplWriter redo = mCheckpointRedoWriter;
         ReplManager.Writer writer = redo.mReplWriter;
 
-        if (writer != null && !writer.confirm(mCheckpointPos)) {
+        if (writer != null && !confirm(writer.mWriter, mCheckpointPos)) {
             // Leadership lost, so checkpoint no higher than the position that the next leader
             // starts from. The transaction id can be zero, because the next leader always
             // writes a reset operation to the redo log.
@@ -212,9 +213,16 @@ final class _ReplController extends _ReplWriter {
 
         // Make sure that durable replication data is caught up to the local database.
 
-        mManager.syncConfirm(mCheckpointPos);
+        syncConfirm(mCheckpointPos);
     }
 
+    private void syncConfirm(long position) throws IOException {
+        if (!mManager.mRepl.syncCommit(position, -1)) {
+            // Unexpected.
+            throw new ConfirmationTimeoutException(-1);
+        }
+    }
+    
     @Override
     void checkpointFinished() throws IOException {
         long pos = mCheckpointPos;
@@ -247,11 +255,10 @@ final class _ReplController extends _ReplWriter {
                 if (writer == null) {
                     pos = mEngine.decodePosition();
                 } else {
-                    pos = writer.confirmedPosition();
+                    pos = writer.mWriter.commitPosition();
                 }
 
-                ReplManager manager = mEngine.mManager;
-                manager.syncConfirm(pos);
+                syncConfirm(pos);
 
                 // Also inform that the log can be compacted, in case it was rejected the last
                 // time. This method (force) can be called outside the regular checkpoint
@@ -259,7 +266,7 @@ final class _ReplController extends _ReplWriter {
                 pos = (long) cCheckpointPosHandle.getOpaque(this);
                 if (pos < 0) {
                     try {
-                        manager.mRepl.compact(pos & ~(1L << 63));
+                        mManager.mRepl.compact(pos & ~(1L << 63));
                     } catch (Throwable e) {
                         // Ignore.
                     }

@@ -447,8 +447,8 @@ public final class Launcher implements Cloneable {
                 }
             }
 
-            // ReplManager returns null if no restore should be performed.
-            restore = mReplManager.restoreRequest(mEventListener);
+            // Is null if no restore should be performed.
+            restore = ReplUtils.restoreRequest(mReplManager.mRepl, mEventListener);
         }
 
         Method m;
