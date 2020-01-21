@@ -260,7 +260,7 @@ boolean&nbsp;follow)</code></th>
 <h3><a id="open(org.cojen.tupl.repl.ReplicatorConfig)">open</a></h3>
 <div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></span>&nbsp;<span class="memberName">open</span>&#8203;(<span class="arguments"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</span>
                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Open a StreamReplicator instance, creating it if necessary.</div>
+<div class="block">Open a StreamReplicator instance, creating it if necessary. Be sure to call the <a href="Replicator.html#start()"><code>start</code></a> method too.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if misconfigured</dd>

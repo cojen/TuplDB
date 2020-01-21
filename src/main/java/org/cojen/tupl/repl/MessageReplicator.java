@@ -30,7 +30,8 @@ import java.io.IOException;
  */
 public interface MessageReplicator extends Replicator {
     /**
-     * Open a MessageReplicator instance, creating it if necessary.
+     * Open a MessageReplicator instance, creating it if necessary. Be sure to call the {@link
+     * #start start} method too.
      *
      * @throws IllegalArgumentException if misconfigured
      */

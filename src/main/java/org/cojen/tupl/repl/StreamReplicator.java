@@ -54,7 +54,8 @@ import java.util.function.Consumer;
  */
 public interface StreamReplicator extends Replicator {
     /**
-     * Open a StreamReplicator instance, creating it if necessary.
+     * Open a StreamReplicator instance, creating it if necessary. Be sure to call the {@link
+     * #start start} method too.
      *
      * @throws IllegalArgumentException if misconfigured
      */
