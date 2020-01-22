@@ -1354,7 +1354,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mElectionValidated--;
 
             if (mElectionValidated >= 0
-                || !mGroupFile.localMemberRole().isCandidate()
+                || !isCandidate(mGroupFile.localMemberRole())
                 || (peerChannels = mCandidateChannels).length <= 0)
             {
                 releaseExclusive();
@@ -1389,7 +1389,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower("election timed out");
             }
 
-            if (!mGroupFile.localMemberRole().isCandidate()) {
+            if (!isCandidate(mGroupFile.localMemberRole())) {
                 // Only NORMAL/STANDBY members can become candidates.
                 releaseExclusive();
                 return;
@@ -1458,6 +1458,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestPosition);
             }
         }
+    }
+
+    private static boolean isCandidate(Role role) {
+        return role != null && role.isCandidate();
     }
 
     private void affirmLeadership() {
