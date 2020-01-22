@@ -2882,17 +2882,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean updateRoleReply(Channel from, long groupVersion, long memberId, byte result) {
+        boolean versionOk = checkGroupVersion(groupVersion);
+
         if (result != ErrorCodes.SUCCESS) {
             acquireShared();
             boolean ok = mLocalRole == mGroupFile.localMemberRole();
             releaseShared();
-            if (!ok) {
+            if (!ok && (result != ErrorCodes.VERSION_MISMATCH || !versionOk)) {
                 event(ErrorCodes.levelFor(result),
                       "Unable to update role: " + ErrorCodes.toString(result));
             }
         }
-
-        checkGroupVersion(groupVersion);
 
         return true;
     }
@@ -2999,17 +2999,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Request that the group file be updated if it's behind. By doing this early instead of
      * waiting for a control message from the replication stream, this member can participate
      * in consensus decisions earlier.
+     *
+     * @return false if group version is stale and the request for a new group file failed
      */
-    private void checkGroupVersion(long groupVersion) {
+    private boolean checkGroupVersion(long groupVersion) {
         if (groupVersion > mGroupFile.version()) {
             Channel requestChannel = leaderRequestChannel();
             if (requestChannel != null && requestChannel != this) {
                 try {
                     requestChannel.groupFile(this, mGroupFile.version());
+                    return true;
                 } catch (IOException e) {
-                    // Ignore.
                 }
             }
+            return false;
         }
+
+        return true;
     }
 }
