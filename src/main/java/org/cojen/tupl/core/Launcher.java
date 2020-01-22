@@ -88,7 +88,7 @@ public final class Launcher implements Cloneable {
     Boolean mDirectPageAccess;
     boolean mCachePriming;
     ReplicatorConfig mReplConfig;
-    ReplManager mReplManager;
+    StreamReplicator mRepl;
     int mMaxReplicaThreads;
     Crypto mCrypto;
     Map<String, CustomHandler> mCustomHandlers;
@@ -102,6 +102,7 @@ public final class Launcher implements Cloneable {
 
     // These fields are set as a side-effect of constructing a replicated Database.
     long mReplRecoveryStartNanos;
+    long mReplInitialPostion;
     long mReplInitialTxnId;
 
     public Launcher() {
@@ -240,11 +241,11 @@ public final class Launcher implements Cloneable {
 
     public void replicate(ReplicatorConfig config) {
         mReplConfig = config;
-        mReplManager = null;
+        mRepl = null;
     }
 
     public void replicate(StreamReplicator repl) {
-        mReplManager = repl == null ? null : new ReplManager(repl);
+        mRepl = repl;
         mReplConfig = null;
     }
 
@@ -330,8 +331,8 @@ public final class Launcher implements Cloneable {
      * when base file is null or if a custom PageArray should be used.
      */
     File[] dataFiles() {
-        if (mReplManager != null) {
-            long encoding = mReplManager.mRepl.encoding();
+        if (mRepl != null) {
+            long encoding = mRepl.encoding();
             if (encoding == 0) {
                 throw new IllegalStateException
                     ("Illegal replication manager encoding: " + encoding);
@@ -388,12 +389,10 @@ public final class Launcher implements Cloneable {
     }
 
     /**
-     * @return true if mReplManager was assigned a new replicator
+     * @return true if mRepl was assigned a new replicator
      */
     private boolean openReplicator() throws IOException {
-        if (mReplManager != null || mReplConfig == null
-            || mBaseFile == null || mBaseFile.isDirectory())
-        {
+        if (mRepl != null || mReplConfig == null || mBaseFile == null || mBaseFile.isDirectory()) {
             return false;
         }
 
@@ -406,7 +405,7 @@ public final class Launcher implements Cloneable {
         replConfig.baseFilePath(mBaseFile.getPath() + ".repl");
         replConfig.createFilePath(mMkdirs);
 
-        mReplManager = ReplManager.open(replConfig);
+        mRepl = StreamReplicator.open(replConfig);
 
         return true;
     }
@@ -419,7 +418,7 @@ public final class Launcher implements Cloneable {
         } catch (Throwable e) {
             if (openedReplicator) {
                 try {
-                    launcher.mReplManager.close();
+                    launcher.mRepl.close();
                 } catch (Throwable e2) {
                     suppress(e, e2);
                 }
@@ -429,7 +428,7 @@ public final class Launcher implements Cloneable {
     }
 
     private Database doOpen(boolean destroy, InputStream restore) throws IOException {
-        if (!destroy && restore == null && mReplManager != null) shouldRestore: {
+        if (!destroy && restore == null && mRepl != null) shouldRestore: {
             // If no data files exist, attempt to restore from a peer.
 
             File[] dataFiles = dataFiles();
@@ -448,7 +447,7 @@ public final class Launcher implements Cloneable {
             }
 
             // Is null if no restore should be performed.
-            restore = ReplUtils.restoreRequest(mReplManager.mRepl, mEventListener);
+            restore = ReplUtils.restoreRequest(mRepl, mEventListener);
         }
 
         Method m;

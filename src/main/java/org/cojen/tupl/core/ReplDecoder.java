@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -29,11 +31,8 @@ import org.cojen.tupl.util.Latch;
 final class ReplDecoder extends RedoDecoder {
     volatile boolean mDeactivated;
 
-    ReplDecoder(ReplManager manager,
-                long initialPosition, long initialTxnId,
-                Latch decodeLatch)
-    {
-        super(false, initialTxnId, new In(initialPosition, manager), decodeLatch);
+    ReplDecoder(StreamReplicator repl, long initialPosition, long initialTxnId, Latch decodeLatch) {
+        super(false, initialTxnId, new In(initialPosition, repl), decodeLatch);
     }
 
     @Override
@@ -42,26 +41,109 @@ final class ReplDecoder extends RedoDecoder {
         return true;
     }
 
-    static final class In extends DataIn {
-        private final ReplManager mManager;
+    /**
+     * Wait until local member becomes the leader or until the current term has reached a
+     * known commit position.
+     *
+     * @return true if switched to leader
+     */
+    boolean catchup() {
+        return ((In) mIn).catchup();
+    }
 
-        In(long position, ReplManager manager) {
-            this(position, manager, 64 << 10);
+    /**
+     * Return the new leader Writer instance created after decoding stopped.
+     */
+    StreamReplicator.Writer extractWriter() {
+        In in = (In) mIn;
+        StreamReplicator.Writer writer = in.mWriter;
+        in.mWriter = null;
+        return writer;
+    }
+
+    static final class In extends DataIn {
+        private final StreamReplicator mRepl;
+        private volatile StreamReplicator.Reader mReader;
+        private volatile StreamReplicator.Writer mWriter;
+
+        In(long position, StreamReplicator repl) {
+            this(position, repl, 64 << 10);
         }
 
-        In(long position, ReplManager manager, int bufferSize) {
+        In(long position, StreamReplicator repl, int bufferSize) {
             super(position, bufferSize);
-            mManager = manager;
+            mRepl = repl;
+            mReader = mRepl.newReader(position, false);
         }
 
         @Override
         int doRead(byte[] buf, int off, int len) throws IOException {
-            return mManager.read(buf, off, len);
+            StreamReplicator.Reader reader = mReader;
+
+            while (true) {
+                if (reader != null) {
+                    int amt = reader.read(buf, off, len);
+                    if (amt >= 0) {
+                        return amt;
+                    }
+                    reader.close();
+                }
+
+                while ((reader = mRepl.newReader(mPos, false)) == null) {
+                    if ((mWriter = mRepl.newWriter()) != null) {
+                        mReader = null;
+                        return -1;
+                    }
+                    Thread.yield();
+                }
+
+                mReader = reader;
+            }
+        }
+
+        boolean catchup() {
+            StreamReplicator.Reader reader = mReader;
+
+            while (true) {
+                // If null, then local member is the leader and has implicitly caught up.
+                if (reader == null) {
+                    return true;
+                }
+
+                long commitPosition = reader.commitPosition();
+                long delayMillis = 1;
+
+                while (true) {
+                    // Check if the term changed.
+                    StreamReplicator.Reader currentReader = mReader;
+                    if (currentReader != reader) {
+                        reader = currentReader;
+                        break;
+                    }
+
+                    if (reader.position() >= commitPosition) {
+                        return false;
+                    }
+
+                    // Delay and double each time, up to 100 millis. Crude, but it means that no
+                    // special checks and notification logic needs to be added to the reader.
+                    try {
+                        Thread.sleep(delayMillis);
+                    } catch (InterruptedException e) {
+                        return false;
+                    }
+
+                    delayMillis = Math.min(delayMillis << 1, 100);
+                }
+            }
         }
 
         @Override
-        public void close() throws IOException {
-            // Nothing to close.
+        public void close() {
+            if (mReader != null) {
+                mReader.close();
+                mReader = null;
+            }
         }
     }
 }

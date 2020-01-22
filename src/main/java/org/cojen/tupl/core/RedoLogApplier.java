@@ -39,8 +39,7 @@ final class RedoLogApplier extends ReplEngine {
                    LHashTable.Obj<BTreeCursor> cursors)
         throws IOException
     {
-        // Pass a fake ReplManager. It's not expected to be used.
-        super(new ReplManager(null), maxThreads, db, txns, cursors);
+        super(null, maxThreads, db, txns, cursors);
     }
 
     /**

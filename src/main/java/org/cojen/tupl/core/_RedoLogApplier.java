@@ -39,8 +39,7 @@ final class _RedoLogApplier extends _ReplEngine {
                    LHashTable.Obj<_BTreeCursor> cursors)
         throws IOException
     {
-        // Pass a fake ReplManager. It's not expected to be used.
-        super(new ReplManager(null), maxThreads, db, txns, cursors);
+        super(null, maxThreads, db, txns, cursors);
     }
 
     /**

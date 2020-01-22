@@ -40,6 +40,8 @@ import org.cojen.tupl.UnmodifiableReplicaException;
 
 import org.cojen.tupl.ext.CustomHandler;
 
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
@@ -64,7 +66,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     // to unsigned 11400714819323198485.
     private static final long HASH_SPREAD = -7046029254386353131L;
 
-    final ReplManager mManager;
+    final StreamReplicator mRepl;
     final _LocalDatabase mDatabase;
 
     final _ReplController mController;
@@ -88,11 +90,10 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
     private ReplDecoder mDecoder;
 
     /**
-     * @param manager already started; if null, assume subclass is the manager
      * @param txns recovered transactions; can be null; cleared as a side-effect; keyed by
      * unscrambled id
      */
-    _ReplEngine(ReplManager manager, int maxThreads,
+    _ReplEngine(StreamReplicator repl, int maxThreads,
                _LocalDatabase db, LHashTable.Obj<_LocalTransaction> txns,
                LHashTable.Obj<_BTreeCursor> cursors)
         throws IOException
@@ -106,7 +107,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             }
         }
 
-        mManager = manager;
+        mRepl = repl;
         mDatabase = db;
 
         mController = new _ReplController(this);
@@ -166,13 +167,19 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         return mController;
     }
 
-    public void startReceiving(long initialPosition, long initialTxnId) {
+    /**
+     * @return the ReplDecoder instance or null if failed
+     */
+    public ReplDecoder startReceiving(long initialPosition, long initialTxnId) {
+        ReplDecoder decoder;
+
         try {
             mDecodeLatch.acquireExclusive();
             try {
-                if (mDecoder == null || mDecoder.mDeactivated) {
-                    mDecoder = new ReplDecoder
-                        (mManager, initialPosition, initialTxnId, mDecodeLatch);
+                decoder = mDecoder;
+                if (decoder == null || decoder.mDeactivated) {
+                    mDecoder = decoder = new ReplDecoder
+                        (mRepl, initialPosition, initialTxnId, mDecodeLatch);
                     newThread(this::decode).start();
                 }
             } finally {
@@ -180,7 +187,10 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             }
         } catch (Throwable e) {
             fail(e);
+            return null;
         }
+
+        return decoder;
     }
 
     @Override
@@ -313,7 +323,7 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
         }
 
         // Call with decode latch held, suspending checkpoints.
-        mManager.mRepl.controlMessageReceived(mDecoder.mIn.mPos, message);
+        mRepl.controlMessageReceived(mDecoder.mIn.mPos, message);
 
         return true;
     }
@@ -1090,7 +1100,11 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
 
     private long getDecodePosition() {
         ReplDecoder decoder = mDecoder;
-        return decoder == null ? mManager.readPosition() : decoder.mDecodePosition;
+        if (decoder == null) {
+            throw new IllegalStateException("No decoder");
+        } else {
+            return decoder.mDecodePosition;
+        }
     }
 
     /**
@@ -1514,14 +1528,20 @@ class _ReplEngine implements RedoVisitor, ThreadFactory {
             }
         }
 
+        StreamReplicator.Writer writer = decoder.extractWriter();
+
+        if (writer == null) {
+            // Panic.
+            fail(new IllegalStateException("No writer for the leader"));
+            return;
+        }
+
         _RedoWriter redo = null;
 
         try {
-            try {
-                redo = mController.leaderNotify();
-            } catch (UnmodifiableReplicaException e) {
-                // Should already be receiving again due to this exception.
-            }
+            redo = mController.leaderNotify(writer);
+        } catch (UnmodifiableReplicaException e) {
+            // Should already be receiving again due to this exception.
         } catch (Throwable e) {
             // Could try to switch to receiving mode, but panic seems to be the safe option.
             closeQuietly(mDatabase, e);

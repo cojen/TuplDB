@@ -44,7 +44,7 @@ class _ReplWriter extends _RedoWriter {
     final _ReplEngine mEngine;
 
     // Is non-null if writes are allowed.
-    final ReplManager.Writer mReplWriter;
+    final StreamReplicator.Writer mReplWriter;
 
     // These fields capture the state of the last produced commit, but not yet confirmed.
     // Access is guarded by _RedoWriter latch and mBufferLatch. Both latches must be held to
@@ -78,7 +78,7 @@ class _ReplWriter extends _RedoWriter {
     /**
      * Caller must call start if a writer is supplied.
      */
-    _ReplWriter(_ReplEngine engine, ReplManager.Writer writer) {
+    _ReplWriter(_ReplEngine engine, StreamReplicator.Writer writer) {
         mEngine = engine;
         mReplWriter = writer;
         mBufferLatch = writer == null ? null : new Latch();
@@ -91,7 +91,7 @@ class _ReplWriter extends _RedoWriter {
                 return;
             }
 
-            mWritePos = mReplWriter.mWriter.position();
+            mWritePos = mReplWriter.position();
             mBuffer = new byte[65536];
 
             mConsumer = new Thread(this::consume);
@@ -105,16 +105,16 @@ class _ReplWriter extends _RedoWriter {
 
     @Override
     final boolean failover() throws IOException {
-        return mEngine.mManager.mRepl.failover();
+        return mEngine.mRepl.failover();
     }
 
     @Override
     public final void txnCommitSync(long commitPos) throws IOException {
-        ReplManager.Writer writer = mReplWriter;
+        StreamReplicator.Writer writer = mReplWriter;
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (!confirm(writer.mWriter, commitPos)) {
+        if (!confirm(writer, commitPos)) {
             throw nowUnmodifiable();
         }
     }
@@ -178,7 +178,7 @@ class _ReplWriter extends _RedoWriter {
     final boolean confirm(_PendingTxn pending) {
         // Note: Similar to txnCommitSync.
 
-        ReplManager.Writer writer = mReplWriter;
+        StreamReplicator.Writer writer = mReplWriter;
         if (writer == null) {
             return false;
         }
@@ -186,21 +186,21 @@ class _ReplWriter extends _RedoWriter {
         long commitPos = pending.mCommitPos;
 
         try {
-            if (confirm(writer.mWriter, commitPos)) {
+            if (confirm(writer, commitPos)) {
                 return true;
             }
         } catch (IOException e) {
             // Treat as leader switch.
         }
 
-        mEngine.mController.switchToReplica(mReplWriter);
+        mEngine.mController.switchToReplica(writer);
 
         return false;
     }
 
     @Override
     public final long encoding() {
-        return mEngine.mManager.mRepl.encoding();
+        return mEngine.mRepl.encoding();
     }
 
     @Override
@@ -429,12 +429,12 @@ class _ReplWriter extends _RedoWriter {
             releaseExclusive();
         }
 
-        mEngine.mManager.mRepl.sync();
+        mEngine.mRepl.sync();
     }
 
     @Override
     public void close() throws IOException {
-        mEngine.mManager.close();
+        mEngine.mRepl.close();
 
         if (mBufferLatch == null) {
             return;
@@ -488,9 +488,10 @@ class _ReplWriter extends _RedoWriter {
      *
      * @param commitPos commit position which was passed to the write method
      * @return false if not leader at the given position
-     * @throws ConfirmationFailureException
      */
-    static boolean confirm(StreamReplicator.Writer writer, long commitPos) throws IOException {
+    static boolean confirm(StreamReplicator.Writer writer, long commitPos)
+        throws ConfirmationFailureException
+    {
         long pos;
         try {
             pos = writer.waitForCommit(commitPos, -1);
@@ -502,6 +503,28 @@ class _ReplWriter extends _RedoWriter {
         }
         if (pos == -1) {
             return false;
+        }
+        throw unexpectedConfirmation(pos);
+    }
+
+    /**
+     * Blocks until the leadership end is confirmed. This method must be called before
+     * switching to replica mode.
+     *
+     * @return the end commit position; same as next read position
+     */
+    static long confirmEnd(StreamReplicator.Writer writer) throws ConfirmationFailureException {
+        long pos;
+        try {
+            pos = writer.waitForEndCommit(-1);
+        } catch (InterruptedIOException e) {
+            throw new ConfirmationInterruptedException();
+        }
+        if (pos >= 0) {
+            return pos;
+        }
+        if (pos == -1) {
+            throw new ConfirmationFailureException("Closed");
         }
         throw unexpectedConfirmation(pos);
     }
@@ -615,6 +638,6 @@ class _ReplWriter extends _RedoWriter {
     }
 
     private boolean replWrite(byte[] buf, int off, int len) throws IOException {
-        return mReplWriter.mWriter.write(buf, off, len, mLastCommitPos);
+        return mReplWriter.write(buf, off, len, mLastCommitPos);
     }
 }

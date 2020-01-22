@@ -101,6 +101,8 @@ import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.core._Node.*;
@@ -665,7 +667,7 @@ public final class _LocalDatabase extends CoreDatabase {
             _Node rootNode = loadRegistryRoot(launcher, header);
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
-            if (launcher.mReplManager != null) {
+            if (launcher.mRepl != null) {
                 mRegistry = new _BTree.Repl(this, Tree.REGISTRY_ID, null, rootNode);
             } else {
                 mRegistry = new _BTree(this, Tree.REGISTRY_ID, null, rootNode);
@@ -818,14 +820,14 @@ public final class _LocalDatabase extends CoreDatabase {
                 // Otherwise, trees recently deleted might get double deleted.
                 tagTrashedTrees();
 
-                ReplManager rm = launcher.mReplManager;
-                if (rm != null) {
+                StreamReplicator repl = launcher.mRepl;
+                if (repl != null) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.REPLICATION_DEBUG,
                                               "Starting at: %1$d", redoPos);
                     }
 
-                    rm.start(redoPos);
+                    repl.start();
 
                     if (mReadOnly) {
                         mRedoWriter = null;
@@ -834,17 +836,18 @@ public final class _LocalDatabase extends CoreDatabase {
                             Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
                             var printer = new RedoEventPrinter(debugListener, EventType.DEBUG);
-                            new ReplDecoder(rm, redoPos, redoTxnId, new Latch()).run(printer);
+                            new ReplDecoder(repl, redoPos, redoTxnId, new Latch()).run(printer);
                         }
                     } else {
                         var engine = new _ReplEngine
-                            (rm, launcher.mMaxReplicaThreads, this, txns, cursors);
+                            (repl, launcher.mMaxReplicaThreads, this, txns, cursors);
                         mRedoWriter = engine.initWriter(redoNum);
 
                         // Cannot start recovery until constructor is finished and final field
                         // values are visible to other threads. Pass the state to the caller
                         // through the launcher object.
                         launcher.mReplRecoveryStartNanos = recoveryStart;
+                        launcher.mReplInitialPostion = redoPos;
                         launcher.mReplInitialTxnId = redoTxnId;
                     }
                 } else {
@@ -1003,7 +1006,7 @@ public final class _LocalDatabase extends CoreDatabase {
             }
 
             try {
-                controller.ready(launcher.mReplInitialTxnId);
+                controller.ready(launcher.mReplInitialPostion, launcher.mReplInitialTxnId);
             } catch (Throwable e) {
                 closeQuietly(this, e);
                 throw e;
@@ -1033,8 +1036,7 @@ public final class _LocalDatabase extends CoreDatabase {
             redo.txnCommitSync(commitPos);
 
             try {
-                ((_ReplController) mRedoWriter).mManager.mRepl
-                    .controlMessageReceived(commitPos, message);
+                ((_ReplController) mRedoWriter).mRepl.controlMessageReceived(commitPos, message);
             } catch (Throwable e) {
                 // Panic.
                 closeQuietly(this, e);
@@ -3368,13 +3370,13 @@ public final class _LocalDatabase extends CoreDatabase {
         }
 
         long replEncoding = decodeLongLE(header, I_REPL_ENCODING);
-        ReplManager rm = launcher.mReplManager;
+        StreamReplicator repl = launcher.mRepl;
 
-        if ((replEncoding != 0 || rm != null) && launcher.mDebugOpen != null) {
+        if ((replEncoding != 0 || repl != null) && launcher.mDebugOpen != null) {
             mEventListener.notify(EventType.DEBUG, "REPL_ENCODING: %1$d", replEncoding);
         }
 
-        if (rm == null) {
+        if (repl == null) {
             if (replEncoding != 0 && !hasRedoLogFiles()) {
                 // Conversion to non-replicated mode is allowed by simply touching redo file 0.
                 throw new DatabaseException
@@ -3388,7 +3390,7 @@ public final class _LocalDatabase extends CoreDatabase {
             String msg = "Database was created initially without a replication manager. " +
                 "Conversion isn't possible ";
 
-            if (!rm.mRepl.isReadable(0)) {
+            if (!repl.isReadable(0)) {
                 msg += "without complete replication data.";
                 throw new DatabaseException(msg);
             }
@@ -3402,7 +3404,7 @@ public final class _LocalDatabase extends CoreDatabase {
             // might be higher. Since we have the header data passed to us already, we can
             // modify it without persisting it.
             encodeLongLE(header, I_REDO_POSITION, 0);
-        } else if (replEncoding != rm.mRepl.encoding()) {
+        } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException
                 ("Database was created initially with a different replication manager, " +
                  "identified by: " + replEncoding);
@@ -3440,7 +3442,7 @@ public final class _LocalDatabase extends CoreDatabase {
             _Node root = loadTreeRoot(treeId, rootId);
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
-            if (launcher != null && launcher.mReplManager != null) {
+            if (launcher != null && launcher.mRepl != null) {
                 return new _BTree.Repl(this, treeId, treeIdBytes, root);
             }
 

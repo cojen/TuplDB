@@ -32,6 +32,8 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.repl.StreamReplicator;
+
 import org.cojen.tupl.util.LatchCondition;
 
 /**
@@ -54,7 +56,7 @@ final class _ReplController extends _ReplWriter {
         }
     }
 
-    final ReplManager mManager;
+    final StreamReplicator mRepl;
 
     private LatchCondition mLeaderNotifyCondition;
 
@@ -70,7 +72,7 @@ final class _ReplController extends _ReplWriter {
 
     _ReplController(_ReplEngine engine) {
         super(engine, null);
-        mManager = engine.mManager;
+        mRepl = engine.mRepl;
         // Use this instance for replica mode.
         mTxnRedoWriter = this;
         mUnmodifiable = true;
@@ -82,22 +84,51 @@ final class _ReplController extends _ReplWriter {
         releaseExclusive();
     }
 
-    public void ready(long initialTxnId) throws IOException {
+    public void ready(long initialPosition, long initialTxnId) throws IOException {
         acquireExclusive();
         try {
             mLeaderNotifyCondition = new LatchCondition();
             // Init for the shouldCheckpoint method. Without this, an initial checkpoint is
             // performed even if it's not necessary.
-            cCheckpointPosHandle.setOpaque(this, mManager.readPosition() | (1L << 63));
+            cCheckpointPosHandle.setOpaque(this, initialPosition | (1L << 63));
         } finally {
             releaseExclusive();
         }
 
-        mEngine.startReceiving(mManager.readPosition(), initialTxnId);
+        ReplDecoder decoder = mEngine.startReceiving(initialPosition, initialTxnId);
 
-        // Calling the ready method permits the ReplManager to wait until replication has
-        // "caught up", based on its own definition of "caught up".
-        boolean isLeader = mManager.ready(mEngine.mDatabase);
+        if (decoder == null) {
+            // Failed to start, and database has been closed with an exception.
+            return;
+        }
+
+        CoreDatabase db = mEngine.mDatabase;
+
+        // Can now send control messages.
+        mRepl.controlMessageAcceptor(message -> {
+            try {
+                db.writeControlMessage(message);
+            } catch (UnmodifiableReplicaException e) {
+                // Drop it.
+            } catch (IOException e) {
+                Utils.uncaught(e);
+            }
+        });
+
+        // Can now accept snapshot requests.
+        mRepl.snapshotRequestAcceptor(sender -> {
+            try {
+                ReplUtils.sendSnapshot(db, sender);
+            } catch (IOException e) {
+                Utils.closeQuietly(sender);
+            }
+        });
+
+        // Update the local member role.
+        mRepl.start();
+
+        // Wait until replication has "caught up" before returning.
+        boolean isLeader = decoder.catchup();
 
         // We're not truly caught up until all outstanding redo operations have been applied.
         // Suspend and resume does the trick.
@@ -126,8 +157,8 @@ final class _ReplController extends _ReplWriter {
     boolean shouldCheckpoint(long sizeThreshold) {
         acquireShared();
         try {
-            ReplManager.Writer writer = mTxnRedoWriter.mReplWriter;
-            long pos = writer == null ? mEngine.decodePosition() : writer.mWriter.position();
+            StreamReplicator.Writer writer = mTxnRedoWriter.mReplWriter;
+            long pos = writer == null ? mEngine.decodePosition() : writer.position();
             return (pos - checkpointPosition()) >= sizeThreshold;
         } finally {
             releaseShared();
@@ -149,7 +180,7 @@ final class _ReplController extends _ReplWriter {
 
         // Only capture new checkpoint state if previous attempt succeeded.
         if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
-            ReplManager.Writer writer = redo.mReplWriter;
+            StreamReplicator.Writer writer = redo.mReplWriter;
             if (writer == null) {
                 cCheckpointPosHandle.setOpaque(this, mEngine.suspendedDecodePosition());
                 mCheckpointTxnId = mEngine.suspendedDecodeTransactionId();
@@ -193,13 +224,13 @@ final class _ReplController extends _ReplWriter {
         // Attempt to confirm the log position which was captured by the checkpoint switch.
 
         _ReplWriter redo = mCheckpointRedoWriter;
-        ReplManager.Writer writer = redo.mReplWriter;
+        StreamReplicator.Writer writer = redo.mReplWriter;
 
-        if (writer != null && !confirm(writer.mWriter, mCheckpointPos)) {
+        if (writer != null && !confirm(writer, mCheckpointPos)) {
             // Leadership lost, so checkpoint no higher than the position that the next leader
             // starts from. The transaction id can be zero, because the next leader always
             // writes a reset operation to the redo log.
-            long endPos = writer.confirmEnd();
+            long endPos = confirmEnd(writer);
             if (endPos < mCheckpointPos) {
                 cCheckpointPosHandle.setOpaque(this, endPos);
                 mCheckpointTxnId = 0;
@@ -217,7 +248,7 @@ final class _ReplController extends _ReplWriter {
     }
 
     private void syncConfirm(long position) throws IOException {
-        if (!mManager.mRepl.syncCommit(position, -1)) {
+        if (!mRepl.syncCommit(position, -1)) {
             // Unexpected.
             throw new ConfirmationTimeoutException(-1);
         }
@@ -226,7 +257,7 @@ final class _ReplController extends _ReplWriter {
     @Override
     void checkpointFinished() throws IOException {
         long pos = mCheckpointPos;
-        mManager.mRepl.compact(pos);
+        mRepl.compact(pos);
         mCheckpointRedoWriter = null;
         // Keep checkpoint position for the benefit of the shouldCheckpoint method, but flip
         // the bit for the checkpointSwitch method to detect successful completion.
@@ -251,11 +282,11 @@ final class _ReplController extends _ReplWriter {
         if (metadata) {
             try {
                 long pos;
-                ReplManager.Writer writer = mTxnRedoWriter.mReplWriter;
+                StreamReplicator.Writer writer = mTxnRedoWriter.mReplWriter;
                 if (writer == null) {
                     pos = mEngine.decodePosition();
                 } else {
-                    pos = writer.mWriter.commitPosition();
+                    pos = writer.commitPosition();
                 }
 
                 syncConfirm(pos);
@@ -266,7 +297,7 @@ final class _ReplController extends _ReplWriter {
                 pos = (long) cCheckpointPosHandle.getOpaque(this);
                 if (pos < 0) {
                     try {
-                        mManager.mRepl.compact(pos & ~(1L << 63));
+                        mRepl.compact(pos & ~(1L << 63));
                     } catch (Throwable e) {
                         // Ignore.
                     }
@@ -312,7 +343,7 @@ final class _ReplController extends _ReplWriter {
      *
      * @return new leader redo writer, or null if failed
      */
-    _ReplWriter leaderNotify() throws UnmodifiableReplicaException, IOException {
+    _ReplWriter leaderNotify(StreamReplicator.Writer writer) throws IOException {
         acquireExclusive();
         try {
             // Note: Signal isn't delivered until after latch is released.
@@ -323,14 +354,6 @@ final class _ReplController extends _ReplWriter {
 
             if (mTxnRedoWriter.mReplWriter != null) {
                 // Must be in replica mode.
-                return null;
-            }
-
-            ReplManager.Writer writer = mManager.writer();
-
-            if (writer == null) {
-                // Panic.
-                mEngine.fail(new IllegalStateException("No writer for the leader"));
                 return null;
             }
 
@@ -345,7 +368,7 @@ final class _ReplController extends _ReplWriter {
                 mTxnRedoWriter = redo;
 
                 // Switch to replica when leadership is revoked.
-                writer.mWriter.uponCommit(Long.MAX_VALUE, pos -> switchToReplica(writer));
+                writer.uponCommit(Long.MAX_VALUE, pos -> switchToReplica(writer));
 
                 // Clear the log state and write a reset op to signal leader transition.
                 context.doRedoReset(redo);
@@ -367,7 +390,7 @@ final class _ReplController extends _ReplWriter {
     }
 
     // Also called by _ReplWriter, sometimes with the latch held.
-    UnmodifiableReplicaException nowUnmodifiable(ReplManager.Writer expect)
+    UnmodifiableReplicaException nowUnmodifiable(StreamReplicator.Writer expect)
         throws DatabaseException
     {
         switchToReplica(expect);
@@ -375,7 +398,7 @@ final class _ReplController extends _ReplWriter {
     }
 
     // Must be called without latch held.
-    void switchToReplica(ReplManager.Writer expect) {
+    void switchToReplica(StreamReplicator.Writer expect) {
         if (shouldSwitchToReplica(expect) != null) {
             // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
             // _ReplWriter while latched, which is an inconsistent order.
@@ -383,7 +406,7 @@ final class _ReplController extends _ReplWriter {
         }
     }
 
-    private void doSwitchToReplica(ReplManager.Writer expect) {
+    private void doSwitchToReplica(StreamReplicator.Writer expect) {
         _ReplWriter redo;
 
         acquireExclusive();
@@ -399,12 +422,14 @@ final class _ReplController extends _ReplWriter {
 
         long pos;
         try {
-            pos = redo.mReplWriter.confirmEnd();
+            pos = confirmEnd(expect);
         } catch (ConfirmationFailureException e) {
             // Position is required, so panic.
             mEngine.fail(e);
             return;
         }
+
+        expect.close();
 
         redo.flipped(pos);
 
@@ -435,7 +460,7 @@ final class _ReplController extends _ReplWriter {
     /**
      * @return null if shouldn't switch; mTxnRedoWriter otherwise
      */
-    private _ReplWriter shouldSwitchToReplica(ReplManager.Writer expect) {
+    private _ReplWriter shouldSwitchToReplica(StreamReplicator.Writer expect) {
         if (mSwitchingToReplica) {
             // Another thread is doing it.
             return null;
@@ -447,7 +472,7 @@ final class _ReplController extends _ReplWriter {
         }
 
         _ReplWriter redo = mTxnRedoWriter;
-        ReplManager.Writer writer = redo.mReplWriter;
+        StreamReplicator.Writer writer = redo.mReplWriter;
 
         if (writer == null || writer != expect) {
             // Must be in leader mode.
