@@ -142,14 +142,13 @@ final class _Lock {
         if (queueSX.isEmpty()) {
             // Indicate that last signal has been consumed, and also free memory.
             mQueueSX = null;
-        } else {
-            // After consuming one signal, next shared waiter must be signaled, and so on.
-            queueSX.signalShared(latch);
         }
 
         if (w >= 1) {
             addSharedLocker(mLockCount, locker);
             locker.mWaitingFor = null;
+            // After consuming one signal, next shared waiter must be signaled, and so on.
+            queueSX.signalShared(latch);
             return ACQUIRED;
         } else if (w == 0) {
             return TIMED_OUT_LOCK;
@@ -370,12 +369,12 @@ final class _Lock {
      * @param ht briefly released and re-acquired for deleting a ghost
      */
     private void doUnlockOwned(_LockManager.LockHT ht) {
-        LatchCondition queueU = mQueueU;
         int count = mLockCount;
 
         if (count != ~0) {
             // Unlocking an upgradable lock.
             mOwner = null;
+            LatchCondition queueU = mQueueU;
             if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
                 // _Lock is now completely unused.
                 ht.remove(this);
@@ -388,6 +387,9 @@ final class _Lock {
             deleteGhost(ht);
             mOwner = null;
             mLockCount = 0;
+            // The call to deleteGhost might have released and re-acquired the latch guarding
+            // the state of this lock, so must obtain the latest references to the queues.
+            LatchCondition queueU = mQueueU;
             LatchCondition queueSX = mQueueSX;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
@@ -495,7 +497,7 @@ final class _Lock {
      */
     void doUnlockToShared(_Locker locker, Latch latch) {
         ownerCheck: if (mOwner == locker) {
-            LatchCondition queueU = mQueueU;
+            LatchCondition queueU;
             int count = mLockCount;
 
             if (count != ~0) {
@@ -503,11 +505,15 @@ final class _Lock {
                 // shared locks are held (IllegalStateException is thrown).
                 addSharedLocker(count & 0x7fffffff, locker);
                 mOwner = null;
+                queueU = mQueueU;
             } else {
                 // Unlocking exclusive lock into shared.
                 deleteGhost(latch);
                 doAddSharedLocker(1, locker);
                 mOwner = null;
+                // The call to deleteGhost might have released and re-acquired the latch guarding
+                // the state of this lock, so must obtain the latest references to the queues.
+                queueU = mQueueU;
                 LatchCondition queueSX = mQueueSX;
                 if (queueSX != null) {
                     if (queueU != null) {

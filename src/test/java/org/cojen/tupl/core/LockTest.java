@@ -1904,6 +1904,41 @@ public class LockTest {
     }
 
     @Test
+    public void doubleTimeout() throws Exception {
+        // Verify that a timeout of a lock doesn't falsely signal the next waiter.
+
+        var locker1 = new Locker(mManager);
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
+
+        assertEquals(LockResult.ACQUIRED, locker1.doLockExclusive(0, k1, -1));
+
+        class Waiter extends Thread {
+            volatile Throwable failed;
+            volatile LockResult result;
+
+            @Override
+            public void run() {
+                try {
+                    result = locker2.doTryLockShared(0, k1, ONE_MILLIS_IN_NANOS * 1000);
+                } catch (Throwable e) {
+                    failed = e;
+                }
+            }
+        }
+
+        Waiter w1 = startAndWaitUntilBlocked(new Waiter());
+
+        LockResult result = locker3.doTryLockShared(0, k1, ONE_MILLIS_IN_NANOS * 2_000);
+        assertEquals(LockResult.TIMED_OUT_LOCK, result);
+
+        w1.join();
+
+        assertNull(w1.failed);
+        assertEquals(LockResult.TIMED_OUT_LOCK, w1.result);
+    }
+
+    @Test
     public void closedLocker() throws Exception {
         LocalDatabase db = LocalDatabase.open(new Launcher());
         var manager = new LockManager(db, null, -1);
