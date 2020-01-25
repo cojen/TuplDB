@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.tools;
 
 import java.io.*;
 import java.util.*;
@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
  * allows for simple #ifdef style preprocessing behavior.
  *
  * @author Brian S O'Neill
+ * @hidden
  */
 class PageAccessTransformer {
     /**
