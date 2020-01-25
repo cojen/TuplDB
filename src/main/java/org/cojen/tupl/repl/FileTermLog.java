@@ -1642,70 +1642,6 @@ final class FileTermLog extends Latch implements TermLog {
             return amt;
         }
 
-        @Override
-        public long trySkip(long length) throws IOException {
-            if (length <= 0) {
-                return 0;
-            }
-
-            long position = mReaderPosition;
-            long commitPosition = mReaderCommitPosition;
-            long avail = commitPosition - position;
-
-            if (avail <= 0) {
-                FileTermLog.this.acquireShared();
-                commitPosition = doAppliableCommitPosition();
-                long endPosition = mLogEndPosition;
-                FileTermLog.this.releaseShared();
-
-                mReaderCommitPosition = commitPosition;
-                avail = commitPosition - position;
-
-                if (avail <= 0) {
-                    return commitPosition == endPosition ? EOF : 0;
-                }
-            }
-
-            long amt = Math.min(length, avail);
-
-            // Ensure that other threads can read the position safely.
-            cReaderPositionHandle.setOpaque(this, position + amt);
-
-            return amt;
-        }
-
-        @Override
-        public long trySkipAny(long length) throws IOException {
-            if (length <= 0) {
-                return 0;
-            }
-
-            long position = mReaderPosition;
-            long contigPosition = mReaderContigPosition;
-            long avail = contigPosition - position;
-
-            if (avail <= 0) {
-                FileTermLog.this.acquireShared();
-                contigPosition = mLogContigPosition;
-                long endPosition = mLogEndPosition;
-                FileTermLog.this.releaseShared();
-
-                mReaderContigPosition = contigPosition;
-                avail = contigPosition - position;
-
-                if (avail <= 0) {
-                    return contigPosition == endPosition ? EOF : 0;
-                }
-            }
-
-            long amt = Math.min(length, avail);
-
-            // Ensure that other threads can read the position safely.
-            cReaderPositionHandle.setOpaque(this, position + amt);
-
-            return amt;
-        }
-
         private Segment segmentForReading(long position) throws IOException {
             if (mReaderClosed) {
                 throw new IOException("Closed");
@@ -1999,19 +1935,13 @@ final class FileTermLog extends Latch implements TermLog {
                     return null;
                 }
 
-                File file = file();
-
-                if (file == null) {
-                    io = NullFileIO.THE;
-                } else {
-                    EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                    int handles = 1;
-                    if (mMaxLength > 0) {
-                        options.add(OpenOption.CREATE);
-                        handles = OPEN_HANDLE_COUNT;
-                    }
-                    io = FileIO.open(file, options, handles);
+                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                int handles = 1;
+                if (mMaxLength > 0) {
+                    options.add(OpenOption.CREATE);
+                    handles = OPEN_HANDLE_COUNT;
                 }
+                io = FileIO.open(file(), options, handles);
 
                 try {
                     io.expandLength(mMaxLength, LengthOption.PREALLOCATE_OPTIONAL);
@@ -2041,18 +1971,12 @@ final class FileTermLog extends Latch implements TermLog {
                     throw new InvalidReadException("Log compacted");
                 }
 
-                File file = file();
-
-                if (file == null) {
-                    io = NullFileIO.THE;
-                } else {
-                    EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
-                    int handles = 1;
-                    if (mMaxLength > 0) {
-                        handles = OPEN_HANDLE_COUNT;
-                    }
-                    mFileIO = io = FileIO.open(file, options, handles);
+                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                int handles = 1;
+                if (mMaxLength > 0) {
+                    handles = OPEN_HANDLE_COUNT;
                 }
+                mFileIO = io = FileIO.open(file(), options, handles);
             }
 
             return io;

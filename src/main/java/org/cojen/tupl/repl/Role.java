@@ -56,16 +56,7 @@ public enum Role {
      * A restoring member is an observer which just joined the group and is receiving a
      * snapshot. If the restore fails, the member is automatically removed from the group.
      */
-    RESTORING((byte) 5),
-
-    /**
-     * Voters only provide consensus. They don't receive replicated data, they don't
-     * {@linkplain ReplicatorConfig#proxyWrites proxy writes}, and they cannot become the
-     * leader.
-     *
-     * <p><i>Note: Experimental feature.</i>
-     */
-    VOTER((byte) -1);
+    RESTORING((byte) 5);
 
     byte mCode;
 
@@ -74,15 +65,15 @@ public enum Role {
     }
 
     boolean providesConsensus() {
-        return mCode <= 2;
+        return isCandidate();
     }
 
     boolean canProxy() {
-        return mCode >= 1 && mCode <= 3;
+        return mCode <= 3;
     }
 
     boolean isCandidate() {
-        return mCode >= 1 && mCode <= 2;
+        return mCode <= 2;
     }
 
     static Role decode(byte code) {
@@ -95,8 +86,6 @@ public enum Role {
             return PROXY;
         case 4:
             return OBSERVER;
-        case -1:
-            return VOTER;
         default:
             throw new IllegalArgumentException();
         }

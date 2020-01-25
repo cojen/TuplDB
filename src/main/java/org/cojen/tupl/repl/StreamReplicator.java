@@ -112,12 +112,7 @@ public interface StreamReplicator extends Replicator {
             base.getParentFile().mkdirs();
         }
 
-        StateLog log;
-        if (config.mLocalRole == Role.VOTER) {
-            log = FileStateLog.open();
-        } else {
-            log = FileStateLog.open(base);
-        }
+        StateLog log = FileStateLog.open(base);
 
         return Controller.open(config.mEventListener,
                                log, groupToken,

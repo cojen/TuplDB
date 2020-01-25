@@ -110,8 +110,6 @@ final class ChannelManager {
         OP_WRITE_AND_PROXY = 24,
         OP_WRITE_VIA_PROXY = 26,
         OP_QUERY_DATA_REPLY_MISSING = 29, // alternate reply from OP_QUERY_DATA
-        OP_QUERY_DATA_REPLY_VOID    = 31, // alternate reply from OP_QUERY_DATA
-        OP_WRITE_VOID      = 32, // paired with OP_WRITE_DATA_REPLY
         OP_FORCE_ELECTION  = 34;
 
     private final SocketFactory mSocketFactory;
@@ -1037,27 +1035,6 @@ final class ChannelManager {
                         localServer.leaderCheckReply(this, in.readLongLE());
                         commandLength -= (8 * 1);
                         break;
-                    case OP_QUERY_DATA_REPLY_VOID:
-                        currentTerm = in.readLongLE();
-                        prevTerm = in.readLongLE();
-                        term = in.readLongLE();
-                        position = in.readLongLE();
-                        long length = in.readLongLE();
-                        localServer.queryDataReplyVoid(this, currentTerm, prevTerm, term,
-                                                       position, length);
-                        commandLength -= (8 * 5);
-                        break;
-                    case OP_WRITE_VOID:
-                        prevTerm = in.readLongLE();
-                        term = in.readLongLE();
-                        position = in.readLongLE();
-                        highestPosition = in.readLongLE();
-                        commitPosition = in.readLongLE();
-                        length = in.readLongLE();
-                        localServer.writeVoid(this, prevTerm, term, position,
-                                              highestPosition, commitPosition, length);
-                        commandLength -= (8 * 6);
-                        break;
                     default:
                         localServer.unknown(this, op);
                         break;
@@ -1280,22 +1257,6 @@ final class ChannelManager {
             return writeData(OP_WRITE_VIA_PROXY,
                              prevTerm, term, position, highestPos, commitPos,
                              prefix, data, off, len);
-        }
-
-        @Override
-        public boolean queryDataReplyVoid(Channel from, long currentTerm,
-                                          long prevTerm, long term, long position, long length)
-        {
-            return writeCommand(OP_QUERY_DATA_REPLY_VOID,
-                                currentTerm, prevTerm, term, position, length);
-        }
-
-        @Override
-        public boolean writeVoid(Channel from, long prevTerm, long term, long position,
-                                 long highestPosition, long commitPosition, long length)
-        {
-            return writeCommand(OP_WRITE_VOID,
-                                prevTerm, term, position, highestPosition, commitPosition, length);
         }
 
         @Override

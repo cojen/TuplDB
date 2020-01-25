@@ -115,7 +115,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // Normal and standby members are required to participate in consensus.
     private Peer[] mConsensusPeers;
-    private Channel[] mConsensusChannels;
     // Candidate channels can become the leader, possibly an interim leader.
     private Channel[] mCandidateChannels;
     // Proxy channels includes proxies, which cannot participate in consensus.
@@ -280,7 +279,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         var consensusPeers = new ArrayList<Peer>();
-        var consensusChannels = new ArrayList<Channel>();
         var candidateChannels = new ArrayList<Channel>();
         var proxyChannels = new ArrayList<Channel>();
         var allChannels = new ArrayList<Channel>();
@@ -296,7 +294,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (role.providesConsensus()) {
                 consensusPeers.add(peer);
-                consensusChannels.add(channel);
             }
 
             if (role.isCandidate()) {
@@ -312,17 +309,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         mConsensusPeers = consensusPeers.toArray(new Peer[consensusPeers.size()]);
 
-        Channel[][] arrays = toArrays
-            (consensusChannels, candidateChannels, proxyChannels, allChannels);
+        Channel[][] arrays = toArrays(candidateChannels, proxyChannels, allChannels);
 
-        mConsensusChannels = arrays[0];
-        mCandidateChannels = arrays[1];
-        mProxyChannels = arrays[2];
-        mAllChannels = arrays[3];
+        mCandidateChannels = arrays[0];
+        mProxyChannels = arrays[1];
+        mAllChannels = arrays[2];
 
         if (mLeaderReplWriter != null) {
             mLeaderReplWriter.update
-                (mLeaderLogWriter, mAllChannels, consensusChannels.isEmpty(),
+                (mLeaderLogWriter, mAllChannels, candidateChannels.isEmpty(),
                  mProxyWrites ? mProxyChannels : null);
         }
 
@@ -575,7 +570,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 }
             } else {
                 acquireShared();
-                Channel[] channels = mConsensusChannels;
+                Channel[] channels = mCandidateChannels;
                 releaseShared();
 
                 if (channels.length == 0) {
@@ -1018,18 +1013,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Write directly to all the peers.
 
                 for (Channel peerChan : peerChannels) {
-                    if (peerChan.peer().role() == Role.VOTER) {
-                        long fullLength = length;
-                        if (prefix != null) {
-                            fullLength += prefix.length;
-                        }
-                        peerChan.writeVoid(null, prevTerm, term,
-                                           position, highestPosition, commitPosition, fullLength);
-                    } else {
-                        peerChan.writeData(null, prevTerm, term,
-                                           position, highestPosition, commitPosition,
-                                           prefix, data, offset, length);
-                    }
+                    peerChan.writeData(null, prevTerm, term,
+                                       position, highestPosition, commitPosition,
+                                       prefix, data, offset, length);
                 }
 
                 return result;
@@ -2202,13 +2188,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void doQueryData(Channel from, long startPosition, long endPosition)
         throws IOException
     {
-        final boolean replyVoid = from.peer().role() == Role.VOTER;
-
         LogReader reader = mStateLog.openReader(startPosition);
 
         try {
             long remaining = endPosition - startPosition;
-            byte[] buf = replyVoid ? null : new byte[(int) Math.min(9000, remaining)];
+            var buf = new byte[(int) Math.min(9000, remaining)];
 
             while (true) {
                 long currentTerm = 0;
@@ -2217,23 +2201,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 long position = reader.position();
                 long term = reader.term();
 
-                int require, amt;
-                if (replyVoid) {
-                    require = (int) Math.min(Integer.MAX_VALUE, remaining);
-                    amt = (int) reader.trySkip(require);
-                } else {
-                    require = (int) Math.min(buf.length, remaining);
-                    amt = reader.tryRead(buf, 0, require);
-                }
+                int require = (int) Math.min(buf.length, remaining);
+                int amt = reader.tryRead(buf, 0, require);
 
                 if (amt == 0) {
                     // If the leader, read past the commit position, up to the highest position.
                     acquireShared();
                     try {
                         if (mLocalMode == MODE_LEADER) {
-                            int any = replyVoid
-                                ? (int) reader.trySkipAny(require)
-                                : reader.tryReadAny(buf, amt, require);
+                            int any = reader.tryReadAny(buf, amt, require);
                             if (any > 0) {
                                 currentTerm = mCurrentTerm;
                                 amt += any;
@@ -2256,18 +2232,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     break;
                 }
 
-                if (replyVoid) {
-                    if (!from.queryDataReplyVoid
-                        (null, currentTerm, prevTerm, term, position, amt))
-                    {
-                        break;
-                    }
-                } else {
-                    if (!from.queryDataReply
-                        (null, currentTerm, prevTerm, term, position, buf, 0, amt))
-                    {
-                        break;
-                    }
+                if (!from.queryDataReply
+                    (null, currentTerm, prevTerm, term, position, buf, 0, amt))
+                {
+                    break;
                 }
 
                 startPosition += amt;
@@ -2601,18 +2569,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             for (Channel peerChan : peerChannels) {
                 Peer peer = peerChan.peer();
                 if (!fromPeer.equals(peer)) {
-                    if (peer.role() == Role.VOTER) {
-                        long fullLength = len;
-                        if (prefix != null) {
-                            fullLength += prefix.length;
-                        }
-                        peerChan.writeVoid(null, prevTerm, term,
-                                           position, highestPosition, commitPosition, fullLength);
-                    } else {
-                        peerChan.writeDataViaProxy(null, prevTerm, term,
-                                                   position, highestPosition, commitPosition,
-                                                   prefix, data, off, len);
-                    }
+                    peerChan.writeDataViaProxy(null, prevTerm, term,
+                                               position, highestPosition, commitPosition,
+                                               prefix, data, off, len);
                 }
             }
         }
@@ -2631,52 +2590,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         // From is null to prevent proxy channel from being selected as the leader channel.
         return writeData(null, prevTerm, term, position, highestPosition, commitPosition,
                          prefix, data, off, len);
-    }
-
-    /**
-     * Called from a remote group member.
-     */
-    @Override // Channel
-    public boolean queryDataReplyVoid(Channel from, long currentTerm,
-                                      long prevTerm, long term, long position, long length)
-    {
-        boolean result = false;
-
-        while (length > Integer.MAX_VALUE) {
-            result |= queryDataReply(from, currentTerm, prevTerm, term, position,
-                                     null, 0, Integer.MAX_VALUE);
-            prevTerm = term;
-            position += Integer.MAX_VALUE;
-            length -= Integer.MAX_VALUE;
-        }
-
-        result |= queryDataReply(from, currentTerm, prevTerm, term, position,
-                                 null, 0, (int) length);
-
-        return result;
-    }
-
-    /**
-     * Called from a remote group member.
-     */
-    @Override // Channel
-    public boolean writeVoid(Channel from, long prevTerm, long term, long position,
-                             long highestPosition, long commitPosition, long length)
-    {
-        boolean result = false;
-
-        while (length > Integer.MAX_VALUE) {
-            result |= writeData(from, prevTerm, term, position,
-                                highestPosition, commitPosition, null, null, 0, Integer.MAX_VALUE);
-            prevTerm = term;
-            position += Integer.MAX_VALUE;
-            length -= Integer.MAX_VALUE;
-        }
-
-        result |= writeData(from, prevTerm, term, position,
-                            highestPosition, commitPosition, null, null, 0, (int) length);
-
-        return result;
     }
 
     /**
@@ -2855,7 +2768,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     result = ErrorCodes.NO_CONSENSUS;
 
                     // Request updated versions. Caller must retry.
-                    for (Channel channel : mConsensusChannels) {
+                    for (Channel channel : mCandidateChannels) {
                         channel.groupVersion(this, groupVersion);
                     }
 
