@@ -28,9 +28,9 @@ import static org.junit.Assert.*;
  *
  * @author Brian S O'Neill
  */
-public class AAA_PageAccessTransformerTest {
+public class PageAccessTransformerTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(AAA_PageAccessTransformerTest.class.getName());
+        org.junit.runner.JUnitCore.main(PageAccessTransformerTest.class.getName());
     }
 
     @Test
@@ -42,7 +42,7 @@ public class AAA_PageAccessTransformerTest {
 
         TestUtils.deleteRecursively(dst);
 
-        var pa = new PageAccessTransformer(src, dst);
+        var pa = new org.cojen.tupl.tools.PageAccessTransformer(src, dst);
         pa.findFiles();
         Collection<String> generated = pa.transform();
 

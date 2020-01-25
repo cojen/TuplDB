@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
  * @author Brian S O'Neill
  * @hidden
  */
-class PageAccessTransformer {
+public class PageAccessTransformer {
     /**
      * @param args [0]: source directory, [1]: destination directory
      */
@@ -58,7 +58,7 @@ class PageAccessTransformer {
 
     private Map<String, Pattern> mNames;
 
-    PageAccessTransformer(File src, File dst) {
+    public PageAccessTransformer(File src, File dst) {
         dirCheck(src);
         dirCheck(dst);
         mSrc = src;
@@ -71,7 +71,7 @@ class PageAccessTransformer {
         }
     }
 
-    void findFiles() throws IOException {
+    public void findFiles() throws IOException {
         var names = new HashMap<String, Pattern>();
 
         File[] files = mSrc.listFiles();
@@ -91,7 +91,7 @@ class PageAccessTransformer {
     /**
      * @return set of generated file names
      */
-    Collection<String> transform() throws IOException {
+    public Collection<String> transform() throws IOException {
         var all = new ArrayList<String>(mNames.size());
 
         for (String name : mNames.keySet()) {
