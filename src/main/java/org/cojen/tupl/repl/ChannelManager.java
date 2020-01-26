@@ -507,7 +507,14 @@ final class ChannelManager {
                         return;
                     }
                 }
+
                 mUncaughtHandler.accept(e);
+
+                if (ss.isClosed()) {
+                    stop();
+                    return;
+                }
+
                 Thread.yield();
             }
         }
