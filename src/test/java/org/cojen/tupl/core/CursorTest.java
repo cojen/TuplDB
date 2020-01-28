@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.reflect.Method;
+
 import java.util.Random;
 
 import java.util.concurrent.CountDownLatch;
@@ -59,12 +61,16 @@ public class CursorTest {
         return ((Index) ix).verify(null);
     }
 
-    protected BTreeCursor treeCursor(Cursor c) {
-        return (BTreeCursor) c;
+    // Override and return internal cursor if wrapped.
+    protected Cursor treeCursor(Cursor c) {
+        return c;
     }
 
     protected boolean equalPositions(Cursor a, Cursor b) throws Exception {
-        return treeCursor(a).equalPositions(treeCursor(b));
+        a = treeCursor(a);
+        b = treeCursor(b);
+        Method m = a.getClass().getDeclaredMethod("equalPositions", b.getClass());
+        return (Boolean) m.invoke(a, b);
     }
 
     protected Database mDb;
@@ -1135,9 +1141,10 @@ public class CursorTest {
     }
 
     protected void verifyExtremities(View ix) throws Exception {
-        BTreeCursor extremity = treeCursor(ix.newCursor(Transaction.BOGUS));
-        assertTrue(extremity.verifyExtremities(Node.LOW_EXTREMITY));
-        assertTrue(extremity.verifyExtremities(Node.HIGH_EXTREMITY));
+        Cursor c = treeCursor(ix.newCursor(Transaction.BOGUS));
+        Method m = c.getClass().getDeclaredMethod("verifyExtremities", byte.class);
+        assertTrue((boolean) m.invoke(c, Node.LOW_EXTREMITY));
+        assertTrue((boolean) m.invoke(c, Node.HIGH_EXTREMITY));
     }
 
     @Test
