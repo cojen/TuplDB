@@ -20,7 +20,7 @@ To depend on Tupl, use the following POM snippet:
 <dependency>
     <groupId>org.cojen</groupId>
     <artifactId>tupl</artifactId>
-    <version>[1.3.11, 2.0.0)</version>
+    <version>[1.5.0, 2.0.0)</version>
 </dependency>
 ```
 
