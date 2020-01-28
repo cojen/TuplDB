@@ -27,7 +27,7 @@ To depend on Tupl, use the following POM snippet:
 The main entry point is the [Database](https://tupl.cojen.org/javadoc/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
 
 ```java
-DatabaseConfig config = new DatabaseConfig().maxCacheSize(100_000_000);
+var config = new DatabaseConfig().maxCacheSize(100_000_000);
 Database db = Database.open(config);
 ```
 
@@ -35,7 +35,7 @@ To open a durable database, a base file path must be provided. Database files ar
 using the base as a prefix.
 
 ```java
-DatabaseConfig config = new DatabaseConfig()
+var config = new DatabaseConfig()
     .baseFilePath("/var/lib/tupl")
     .cacheSize(100_000_000)
     .durabilityMode(DurabilityMode.NO_FLUSH);
