@@ -3380,14 +3380,14 @@ public final class LocalDatabase extends CoreDatabase {
             if (replEncoding != 0 && !hasRedoLogFiles()) {
                 // Conversion to non-replicated mode is allowed by simply touching redo file 0.
                 throw new DatabaseException
-                    ("Database must be configured with a replication manager, " +
+                    ("Database must be configured with a replicator, " +
                      "identified by: " + replEncoding);
             }
         } else if (replEncoding == 0) {
             // Check if conversion to replicated mode is allowed. The replication log must have
             // data starting at position 0, and no redo log files can exist.
 
-            String msg = "Database was created initially without a replication manager. " +
+            String msg = "Database was created initially without a replicator. " +
                 "Conversion isn't possible ";
 
             if (!repl.isReadable(0)) {
@@ -3406,7 +3406,7 @@ public final class LocalDatabase extends CoreDatabase {
             encodeLongLE(header, I_REDO_POSITION, 0);
         } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException
-                ("Database was created initially with a different replication manager, " +
+                ("Database was created initially with a different replicator, " +
                  "identified by: " + replEncoding);
         }
 

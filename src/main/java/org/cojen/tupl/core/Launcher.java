@@ -334,8 +334,7 @@ public final class Launcher implements Cloneable {
         if (mRepl != null) {
             long encoding = mRepl.encoding();
             if (encoding == 0) {
-                throw new IllegalStateException
-                    ("Illegal replication manager encoding: " + encoding);
+                throw new IllegalStateException("Illegal replicator encoding: " + encoding);
             }
         }
 

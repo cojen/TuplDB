@@ -108,7 +108,7 @@ public class ConvertTest {
             db = reopenTempDatabase(getClass(), db, config);
             fail();
         } catch (DatabaseException e) {
-            assertTrue(e.getMessage().indexOf("replication manager") >= 0);
+            assertTrue(e.getMessage().indexOf("replicator") >= 0);
         }
     }
 
