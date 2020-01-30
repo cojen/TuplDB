@@ -159,18 +159,6 @@ final class FileStateLog extends Latch implements StateLog {
 
         boolean mdFileExists = mMetadataFile.size() != 0;
 
-        if (!mdFileExists) {
-            // Check if old ".md" file exists and copy it.
-            var oldFile = new File(base.getPath() + ".md");
-            if (oldFile.exists()) {
-                FileChannel old = FileChannel.open(oldFile.toPath(), StandardOpenOption.READ);
-                mMetadataFile.transferFrom(old, 0, old.size());
-                old.close();
-                oldFile.delete();
-            }
-            mdFileExists = mMetadataFile.size() != 0;
-        }
-
         mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
 
