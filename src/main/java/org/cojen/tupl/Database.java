@@ -44,6 +44,7 @@ import static org.cojen.tupl.core.Utils.*;
  * <pre>
  * var config = new DatabaseConfig().maxCacheSize(100_000_000);
  * Database db = Database.open(config);
+ * Index data = db.openIndex("mydata");
  * </pre>
  *
  * <p>Open a regular database, with a fixed cache size, and a weak {@linkplain DurabilityMode
@@ -56,12 +57,13 @@ import static org.cojen.tupl.core.Utils.*;
  *    .durabilityMode(DurabilityMode.NO_FLUSH);
  *
  * Database db = Database.open(config);
+ * Index data = db.openIndex("mydata");
  * </pre>
  *
  * <p>The following files are created by the above example:
  *
  * <ul>
- * <li><code>/var/lib/tupl/myapp.db</code> &ndash; primary data file
+ * <li><code>/var/lib/tupl/myapp.db</code> &ndash; primary database file
  * <li><code>/var/lib/tupl/myapp.lock</code> &ndash; lock file to ensure that at most one process can have the database open
  * <li><code>/var/lib/tupl/myapp.redo.0</code> &ndash; first transaction redo log file
  * </ul>
