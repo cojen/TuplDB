@@ -1946,8 +1946,8 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public CustomHandler customHandler(String name) throws IOException {
-        return (CustomHandler) findOrCreateHandler(name, RK_CUSTOM_NAME, mCustomHandlers);
+    public CustomHandler customWriter(String name) throws IOException {
+        return (CustomHandler) findOrCreateWriter(name, RK_CUSTOM_NAME, mCustomHandlers);
     }
 
     /**
@@ -1961,8 +1961,8 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public PrepareHandler prepareHandler(String name) throws IOException {
-        return (PrepareHandler) findOrCreateHandler(name, RK_PREPARE_NAME, mPrepareHandlers);
+    public PrepareHandler prepareWriter(String name) throws IOException {
+        return (PrepareHandler) findOrCreateWriter(name, RK_PREPARE_NAME, mPrepareHandlers);
     }
 
     /**
@@ -2002,8 +2002,8 @@ public final class LocalDatabase extends CoreDatabase {
      * @param rkNamePrefix RK_CUSTOM_NAME or RK_PREPARE_NAME
      */
     @SuppressWarnings("unchecked")
-    private <H extends Handler> HandlerWriter findOrCreateHandler(String name, byte rkNamePrefix,
-                                                                  Map<String, H> handlers)
+    private <H extends Handler> HandlerWriter findOrCreateWriter(String name, byte rkNamePrefix,
+                                                                 Map<String, H> handlers)
         throws IOException
     {
         if (handlers == null) {

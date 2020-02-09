@@ -69,15 +69,15 @@ public class CustomLogTest {
 
     protected Database open() throws Exception {
         mDb = TestUtils.newTempDatabase(getClass(), mConfig);
-        mWriteHandler = mDb.customHandler("TestHandler");
-        mWriteHandler2 = mDb.customHandler("TestHandler2");
+        mWriteHandler = mDb.customWriter("TestHandler");
+        mWriteHandler2 = mDb.customWriter("TestHandler2");
         return mDb;
     }
 
     protected Database reopen() throws Exception {
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
-        mWriteHandler = mDb.customHandler("TestHandler");
-        mWriteHandler2 = mDb.customHandler("TestHandler2");
+        mWriteHandler = mDb.customWriter("TestHandler");
+        mWriteHandler2 = mDb.customWriter("TestHandler2");
         return mDb;
     }
 
@@ -169,7 +169,7 @@ public class CustomLogTest {
         }
 
         try {
-            mDb.customHandler("foo");
+            mDb.customWriter("foo");
             fail();
         } catch (IllegalStateException e) {
             // Not installed.

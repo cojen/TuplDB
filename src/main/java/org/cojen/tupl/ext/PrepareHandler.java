@@ -29,7 +29,7 @@ import org.cojen.tupl.UnmodifiableReplicaException;
  * Handler for prepared transactions. Instances which are passed to the {@link
  * DatabaseConfig#prepareHandlers prepareHandlers} method support recovery, and companion
  * instances for creating prepared transactions are provided by the {@link
- * Database#prepareHandler Database.prepareHandler} method.
+ * Database#prepareWriter Database.prepareWriter} method.
  *
  * @author Brian S O'Neill
  */

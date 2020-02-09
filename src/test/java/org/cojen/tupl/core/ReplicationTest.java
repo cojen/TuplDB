@@ -80,8 +80,8 @@ public class ReplicationTest {
         config.replicate(mReplicaRepl);
         mReplica = newTempDatabase(getClass(), config);
 
-        mLeaderWriter = mLeader.customHandler("TestHandler");
-        mLeaderWriter2 = mLeader.prepareHandler("TestHandler");
+        mLeaderWriter = mLeader.customWriter("TestHandler");
+        mLeaderWriter2 = mLeader.prepareWriter("TestHandler");
     }
 
     @After

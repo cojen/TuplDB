@@ -83,7 +83,7 @@ public class TxnPrepareTest {
     public void noHandler() throws Exception {
         Database db = newTempDatabase(newConfig(null));
         try {
-            db.prepareHandler("TestHandler");
+            db.prepareWriter("TestHandler");
             fail();
         } catch (IllegalStateException e) {
         }
@@ -93,7 +93,7 @@ public class TxnPrepareTest {
     public void noRedo() throws Exception {
         var recovery = new NonHandler();
         Database db = newTempDatabase(newConfig(recovery));
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
 
         try {
             prepare(handler, Transaction.BOGUS, null);
@@ -120,7 +120,7 @@ public class TxnPrepareTest {
     @Test
     public void topLevelOnly() throws Exception {
         Database db = newTempDatabase(newConfig(new NonHandler()));
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
 
         Transaction txn = db.newTransaction();
         txn.enter();
@@ -137,7 +137,7 @@ public class TxnPrepareTest {
         // Test that the special prepare entry is still locked.
 
         Database db = newTempDatabase(newConfig(new NonHandler()));
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
         Transaction txn = db.newTransaction();
 
         prepare(handler, txn, null);
@@ -170,7 +170,7 @@ public class TxnPrepareTest {
     @Test
     public void simpleCommit() throws Exception {
         Database db = newTempDatabase(newConfig(new NonHandler()));
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
         Index ix = db.openIndex("test");
 
         byte[] key = "hello".getBytes();
@@ -385,7 +385,7 @@ public class TxnPrepareTest {
 
         DatabaseConfig config = newConfig(recovery);
         Database db = newTempDatabase(config);
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
 
         long txnId;
         {
@@ -521,7 +521,7 @@ public class TxnPrepareTest {
 
         DatabaseConfig config = newConfig(recovery);
         Database db = newTempDatabase(config);
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
         Index ix = db.openIndex("test");
 
         // Should rollback and not be passed to the handler.
@@ -555,7 +555,7 @@ public class TxnPrepareTest {
         txn6.exit();
 
         db = reopenTempDatabase(getClass(), db, config);
-        handler = db.prepareHandler("TestHandler");
+        handler = db.prepareWriter("TestHandler");
         ix = db.openIndex("test");
 
         Transaction t1 = recovered.take();
@@ -671,7 +671,7 @@ public class TxnPrepareTest {
 
         DatabaseConfig config = newConfig(recovery);
         Database db = newTempDatabase(config);
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
         Index ix = db.openIndex("test");
 
         Transaction txn = db.newTransaction();
@@ -748,7 +748,7 @@ public class TxnPrepareTest {
 
         DatabaseConfig config = newConfig(recovery).lockTimeout(1, TimeUnit.SECONDS);
         Database db = newTempDatabase(config);
-        PrepareHandler handler = db.prepareHandler("TestHandler");
+        PrepareHandler handler = db.prepareWriter("TestHandler");
 
         {
             Index ix = db.openIndex("test");

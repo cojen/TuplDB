@@ -708,10 +708,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns the amount of cursors which are in a non-reset state.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#customHandler(java.lang.String)">customHandler(String)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
-<dd>
-<div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ext/CustomHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">CustomHandler</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>
 <div class="block">Handler for custom transactional operations.</div>
@@ -719,6 +715,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#customHandlers(java.util.Map)">customHandlers(Map&lt;String, ? extends CustomHandler&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Provide handlers for recovering custom transactional operations.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#customWriter(java.lang.String)">customWriter(String)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
 </dd>
 </dl>
 <a id="I:D">
@@ -2558,10 +2558,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">A prepare variant intended to be called by a two-phase commit coordinator after all
  participants have prepared their transactions.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#prepareHandler(java.lang.String)">prepareHandler(String)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
-<dd>
-<div class="block">Returns a handler instance suitable for preparing transactions.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext"><span class="typeNameLink">PrepareHandler</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>
 <div class="block">Handler for prepared transactions.</div>
@@ -2569,6 +2565,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#prepareHandlers(java.util.Map)">prepareHandlers(Map&lt;String, ? extends PrepareHandler&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Provide handlers for recovering prepared transactions.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#prepareWriter(java.lang.String)">prepareWriter(String)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Returns a handler instance suitable for preparing transactions.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#previous()">previous()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>

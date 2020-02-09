@@ -353,7 +353,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         }
 
         Transaction txn = dbs[0].newTransaction();
-        PrepareHandler handler = dbs[0].prepareHandler("TestHandler");
+        PrepareHandler handler = dbs[0].prepareWriter("TestHandler");
         byte[] key = "hello".getBytes();
         ix0.store(txn, key, "world".getBytes());
         handler.prepare(txn, null);
@@ -663,7 +663,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         Index replicaIx = replicaDb.openIndex("test");
 
         Transaction txn1 = leaderDb.newTransaction();
-        PrepareHandler handler = leaderDb.prepareHandler("TestHandler");
+        PrepareHandler handler = leaderDb.prepareWriter("TestHandler");
         byte[] k1 = "k1".getBytes();
         byte[] v1 = "v1".getBytes();
         leaderIx.store(txn1, k1, v1);
@@ -778,7 +778,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         byte[] k1 = "k1".getBytes();
         byte[] v1 = "v1".getBytes();
         leaderIx.store(txn1, k1, v1);
-        PrepareHandler handler = leaderDb.prepareHandler("TestHandler");
+        PrepareHandler handler = leaderDb.prepareWriter("TestHandler");
         handler.prepare(txn1, "message".getBytes());
 
         leaderDb.failover();
@@ -809,7 +809,7 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
         byte[] v2 = "v2".getBytes();
         replicaIx.store(txn2, k2, v2);
 
-        handler = replicaDb.prepareHandler("TestHandler");
+        handler = replicaDb.prepareWriter("TestHandler");
         try {
             handler.prepare(txn2, null);
             fail();
@@ -929,7 +929,7 @@ java.lang.AssertionError: expected:<org.cojen.tupl.core.LocalDatabase@1cd3dc60> 
         Index replicaIx = replicaDb.openIndex("test");
 
         Transaction txn1 = leaderDb.newTransaction();
-        PrepareHandler handler = leaderDb.prepareHandler("TestHandler");
+        PrepareHandler handler = leaderDb.prepareWriter("TestHandler");
 
         if (prepareCommit) {
             handler.prepareCommit(txn1, "message".getBytes());

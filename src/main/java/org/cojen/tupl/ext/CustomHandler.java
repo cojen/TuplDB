@@ -26,8 +26,8 @@ import org.cojen.tupl.Transaction;
 /**
  * Handler for custom transactional operations. Undo operations are applied to roll back
  * transactions, and redo operations are applied by recovery and replication. A companion
- * instance for writing custom operations is provided by the {@link Database#customHandler
- * Database.customHandler} method.
+ * instance for writing custom operations is provided by the {@link Database#customWriter
+ * Database.customWriter} method.
  *
  * @author Brian S O'Neill
  * @see DatabaseConfig#customHandlers DatabaseConfig.customHandlers

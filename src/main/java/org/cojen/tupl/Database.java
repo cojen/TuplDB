@@ -239,17 +239,17 @@ public interface Database extends CauseCloseable, Flushable {
      * @return new writer instance
      * @throws IllegalStateException if no recovery instance by the given name is installed
      */
-    public abstract CustomHandler customHandler(String name) throws IOException;
+    public abstract CustomHandler customWriter(String name) throws IOException;
 
     /**
      * Returns a handler instance suitable for preparing transactions. A corresponding recovery
      * instance must have been provided when the database was opened, via the {@link
      * DatabaseConfig#prepareHandlers prepareHandlers} config method.
      *
-     * @return new prepare instance
+     * @return new writer instance
      * @throws IllegalStateException if no recovery instance by the given name is installed
      */
-    public abstract PrepareHandler prepareHandler(String name) throws IOException;
+    public abstract PrepareHandler prepareWriter(String name) throws IOException;
 
     /**
      * Returns a new Sorter instance, which uses the given executor for running parallel

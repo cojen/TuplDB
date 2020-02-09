@@ -273,7 +273,7 @@ double&nbsp;target)</code></th>
 </tr>
 <tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customHandler(java.lang.String)">customHandler</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customWriter(java.lang.String)">customWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
 </td>
@@ -427,7 +427,7 @@ double&nbsp;target)</code></th>
 </tr>
 <tr class="altColor" id="i32">
 <td class="colFirst"><code><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepareHandler(java.lang.String)">prepareHandler</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepareWriter(java.lang.String)">prepareWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns a handler instance suitable for preparing transactions.</div>
 </td>
@@ -768,9 +768,9 @@ byte[]&nbsp;newName)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="customHandler(java.lang.String)">customHandler</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></span>&nbsp;<span class="memberName">customHandler</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<h3><a id="customWriter(java.lang.String)">customWriter</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></span>&nbsp;<span class="memberName">customWriter</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a handler instance suitable for writing custom redo and undo operations. A
  corresponding recovery instance must have been provided when the database was opened,
  via the <a href="DatabaseConfig.html#customHandlers(java.util.Map)"><code>customHandlers</code></a> config method.</div>
@@ -785,14 +785,14 @@ byte[]&nbsp;newName)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="prepareHandler(java.lang.String)">prepareHandler</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></span>&nbsp;<span class="memberName">prepareHandler</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<h3><a id="prepareWriter(java.lang.String)">prepareWriter</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></span>&nbsp;<span class="memberName">prepareWriter</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
+                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a handler instance suitable for preparing transactions. A corresponding recovery
  instance must have been provided when the database was opened, via the <a href="DatabaseConfig.html#prepareHandlers(java.util.Map)"><code>prepareHandlers</code></a> config method.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>new prepare instance</dd>
+<dd>new writer instance</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no recovery instance by the given name is installed</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
