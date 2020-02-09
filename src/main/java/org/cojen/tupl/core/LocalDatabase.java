@@ -744,6 +744,12 @@ public final class LocalDatabase extends CoreDatabase {
             // deleting pages, and caching helps performance.
             mPageDb.pageCache(this);
 
+            if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
+                mTempFileManager = null;
+            } else {
+                mTempFileManager = new TempFileManager(mBaseFile, launcher.mFileFactory);
+            }
+
             long recoveryStart = 0;
             if (mBaseFile == null) {
                 mRedoWriter = null;
@@ -925,12 +931,6 @@ public final class LocalDatabase extends CoreDatabase {
 
             if (txnId >= 0) {
                 resetTransactionContexts(txnId);
-            }
-
-            if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
-                mTempFileManager = null;
-            } else {
-                mTempFileManager = new TempFileManager(mBaseFile, launcher.mFileFactory);
             }
         } catch (Throwable e) {
             // Close, but don't double report the exception since construction never finished.
