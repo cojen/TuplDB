@@ -545,7 +545,7 @@ final class GroupFile extends Latch {
     }
 
     /**
-     * Create a control message for joining the group as an observer. If the control message is
+     * Create a control message for joining the group as a restoring. If the control message is
      * accepted, apply it by calling applyJoin, and the consumer receives a copy of the group
      * file with the new member. To avoid leaking memory in case the message is rejected, call
      * discardJoinConsumer when timed out.
