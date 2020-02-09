@@ -865,7 +865,12 @@ public class ReplicationTest {
         lix.store(null, "k1".getBytes(), "v1".getBytes());
         fence();
         mLeaderRepl.disableWrites();
-        lix.store(null, "k2".getBytes(), "v2".getBytes());
+        try {
+            // Auto-commit will force a flush, even when using NO_FLUSH mode.
+            lix.store(null, "k2".getBytes(), "v2".getBytes());
+        } catch (UnmodifiableReplicaException e) {
+            // Ignore.
+        }
 
         fastAssertArrayEquals("v1".getBytes(), lix.load(null, "k1".getBytes()));
         assertNull(lix.load(null, "k2".getBytes()));
@@ -890,7 +895,12 @@ public class ReplicationTest {
 
         c = lix.newCursor(ltxn);
         c.find("k2".getBytes());
-        c.commit("v2".getBytes());
+        try {
+            // Commit will force a flush, even when using NO_FLUSH mode.
+            c.commit("v2".getBytes());
+        } catch (UnmodifiableReplicaException e) {
+            // Ignore.
+        }
 
         fastAssertArrayEquals("v1".getBytes(), lix.load(null, "k1".getBytes()));
         assertNull(lix.load(null, "k2".getBytes()));
@@ -1169,9 +1179,13 @@ public class ReplicationTest {
 
         mLeaderRepl.disableWrites();
 
-        // Force early internal detection of unmodifiable state. No exception is thrown because
-        // of NO_FLUSH mode.
-        ix.store(null, "x".getBytes(), null);
+        // Force early internal detection of unmodifiable state. Auto-commit will force a
+        // flush, even when using NO_FLUSH mode.
+        try {
+            ix.store(null, "x".getBytes(), null);
+        } catch (UnmodifiableReplicaException e) {
+            // Ignore.
+        }
 
         // Rollback the scopes, which will attempt to write to the redo log.
         txn.exit();
