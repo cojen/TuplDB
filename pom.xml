@@ -142,6 +142,8 @@
         <configuration>
           <executable>java</executable>
           <arguments>
+            <argument>-cp</argument>
+            <argument>;</argument>
             <argument>src/main/java/org/cojen/tupl/tools/PageAccessTransformer.java</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
