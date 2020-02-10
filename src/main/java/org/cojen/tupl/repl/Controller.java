@@ -82,6 +82,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // 250ms, the stall can last as long as 10 seconds before revocation.
     private static final int LOCAL_LEADER_VALIDATED = 40;
 
+    // At an average election period of 250ms, this stall is 2.5 seconds on average.
+    private static final int FAILOVER_STALL = 10;
+
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2,
         CONTROL_OP_UNJOIN = 3;
 
@@ -155,6 +158,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     // True when a task is scheduled to remove stale members.
     private boolean mRemovingStaleMembers;
+
+    // Prevent electing self as a candidate until this value is zero.
+    private int mCandidateStall;
 
     /**
      * @param factory optional
@@ -669,6 +675,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             toFollower("explicit failover");
+
+            mCandidateStall = FAILOVER_STALL;
         } finally {
             releaseExclusive();
         }
@@ -1323,6 +1331,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     // Caller must acquire exclusive latch, which is released by this method.
     private void forceElection() {
         mElectionValidated = Integer.MIN_VALUE;
+        mCandidateStall = 0;
         doElectionTask();
     }
 
@@ -1377,6 +1386,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (!isCandidate(mGroupFile.localMemberRole())) {
                 // Only NORMAL/STANDBY members can become candidates.
+                releaseExclusive();
+                return;
+            }
+
+            if (mCandidateStall > 0) {
+                // Don't try to become a candidate too soon following a failover.
+                mCandidateStall--;
                 releaseExclusive();
                 return;
             }
@@ -2474,6 +2490,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Find it later when leaderRequestChannel is called.
             mLeaderRequestChannel = null;
             first = true;
+            mCandidateStall = 0;
         }
 
         releaseExclusive();

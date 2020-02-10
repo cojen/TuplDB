@@ -828,15 +828,6 @@ java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
 
         // Now the old leader is the leader again.
 
-        /* FIXME: When under heavy load. Need better failover mechanism.
-[ERROR] prepareTransferPingPong(org.cojen.tupl.repl.DatabaseReplicatorTest)  Time elapsed: 4.609 s  <<< FAILURE!
-java.lang.AssertionError: expected:<org.cojen.tupl.core.LocalDatabase@1cd3dc60> but was:<org.cojen.tupl.core.LocalDatabase@71f41641>
-        at org.junit.Assert.fail(Assert.java:88)
-        at org.junit.Assert.failNotEquals(Assert.java:834)
-        at org.junit.Assert.assertEquals(Assert.java:118)
-        at org.junit.Assert.assertEquals(Assert.java:144)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.prepareTransferPingPong(DatabaseReplicatorTest.java:830)
-        */
         assertEquals(leaderDb, dbQueue.take());
         Transaction txn3 = txnQueue.take();
 
