@@ -66,25 +66,15 @@ public class TempIndexTest {
 
     @Test
     public void noRedo() throws Exception {
-        noRedo(false, false);
-    }
-
-    @Test
-    public void noRedoStableId() throws Exception {
-        noRedo(true, false);
+        noRedo(false);
     }
 
     @Test
     public void noRedoCheckpoint() throws Exception {
-        noRedo(false, true);
+        noRedo(true);
     }
 
-    private void noRedo(boolean stableId, boolean checkpoint) throws Exception {
-        if (stableId) {
-            // Open a regular index to force the random identifier mask to be persisted.
-            mDb.openIndex("test");
-        }
-
+    private void noRedo(boolean checkpoint) throws Exception {
         Index temp = mDb.newTemporaryIndex();
 
         temp.store(null, "k1".getBytes(), "v1".getBytes());
@@ -119,10 +109,10 @@ public class TempIndexTest {
 
         Index temp2 = mDb.newTemporaryIndex();
 
-        if (stableId) {
-            assertEquals(temp.id(), temp2.id());
-        } else {
+        if (checkpoint) {
             assertNotEquals(temp.id(), temp2.id());
+        } else {
+            assertEquals(temp.id(), temp2.id());
         }
 
         assertEquals(0, temp.count(null, null));

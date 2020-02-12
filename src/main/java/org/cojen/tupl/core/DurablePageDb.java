@@ -79,7 +79,9 @@ final class DurablePageDb extends PageDb {
     | int:  checksum                           |
     | page manager header (140 bytes)          |
     +------------------------------------------+
-    | reserved (96 bytes)                      |
+    | reserved (88 bytes)                      |
+    +------------------------------------------+
+    | long: database id                        |
     +------------------------------------------+
     | extra data (256 bytes)                   |
     +------------------------------------------+
@@ -96,6 +98,7 @@ final class DurablePageDb extends PageDb {
     private static final int I_CHECKSUM         = I_COMMIT_NUMBER + 4;
     private static final int I_MANAGER_HEADER   = I_CHECKSUM + 4;
     private static final int I_EXTRA_DATA       = 256;
+    private static final int I_DATABASE_ID      = I_EXTRA_DATA - 8;
 
     private static final int MINIMUM_PAGE_SIZE = 512;
 
@@ -106,6 +109,8 @@ final class DurablePageDb extends PageDb {
     private final Latch mHeaderLatch;
     // Commit number is the highest one which has been committed.
     private int mCommitNumber;
+
+    private final long mDatabaseId;
 
     /**
      * @param factory optional
@@ -214,6 +219,7 @@ final class DurablePageDb extends PageDb {
                 // Newly created file.
                 mPageManager = new PageManager(mPageArray);
                 mCommitNumber = -1;
+                mDatabaseId = generateDatabaseId();
 
                 // Commit twice to ensure both headers have valid data.
                 var header = p_callocPage(mPageArray.directPageSize());
@@ -317,6 +323,8 @@ final class DurablePageDb extends PageDb {
 
                     mPageManager = new PageManager
                         (debugListener, mPageArray, header, I_MANAGER_HEADER);
+
+                    mDatabaseId = p_longGetLE(header, I_DATABASE_ID);
                 } finally {
                     p_delete(header0);
                     p_delete(header1);
@@ -330,6 +338,11 @@ final class DurablePageDb extends PageDb {
             delete();
             throw closeOnFailure(e);
         }
+    }
+
+    @Override
+    long databaseId() {
+        return mDatabaseId;
     }
 
     @Override
@@ -918,6 +931,7 @@ final class DurablePageDb extends PageDb {
         p_longPutLE(header, I_MAGIC_NUMBER, MAGIC_NUMBER);
         p_intPutLE (header, I_PAGE_SIZE, array.pageSize());
         p_intPutLE (header, I_COMMIT_NUMBER, commitNumber);
+        p_longPutLE(header, I_DATABASE_ID, mDatabaseId);
 
         // Durably write the new page store header before returning
         // from this method, to ensure that the manager doesn't start

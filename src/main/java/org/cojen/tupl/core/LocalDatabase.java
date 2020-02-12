@@ -219,6 +219,7 @@ public final class LocalDatabase extends CoreDatabase {
     static final byte RK_CUSTOM_ID    = 6; // id to name mapping for custom handlers
     static final byte RK_PREPARE_NAME = 7; // name to id mapping for prepare handlers
     static final byte RK_PREPARE_ID   = 8; // id to name mapping for prepare handlers
+    static final byte RK_NEXT_TEMP_ID = 9; // full key for temporary tree id sequence
 
     // Various mappings, defined by RK_ fields.
     private final BTree mRegistryKeyMap;
@@ -3697,21 +3698,15 @@ public final class LocalDatabase extends CoreDatabase {
 
             // Tree id mask, to make the identifiers less predictable and
             // non-compatible with other database instances.
-            long treeIdMask;
-            {
+            long treeIdMask = mPageDb.databaseId();
+            if (treeIdMask == 0) {
+                // Use the old mask for compatibility.
                 byte[] key = {RK_TREE_ID_MASK};
-                byte[] treeIdMaskBytes = mRegistryKeyMap.load(txn, key);
-
-                if (treeIdMaskBytes == null) {
-                    treeIdMaskBytes = new byte[8];
-                    ThreadLocalRandom.current().nextBytes(treeIdMaskBytes);
-                    mRegistryKeyMap.store(txn, key, treeIdMaskBytes);
-                }
-
+                byte[] treeIdMaskBytes = mRegistryKeyMap.load(Transaction.BOGUS, key);
                 treeIdMask = decodeLongLE(treeIdMaskBytes, 0);
             }
 
-            byte[] key = {RK_NEXT_TREE_ID};
+            byte[] key = {temporary ? RK_NEXT_TEMP_ID : RK_NEXT_TREE_ID};
             byte[] nextTreeIdBytes = mRegistryKeyMap.load(txn, key);
 
             if (nextTreeIdBytes == null) {

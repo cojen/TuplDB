@@ -46,6 +46,8 @@ final class NonPageDb extends PageDb {
     private final AtomicLong mAllocId;
     private final LongAdder mFreePageCount;
 
+    private final long mDatabaseId;
+
     /**
      * @param cache optional
      */
@@ -58,6 +60,13 @@ final class NonPageDb extends PageDb {
         // Next assigned id is 2, the first legal identifier.
         mAllocId = new AtomicLong(1);
         mFreePageCount = new LongAdder();
+
+        mDatabaseId = generateDatabaseId();
+    }
+
+    @Override
+    long databaseId() {
+        return mDatabaseId;
     }
 
     @Override

@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.util.Random;
+
 import java.util.function.LongConsumer;
 
 import org.cojen.tupl.io.CauseCloseable;
@@ -36,6 +38,17 @@ abstract class PageDb implements CauseCloseable {
 
     PageDb() {
         mCommitLock = new CommitLock();
+    }
+
+    abstract long databaseId();
+
+    static long generateDatabaseId() {
+        var rnd = new Random();
+        long id;
+        do {
+            id = rnd.nextLong();
+        } while (id == 0);
+        return id;
     }
 
     /**
