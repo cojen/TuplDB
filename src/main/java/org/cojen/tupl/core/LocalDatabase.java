@@ -1749,7 +1749,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         try {
             do {
-                treeId = nextTreeId(true);
+                treeId = nextTreeId(RK_NEXT_TEMP_ID);
                 encodeLongBE(treeIdBytes, 0, treeId);
             } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, rootIdBytes));
 
@@ -3537,7 +3537,7 @@ public final class LocalDatabase extends CoreDatabase {
                 try {
                     do {
                         critical = false;
-                        treeId = nextTreeId(false);
+                        treeId = nextTreeId(RK_NEXT_TREE_ID);
                         encodeLongBE(treeIdBytes, 0, treeId);
                         critical = true;
                     } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
@@ -3682,42 +3682,48 @@ public final class LocalDatabase extends CoreDatabase {
         return tree;
     }
 
-    private long nextTreeId(boolean temporary) throws IOException {
-        // By generating identifiers from a 64-bit sequence, it's effectively
-        // impossible for them to get re-used after trees are deleted.
+    /**
+     * @param type RK_NEXT_TREE_ID or RK_NEXT_TEMP_ID
+     */
+    private long nextTreeId(byte type) throws IOException {
+        // By generating identifiers from a 64-bit sequence, it's effectively impossible for
+        // them to get re-used after trees are deleted. Use a tree id mask, to make the
+        // identifiers less predictable and non-compatible with other database instances.
+
+        long treeIdMask = mPageDb.databaseId();
+        if (treeIdMask == 0) {
+            // Use the old mask for compatibility.
+            byte[] key = {RK_TREE_ID_MASK};
+            byte[] treeIdMaskBytes = mRegistryKeyMap.load(Transaction.BOGUS, key);
+            treeIdMask = decodeLongLE(treeIdMaskBytes, 0);
+        }
 
         Transaction txn;
-        if (temporary) {
+        if (type == RK_NEXT_TEMP_ID) {
             txn = newNoRedoTransaction();
+            // Apply negative sequence, avoiding collisions.
+            treeIdMask = ~treeIdMask;
         } else {
             txn = newAlwaysRedoTransaction();
         }
 
-        try {
+        // Make only one change in the transaction, using Cursor.commit to only write one redo
+        // operation. This ensures that the decode stream cannot be suspended in the middle of
+        // the operation, preventing replica deadlock. It can be caused when a checkpoint is
+        // starting and another thread is trying to concurrently generate a new identifier. If
+        // the lock is held while the decoder is suspended, and the commit lock cannot be
+        // acquired by the checkpointer, deadlock is possible.
+
+        try (Cursor c = mRegistryKeyMap.newCursor(txn)) {
             txn.lockTimeout(-1, null);
+            c.find(new byte[] {type});
 
-            // Tree id mask, to make the identifiers less predictable and
-            // non-compatible with other database instances.
-            long treeIdMask = mPageDb.databaseId();
-            if (treeIdMask == 0) {
-                // Use the old mask for compatibility.
-                byte[] key = {RK_TREE_ID_MASK};
-                byte[] treeIdMaskBytes = mRegistryKeyMap.load(Transaction.BOGUS, key);
-                treeIdMask = decodeLongLE(treeIdMaskBytes, 0);
-            }
-
-            byte[] key = {temporary ? RK_NEXT_TEMP_ID : RK_NEXT_TREE_ID};
-            byte[] nextTreeIdBytes = mRegistryKeyMap.load(txn, key);
-
+            byte[] nextTreeIdBytes = c.value();
             if (nextTreeIdBytes == null) {
                 nextTreeIdBytes = new byte[8];
             }
-            long nextTreeId = decodeLongLE(nextTreeIdBytes, 0);
 
-            if (temporary) {
-                // Apply negative sequence, avoiding collisions.
-                treeIdMask = ~treeIdMask;
-            }
+            long nextTreeId = decodeLongLE(nextTreeIdBytes, 0);
 
             long treeId;
             do {
@@ -3725,8 +3731,8 @@ public final class LocalDatabase extends CoreDatabase {
             } while (Tree.isInternal(treeId));
 
             encodeLongLE(nextTreeIdBytes, 0, nextTreeId);
-            mRegistryKeyMap.store(txn, key, nextTreeIdBytes);
-            txn.commit();
+
+            c.commit(nextTreeIdBytes);
 
             return treeId;
         } finally {
