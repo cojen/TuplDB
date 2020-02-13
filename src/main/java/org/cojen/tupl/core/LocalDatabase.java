@@ -1197,23 +1197,23 @@ public final class LocalDatabase extends CoreDatabase {
         return indexById(null, id);
     }
 
-    Index indexById(Transaction txn, long id) throws IOException {
+    private Index indexById(Transaction txn, long id) throws IOException {
         if (Tree.isInternal(id)) {
             throw new IllegalArgumentException("Invalid id: " + id);
         }
 
-        Index index;
+        Index index = lookupIndexById(id);
+
+        if (index != null) {
+            return index;
+        }
+
+        var idKey = new byte[9];
+        idKey[0] = RK_INDEX_ID;
+        encodeLongBE(idKey, 1, id);
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
-            if ((index = lookupIndexById(id)) != null) {
-                return index;
-            }
-
-            var idKey = new byte[9];
-            idKey[0] = RK_INDEX_ID;
-            encodeLongBE(idKey, 1, id);
-
             byte[] name;
 
             if (txn != null) {
@@ -1222,9 +1222,19 @@ public final class LocalDatabase extends CoreDatabase {
                 // Lookup name with exclusive lock, to prevent races with concurrent index
                 // creation. If a replicated operation which requires the newly created index
                 // merely acquired a shared lock, then it might not find the index at all.
-                long regId = mRegistryKeyMap.id();
-                Locker locker = mLockManager.lockExclusiveLocal
-                    (regId, idKey, LockManager.hash(regId, idKey), -1); // infinite timeout
+
+                Locker locker = mLockManager.localLocker();
+                while (true) {
+                    if (locker.doTryLockExclusive(mRegistryKeyMap.id(), idKey, 0).isHeld()) {
+                        break;
+                    }
+                    // Release locks and retry, avoiding possible deadlock if the checkpointer
+                    // has suspended replica decoding in the middle of tree creation.
+                    shared.release();
+                    Thread.yield();
+                    mCommitLock.acquireShared(shared);
+                }
+
                 try {
                     name = mRegistryKeyMap.load(Transaction.BOGUS, idKey);
                 } finally {
@@ -3468,16 +3478,35 @@ public final class LocalDatabase extends CoreDatabase {
     private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, long ixOption)
         throws IOException
     {
-        Tree tree = quickFindIndex(name);
-        if (tree == null) {
-            CommitLock.Shared shared = mCommitLock.acquireShared();
+        find: {
+            TreeRef treeRef;
+            mOpenTreesLatch.acquireShared();
             try {
-                tree = doOpenTree(findTxn, treeIdBytes, name, ixOption);
+                treeRef = mOpenTrees.get(name);
+                if (treeRef == null) {
+                    break find;
+                }
+                Tree tree = treeRef.get();
+                if (tree != null) {
+                    return tree;
+                }
             } finally {
-                shared.release();
+                mOpenTreesLatch.releaseShared();
             }
+
+            // Ensure that root node of cleared tree reference is available in the node map
+            // before potentially replacing it. Weak references are cleared before they are
+            // enqueued, and so polling the queue does not guarantee node eviction. Process the
+            // tree directly.
+            cleanupUnreferencedTree(treeRef);
         }
-        return tree;
+
+        CommitLock.Shared shared = mCommitLock.acquireShared();
+        try {
+            return doOpenTree(findTxn, treeIdBytes, name, ixOption);
+        } finally {
+            shared.release();
+        }
     }
 
     /**
@@ -3518,10 +3547,29 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             Transaction createTxn = null;
+            Locker locker = mLockManager.localLocker();
 
             mOpenTreesLatch.acquireExclusive();
             try {
-                treeIdBytes = mRegistryKeyMap.load(null, nameKey);
+                while (true) {
+                    if (locker.doTryLockShared(mRegistryKeyMap.id(), nameKey, 0).isHeld()) {
+                        break;
+                    }
+                    // Release locks and retry, avoiding possible deadlock if the checkpointer
+                    // has suspended replica decoding in the middle of tree creation.
+                    mOpenTreesLatch.releaseExclusive();
+                    mCommitLock.releaseShared();
+                    Thread.yield();
+                    mCommitLock.acquireShared();
+                    mOpenTreesLatch.acquireExclusive();
+                }
+
+                try {
+                    treeIdBytes = mRegistryKeyMap.load(Transaction.BOGUS, nameKey);
+                } finally {
+                    locker.doUnlock();
+                }
+
                 if (treeIdBytes != null) {
                     // Another thread created it.
                     idKey = null;
@@ -3738,34 +3786,6 @@ public final class LocalDatabase extends CoreDatabase {
         } finally {
             txn.reset();
         }
-    }
-
-    /**
-     * @param name required (cannot be null)
-     * @return null if not found
-     */
-    private Tree quickFindIndex(byte[] name) throws IOException {
-        TreeRef treeRef;
-        mOpenTreesLatch.acquireShared();
-        try {
-            treeRef = mOpenTrees.get(name);
-            if (treeRef == null) {
-                return null;
-            }
-            Tree tree = treeRef.get();
-            if (tree != null) {
-                return tree;
-            }
-        } finally {
-            mOpenTreesLatch.releaseShared();
-        }
-
-        // Ensure that root node of cleared tree reference is available in the node map before
-        // potentially replacing it. Weak references are cleared before they are enqueued, and
-        // so polling the queue does not guarantee node eviction. Process the tree directly.
-        cleanupUnreferencedTree(treeRef);
-
-        return null;
     }
 
     /**
