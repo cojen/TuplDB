@@ -424,27 +424,6 @@ public class CompactTest {
         }
     }
 
-    /* FIXME
-
-java.lang.IllegalArgumentException: Negative position
-        at java.base/sun.nio.ch.FileChannelImpl.read(FileChannelImpl.java:785)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.JavaFileIO.doRead(JavaFileIO.java:160)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.AbstractFileIO.access(AbstractFileIO.java:325)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.AbstractFileIO.access(AbstractFileIO.java:340)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.AbstractFileIO.read(AbstractFileIO.java:192)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.FilePageArray.readPage(FilePageArray.java:112)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._SnapshotPageArray.readPage(_SnapshotPageArray.java:124)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.io.PageArray.readPage(PageArray.java:119)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._PageQueue.readRemoveNode(_PageQueue.java:396)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._PageQueue.loadRemoveNode(_PageQueue.java:378)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._PageQueue.tryRemove(_PageQueue.java:353)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._PageQueue.reclaim(_PageQueue.java:267)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._PageManager.compactionReclaim(_PageManager.java:587)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._DurablePageDb.compactionReclaim(_DurablePageDb.java:595)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core._LocalDatabase.compactFile(_LocalDatabase.java:2616)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core.CompactTest$4.run(CompactTest.java:444)
-
-     */
     private AssertionError doStress() throws Exception {
         mDb = newTempDatabase(getClass(),
                               decorate(new DatabaseConfig()

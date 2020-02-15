@@ -393,7 +393,9 @@ final class PageQueue implements IntegerRef {
         LocalDatabase cache = mManager.mPageCache;
         Node node;
 
-        if (cache == null || (node = cache.nodeMapGetAndRemove(id)) == null) {
+        if (cache == null || mAllocMode == ALLOC_RESERVE
+            || (node = cache.nodeMapGetAndRemove(id)) == null)
+        {
             mManager.mPageArray.readPage(id, head);
         } else {
             if (node.mCachedState != Node.CACHED_CLEAN) {
@@ -634,10 +636,12 @@ final class PageQueue implements IntegerRef {
 
     /**
      * Scans all pages in the queue and checks if it matches the given range, assuming no
-     * duplicates exist.
+     * duplicates exist. Only should be called for reserve list.
      */
     boolean verifyPageRange(long startId, long endId) throws IOException {
-        final LocalDatabase cache = mManager.mPageCache;
+        if (mAllocMode != ALLOC_RESERVE) {
+            throw new AssertionError();
+        }
 
         // Be extra paranoid and use a hash for duplicate detection.
         long expectedHash = 0;
@@ -689,13 +693,7 @@ final class PageQueue implements IntegerRef {
                         break;
                     }
 
-                    Node n;
-                    if (cache != null && (n = cache.nodeMapGetShared(nodeId)) != null) {
-                        p_copy(n.mPage, 0, node, 0, pageSize(node));
-                        n.releaseShared();
-                    } else {
-                        mManager.mPageArray.readPage(nodeId, node);
-                    }
+                    mManager.mPageArray.readPage(nodeId, node);
 
                     pageId = p_longGetBE(node, I_FIRST_PAGE_ID);
                     nodeOffsetRef.value = I_NODE_START;
