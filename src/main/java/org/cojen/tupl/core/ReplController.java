@@ -24,8 +24,6 @@ import java.io.IOException;
 
 import java.util.Objects;
 
-import java.util.concurrent.ForkJoinPool;
-
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationTimeoutException;
 import org.cojen.tupl.DatabaseException;
@@ -35,6 +33,7 @@ import org.cojen.tupl.UnmodifiableReplicaException;
 import org.cojen.tupl.repl.StreamReplicator;
 
 import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Runner;
 
 /**
  * Controller is used for checkpoints and as a non-functional writer when in replica mode.
@@ -322,14 +321,14 @@ final class ReplController extends ReplWriter {
         acquireExclusive();
         try {
             if (isLeader()) {
-                ForkJoinPool.commonPool().execute(task);
+                Runner.start(task);
             } else {
                 if (mLeaderNotifyCondition == null) {
                     mLeaderNotifyCondition = new LatchCondition();
                 }
 
                 mLeaderNotifyCondition.uponSignal(this, () -> {
-                    ForkJoinPool.commonPool().execute(task);
+                    Runner.start(task);
                     return true;
                 });
             }
@@ -402,7 +401,7 @@ final class ReplController extends ReplWriter {
         if (shouldSwitchToReplica(expect) != null) {
             // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
             // ReplWriter while latched, which is an inconsistent order.
-            new Thread(() -> doSwitchToReplica(expect)).start();
+            Runner.start(() -> doSwitchToReplica(expect));
         }
     }
 

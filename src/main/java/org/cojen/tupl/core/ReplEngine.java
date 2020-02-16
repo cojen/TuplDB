@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.lang.ref.SoftReference;
 
 import java.util.Arrays;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +43,7 @@ import org.cojen.tupl.repl.StreamReplicator;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 
@@ -1551,7 +1551,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         if (remaining != null) {
             if (redo != null) {
                 final var fredo = redo;
-                ForkJoinPool.commonPool().execute(() -> {
+                Runner.start(() -> {
                     mDatabase.invokeRecoveryHandler(remaining, fredo);
                 });
             } else {

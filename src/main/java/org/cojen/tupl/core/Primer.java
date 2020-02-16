@@ -25,6 +25,8 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.util.Runner;
+
 /**
  * Decodes a cache primer stream and prefetches keys for an index (or view).
  *
@@ -98,14 +100,12 @@ final class Primer {
                         mDin.readFully(key);
 
                         if (mTaskCount < mTaskLimit) spawn: {
-                            Thread task;
                             try {
-                                task = new Thread(this::prime);
+                                Runner.start(this::prime);
                             } catch (Throwable e) {
                                 break spawn;
                             }
                             mTaskCount++;
-                            task.start();
                         }
                     }
 

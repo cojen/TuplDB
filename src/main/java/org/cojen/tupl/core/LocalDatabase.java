@@ -54,7 +54,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -104,6 +103,7 @@ import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.repl.StreamReplicator;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.core.Node.*;
 import static org.cojen.tupl.core.PageOps.*;
@@ -995,7 +995,7 @@ public final class LocalDatabase extends CoreDatabase {
         if (!(mRedoWriter instanceof ReplController)) {
             LHashTable.Obj<LocalTransaction> unfinished = launcher.mUnfinished;
             if (unfinished != null) {
-                new Thread(() -> invokeRecoveryHandler(unfinished, mRedoWriter)).start();
+                Runner.start(() -> invokeRecoveryHandler(unfinished, mRedoWriter));
                 launcher.mUnfinished = null;
             }
         } else {
@@ -2643,7 +2643,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
         var fls = new FreeListScan();
-        new Thread(fls).start();
+        Runner.start(fls);
 
         if (observer == null) {
             observer = new VerificationObserver();
@@ -2768,7 +2768,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public void uponLeader(Runnable task) {
         if (mRedoWriter == null) {
-            ForkJoinPool.commonPool().execute(task);
+            Runner.start(task);
         } else {
             mRedoWriter.uponLeader(task);
         }

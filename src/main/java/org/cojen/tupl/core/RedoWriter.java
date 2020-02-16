@@ -21,11 +21,10 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 
-import java.util.concurrent.ForkJoinPool;
-
 import org.cojen.tupl.DurabilityMode;
 
 import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.Runner;
 
 /**
  * Abstract class for active transactions to write into. Redo operations are encoded and
@@ -62,7 +61,7 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
     }
 
     void uponLeader(Runnable task) {
-        ForkJoinPool.commonPool().execute(task);
+        Runner.start(task);
     }
 
     /**
