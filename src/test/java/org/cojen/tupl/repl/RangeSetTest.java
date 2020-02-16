@@ -80,6 +80,16 @@ public class RangeSetTest {
         }
     }
 
+    @Test
+    public void internal() throws Exception {
+        var set = new RangeSet();
+        var set2 = new TreeSet<Long>();
+
+        add(set, 10, 40, set2);
+        add(set, 20, 30, set2);
+        verify(set, set2);
+    }
+
     private static void add(RangeSet set, long start, long end, TreeSet<Long> set2) {
         set.add(start, end);
         while (start < end) {

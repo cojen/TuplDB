@@ -31,10 +31,6 @@ final class RangeSet extends TreeSet<RangeSet.Range> {
     public RangeSet() {
     }
 
-    private RangeSet(RangeSet set) {
-        super(set);
-    }
-
     @Override
     public synchronized boolean isEmpty() {
         return super.isEmpty();
@@ -59,15 +55,14 @@ final class RangeSet extends TreeSet<RangeSet.Range> {
         Range existing = super.floor(range); // findLe
 
         if (existing != null) foundLe: {
-            if (start <= existing.start) {
-                if (end <= existing.end) {
-                    // New range fits within an existing range.
-                    return true;
-                }
-            } else if (start > existing.end) {
+            if (start > existing.end) {
                 // Add a new range which might be the highest overall.
                 super.add(range);
                 break foundLe;
+            }
+            if (end <= existing.end) {
+                // New range fits within an existing range.
+                return true;
             }
             // Extend the end of existing range.
             existing.end = end;
@@ -111,7 +106,11 @@ final class RangeSet extends TreeSet<RangeSet.Range> {
     }
 
     public synchronized RangeSet copy() {
-        return new RangeSet(this);
+        var copy = new RangeSet();
+        for (Range r : this) {
+            copy.add(new Range(r.start, r.end));
+        }
+        return copy;
     }
 
     /**
