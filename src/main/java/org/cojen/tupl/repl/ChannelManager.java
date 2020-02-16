@@ -1169,7 +1169,7 @@ final class ChannelManager {
                 }
                 final int commandLength = (8 + 8 * 4) + len;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, OP_QUERY_DATA_REPLY, 0, commandLength - 8);
+                prepareCommand(command, OP_QUERY_DATA_REPLY, 0, commandLength - 8);
                 encodeLongLE(command, 8, currentTerm);
                 encodeLongLE(command, 16, prevTerm);
                 encodeLongLE(command, 24, term);
@@ -1223,7 +1223,7 @@ final class ChannelManager {
                 }
                 final int commandLength = (8 + 8 * 5) + fullLen;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, commandLength - 8);
+                prepareCommand(command, op, 0, commandLength - 8);
                 encodeLongLE(command, 8, prevTerm);
                 encodeLongLE(command, 16, term);
                 encodeLongLE(command, 24, position);
@@ -1296,7 +1296,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 4 * 2;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
+                prepareCommand(command, OP_SNAPSHOT_SCORE_REPLY, 0, 4 * 2);
                 encodeIntLE(command, 8, activeSessions);
                 encodeIntLE(command, 12, Float.floatToIntBits(weight));
                 return writeCommand(out, command, 0, commandLength);
@@ -1340,7 +1340,7 @@ final class ChannelManager {
                 if (out != null) {
                     final int commandLength = 8;
                     byte[] command = allocWriteBuffer(commandLength);
-                    prepareCommand(out, command, OP_GROUP_FILE_REPLY, 0, 0);
+                    prepareCommand(command, OP_GROUP_FILE_REPLY, 0, 0);
                     if (writeCommand(out, command, 0, commandLength)) {
                         return out;
                     }
@@ -1370,7 +1370,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 0);
+                prepareCommand(command, op, 0, 0);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();
@@ -1386,7 +1386,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 1;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 1);
+                prepareCommand(command, op, 0, 8 * 1);
                 encodeLongLE(command, 8, a);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
@@ -1403,7 +1403,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 2;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 2);
+                prepareCommand(command, op, 0, 8 * 2);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 return writeCommand(out, command, 0, commandLength);
@@ -1421,7 +1421,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 2 + 1;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 2 + 1);
+                prepareCommand(command, op, 0, 8 * 2 + 1);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 command[24] = c;
@@ -1440,7 +1440,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 3;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 3);
+                prepareCommand(command, op, 0, 8 * 3);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
@@ -1459,7 +1459,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 4;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 4);
+                prepareCommand(command, op, 0, 8 * 4);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
@@ -1479,7 +1479,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 5;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 5);
+                prepareCommand(command, op, 0, 8 * 5);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
@@ -1500,7 +1500,7 @@ final class ChannelManager {
                 }
                 final int commandLength = 8 + 8 * 6;
                 byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(out, command, op, 0, 8 * 6);
+                prepareCommand(command, op, 0, 8 * 6);
                 encodeLongLE(command, 8, a);
                 encodeLongLE(command, 16, b);
                 encodeLongLE(command, 24, c);
@@ -1539,9 +1539,7 @@ final class ChannelManager {
          * @param command must have at least 8 bytes, used for the header
          * @param length max allowed is 16,777,216 bytes
          */
-        private void prepareCommand(OutputStream out, byte[] command,
-                                    int op, int offset, int length)
-        {
+        private void prepareCommand(byte[] command, int op, int offset, int length) {
             encodeIntLE(command, offset, (length << 8) | (byte) op);
         }
 
