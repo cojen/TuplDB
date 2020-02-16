@@ -5804,7 +5804,16 @@ public final class LocalDatabase extends CoreDatabase {
             return;
         }
 
-        LHashTable.Obj<Object> committed = mCommitMasterUndoLog.findCommitted();
+        LHashTable.Obj<Object> committed;
+        CommitLock.Shared shared = mCommitLock.acquireSharedUnchecked();
+        try {
+            if (isClosed()) {
+                return;
+            }
+            committed = mCommitMasterUndoLog.findCommitted();
+        } finally {
+            shared.release();
+        }
 
         if (committed == null) {
             return;
@@ -5841,7 +5850,15 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         if (uncommitted != null) {
-            mCommitMasterUndoLog.markUncommitted(uncommitted);
+            shared = mCommitLock.acquireSharedUnchecked();
+            try {
+                if (isClosed()) {
+                    return;
+                }
+                mCommitMasterUndoLog.markUncommitted(uncommitted);
+            } finally {
+                shared.release();
+            }
         }
     }
 

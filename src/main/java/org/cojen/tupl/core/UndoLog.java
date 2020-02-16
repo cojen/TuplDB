@@ -1648,20 +1648,11 @@ final class UndoLog implements DatabaseAccess {
     /**
      * Finds all the transactions which were written to this master undo log in a committed
      * state, returning null if none. Assumes that master undo log is persist-ready and has a
-     * top node.
+     * top node. Caller must hold db commit lock.
      *
      * @return optional set with transaction id keys and null values
      */
     LHashTable.Obj<Object> findCommitted() throws IOException {
-        CommitLock.Shared shared = mDatabase.commitLock().acquireSharedUnchecked();
-        try {
-            return doFindCommitted();
-        } finally {
-            shared.release();
-        }
-    }
-
-    private LHashTable.Obj<Object> doFindCommitted() throws IOException {
         var finder = new Visitor() {
             LHashTable.Obj<Object> mTxns;
 
@@ -1688,18 +1679,9 @@ final class UndoLog implements DatabaseAccess {
 
     /**
      * Updates all references to the given transaction ids in this master undo log to be
-     * uncommitted.
+     * uncommitted. Caller must hold db commit lock.
      */
     void markUncommitted(LHashTable.Obj<Object> uncommitted) throws IOException {
-        CommitLock.Shared shared = mDatabase.commitLock().acquireSharedUnchecked();
-        try {
-            doMarkUncommitted(uncommitted);
-        } finally {
-            shared.release();
-        }
-    }
-
-    private void doMarkUncommitted(LHashTable.Obj<Object> uncommitted) throws IOException {
         // Note that it's safe to blindly re-write the nodes. The node were intended for a
         // checkpoint which failed, and so nothing refers to them.
 
