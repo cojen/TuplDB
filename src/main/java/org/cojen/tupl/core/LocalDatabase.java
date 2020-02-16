@@ -210,16 +210,16 @@ public final class LocalDatabase extends CoreDatabase {
     private final BTree mRegistry;
 
     // RK == Registry Key prefixes used with mRegistryKeyMap.
-    static final byte RK_INDEX_NAME   = 0; // name to id mapping for user trees
-    static final byte RK_INDEX_ID     = 1; // id to name mapping for user trees
-    static final byte RK_TREE_ID_MASK = 2; // full key for random tree id mask
-    static final byte RK_NEXT_TREE_ID = 3; // full key for tree id sequence
-    static final byte RK_TRASH_ID     = 4; // id to name mapping of trash
-    static final byte RK_CUSTOM_NAME  = 5; // name to id mapping for custom handlers
-    static final byte RK_CUSTOM_ID    = 6; // id to name mapping for custom handlers
-    static final byte RK_PREPARE_NAME = 7; // name to id mapping for prepare handlers
-    static final byte RK_PREPARE_ID   = 8; // id to name mapping for prepare handlers
-    static final byte RK_NEXT_TEMP_ID = 9; // full key for temporary tree id sequence
+    static final byte RK_INDEX_NAME   =  0; // name to id mapping for user trees
+    static final byte RK_INDEX_ID     =  1; // id to name mapping for user trees
+    static final byte RK_TREE_ID_MASK =  2; // full key for random tree id mask (deprecated)
+    static final byte RK_NEXT_TREE_ID =  3; // full key for tree id sequence
+    static final byte RK_TRASH_ID     =  4; // id to name mapping of trash
+    static final byte RK_NEXT_TEMP_ID =  5; // full key for temporary tree id sequence
+    static final byte RK_CUSTOM_NAME  =  6; // name to id mapping for custom handlers
+    static final byte RK_CUSTOM_ID    =  7; // id to name mapping for custom handlers
+    static final byte RK_PREPARE_NAME =  8; // name to id mapping for prepare handlers
+    static final byte RK_PREPARE_ID   =  9; // id to name mapping for prepare handlers
 
     // Various mappings, defined by RK_ fields.
     private final BTree mRegistryKeyMap;

@@ -164,9 +164,9 @@ class RedoOps {
         OP_TXN_PREPARE_ROLLBACK = 52,
 
         /** txnId: delta, handlerId: varInt, messageLength: varInt, message: bytes */
-        OP_TXN_CUSTOM = (byte) 128,
+        OP_TXN_CUSTOM = 56,
 
         /** txnId: delta, handlerId: varInt, indexId: long, keyLength: varInt, key: bytes,
             messageLength: varInt, message: bytes */
-        OP_TXN_CUSTOM_LOCK = (byte) 129;
+        OP_TXN_CUSTOM_LOCK = 57;
 }
