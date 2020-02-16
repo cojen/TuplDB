@@ -702,8 +702,8 @@ final class ChannelManager {
                 if (cWriteStateHandle.compareAndSet(channel, state, 0)) {
                     channel.closeSocket();
                 }
-            } else if (state == 1) {
-                cWriteStateHandle.compareAndSet(channel, 1, 2);
+            } else if (state >= 1) {
+                cWriteStateHandle.compareAndSet(channel, state, state + 1);
             }
         }
 
