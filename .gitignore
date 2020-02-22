@@ -1,6 +1,7 @@
 /build
-/maven.bat
 /target
 *~
 /.gitignore~
 _*.java
+.DS_Store
+.idea
