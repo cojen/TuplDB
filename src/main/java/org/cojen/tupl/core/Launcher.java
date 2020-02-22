@@ -110,7 +110,7 @@ public final class Launcher implements Cloneable {
         durabilityMode(null);
         lockTimeout(1, TimeUnit.SECONDS);
         checkpointRate(1, TimeUnit.SECONDS);
-        checkpointSizeThreshold(1024 * 1024);
+        checkpointSizeThreshold(100L * 1024 * 1024);
         checkpointDelayThreshold(1, TimeUnit.MINUTES);
     }
 

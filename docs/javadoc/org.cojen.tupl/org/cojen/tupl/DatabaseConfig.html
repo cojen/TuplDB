@@ -604,7 +604,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <section class="detail">
 <h3><a id="checkpointSizeThreshold(long)">checkpointSizeThreshold</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">checkpointSizeThreshold</span>&#8203;(<span class="arguments">long&nbsp;bytes)</span></div>
-<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()">checkpoint</a> to actually be performed. Default is 1 MiB. If database is used primarily
+<div class="block">Set the minimum redo log size required for an automatic <a href="Database.html#checkpoint()">checkpoint</a> to actually be performed. Default is 100 MiB. If database is used primarily
  for non-transactional operations, the threshold should be set to zero.</div>
 </section>
 </li>

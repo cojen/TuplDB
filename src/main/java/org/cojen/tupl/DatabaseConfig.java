@@ -231,7 +231,7 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Set the minimum redo log size required for an automatic {@linkplain Database#checkpoint
-     * checkpoint} to actually be performed. Default is 1 MiB. If database is used primarily
+     * checkpoint} to actually be performed. Default is 100 MiB. If database is used primarily
      * for non-transactional operations, the threshold should be set to zero.
      */
     public DatabaseConfig checkpointSizeThreshold(long bytes) {
