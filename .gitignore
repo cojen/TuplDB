@@ -5,3 +5,6 @@
 _*.java
 .DS_Store
 .idea
+*.ipr
+*.iws
+*.iml
