@@ -570,7 +570,7 @@ final class FileTermLog extends Latch implements TermLog {
                 if (task instanceof CommitWaiter) {
                     var cwaiter = (CommitWaiter) task;
                     if (cwaiter.mWaiter == waiter) {
-                        cwaiter.posReached(WAIT_TERM_END);
+                        reached(cwaiter, WAIT_TERM_END);
                     }
                 }
             }
@@ -579,7 +579,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static class CommitWaiter extends CommitCallback {
+    static class CommitWaiter extends AbstractCommitCallback {
         final Thread mThread;
         Object mWaiter;
         volatile long mAppliablePosition;
@@ -627,7 +627,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     private boolean tryUponCommit(CommitCallback task, boolean exclusive) {
         long commitPosition = doAppliableCommitPosition();
-        long waitFor = task.mPosition;
+        long waitFor = task.position();
 
         if (commitPosition < waitFor) {
             if (mLogClosed || waitFor > mLogEndPosition) {
@@ -638,7 +638,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         release(exclusive);
-        task.posReached(commitPosition);
+        reached(task, commitPosition);
 
         return true;
     }
@@ -702,7 +702,7 @@ final class FileTermLog extends Latch implements TermLog {
             removedTasks = new ArrayList<>();
 
             mCommitTasks.removeIf(task -> {
-                if (task.mPosition > endPosition) {
+                if (task.position() > endPosition) {
                     removedTasks.add(task);
                     return true;
                 }
@@ -713,7 +713,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         for (CommitCallback task : removedTasks) {
-            task.posReached(WAIT_TERM_END);
+            reached(task, WAIT_TERM_END);
         }
     }
 
@@ -1133,7 +1133,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         while (true) {
             CommitCallback task = tasks.peek();
-            if (task == null || commitPosition < task.mPosition) {
+            if (task == null || commitPosition < task.position()) {
                 releaseExclusive();
                 return;
             }
@@ -1141,12 +1141,23 @@ final class FileTermLog extends Latch implements TermLog {
             assert removed == task;
             boolean empty = tasks.isEmpty();
             releaseExclusive();
-            task.posReached(commitPosition);
+            reached(task, commitPosition);
             if (empty) {
                 return;
             }
             acquireExclusive();
             commitPosition = doAppliableCommitPosition();
+        }
+    }
+
+    /**
+     * Calls task.reached and catches all exceptions.
+     */
+    private static void reached(CommitCallback task, long position) {
+        try {
+            task.reached(position);
+        } catch (Throwable e) {
+            Utils.uncaught(e);
         }
     }
 

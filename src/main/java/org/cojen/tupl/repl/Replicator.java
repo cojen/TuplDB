@@ -244,7 +244,7 @@ public interface Replicator extends Closeable {
          * then the current thread invokes it immediately.
          */
         default void uponCommit(long position, LongConsumer task) {
-            uponCommit(new CommitCallback(position) {
+            uponCommit(new AbstractCommitCallback(position) {
                 @Override
                 public void reached(long position) {
                     task.accept(position);
@@ -254,12 +254,12 @@ public interface Replicator extends Closeable {
 
         /**
          * Invokes the given task when the commit position reaches the end of the term. The
-         * current commit position is passed to the task, or is -1 if if closed. If the task
-         * can be run when this method is called, then the current thread invokes it
-         * immediately.
+         * current commit position is passed to the task, which is -1 if the accessor is
+         * closed. If the task can be run when this method is called, then the current thread
+         * invokes it immediately.
          */
         default void uponEndCommit(LongConsumer task) {
-            uponCommit(new CommitCallback(termEndPosition()) {
+            uponCommit(new AbstractCommitCallback(termEndPosition()) {
                 @Override
                 public void reached(long position) {
                     long endPosition = termEndPosition();
