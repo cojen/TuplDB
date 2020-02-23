@@ -482,9 +482,9 @@ public class FileTermLogTest {
 
             void begin() {
                 if (mUpon) {
-                    mLog.uponCommit(new Delayed(mWaitFor) {
+                    mLog.uponCommit(new CommitCallback(mWaitFor) {
                         @Override
-                        protected void doRun(long commit) {
+                        public void reached(long commit) {
                             mLatch.acquireExclusive();
                             mCommit = commit;
                             mLatchCondition.signal(mLatch);

@@ -308,8 +308,8 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public void uponCommit(long position, LongConsumer task) {
-            mSource.uponCommit(position, task);
+        public void uponCommit(CommitCallback task) {
+            mSource.uponCommit(task);
         }
 
         @Override
@@ -545,8 +545,8 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public void uponCommit(long position, LongConsumer task) {
-            mSource.uponCommit(position, task);
+        public void uponCommit(CommitCallback task) {
+            mSource.uponCommit(task);
         }
 
         @Override

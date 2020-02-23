@@ -62,7 +62,7 @@ final class FileTermLog extends Latch implements TermLog {
     // For sizing LCache instances.
     private static final int MIN_CACHE_SIZE = 10;
 
-    private static final ThreadLocal<DelayedWaiter> cLocalDelayed = new ThreadLocal<>();
+    private static final ThreadLocal<CommitWaiter> cLocalWaiter = new ThreadLocal<>();
 
     private final Worker mWorker;
     private final File mBase;
@@ -93,7 +93,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     private final Caches mCaches;
 
-    private final PriorityQueue<Delayed> mCommitTasks;
+    private final PriorityQueue<CommitCallback> mCommitTasks;
 
     private final Latch mSyncLatch;
     private final Latch mDirtyLatch;
@@ -520,19 +520,19 @@ final class FileTermLog extends Latch implements TermLog {
             exclusive = true;
         }
 
-        DelayedWaiter dwaiter;
+        CommitWaiter cwaiter;
         try {
-            dwaiter = cLocalDelayed.get();
-            if (dwaiter == null) {
-                dwaiter = new DelayedWaiter(position, Thread.currentThread(), waiter);
-                cLocalDelayed.set(dwaiter);
+            cwaiter = cLocalWaiter.get();
+            if (cwaiter == null) {
+                cwaiter = new CommitWaiter(position, Thread.currentThread(), waiter);
+                cLocalWaiter.set(cwaiter);
             } else {
-                dwaiter.mCounter = position;
-                dwaiter.mWaiter = waiter;
-                dwaiter.mAppliablePosition = 0;
+                cwaiter.mPosition = position;
+                cwaiter.mWaiter = waiter;
+                cwaiter.mAppliablePosition = 0;
             }
 
-            mCommitTasks.add(dwaiter);
+            mCommitTasks.add(cwaiter);
         } finally {
             releaseExclusive();
         }
@@ -548,7 +548,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (Thread.interrupted()) {
                 throw new InterruptedIOException();
             }
-            long commitPosition = dwaiter.mAppliablePosition;
+            long commitPosition = cwaiter.mAppliablePosition;
             if (commitPosition < 0) {
                 return commitPosition;
             }
@@ -566,11 +566,11 @@ final class FileTermLog extends Latch implements TermLog {
     void signalClosed(Object waiter) {
         acquireShared();
         try {
-            for (Delayed delayed : mCommitTasks) {
-                if (delayed instanceof DelayedWaiter) {
-                    var dwaiter = (DelayedWaiter) delayed;
-                    if (dwaiter.mWaiter == waiter) {
-                        dwaiter.run(WAIT_TERM_END);
+            for (CommitCallback task : mCommitTasks) {
+                if (task instanceof CommitWaiter) {
+                    var cwaiter = (CommitWaiter) task;
+                    if (cwaiter.mWaiter == waiter) {
+                        cwaiter.posReached(WAIT_TERM_END);
                     }
                 }
             }
@@ -579,19 +579,19 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static class DelayedWaiter extends Delayed {
+    static class CommitWaiter extends CommitCallback {
         final Thread mThread;
         Object mWaiter;
         volatile long mAppliablePosition;
 
-        DelayedWaiter(long position, Thread thread, Object waiter) {
+        CommitWaiter(long position, Thread thread, Object waiter) {
             super(position);
             mThread = thread;
             mWaiter = waiter;
         }
 
         @Override
-        protected void doRun(long position) {
+        public void reached(long position) {
             mWaiter = null;
             mAppliablePosition = position;
             Parker.unpark(mThread);
@@ -599,7 +599,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
-    public void uponCommit(Delayed task) {
+    public void uponCommit(CommitCallback task) {
         if (task == null) {
             throw new NullPointerException();
         }
@@ -625,9 +625,9 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    private boolean tryUponCommit(Delayed task, boolean exclusive) {
+    private boolean tryUponCommit(CommitCallback task, boolean exclusive) {
         long commitPosition = doAppliableCommitPosition();
-        long waitFor = task.mCounter;
+        long waitFor = task.mPosition;
 
         if (commitPosition < waitFor) {
             if (mLogClosed || waitFor > mLogEndPosition) {
@@ -638,14 +638,14 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         release(exclusive);
-        task.run(commitPosition);
+        task.posReached(commitPosition);
 
         return true;
     }
 
     @Override
     public void finishTerm(long endPosition) {
-        List<Delayed> removedTasks;
+        List<CommitCallback> removedTasks;
 
         acquireExclusive();
         try {
@@ -702,7 +702,7 @@ final class FileTermLog extends Latch implements TermLog {
             removedTasks = new ArrayList<>();
 
             mCommitTasks.removeIf(task -> {
-                if (task.mCounter > endPosition) {
+                if (task.mPosition > endPosition) {
                     removedTasks.add(task);
                     return true;
                 }
@@ -712,8 +712,8 @@ final class FileTermLog extends Latch implements TermLog {
             releaseExclusive();
         }
 
-        for (Delayed task : removedTasks) {
-            task.run(WAIT_TERM_END);
+        for (CommitCallback task : removedTasks) {
+            task.posReached(WAIT_TERM_END);
         }
     }
 
@@ -901,8 +901,8 @@ final class FileTermLog extends Latch implements TermLog {
                     }
                 }
 
-                for (Delayed delayed : mCommitTasks) {
-                    delayed.run(WAIT_TERM_END);
+                for (CommitCallback task : mCommitTasks) {
+                    task.reached(WAIT_TERM_END);
                 }
 
                 mCommitTasks.clear();
@@ -1129,19 +1129,19 @@ final class FileTermLog extends Latch implements TermLog {
      * Caller must acquire exclusive latch, which is always released by this method.
      */
     private void notifyCommitTasks(long commitPosition) {
-        PriorityQueue<Delayed> tasks = mCommitTasks;
+        PriorityQueue<CommitCallback> tasks = mCommitTasks;
 
         while (true) {
-            Delayed task = tasks.peek();
-            if (task == null || commitPosition < task.mCounter) {
+            CommitCallback task = tasks.peek();
+            if (task == null || commitPosition < task.mPosition) {
                 releaseExclusive();
                 return;
             }
-            Delayed removed = tasks.remove();
+            CommitCallback removed = tasks.remove();
             assert removed == task;
             boolean empty = tasks.isEmpty();
             releaseExclusive();
-            task.run(commitPosition);
+            task.posReached(commitPosition);
             if (empty) {
                 return;
             }
@@ -1409,7 +1409,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public void uponCommit(Delayed task) {
+        public void uponCommit(CommitCallback task) {
             FileTermLog.this.uponCommit(task);
         }
 
@@ -1655,7 +1655,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public void uponCommit(Delayed task) {
+        public void uponCommit(CommitCallback task) {
             FileTermLog.this.uponCommit(task);
         }
 

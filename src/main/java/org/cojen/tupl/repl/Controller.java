@@ -1062,8 +1062,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
-        public void uponCommit(long position, LongConsumer task) {
-            mWriter.uponCommit(position, task);
+        public void uponCommit(CommitCallback task) {
+            mWriter.uponCommit(task);
         }
 
         @Override
@@ -1157,7 +1157,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             private long mTargetDurablePosition;
 
             @Override
-            protected void doRun(long counter) {
+            protected void doRun() {
                 StateLog log = mStateLog;
                 long commitPosition = log.captureHighest().mCommitPosition;
 

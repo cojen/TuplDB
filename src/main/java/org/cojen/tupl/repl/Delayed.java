@@ -36,28 +36,15 @@ abstract class Delayed implements Comparable<Delayed>, Runnable {
         return Long.signum(mCounter - other.mCounter);
     }
 
-    /**
-     * Runs with the original counter value, never throwing an exception.
-     */
     public final void run() {
-        run(mCounter);
-    }
-
-    /**
-     * Runs with the given updated counter value, never throwing an exception.
-     */
-    public final void run(long counter) {
         try {
-            doRun(counter);
+            doRun();
         } catch (Throwable e) {
             Utils.uncaught(e);
         }
     }
 
-    /**
-     * @param counter current counter value
-     */
-    protected abstract void doRun(long counter) throws Throwable;
+    protected abstract void doRun() throws Throwable;
 
     static final class Runner extends Delayed {
         private final Runnable mTask;
@@ -68,7 +55,7 @@ abstract class Delayed implements Comparable<Delayed>, Runnable {
         }
 
         @Override
-        protected void doRun(long counter) throws Throwable {
+        protected void doRun() throws Throwable {
             mTask.run();
         }
     }

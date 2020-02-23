@@ -35,8 +35,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.function.Consumer;
-import java.util.function.LongConsumer;
 
+import org.cojen.tupl.repl.CommitCallback;
 import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.repl.SnapshotReceiver;
 import org.cojen.tupl.repl.SnapshotSender;
@@ -65,7 +65,7 @@ class SocketReplicator implements StreamReplicator {
 
     private byte[] mControlMessage;
 
-    private TreeMap<Long, LongConsumer> mTasks;
+    private TreeMap<Long, CommitCallback> mTasks;
 
     private boolean mSuspendCommit;
 
@@ -335,10 +335,11 @@ class SocketReplicator implements StreamReplicator {
         return mSuspendPos == 0 ? mPos : mSuspendPos;
     }
 
-    private void uponCommit(long position, LongConsumer task) {
+    private void uponCommit(CommitCallback task) {
         long actual;
         synchronized (this) {
             actual = mPos;
+            long position = task.position();
             if (position < actual) {
                 if (mTasks == null) {
                     mTasks = new TreeMap<>();
@@ -348,7 +349,7 @@ class SocketReplicator implements StreamReplicator {
             }
         }
 
-        task.accept(actual);
+        task.reached(actual);
     }
 
     private synchronized long waitForCommit(Accessor accessor, long position, long nanosTimeout)
@@ -400,15 +401,16 @@ class SocketReplicator implements StreamReplicator {
         notifyAll();
 
         if (mTasks != null) {
-            Iterator<Map.Entry<Long, LongConsumer>> it = mTasks.entrySet().iterator();
+            Iterator<Map.Entry<Long, CommitCallback>> it = mTasks.entrySet().iterator();
             while (it.hasNext()) {
-                Map.Entry<Long, LongConsumer> e = it.next();
-                if (e.getKey() > position) {
+                Map.Entry<Long, CommitCallback> e = it.next();
+                CommitCallback task = e.getValue();
+                if (e.getKey() > task.position()) {
                     break;
                 }
                 it.remove();
                 try {
-                    e.getValue().accept(position);
+                    e.getValue().reached(position);
                 } catch (Throwable ex) {
                     Utils.uncaught(ex);
                 }
@@ -448,8 +450,8 @@ class SocketReplicator implements StreamReplicator {
         }
 
         @Override
-        public void uponCommit(long position, LongConsumer task) {
-            SocketReplicator.this.uponCommit(position, task);
+        public void uponCommit(CommitCallback task) {
+            SocketReplicator.this.uponCommit(task);
         }
 
         @Override

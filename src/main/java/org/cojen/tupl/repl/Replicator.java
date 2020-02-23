@@ -231,29 +231,48 @@ public interface Replicator extends Closeable {
 
         /**
          * Invokes the given task when the commit position reaches the requested position. The
-         * current commit position is passed to the task, or -1 if the term ended before the
-         * position could be reached. If the task can be run when this method is called, then
-         * the current thread invokes it immediately.
+         * current commit position is passed to the task, which is -1 if the term ended before
+         * the position could be reached. If the task can be run when this method is called,
+         * then the current thread invokes it immediately.
          */
-        void uponCommit(long position, LongConsumer task);
+        void uponCommit(CommitCallback task);
+
+        /**
+         * Invokes the given task when the commit position reaches the requested position. The
+         * current commit position is passed to the task, which is -1 if the term ended before
+         * the position could be reached. If the task can be run when this method is called,
+         * then the current thread invokes it immediately.
+         */
+        default void uponCommit(long position, LongConsumer task) {
+            uponCommit(new CommitCallback(position) {
+                @Override
+                public void reached(long position) {
+                    task.accept(position);
+                }
+            });
+        }
 
         /**
          * Invokes the given task when the commit position reaches the end of the term. The
-         * current commit position is passed to the task, or -1 if if closed. If the task can be
-         * run when this method is called, then the current thread invokes it immediately.
+         * current commit position is passed to the task, or is -1 if if closed. If the task
+         * can be run when this method is called, then the current thread invokes it
+         * immediately.
          */
         default void uponEndCommit(LongConsumer task) {
-            uponCommit(termEndPosition(), position -> {
-                long endPosition = termEndPosition();
-                if (endPosition == Long.MAX_VALUE) {
-                    // Assume closed.
-                    task.accept(-1);
-                } else if (position == endPosition) {
-                    // End reached.
-                    task.accept(position);
-                } else {
-                    // Term ended even lower, so try again.                        
-                    uponEndCommit(task);
+            uponCommit(new CommitCallback(termEndPosition()) {
+                @Override
+                public void reached(long position) {
+                    long endPosition = termEndPosition();
+                    if (endPosition == Long.MAX_VALUE) {
+                        // Assume closed.
+                        task.accept(-1);
+                    } else if (position == endPosition) {
+                        // End reached.
+                        task.accept(position);
+                    } else {
+                        // Term ended even lower, so try again.                        
+                        uponEndCommit(task);
+                    }
                 }
             });
         }

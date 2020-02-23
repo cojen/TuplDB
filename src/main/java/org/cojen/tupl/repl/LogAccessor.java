@@ -30,23 +30,13 @@ interface LogAccessor extends Replicator.Accessor {
      */
     long prevTerm();
 
-    @Override
-    public default void uponCommit(long index, LongConsumer task) {
-        uponCommit(new Delayed(index) {
-            @Override
-            protected void doRun(long counter) {
-                task.accept(counter);
-            }
-        });
-    }
-
     /**
      * Invokes the given task when the commit index reaches the requested index. The current
      * commit index is passed to the task, or -1 if the term ended before the index could be
      * reached. If the task can be run when this method is called, then the current thread
      * invokes it.
      */
-    void uponCommit(Delayed task);
+    void uponCommit(CommitCallback task);
 
     /**
      * Indicate that the accessor isn't intended to be used again, allowing file handles to be

@@ -117,7 +117,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * reached. If the task can be run when this method is called, then the current thread
      * invokes it.
      */
-    void uponCommit(Delayed task);
+    void uponCommit(CommitCallback task);
 
     /**
      * Set the end position for this term instance, truncating all higher data. The highest
