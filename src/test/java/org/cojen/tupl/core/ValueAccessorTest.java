@@ -55,7 +55,7 @@ public class ValueAccessorTest {
     }
 
     protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
-        throws IOException
+        throws Exception
     {
         ((BTreeCursor) c).doValueModify(BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
     }

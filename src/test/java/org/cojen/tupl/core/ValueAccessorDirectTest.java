@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.lang.reflect.Method;
+
 import org.junit.*;
 
 import org.cojen.tupl.*;
@@ -40,8 +42,10 @@ public class ValueAccessorDirectTest extends ValueAccessorTest {
 
     @Override
     protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
-        throws IOException
+        throws Exception
     {
-        ((_BTreeCursor) c).doValueModify(BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        Method m = c.getClass().getDeclaredMethod
+            ("doValueModify", int.class, long.class, byte[].class, int.class, long.class);
+        m.invoke(c, op, pos, buf, off, len);
     }
 }
