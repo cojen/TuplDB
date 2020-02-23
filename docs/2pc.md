@@ -2,7 +2,7 @@
 
 The transaction prepare mechanism provides a building block for supporting distributed
 [two-phase commits](https://en.wikipedia.org/wiki/Two-phase_commit_protocol). Here is a recipe
-for implementing it fully, assuming that each cluster is replicated and independent from each
+for implementing it fully, assuming that each cluster is replicated and independent of each
 other.
 
 One coordinator "owns" the entire workflow, and it belongs to one cluster. The coordinator can
@@ -51,17 +51,17 @@ replicated cluster, the participant must be the cluster leader for the roll back
 To avoid race conditions, the participants must only attempt to contact the leader of the
 coordinator's cluster. Before responding that a coordinator transaction is missing, the
 isLeader method must return true. It's possible to add an enhancement in which the transaction
-records the replication log position, and then a participant can accept a repsonse from a
+records the replication log position, and then a participant can accept a response from a
 replica, if it's caught up. Note that the isLeader method doesn't return true unless fully
 caught up, and so this technique is free of race conditions.
 
-If the coordinator cluster was decomissioned for some reason, the polling participant won't get
+If the coordinator cluster was decommissioned for some reason, the polling participant won't get
 any response, and so the transaction is stuck. There's no best way to handle this situation,
 but the simplest thing to do is roll back and potentially break atomicity. An improved strategy
 involves contacting the other participants. If they're all available and also stuck, then the
-participant can commit an auxillary transaction which records a decision to commit. It then
-commits the original transaction. This auxillary state must linger until all participants have
-acknowledged and committed too. If some of the participants have been decomissioned, then their
+participant can commit an auxiliary transaction which records a decision to commit. It then
+commits the original transaction. This auxiliary state must linger until all participants have
+acknowledged and committed too. If some of the participants have been decommissioned, then their
 input isn't required.
 
 A failure after step 4 requires that the coordinator continue its job to fully commit the
@@ -71,10 +71,10 @@ participant. If the coordinator called the regular prepare method, it would need
 something in the message to determine if it should act as a coordinator when recovered.
 
 The coordinator sweeps through all the participants and asks them to commit the transaction. If
-they have no knowledge of it, then this imples that they already committed, based on a previous
+they have no knowledge of it, then this implies that they already committed, based on a previous
 attempt by the coordinator. They simply respond with success in this case. The coordinator
 keeps trying to contact participants which haven't responded, and it never gives up or rolls
-back. If a participant cluster is decomissioned, then the coordinator can simply skip it,
+back. If a participant cluster is decommissioned, then the coordinator can simply skip it,
 treating it as a success.
 
 The coordinator must only contact participant instances which are leaders, or those which are
