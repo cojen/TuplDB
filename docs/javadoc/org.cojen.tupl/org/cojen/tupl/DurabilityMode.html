@@ -115,7 +115,10 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
  <li><a href="#NO_SYNC"><code>NO_SYNC</code></a>
  <li><a href="#NO_FLUSH"><code>NO_FLUSH</code></a>
  <li><a href="#NO_REDO"><code>NO_REDO</code></a>
- </ul></div>
+ </ul>
+
+ <p>Note: When replication is enabled, the <code>NO_SYNC</code> mode is no stronger than the
+ <code>NO_FLUSH</code> mode.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)"><code>DatabaseConfig.durabilityMode(org.cojen.tupl.DurabilityMode)</code></a></dd>

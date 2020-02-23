@@ -30,6 +30,9 @@ package org.cojen.tupl;
  * <li>{@link #NO_REDO}
  * </ul>
  *
+ * <p>Note: When replication is enabled, the {@code NO_SYNC} mode is no stronger than the
+ * {@code NO_FLUSH} mode.
+ *
  * @author Brian S O'Neill
  * @see DatabaseConfig#durabilityMode
  */
