@@ -52,8 +52,6 @@ class ReplWriter extends RedoWriter {
     long mLastCommitPos;
     long mLastCommitTxnId;
 
-    private volatile PendingTxnWaiter mPendingWaiter;
-
     // These fields are guarded by mBufferLatch.
     private final Latch mBufferLatch;
     private Thread mProducer;
@@ -121,54 +119,7 @@ class ReplWriter extends RedoWriter {
 
     @Override
     public final void txnCommitPending(PendingTxn pending) throws IOException {
-        PendingTxnWaiter waiter = mPendingWaiter;
-        int action;
-        if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
-            acquireExclusive();
-            try {
-                waiter = mPendingWaiter;
-                if (waiter == null || (action = waiter.add(pending)) == PendingTxnWaiter.EXITED) {
-                    waiter = new PendingTxnWaiter(this);
-                    mPendingWaiter = waiter;
-                    action = waiter.add(pending);
-                    if (action == PendingTxnWaiter.PENDING) {
-                        waiter.setName("PendingTxnWaiter-" + waiter.getId());
-                        waiter.setDaemon(true);
-                        waiter.start();
-                    }
-                }
-            } finally {
-                releaseExclusive();
-            }
-        }
-
-        if (action != PendingTxnWaiter.PENDING) {
-            if (action == PendingTxnWaiter.DO_COMMIT) {
-                pending.commit();
-            } else if (action == PendingTxnWaiter.DO_ROLLBACK) {
-                pending.rollback();
-            }
-        }
-    }
-
-    protected final void flipped(long commitPos) {
-        closeConsumerThread();
-
-        PendingTxnWaiter waiter;
-        acquireExclusive();
-        try {
-            waiter = mPendingWaiter;
-            if (waiter == null) {
-                waiter = new PendingTxnWaiter(this);
-                mPendingWaiter = waiter;
-                // Don't start it.
-            }
-            waiter.flipped(commitPos);
-        } finally {
-            releaseExclusive();
-        }
-
-        waiter.finishAll();
+        mReplWriter.uponCommit(pending);
     }
 
     /**
@@ -448,7 +399,7 @@ class ReplWriter extends RedoWriter {
         mEngine.stashForRecovery(txn);
     }
 
-    private void closeConsumerThread() {
+    void closeConsumerThread() {
         mBufferLatch.acquireExclusive();
         Thread consumer = mConsumer;
         mConsumer = null;

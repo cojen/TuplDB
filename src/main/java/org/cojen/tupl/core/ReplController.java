@@ -430,7 +430,7 @@ final class ReplController extends ReplWriter {
 
         expect.close();
 
-        redo.flipped(pos);
+        redo.closeConsumerThread();
 
         // Cannot start receiving until all prepared transactions have been safely transferred.
         try {

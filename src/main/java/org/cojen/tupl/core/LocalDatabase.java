@@ -54,6 +54,9 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -265,6 +268,9 @@ public final class LocalDatabase extends CoreDatabase {
 
     private volatile ExecutorService mSorterExecutor;
 
+    private ForkJoinPool mForkJoinPool;
+    private static final VarHandle cForkJoinPoolHandle;
+
     // Maps registered cursor ids to index ids.
     private BTree mCursorRegistry;
 
@@ -297,6 +303,9 @@ public final class LocalDatabase extends CoreDatabase {
             /*P*/ // ]
 
             cNodeMapElementHandle = MethodHandles.arrayElementVarHandle(Node[].class);
+
+            cForkJoinPoolHandle = MethodHandles.lookup().findVarHandle
+                (LocalDatabase.class, "mForkJoinPool", ForkJoinPool.class);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -1903,6 +1912,30 @@ public final class LocalDatabase extends CoreDatabase {
         mLocalTransaction.remove();
     }
 
+    void execute(ForkJoinTask task) {
+        ForkJoinPool pool = mForkJoinPool;
+
+        if (pool == null) {
+            if (isClosed()) {
+                return;
+            }
+
+            pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
+                                    ForkJoinPool.defaultForkJoinWorkerThreadFactory,
+                                    null, // handler
+                                    true); // asyncMode
+
+            var existing = (ForkJoinPool) cForkJoinPoolHandle.compareAndExchange(this, null, pool);
+
+            if (existing != null) {
+                pool.shutdown();
+                pool = existing;
+            }
+        }
+
+        pool.execute(task);
+    }
+
     /**
      * Returns a RedoWriter suitable for transactions to write into.
      */
@@ -2922,6 +2955,10 @@ public final class LocalDatabase extends CoreDatabase {
                 if (mSorterExecutor != null) {
                     mSorterExecutor.shutdown();
                     mSorterExecutor = null;
+                }
+
+                if (mForkJoinPool != null) {
+                    mForkJoinPool.shutdown();
                 }
 
                 if (mNodeGroups != null) {

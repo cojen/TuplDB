@@ -19,24 +19,37 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.util.concurrent.RecursiveAction;
+
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
+
+import org.cojen.tupl.repl.CommitCallback;
+
 /**
  * References an UndoLog and a set of exclusive locks from a transaction ready to be committed.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-final class PendingTxn extends Locker {
-    TransactionContext mContext;
-    long mTxnId;
-    long mCommitPos;
-    UndoLog mUndoLog;
-    int mHasState;
+final class PendingTxn extends Locker implements CommitCallback {
+    final Thread mThread;
+    final long mCommitPos;
+    final TransactionContext mContext;
+    final long mTxnId;
+    final UndoLog mUndoLog;
+    final int mHasState;
     private Object mAttachment;
 
-    PendingTxn mPrev;
-
-    PendingTxn(LockManager manager, int hash) {
-        super(manager, hash);
+    PendingTxn(LocalTransaction from, long commitPos, UndoLog undo, int hasState) {
+        super(from.mManager, from.mHash);
+        mThread = Thread.currentThread();
+        mCommitPos = commitPos;
+        mContext = from.mContext;
+        mTxnId = from.mTxnId;
+        mUndoLog = undo;
+        mHasState = hasState;
+        mAttachment = from.attachment();
     }
 
     @Override
@@ -46,52 +59,73 @@ final class PendingTxn extends Locker {
     }
 
     @Override
-    public void attach(Object obj) {
-        mAttachment = obj;
-    }
-
-    @Override
     public Object attachment() {
         return mAttachment;
     }
 
-    /**
-     * Releases all the locks and then discards the undo log. This object must be discarded
-     * afterwards.
-     */
-    void commit() throws IOException {
-        // See Transaction.commit for more info.
+    @Override
+    public long position() {
+        return mCommitPos;
+    }
 
-        scopeUnlockAll();
+    @Override
+    public void reached(long position) {
+        // See Transaction.commit and Transaction.exit for more info regarding commit and
+        // rollback logic.
 
-        UndoLog undo = mUndoLog;
-        if (undo != null) {
-            undo.truncate();
-            mContext.unregister(undo);
-        }
-
-        if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
+        if (Thread.currentThread() == mThread) {
+            // Allow blocking operations in the user thread.
+            finish(position);
+        } else {
+            // Don't block the threads responsible for replication.
             LocalDatabase db = getDatabase();
-            FragmentedTrash.emptyTrash(db.fragmentedTrash(), mTxnId);
+            if (db != null) {
+                db.execute(new RecursiveAction() {
+                    @Override
+                    protected void compute() {
+                        finish(position);
+                    }
+                });
+            }
         }
     }
 
     /**
-     * Applies the undo log, releases all the locks, and then discards the undo log. This
-     * object must be discarded afterwards.
+     * @param position negative to rollback, else commit
      */
-    void rollback() throws IOException {
-        // See Transaction.exit for more info.
+    void finish(long position) {
+        try {
+            UndoLog undo = mUndoLog;
 
-        UndoLog undo = mUndoLog;
-        if (undo != null) {
-            undo.rollback();
-        }
-
-        scopeUnlockAll();
-
-        if (undo != null) {
-            mContext.unregister(undo);
+            if (position < 0) {
+                if (undo != null) {
+                    undo.rollback();
+                }
+                scopeUnlockAll();
+                if (undo != null) {
+                    mContext.unregister(undo);
+                }
+            } else {
+                scopeUnlockAll();
+                if (undo != null) {
+                    undo.truncate();
+                    mContext.unregister(undo);
+                }
+                if ((mHasState & LocalTransaction.HAS_TRASH) != 0) {
+                    FragmentedTrash.emptyTrash(getDatabase().fragmentedTrash(), mTxnId);
+                }
+            }
+        } catch (Throwable e) {
+            LocalDatabase db = getDatabase();
+            if (db != null && !db.isClosed()) {
+                EventListener listener = db.eventListener();
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_PANIC,
+                                    "Unexpected transaction exception: %1$s", e);
+                } else {
+                    Utils.uncaught(e);
+                }
+            }
         }
     }
 }

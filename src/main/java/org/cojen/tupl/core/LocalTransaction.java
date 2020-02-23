@@ -331,14 +331,7 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     private void commitPending(long commitPos, UndoLog undo) throws IOException {
-        var pending = new PendingTxn(mManager, mHash);
-
-        pending.mContext = mContext;
-        pending.mTxnId = mTxnId;
-        pending.mCommitPos = commitPos;
-        pending.mUndoLog = undo;
-        pending.mHasState = mHasState;
-        pending.attach(mAttachment);
+        var pending = new PendingTxn(this, commitPos, undo, mHasState);
 
         transferExclusive(pending);
 

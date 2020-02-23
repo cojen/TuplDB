@@ -36,6 +36,8 @@ import java.util.TreeMap;
 
 import java.util.function.Consumer;
 
+import org.cojen.tupl.util.Runner;
+
 import org.cojen.tupl.repl.CommitCallback;
 import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.repl.SnapshotReceiver;
@@ -67,7 +69,7 @@ class SocketReplicator implements StreamReplicator {
 
     private TreeMap<Long, CommitCallback> mTasks;
 
-    private boolean mSuspendCommit;
+    private volatile boolean mSuspendCommit;
 
     private final Set<Thread> mSuspended = new HashSet<>();
     private long mSuspendPos;
@@ -261,9 +263,6 @@ class SocketReplicator implements StreamReplicator {
         }
     }
 
-    /**
-     * Note: Only suspends waitForCommit, but not uponCommit.
-     */
     public synchronized void suspendCommit(boolean b) {
         mSuspendCommit = b;
         notifyAll();
@@ -325,6 +324,17 @@ class SocketReplicator implements StreamReplicator {
 
         mOutput.close();
         mOutput = null;
+
+        if (mTasks != null) {
+            for (CommitCallback task : mTasks.values()) {
+                try {
+                    task.reached(-1);
+                } catch (Throwable ex) {
+                    Utils.uncaught(ex);
+                }
+            }
+            mTasks = null;
+        }
     }
 
     public synchronized long position() {
@@ -336,11 +346,16 @@ class SocketReplicator implements StreamReplicator {
     }
 
     private void uponCommit(CommitCallback task) {
+        if (mOutput == null) {
+            task.reached(-1);
+            return;
+        }
+
         long actual;
         synchronized (this) {
             actual = mPos;
             long position = task.position();
-            if (position < actual) {
+            if (actual < position) {
                 if (mTasks == null) {
                     mTasks = new TreeMap<>();
                 }
@@ -349,7 +364,28 @@ class SocketReplicator implements StreamReplicator {
             }
         }
 
-        task.reached(actual);
+        reached(task, actual);
+    }
+
+    private void reached(CommitCallback task, long position) {
+        if (!mSuspendCommit) {
+            task.reached(position);
+            return;
+        }
+
+        Runner.start(() -> {
+            synchronized (SocketReplicator.this) {
+                while (mSuspendCommit) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }
+
+            task.reached(position);
+        });
     }
 
     private synchronized long waitForCommit(Accessor accessor, long position, long nanosTimeout)
@@ -404,13 +440,12 @@ class SocketReplicator implements StreamReplicator {
             Iterator<Map.Entry<Long, CommitCallback>> it = mTasks.entrySet().iterator();
             while (it.hasNext()) {
                 Map.Entry<Long, CommitCallback> e = it.next();
-                CommitCallback task = e.getValue();
-                if (e.getKey() > task.position()) {
+                if (e.getKey() > position) {
                     break;
                 }
                 it.remove();
                 try {
-                    e.getValue().reached(position);
+                    reached(e.getValue(), position);
                 } catch (Throwable ex) {
                     Utils.uncaught(ex);
                 }
