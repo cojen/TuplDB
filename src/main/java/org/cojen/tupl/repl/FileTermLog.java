@@ -86,6 +86,8 @@ final class FileTermLog extends Latch implements TermLog {
     private long mLogContigPosition;
     private long mLogEndPosition;
 
+    static final VarHandle cLogCommitPositionHandle, cLogHighestPositionHandle;
+
     // Segments are keyed only by their start position.
     private final NavigableSet<LKey<Segment>> mSegments;
 
@@ -106,6 +108,14 @@ final class FileTermLog extends Latch implements TermLog {
 
     static {
         try {
+            cLogCommitPositionHandle =
+                MethodHandles.lookup().findVarHandle
+                (FileTermLog.class, "mLogCommitPosition", long.class);
+
+            cLogHighestPositionHandle =
+                MethodHandles.lookup().findVarHandle
+                (FileTermLog.class, "mLogHighestPosition", long.class);
+
             cLogClosedHandle =
                 MethodHandles.lookup().findVarHandle
                 (FileTermLog.class, "mLogClosed", boolean.class);
@@ -482,9 +492,10 @@ final class FileTermLog extends Latch implements TermLog {
             if (commitPosition > endPosition) {
                 commitPosition = endPosition;
             }
-            mLogCommitPosition = commitPosition;
+            cLogCommitPositionHandle.setOpaque(this, commitPosition);
             if (mLogHighestPosition < commitPosition) {
-                mLogHighestPosition = Math.min(commitPosition, mLogContigPosition);
+                cLogHighestPositionHandle.setOpaque
+                    (this, Math.min(commitPosition, mLogContigPosition));
             }
             notifyCommitTasks(doAppliableCommitPosition());
             return;
@@ -604,43 +615,37 @@ final class FileTermLog extends Latch implements TermLog {
             throw new NullPointerException();
         }
 
-        acquireShared();
+        final long waitFor = task.position();
 
-        if (tryUponCommit(task, false)) {
-            return;
-        }
+        quick: {
+            // Same as doAppliableCommitPosition except without any latch held.
+            long commitPosition = Math.min((long) cLogCommitPositionHandle.getOpaque(this),
+                                           (long) cLogHighestPositionHandle.getOpaque(this));
 
-        if (!tryUpgrade()) {
-            releaseShared();
-            acquireExclusive();
-            if (tryUponCommit(task, true)) {
+            if (commitPosition >= waitFor) {
+                reached(task, commitPosition);
                 return;
             }
         }
 
-        try {
-            mCommitTasks.add(task);
-        } finally {
-            releaseExclusive();
-        }
-    }
+        uponExclusive(() -> {
+            long commitPosition = doAppliableCommitPosition();
 
-    private boolean tryUponCommit(CommitCallback task, boolean exclusive) {
-        long commitPosition = doAppliableCommitPosition();
-        long waitFor = task.position();
-
-        if (commitPosition < waitFor) {
-            if (mLogClosed || waitFor > mLogEndPosition) {
-                commitPosition = WAIT_TERM_END;
-            } else {
-                return false;
+            if (commitPosition < waitFor) {
+                if (mLogClosed || waitFor > mLogEndPosition) {
+                    commitPosition = WAIT_TERM_END;
+                } else {
+                    mCommitTasks.add(task);
+                    return true;
+                }
             }
-        }
 
-        release(exclusive);
-        reached(task, commitPosition);
+            // Note that exclusive latch is still held, to avoid a stack overflow error.
+            // Also see the notifyCommitTasks method.
+            reached(task, commitPosition);
 
-        return true;
+            return true;
+        });
     }
 
     @Override
@@ -684,7 +689,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (endPosition < mLogHighestPosition) {
-                mLogHighestPosition = endPosition;
+                cLogHighestPositionHandle.setOpaque(this, endPosition);
             }
 
             if (!mNonContigWriters.isEmpty()) {
@@ -1113,7 +1118,7 @@ final class FileTermLog extends Latch implements TermLog {
                     break applyHighest;
                 }
                 if (highestPosition > mLogHighestPosition) {
-                    mLogHighestPosition = highestPosition;
+                    cLogHighestPositionHandle.setOpaque(this, highestPosition);
                     doCaptureHighest(writer);
                     notifyCommitTasks(doAppliableCommitPosition());
                     return;
@@ -1129,25 +1134,27 @@ final class FileTermLog extends Latch implements TermLog {
      * Caller must acquire exclusive latch, which is always released by this method.
      */
     private void notifyCommitTasks(long commitPosition) {
+        // Note that the latch is held the whole time as callbacks are invoked. This isn't
+        // ideal, but it's the most efficient. The callbacks should either complete quickly or
+        // handoff work to another thread anyhow.
+
         PriorityQueue<CommitCallback> tasks = mCommitTasks;
 
         while (true) {
             CommitCallback task = tasks.peek();
             if (task == null || commitPosition < task.position()) {
-                releaseExclusive();
-                return;
+                break;
             }
             CommitCallback removed = tasks.remove();
             assert removed == task;
-            boolean empty = tasks.isEmpty();
-            releaseExclusive();
             reached(task, commitPosition);
-            if (empty) {
-                return;
+            if (tasks.isEmpty()) {
+                break;
             }
-            acquireExclusive();
             commitPosition = doAppliableCommitPosition();
         }
+
+        releaseExclusive();
     }
 
     /**
