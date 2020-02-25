@@ -204,16 +204,21 @@ public class Latch {
 
             WaitNode prev = enqueue(node);
 
-            int acquireResult = node.tryAcquireOnce(this);
+            boolean acquired = doTryAcquireExclusive();
 
-            if (acquireResult < 0) {
-                // Not acquired.
-                return;
-            } else if (acquireResult > 0) {
-                // Continuation already ran, and node isn't in the queue.
-                releaseExclusive();
+            if (node.mWaiter == null) {
+                // Continuation already ran or is running right now.
+                if (acquired) {
+                    releaseExclusive();
+                }
                 return;
             }
+
+            if (!acquired) {
+                return;
+            }
+
+            cWaiterHandle.setOpaque(node, null);
 
             // Acquired while still in the queue. Remove the node now, releasing memory.
             if (mLatchFirst != node) {
@@ -873,9 +878,20 @@ public class Latch {
             int trials = 0;
             while (true) {
                 for (int i=0; i<SPIN_LIMIT; i++) {
-                    int result = tryAcquireOnce(latch);
-                    if (result >= 0) {
-                        return result;
+                    boolean acquired = latch.doTryAcquireExclusive();
+                    Object waiter = mWaiter;
+                    if (waiter == null) {
+                        // Fair handoff, and so node is no longer in the queue.
+                        return 1;
+                    }
+                    if (acquired) {
+                        // Acquired, so no need to reference the waiter anymore.
+                        if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
+                            cWaiterHandle.setOpaque(this, null);
+                        } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
+                            return 1;
+                        }
+                        return 0;
                     }
                     Thread.onSpinWait();
                 }
@@ -885,29 +901,6 @@ public class Latch {
                 // Yield to avoid parking.
                 Thread.yield();
             }
-        }
-
-        /**
-         * @return {@literal <0 if not acquired; 0 if acquired and node should also be
-         * removed; >0 if acquired and node should not be removed}
-         */
-        int tryAcquireOnce(Latch latch) {
-            boolean acquired = latch.doTryAcquireExclusive();
-            Object waiter = mWaiter;
-            if (waiter == null) {
-                // Fair handoff, and so node is no longer in the queue.
-                return 1;
-            }
-            if (!acquired) {
-                return -1;
-            }
-            // Acquired, so no need to reference the waiter anymore.
-            if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
-                cWaiterHandle.setOpaque(this, null);
-            } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
-                return 1;
-            }
-            return 0;
         }
 
         /**
