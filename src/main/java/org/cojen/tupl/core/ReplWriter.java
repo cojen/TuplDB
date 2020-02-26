@@ -122,33 +122,6 @@ class ReplWriter extends RedoWriter {
         mReplWriter.uponCommit(pending);
     }
 
-    /**
-     * Block waiting for the given committed position to be confirmed. Returns false if not the
-     * leader.
-     */
-    final boolean confirm(PendingTxn pending) {
-        // Note: Similar to txnCommitSync.
-
-        StreamReplicator.Writer writer = mReplWriter;
-        if (writer == null) {
-            return false;
-        }
-
-        long commitPos = pending.mCommitPos;
-
-        try {
-            if (confirm(writer, commitPos)) {
-                return true;
-            }
-        } catch (IOException e) {
-            // Treat as leader switch.
-        }
-
-        mEngine.mController.switchToReplica(writer);
-
-        return false;
-    }
-
     @Override
     public final long encoding() {
         return mEngine.mRepl.encoding();
