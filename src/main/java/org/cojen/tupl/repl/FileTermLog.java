@@ -907,7 +907,9 @@ final class FileTermLog extends Latch implements TermLog {
                 }
 
                 for (CommitCallback task : mCommitTasks) {
-                    task.reached(WAIT_TERM_END);
+                    if (task instanceof CommitWaiter) {
+                        task.reached(WAIT_TERM_END);
+                    }
                 }
 
                 mCommitTasks.clear();
