@@ -37,7 +37,6 @@ import org.cojen.tupl.EventType;
 import org.cojen.tupl.IncompleteRestoreException;
 import org.cojen.tupl.Snapshot;
 
-import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
@@ -119,7 +118,7 @@ final class DurablePageDb extends PageDb {
      */
     static DurablePageDb open(EventListener debugListener,
                               boolean explicitPageSize, int pageSize,
-                              File[] files, FileFactory factory, EnumSet<OpenOption> options,
+                              File[] files, EnumSet<OpenOption> options,
                               PageCache cache, Crypto crypto, boolean destroy)
         throws IOException
     {
@@ -127,7 +126,7 @@ final class DurablePageDb extends PageDb {
             try {
                 return new DurablePageDb
                     (debugListener,
-                     openPageArray(pageSize, files, factory, options),
+                     openPageArray(pageSize, files, options),
                      cache, crypto, destroy);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
@@ -154,8 +153,7 @@ final class DurablePageDb extends PageDb {
         }
     }
 
-    private static PageArray openPageArray(int pageSize, File[] files, FileFactory factory,
-                                           EnumSet<OpenOption> options)
+    private static PageArray openPageArray(int pageSize, File[] files, EnumSet<OpenOption> options)
         throws IOException
     {
         checkPageSize(pageSize);
@@ -173,14 +171,14 @@ final class DurablePageDb extends PageDb {
         }
 
         if (files.length == 1) {
-            return new FilePageArray(pageSize, files[0], factory, options);
+            return new FilePageArray(pageSize, files[0], options);
         }
 
         var arrays = new PageArray[files.length];
 
         try {
             for (int i=0; i<files.length; i++) {
-                arrays[i] = new FilePageArray(pageSize, files[i], factory, options);
+                arrays[i] = new FilePageArray(pageSize, files[i], options);
             }
 
             return new StripedPageArray(arrays);
@@ -738,13 +736,11 @@ final class DurablePageDb extends PageDb {
     }
 
     /**
-     * @param factory optional
      * @param cache optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(int pageSize, File[] files, FileFactory factory,
-                                      EnumSet<OpenOption> options,
+    static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
                                       PageCache cache, Crypto crypto, InputStream in)
         throws IOException
     {
@@ -771,7 +767,7 @@ final class DurablePageDb extends PageDb {
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));
             pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
-            PageArray pa = openPageArray(pageSize, files, factory, options);
+            PageArray pa = openPageArray(pageSize, files, options);
 
             if (!pa.isEmpty()) {
                 closeQuietly(pa);

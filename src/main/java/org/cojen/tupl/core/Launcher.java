@@ -46,7 +46,6 @@ import org.cojen.tupl.ev.ReplicationEventListener;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
 
-import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -70,7 +69,6 @@ public final class Launcher implements Cloneable {
     File[] mDataFiles;
     boolean mMapDataFiles;
     PageArray mDataPageArray;
-    FileFactory mFileFactory;
     long mMinCacheBytes;
     long mMaxCacheBytes;
     long mSecondaryCacheSize;
@@ -146,10 +144,6 @@ public final class Launcher implements Cloneable {
             mDataFiles = null;
             mPageSize = expected;
         }
-    }
-
-    public void fileFactory(FileFactory factory) {
-        mFileFactory = factory;
     }
 
     public void minCacheSize(long minBytes) {

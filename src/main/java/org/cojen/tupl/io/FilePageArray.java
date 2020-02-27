@@ -31,23 +31,7 @@ public class FilePageArray extends PageArray {
     final FileIO mFio;
 
     public FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
-        this(pageSize, file, null, options);
-    }
-
-    public FilePageArray(int pageSize, File file, FileFactory factory,
-                         EnumSet<OpenOption> options)
-        throws IOException
-    {
         super(pageSize);
-
-        if (factory != null
-            && options.contains(OpenOption.CREATE)
-            && !options.contains(OpenOption.NON_DURABLE)
-            && !options.contains(OpenOption.READ_ONLY))
-        {
-            factory.createFile(file);
-        }
-
         mFio = FileIO.open(file, options);
     }
 

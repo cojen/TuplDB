@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.cojen.tupl.io.CauseCloseable;
-import org.cojen.tupl.io.FileFactory;
 
 /**
  * Manages temporary files, which are used by {@link SnapshotPageArray}.
@@ -34,7 +33,6 @@ import org.cojen.tupl.io.FileFactory;
  */
 final class TempFileManager implements CauseCloseable, ShutdownHook {
     private File mBaseFile;
-    private final FileFactory mFileFactory;
     private long mCount;
     private Map<File, Closeable> mFiles;
 
@@ -43,9 +41,8 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
     /**
      * @param factory optional
      */
-    TempFileManager(File baseFile, FileFactory factory) throws IOException {
+    TempFileManager(File baseFile) throws IOException {
         mBaseFile = baseFile;
-        mFileFactory = factory;
 
         // Delete old files.
         Utils.deleteNumberedFiles(baseFile, ".temp.");
@@ -70,11 +67,7 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
 
             // Note: File.deleteOnExit should never be used, since it leaks memory.
 
-            if (mFileFactory == null) {
-                if (file.createNewFile()) {
-                    return file;
-                }
-            } else if (mFileFactory.createFile(file)) {
+            if (file.createNewFile()) {
                 return file;
             }
 

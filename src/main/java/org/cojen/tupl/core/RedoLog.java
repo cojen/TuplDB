@@ -40,7 +40,6 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.WriteFailureException;
 
-import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.FileIO;
 
 import static org.cojen.tupl.core.LocalDatabase.REDO_FILE_SUFFIX;
@@ -62,7 +61,6 @@ final class RedoLog extends RedoWriter {
 
     private final Crypto mCrypto;
     private final File mBaseFile;
-    private final FileFactory mFileFactory;
 
     private final boolean mReplayMode;
 
@@ -95,7 +93,7 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to create
      */
     RedoLog(Launcher launcher, long logId, long redoPos) throws IOException {
-        this(launcher.mCrypto, launcher.mBaseFile, launcher.mFileFactory, logId, redoPos, null);
+        this(launcher.mCrypto, launcher.mBaseFile, logId, redoPos, null);
     }
 
     /**
@@ -106,7 +104,7 @@ final class RedoLog extends RedoWriter {
     RedoLog(Launcher launcher, RedoLog replayed, TransactionContext context)
         throws IOException
     {
-        this(launcher.mCrypto, launcher.mBaseFile, launcher.mFileFactory,
+        this(launcher.mCrypto, launcher.mBaseFile,
              replayed.mLogId, replayed.mPosition, context);
     }
 
@@ -116,13 +114,11 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to create
      * @param context used for creating next log file; pass null for replay mode
      */
-    RedoLog(Crypto crypto, File baseFile, FileFactory factory,
-            long logId, long redoPos, TransactionContext context)
+    RedoLog(Crypto crypto, File baseFile, long logId, long redoPos, TransactionContext context)
         throws IOException
     {
         mCrypto = crypto;
         mBaseFile = baseFile;
-        mFileFactory = factory;
         mReplayMode = context == null;
 
         mBuffer = new byte[8192];
@@ -219,10 +215,6 @@ final class RedoLog extends RedoWriter {
         final File file = fileFor(mBaseFile, logId);
         if (file.exists() && file.length() > header.length) {
             throw new FileNotFoundException("Log file already exists: " + file.getPath());
-        }
-
-        if (mFileFactory != null) {
-            mFileFactory.createFile(file);
         }
 
         FileOutputStream fout = null;

@@ -99,7 +99,6 @@ import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.Handler;
 import org.cojen.tupl.ext.PrepareHandler;
 
-import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
@@ -436,15 +435,8 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         if (mBaseFile != null && !mReadOnly && launcher.mMkdirs) {
-            FileFactory factory = launcher.mFileFactory;
-
-            final boolean baseDirectoriesCreated;
             File baseDir = mBaseFile.getParentFile();
-            if (factory == null) {
-                baseDirectoriesCreated = baseDir.mkdirs();
-            } else {
-                baseDirectoriesCreated = factory.createDirectories(baseDir);
-            }
+            final boolean baseDirectoriesCreated = baseDir.mkdirs();
 
             if (!baseDirectoriesCreated && !baseDir.exists()) {
                 throw new FileNotFoundException("Could not create directory: " + baseDir);
@@ -452,13 +444,8 @@ public final class LocalDatabase extends CoreDatabase {
 
             if (dataFiles != null) {
                 for (File f : dataFiles) {
-                    final boolean dataDirectoriesCreated;
                     File dataDir = f.getParentFile();
-                    if (factory == null) {
-                        dataDirectoriesCreated = dataDir.mkdirs();
-                    } else {
-                        dataDirectoriesCreated = factory.createDirectories(dataDir);
-                    }
+                    final boolean dataDirectoriesCreated = dataDir.mkdirs();
 
                     if (!dataDirectoriesCreated && !dataDir.exists()) {
                         throw new FileNotFoundException("Could not create directory: " + dataDir);
@@ -477,11 +464,6 @@ public final class LocalDatabase extends CoreDatabase {
                 mLockFile = null;
             } else {
                 var lockFile = new File(lockFilePath());
-
-                FileFactory factory = launcher.mFileFactory;
-                if (factory != null && !mReadOnly) {
-                    factory.createFile(lockFile);
-                }
 
                 boolean didExist = lockFile.exists();
 
@@ -536,7 +518,7 @@ public final class LocalDatabase extends CoreDatabase {
                 try {
                     pageDb = DurablePageDb.open
                         (debugListener, explicitPageSize, pageSize,
-                         dataFiles, launcher.mFileFactory, options,
+                         dataFiles, options,
                          cache, launcher.mCrypto, openMode == OPEN_DESTROY);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
@@ -757,7 +739,7 @@ public final class LocalDatabase extends CoreDatabase {
             if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
                 mTempFileManager = null;
             } else {
-                mTempFileManager = new TempFileManager(mBaseFile, launcher.mFileFactory);
+                mTempFileManager = new TempFileManager(mBaseFile);
             }
 
             long recoveryStart = 0;
@@ -2329,7 +2311,6 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             }
 
-            FileFactory factory = launcher.mFileFactory;
             EnumSet<OpenOption> options = launcher.createOpenOptions();
 
             // Delete old redo log files.
@@ -2341,7 +2322,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, factory, options, null, launcher.mCrypto, in);
+                (pageSize, dataFiles, options, null, launcher.mCrypto, in);
 
             try {
                 restored.close();

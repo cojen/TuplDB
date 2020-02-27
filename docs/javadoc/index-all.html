@@ -175,14 +175,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Returns any attachment which was set earlier.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">AttributedFileFactory</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
-<dd>
-<div class="block">Applies file attributes to newly created files and directories.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html#%3Cinit%3E(java.lang.String,java.lang.String)">AttributedFileFactory(String, String)</a></span> - Constructor for class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io">AttributedFileFactory</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html#%3Cinit%3E(java.nio.file.attribute.FileAttribute%5B%5D,java.nio.file.attribute.FileAttribute%5B%5D)">AttributedFileFactory(FileAttribute&lt;?&gt;[], FileAttribute&lt;?&gt;[])</a></span> - Constructor for class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io">AttributedFileFactory</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#autoload()">autoload()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Returns the current autoload mode.</div>
@@ -670,25 +662,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to
  <a href="org.cojen.tupl/org/cojen/tupl/Database.html#applyCachePrimer(java.io.InputStream)">prime</a> the cache.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html#createDirectories(java.io.File)">createDirectories(File)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io">AttributedFileFactory</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html#createDirectories(java.io.File)">createDirectories(File)</a></span> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a></dt>
-<dd>
-<div class="block">Create the given directory path for read/write access, unless the directory path already
- exists.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html#createDirectory(java.io.File)">createDirectory(File)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io">AttributedFileFactory</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html#createDirectory(java.io.File)">createDirectory(File)</a></span> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a></dt>
-<dd>
-<div class="block">Create the given directory for read/write access, unless the directory already exists.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html#createFile(java.io.File)">createFile(File)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/AttributedFileFactory.html" title="class in org.cojen.tupl.io">AttributedFileFactory</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html#createFile(java.io.File)">createFile(File)</a></span> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io">FileFactory</a></dt>
-<dd>
-<div class="block">Create the given file for read/write access, unless the file already exists.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#createFilePath(boolean)">createFilePath(boolean)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
@@ -1222,15 +1195,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Attempt to switch the replication role from leader to replica.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#fileFactory(org.cojen.tupl.io.FileFactory)">fileFactory(FileFactory)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
-<dd>
-<div class="block">Optionally define a custom factory for every file and directory created by the
- database.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/io/FileFactory.html" title="interface in org.cojen.tupl.io"><span class="typeNameLink">FileFactory</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
-<dd>
-<div class="block">Provides control over how files and directories are created.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/io/FileIO.html" title="class in org.cojen.tupl.io"><span class="typeNameLink">FileIO</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block">Lowest I/O interface to a file or device.</div>
@@ -1242,8 +1206,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Basic <a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io"><code>PageArray</code></a> implementation which accesses a file.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#%3Cinit%3E(int,java.io.File,java.util.EnumSet)">FilePageArray(int, File, EnumSet&lt;OpenOption&gt;)</a></span> - Constructor for class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
-<dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#%3Cinit%3E(int,java.io.File,org.cojen.tupl.io.FileFactory,java.util.EnumSet)">FilePageArray(int, File, FileFactory, EnumSet&lt;OpenOption&gt;)</a></span> - Constructor for class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/UnsafeAccess.html#fill(long,long,byte)">fill(long, long, byte)</a></span> - Static method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/UnsafeAccess.html" title="class in org.cojen.tupl.io">UnsafeAccess</a></dt>
 <dd>

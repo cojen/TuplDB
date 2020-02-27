@@ -30,7 +30,6 @@ import org.cojen.tupl.core.Launcher;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
 
-import org.cojen.tupl.io.FileFactory;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
@@ -131,15 +130,6 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig dataPageArray(PageArray array) {
         mLauncher.dataPageArray(array);
-        return this;
-    }
-
-    /**
-     * Optionally define a custom factory for every file and directory created by the
-     * database.
-     */
-    public DatabaseConfig fileFactory(FileFactory factory) {
-        mLauncher.fileFactory(factory);
         return this;
     }
 

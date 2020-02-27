@@ -55,7 +55,7 @@ class RedoEventPrinter implements RedoVisitor {
             System.out.println(String.format(message, messageArgs));
         };
 
-        new RedoLog(crypto, baseFile, null, logId, 0, null)
+        new RedoLog(crypto, baseFile, logId, 0, null)
             .replay(new RedoEventPrinter(listener, EventType.DEBUG), null, null, null);
     }
 
