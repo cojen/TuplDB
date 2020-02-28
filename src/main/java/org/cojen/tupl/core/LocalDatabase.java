@@ -973,10 +973,7 @@ public final class LocalDatabase extends CoreDatabase {
         BTree trashed = openNextTrashedTree(null);
 
         if (trashed != null) {
-            var deletion = new Thread
-                (new Deletion(trashed, true, mEventListener), "IndexDeletion");
-            deletion.setDaemon(true);
-            deletion.start();
+            Runner.start("IndexDeletion", new Deletion(trashed, true, mEventListener));
         }
 
         mCheckpointer.start(false);

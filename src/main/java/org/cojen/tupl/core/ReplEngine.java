@@ -415,23 +415,11 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
                 Runnable task = mDatabase.replicaDeleteTree(indexId);
 
-                if (task != null) {
-                    try {
-                        // Allow index deletion to run concurrently. If multiple deletes
-                        // are received concurrently, then the application is likely doing
-                        // concurrent deletes.
-                        newThread(task, "IndexDeletion-" +
-                                  (ix == null ? indexId : ix.nameString())).start();
-                    } catch (Throwable e) {
-                        EventListener listener = mDatabase.eventListener();
-                        if (listener != null) {
-                            listener.notify(EventType.REPLICATION_WARNING,
-                                            "Unable to immediately delete index: %1$s",
-                                            rootCause(e));
-                        }
-                        // Index will get fully deleted when database is re-opened.
-                    }
-                }
+                // Allow index deletion to run concurrently. If multiple deletes are received
+                // concurrently, then the application is likely doing concurrent deletes. If
+                // there's an exception, the index will get fully deleted when the database is
+                // re-opened.
+                Runner.start("IndexDeletion-" + (ix == null ? indexId : ix.nameString()), task);
             }
         });
 
