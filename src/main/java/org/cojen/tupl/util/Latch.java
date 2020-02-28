@@ -184,14 +184,13 @@ public class Latch {
      * Invokes the given continuation upon the latch being acquired exclusively. When acquired,
      * the continuation is run by the current thread, or it's enqueued to be run by a thread
      * which releases the latch. The releasing thread actually retains the latch and runs the
-     * continuation, effectively transferring latch ownership. The latch is released or
-     * transferred again depending on the return value of the continuation. Any exception
-     * thrown by the continuation is passed to the uncaught exception handler of the running
-     * thread, and the latch is released.
+     * continuation, effectively transferring latch ownership. The continuation must not
+     * explicitly release the latch, and any exception thrown by the continuation is passed to
+     * the uncaught exception handler of the running thread.
      *
-     * @param cont called with latch held, which returns true if latch is still held
+     * @param cont called with latch held
      */
-    public void uponExclusive(Continuation cont) {
+    public void uponExclusive(Runnable cont) {
         if (!doTryAcquireExclusive()) enqueue: {
             WaitNode node;
             try {
@@ -229,9 +228,7 @@ public class Latch {
         }
 
         try {
-            if (!cont.run()) {
-                return;
-            }
+            cont.run();
         } catch (Throwable e) {
             Utils.uncaught(e);
         }
@@ -356,9 +353,7 @@ public class Latch {
                         return;
                     }
                     try {
-                        if (!((Continuation) waiter).run()) {
-                            return;
-                        }
+                        ((Runnable) waiter).run();
                     } catch (Throwable e) {
                         Utils.uncaught(e);
                     }

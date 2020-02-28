@@ -327,10 +327,7 @@ final class ReplController extends ReplWriter {
                     mLeaderNotifyCondition = new LatchCondition();
                 }
 
-                mLeaderNotifyCondition.uponSignal(this, () -> {
-                    Runner.start(task);
-                    return true;
-                });
+                mLeaderNotifyCondition.uponSignal(this, () -> Runner.start(task));
             }
         } finally {
             releaseExclusive();

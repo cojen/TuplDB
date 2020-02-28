@@ -159,14 +159,14 @@ public abstract class Clutch extends Latch {
     }
 
     @Override
-    public final void uponExclusive(Continuation cont) {
+    public final void uponExclusive(Runnable cont) {
         super.uponExclusive(() -> {
             int slot = mContendedSlot;
             if (slot >= 0) {
                 getPack().unregisterExclusive(slot);
                 mContendedSlot = -1;
             }
-            return cont.run();
+            cont.run();
         });
     }
 

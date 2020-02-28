@@ -636,15 +636,12 @@ final class FileTermLog extends Latch implements TermLog {
                     commitPosition = WAIT_TERM_END;
                 } else {
                     mCommitTasks.add(task);
-                    return true;
+                    return;
                 }
             }
 
-            // Note that exclusive latch is still held, to avoid a stack overflow error.
-            // Also see the notifyCommitTasks method.
+            // Note that exclusive latch is still held. Also see the notifyCommitTasks method.
             reached(task, commitPosition);
-
-            return true;
         });
     }
 

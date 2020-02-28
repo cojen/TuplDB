@@ -226,16 +226,16 @@ long&nbsp;nanosEnd)</code></th>
 </tr>
 <tr class="altColor" id="i10">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignal(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignal</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i11">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignalShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignalShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponSignalShared(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignalShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
@@ -375,35 +375,35 @@ long&nbsp;nanosEnd)</span></div>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal</a></h3>
+<h3><a id="uponSignal(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignal</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponSignal</span>&#8203;(<span class="arguments"><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</span></div>
+<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
  releasing thread actually retains the latch and runs the continuation, effectively
- transferring latch ownership. The latch is released or transferred again depending on
- the return value of the continuation. Any exception thrown by the continuation is passed
- to the uncaught exception handler of the running thread, and the latch is released.</div>
+ transferring latch ownership. The continuation must not explicitly release the latch,
+ and any exception thrown by the continuation is passed to the uncaught exception handler
+ of the running thread.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
-<dd><code>cont</code> - called with latch held, which returns true if latch is still held</dd>
+<dd><code>cont</code> - called with latch held</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="uponSignalShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignalShared</a></h3>
+<h3><a id="uponSignalShared(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignalShared</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponSignalShared</span>&#8203;(<span class="arguments"><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</span></div>
+<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
  releasing thread actually retains the latch and runs the continuation, effectively
- transferring latch ownership. The latch is released or transferred again depending on
- the return value of the continuation. Any exception thrown by the continuation is passed
- to the uncaught exception handler of the running thread, and the latch is released.
+ transferring latch ownership. The continuation must not explicitly release the latch,
+ and any exception thrown by the continuation is passed to the uncaught exception handler
+ of the running thread.
 
  <p>A shared waiter intends to access a resource with shared access, and it can be
  signaled specially. After waiting, the continuation is responsible for signaling the
@@ -411,7 +411,7 @@ long&nbsp;nanosEnd)</span></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
-<dd><code>cont</code> - called with latch held, which returns true if latch is still held</dd>
+<dd><code>cont</code> - called with latch held</dd>
 </dl>
 </section>
 </li>

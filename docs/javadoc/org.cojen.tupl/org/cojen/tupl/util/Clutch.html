@@ -341,7 +341,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </tr>
 <tr class="rowColor" id="i19">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive</a></span>&#8203;(<a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(java.lang.Runnable)">uponExclusive</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
 </td>
@@ -484,21 +484,20 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive</a></h3>
-<div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a>&nbsp;cont)</span></div>
-<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)">Latch</a></code></span></div>
+<h3><a id="uponExclusive(java.lang.Runnable)">uponExclusive</a></h3>
+<div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#uponExclusive(java.lang.Runnable)">Latch</a></code></span></div>
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively. When acquired,
  the continuation is run by the current thread, or it's enqueued to be run by a thread
  which releases the latch. The releasing thread actually retains the latch and runs the
- continuation, effectively transferring latch ownership. The latch is released or
- transferred again depending on the return value of the continuation. Any exception
- thrown by the continuation is passed to the uncaught exception handler of the running
- thread, and the latch is released.</div>
+ continuation, effectively transferring latch ownership. The continuation must not
+ explicitly release the latch, and any exception thrown by the continuation is passed to
+ the uncaught exception handler of the running thread.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive</a></code>&nbsp;in class&nbsp;<code><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
+<dd><code><a href="Latch.html#uponExclusive(java.lang.Runnable)">uponExclusive</a></code>&nbsp;in class&nbsp;<code><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>cont</code> - called with latch held, which returns true if latch is still held</dd>
+<dd><code>cont</code> - called with latch held</dd>
 </dl>
 </section>
 </li>

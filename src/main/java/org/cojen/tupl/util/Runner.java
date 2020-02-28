@@ -135,10 +135,7 @@ public final class Runner extends AbstractExecutorService {
                 mLatch.releaseExclusive();
             }
         } else {
-            mLatch.uponExclusive(() -> {
-                doExecute(task);
-                return true;
-            });
+            mLatch.uponExclusive(() -> doExecute(task));
         }
     }
 

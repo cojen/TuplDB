@@ -600,10 +600,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Connect to any replication group member, for any particular use.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/util/Continuation.html" title="interface in org.cojen.tupl.util"><span class="typeNameLink">Continuation</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
-<dd>
-<div class="block">Function which is registered with the <a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util"><code>LatchCondition</code></a> <a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)"><code>uponSignal</code></a> method, or the <a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util"><code>Latch</code></a> <a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)"><code>uponExclusive</code></a> method.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html#controlMessageAcceptor(java.util.function.Consumer)">controlMessageAcceptor(Consumer&lt;byte[]&gt;)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a></dt>
 <dd>
 <div class="block">Install a callback to be invoked when the replicator needs to send control messages,
@@ -2936,10 +2932,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Round the stats to whole numbers into a new object.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Continuation.html#run()">run()</a></span> - Method in interface org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Continuation.html" title="interface in org.cojen.tupl.util">Continuation</a></dt>
-<dd>
-<div class="block">Is called with the exclusive latch held.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html#run()">run()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html" title="class in org.cojen.tupl.util"><span class="typeNameLink">Runner</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
@@ -3510,9 +3502,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive(Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html#uponExclusive(java.lang.Runnable)">uponExclusive(Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#uponExclusive(org.cojen.tupl.util.Continuation)">uponExclusive(Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#uponExclusive(java.lang.Runnable)">uponExclusive(Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
 </dd>
@@ -3521,11 +3513,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Registers the given task to start in separate thread when the database instance has
  become the leader.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignal(Latch, Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignal(Latch, Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignalShared(org.cojen.tupl.util.Latch,org.cojen.tupl.util.Continuation)">uponSignalShared(Latch, Continuation)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignalShared(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignalShared(Latch, Runnable)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </dd>

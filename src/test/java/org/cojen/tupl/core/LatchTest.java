@@ -20,7 +20,6 @@ package org.cojen.tupl.core;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.util.Continuation;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 
@@ -64,18 +63,17 @@ public class LatchTest {
 
     @Test
     public void clearContinuation() throws Exception {
-        // Can't interrupt a Continuation.
+        // Can't interrupt a continuation.
 
         var latch = new Latch();
         var cond = new LatchCondition();
 
-        var waiter = new Continuation() {
+        var waiter = new Runnable() {
             volatile boolean called;
 
             @Override
-            public boolean run() {
+            public void run() {
                 called = true;
-                return true;
             }
         };
 
