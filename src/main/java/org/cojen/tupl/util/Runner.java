@@ -17,27 +17,29 @@
 
 package org.cojen.tupl.util;
 
+import java.util.List;
+import java.util.Objects;
+
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
  * Shared pool of daemon threads. Intended as a faster alternative to launching new threads,
- * but not as fast as using a dedicated thread pool.
+ * but not as fast as a work stealing pool.
  *
  * @author Brian S O'Neill
  */
-public final class Runner {
+public final class Runner extends AbstractExecutorService {
     private static final ThreadGroup cMainGroup;
-    private static final ThreadPoolExecutor cMainExecutor;
+    private static final Runner cMainRunner;
 
-    private static volatile ConcurrentHashMap<ThreadGroup, ThreadPoolExecutor> cExecutors;
+    private static volatile ConcurrentHashMap<ThreadGroup, Runner> cRunners;
 
     static {
         cMainGroup = obtainGroup();
-        cMainExecutor = newExecutor(cMainGroup);
+        cMainRunner = new Runner(cMainGroup);
     }
 
     public static void start(Runnable command) {
@@ -47,59 +49,55 @@ public final class Runner {
     /**
      * @param namePrefix name prefix to assign to the thread
      */
-    public static void start(String namePrefix, Runnable command) {
-        Runnable wrapped = () -> {
-            final Thread t = Thread.currentThread();
-            final String name = t.getName();
+    public static void start(final String namePrefix, final Runnable command) {
+        Objects.requireNonNull(command);
 
-            if (namePrefix != null) {
-                setName(t, namePrefix);
-            }
+        Runnable actual = command;
 
-            try {
+        if (namePrefix != null) {
+            actual = () -> {
+                setThreadName(Thread.currentThread(), namePrefix);
                 command.run();
-            } catch (Throwable e) {
-                t.getUncaughtExceptionHandler().uncaughtException(t, e);
-            }
+            };
+        }
 
-            t.setPriority(Thread.NORM_PRIORITY);
+        current().execute(actual);
+    }
 
-            if (!name.equals(t.getName())) {
-                t.setName(name);
-            }
-        };
-
+    /**
+     * Return an executor for the current thread's group or security manager.
+     */
+    public static Runner current() {
         ThreadGroup group = obtainGroup();
 
-        ThreadPoolExecutor executor;
         if (group == cMainGroup) {
-            executor = cMainExecutor;
-        } else {
-            ConcurrentHashMap<ThreadGroup, ThreadPoolExecutor> executors = cExecutors;
+            return cMainRunner;
+        }
 
-            if (executors == null) {
-                synchronized (Runner.class) {
-                    executors = cExecutors;
-                    if (executors == null) {
-                        cExecutors = new ConcurrentHashMap<>();
-                    }
-                }
-            }
+        ConcurrentHashMap<ThreadGroup, Runner> runners = cRunners;
 
-            executor = executors.get(group);
-
-            if (executor == null) {
-                synchronized (Runner.class) {
-                    executor = executors.get(group);
-                    if (executor == null) {
-                        executor = newExecutor(group);
-                        cExecutors.put(group, executor);
-                    }
+        if (runners == null) {
+            synchronized (Runner.class) {
+                runners = cRunners;
+                if (runners == null) {
+                    cRunners = new ConcurrentHashMap<>();
                 }
             }
         }
 
-        executor.execute(wrapped);
+        Runner runner = runners.get(group);
+
+        if (runner == null) {
+            synchronized (Runner.class) {
+                runner = runners.get(group);
+                if (runner == null) {
+                    runner = new Runner(group);
+                    cRunners.put(group, runner);
+                }
+            }
+        }
+
+        return runner;
     }
 
     private static ThreadGroup obtainGroup() {
@@ -114,32 +112,184 @@ public final class Runner {
         return Thread.currentThread().getThreadGroup();
     }
 
-    private static ThreadPoolExecutor newExecutor(ThreadGroup group) {
-        return new ThreadPoolExecutor(0, Integer.MAX_VALUE,
-                                      60L, TimeUnit.SECONDS,
-                                      new SynchronousQueue<Runnable>(),
-                                      new Factory(group));
-    }
-
-    private static void setName(Thread t, String namePrefix) {
+    private static void setThreadName(Thread t, String namePrefix) {
         t.setName(namePrefix + '-' + Long.toUnsignedString(t.getId()));
     }
 
-    private Runner() { }
+    private final ThreadGroup mGroup;
+    private final Latch mLatch;
 
-    private static class Factory implements ThreadFactory {
-        private final ThreadGroup mGroup;
+    private Loop mReady;
 
-        Factory(ThreadGroup group) {
-            mGroup = group;
+    private Runner(ThreadGroup group) {
+        mGroup = group;
+        mLatch = new Latch();
+    }
+
+    @Override
+    public void execute(Runnable task) {
+        if (mLatch.tryAcquireExclusive()) {
+            try {
+                doExecute(task);
+            } finally {
+                mLatch.releaseExclusive();
+            }
+        } else {
+            mLatch.uponExclusive(() -> {
+                doExecute(task);
+                return true;
+            });
+        }
+    }
+
+    // Caller must hold exclusive latch.
+    private void doExecute(Runnable task) {
+        Loop ready = mReady;
+        if (ready == null) {
+            new Loop(task).start();
+        } else {
+            Loop prev = ready.mPrev;
+            if (prev != null) {
+                prev.mNext = null;
+                ready.mPrev = null;
+            }
+            mReady = prev;
+            ready.mTask = task;
+            ready.mCondition.signal(mLatch);
+        }
+    }
+
+    /**
+     * @throws UnsupportedOperationException
+     */
+    @Override
+    public void shutdown() {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @throws UnsupportedOperationException
+     */
+    @Override
+    public List<Runnable> shutdownNow() {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @return false
+     */
+    @Override
+    public boolean isShutdown() {
+        return false;
+    }
+
+    /**
+     * @return false
+     */
+    @Override
+    public boolean isTerminated() {
+        return false;
+    }
+
+    /**
+     * @throws UnsupportedOperationException
+     */
+    @Override
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        throw new UnsupportedOperationException();
+    }
+
+    // Caller must hold exclusive latch.
+    private void enqueue(Loop ready) {
+        Loop prev = mReady;
+        if (prev != null) {
+            prev.mNext = ready;
+            ready.mPrev = prev;
+        }
+        mReady = ready;
+    }
+
+    // Caller must hold exclusive latch, which is always released by this method.
+    private void remove(Loop exiting) {
+        Loop prev = exiting.mPrev;
+        Loop next = exiting.mNext;
+        if (next != null) {
+            next.mPrev = prev;
+        } else {
+            mReady = prev;
+        }
+        if (prev != null) {
+            prev.mNext = next;
+        }
+        mLatch.releaseExclusive();
+    }
+
+    private class Loop extends Thread {
+        private static final long TIMEOUT = 50_000_000_000L;
+        private static final long JITTER = 10_000_000_000L;
+
+        private final LatchCondition mCondition;
+
+        private Loop mPrev, mNext;
+
+        private Runnable mTask;
+
+        Loop(Runnable task) {
+            super(mGroup, (Runnable) null);
+            mCondition = new LatchCondition();
+            setDaemon(true);
+            setThreadName(this, "Runner-" + mGroup.getName());
+            mTask = task;
         }
 
         @Override
-        public Thread newThread(Runnable r) {
-            var t = new Thread(mGroup, r);
-            setName(t, "Runner-" + mGroup.getName());
-            t.setDaemon(true);
-            return t;
+        public void run() {
+            final String name = getName();
+            Runnable task = mTask;
+
+            while (true) {
+                mTask = null;
+
+                if (isInterrupted()) {
+                    // Clear interrupt status.
+                    Thread.interrupted();
+                }
+
+                try {
+                    task.run();
+                } catch (Throwable e) {
+                    try {
+                        getUncaughtExceptionHandler().uncaughtException(this, e);
+                    } catch (Throwable e2) {
+                        // Ignore.
+                    }
+                }
+
+                if (getPriority() != NORM_PRIORITY) {
+                    setPriority(NORM_PRIORITY);
+                }
+
+                if (!name.equals(getName())) {
+                    setName(name);
+                }
+
+                task = null;
+
+                long timeout = TIMEOUT + ThreadLocalRandom.current().nextLong(JITTER);
+
+                Latch latch = mLatch;
+                latch.acquireExclusive();
+                enqueue(this);
+                int result = mCondition.await(latch, timeout, System.nanoTime() + timeout);
+                task = mTask;
+
+                if (result <= 0 && task == null) {
+                    remove(this);
+                    return;
+                }
+
+                latch.releaseExclusive();
+            }
         }
     }
 }

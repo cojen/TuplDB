@@ -52,8 +52,6 @@ import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 
@@ -264,8 +262,6 @@ public final class LocalDatabase extends CoreDatabase {
     /*P*/ // [|
     /*P*/ // final boolean mFullyMapped;
     /*P*/ // ]
-
-    private volatile ExecutorService mSorterExecutor;
 
     private ForkJoinPool mForkJoinPool;
     private static final VarHandle cForkJoinPoolHandle;
@@ -2217,27 +2213,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Sorter newSorter(Executor executor) throws IOException {
-        if (executor == null && (executor = mSorterExecutor) == null) {
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                checkClosed();
-                executor = mSorterExecutor;
-                if (executor == null) {
-                    ExecutorService es = Executors.newCachedThreadPool(r -> {
-                        var t = new Thread(r);
-                        t.setDaemon(true);
-                        t.setName("Sorter-" + Long.toUnsignedString(t.getId()));
-                        return t;
-                    });
-                    mSorterExecutor = es;
-                    executor = es;
-                }
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
-            }
-        }
-
-        return new ParallelSorter(this, executor);
+        return new ParallelSorter(this, executor == null ? Runner.current() : executor);
     }
 
     @Override
@@ -2930,11 +2906,6 @@ public final class LocalDatabase extends CoreDatabase {
                 lock.acquireExclusive();
             }
             try {
-                if (mSorterExecutor != null) {
-                    mSorterExecutor.shutdown();
-                    mSorterExecutor = null;
-                }
-
                 if (mForkJoinPool != null) {
                     mForkJoinPool.shutdown();
                 }

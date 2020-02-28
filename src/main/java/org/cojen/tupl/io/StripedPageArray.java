@@ -20,9 +20,7 @@ package org.cojen.tupl.io;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
+import org.cojen.tupl.util.Runner;
 
 /**
  * {@link PageArray} implementation which stripes pages in a <a
@@ -35,8 +33,9 @@ public class StripedPageArray extends PageArray {
     private final int mDirectPageSize;
     private final boolean mReadOnly;
 
-    private final ExecutorService mSyncService;
     private final Syncer[] mSyncers;
+
+    private volatile boolean mClosed;
 
     public StripedPageArray(PageArray... arrays) {
         super(pageSize(arrays));
@@ -58,7 +57,6 @@ public class StripedPageArray extends PageArray {
 
         mReadOnly = readOnly;
 
-        mSyncService = Executors.newCachedThreadPool(new NamedThreadFactory("Syncer"));
         mSyncers = new Syncer[arrays.length - 1];
 
         for (int i=0; i<mSyncers.length; i++) {
@@ -227,14 +225,7 @@ public class StripedPageArray extends PageArray {
         for (i=0; i<syncers.length; i++) {
             Syncer syncer = syncers[i];
             syncer.reset(metadata);
-            try {
-                mSyncService.execute(syncer);
-            } catch (RejectedExecutionException e) {
-                if (mSyncService.isShutdown()) {
-                    return;
-                }
-                throw new IOException(e);
-            }
+            Runner.start(syncer);
         }
 
         mArrays[i].sync(metadata);
@@ -253,7 +244,7 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        mSyncService.shutdown();
+        mClosed = true;
         IOException ex = null;
         for (PageArray pa : mArrays) {
             ex = Utils.closeQuietly(ex, pa, cause);
@@ -265,7 +256,7 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public StripedPageArray open() throws IOException {
-        if (!mSyncService.isShutdown()) {
+        if (!mClosed) {
             return this;
         }
         for (int i=0; i<mArrays.length; i++) {
