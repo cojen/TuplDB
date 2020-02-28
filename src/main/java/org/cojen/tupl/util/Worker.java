@@ -140,7 +140,7 @@ public class Worker {
             cSizeHandle.getAndAdd(this, 1);
         }
 
-        Task prev = (Task) cLastHandle.getAndSet(this, task);
+        var prev = (Task) cLastHandle.getAndSet(this, task);
         if (prev == null) {
             mFirst = task;
         } else {

@@ -480,7 +480,7 @@ public interface Database extends CauseCloseable, Flushable {
                 return true;
             }
             if (obj != null && obj.getClass() == Stats.class) {
-                Stats other = (Stats) obj;
+                var other = (Stats) obj;
                 return pageSize == other.pageSize
                     && freePages == other.freePages
                     && totalPages == other.totalPages

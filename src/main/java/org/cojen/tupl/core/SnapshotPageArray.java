@@ -302,7 +302,7 @@ final class SnapshotPageArray extends PageArray {
             return;
         }
 
-        SnapshotImpl[] snapshots = (SnapshotImpl[]) obj;
+        var snapshots = (SnapshotImpl[]) obj;
 
         if (snapshots.length == 2) {
             if (snapshots[0] == snapshot) {
@@ -447,7 +447,7 @@ final class SnapshotPageArray extends PageArray {
             final LocalDatabase cache = mNodeCache;
             final long count = mSnapshotPageCount;
 
-            LocalTransaction txn = (LocalTransaction) mPageCopyIndex.mDatabase.newTransaction();
+            var txn = (LocalTransaction) mPageCopyIndex.mDatabase.newTransaction();
             try {
                 // Disable writes to the undo log and fragmented value trash.
                 txn.lockMode(LockMode.UNSAFE);

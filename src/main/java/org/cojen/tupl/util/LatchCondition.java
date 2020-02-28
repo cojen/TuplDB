@@ -229,7 +229,7 @@ public class LatchCondition {
                 ((Thread) waiter).interrupt();
             }
             cPrevHandle.set(node, null);
-            WaitNode next = (WaitNode) cNextHandle.get(node);
+            var next = (WaitNode) cNextHandle.get(node);
             cNextHandle.set(node, null);
             node = next;
         }

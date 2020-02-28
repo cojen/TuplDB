@@ -784,7 +784,7 @@ public final class LocalDatabase extends CoreDatabase {
                         long cursorId = decodeLongBE(c.key(), 0);
                         byte[] regValue = c.value();
                         long indexId = decodeLongBE(regValue, 0);
-                        BTree tree = (BTree) anyIndexById(indexId);
+                        var tree = (BTree) anyIndexById(indexId);
 
                         var cursor = new BTreeCursor(tree, Transaction.BOGUS);
                         cursor.mKeyOnly = true;
@@ -2238,7 +2238,7 @@ public final class LocalDatabase extends CoreDatabase {
             throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
         }
         checkClosed();
-        DurablePageDb pageDb = (DurablePageDb) mPageDb;
+        var pageDb = (DurablePageDb) mPageDb;
         return pageDb.beginSnapshot(this);
     }
 
@@ -3920,7 +3920,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
         final int slot = hash & (table.length - 1);
 
-        Node first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+        var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
         if (first == null) {
             return null;
@@ -3990,7 +3990,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
         final int slot = hash & (table.length - 1);
 
-        Node first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+        var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
         while (true) {
             if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
@@ -4031,7 +4031,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
         final int slot = hash & (table.length - 1);
 
-        Node first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+        var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
         while (true) {
             if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
@@ -4066,7 +4066,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
         final int slot = hash & (table.length - 1);
 
-        Node first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+        var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
         if (first == null || (first = nodeMapLock(table, slot, first)) == null) {
             if (!isClosed()) {
                 throw new AssertionError("Not found: " + oldNode + ", " + newNode);
@@ -4109,7 +4109,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
         final int slot = hash & (table.length - 1);
 
-        Node first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+        var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
         if (first == null || (first = nodeMapLock(table, slot, first)) == null) {
             return false;
@@ -4272,7 +4272,7 @@ public final class LocalDatabase extends CoreDatabase {
         final Node[] table = mNodeMapTable;
 
         outer: for (int slot=0; slot<table.length; ) {
-            Node node = (Node) cNodeMapElementHandle.getVolatile(table, slot);
+            var node = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
             if (node != null && (node = nodeMapLock(table, slot, node)) != null) {
                 do {

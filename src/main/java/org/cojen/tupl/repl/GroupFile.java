@@ -205,8 +205,8 @@ final class GroupFile extends Latch {
         Role localMemberRole = null;
 
         for (Map.Entry<?, ?> e : props.entrySet()) {
-            String key = (String) e.getKey();
-            String value = (String) e.getValue();
+            var key = (String) e.getKey();
+            var value = (String) e.getValue();
 
             if (key.equals("version")) {
                 try {

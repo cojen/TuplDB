@@ -660,7 +660,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         long scrambledCursorId = mix(cursorId);
         Index ix = getIndex(indexId);
         if (ix != null) {
-            BTreeCursor tc = (BTreeCursor) ix.newCursor(Transaction.BOGUS);
+            var tc = (BTreeCursor) ix.newCursor(Transaction.BOGUS);
             tc.mKeyOnly = true;
             tc.mCursorId = cursorId;
             register(tc);

@@ -53,7 +53,7 @@ abstract class FilteredEventListener extends SafeEventListener {
             return true;
         }
         if (obj != null && sameClass(obj)) {
-            FilteredEventListener other = (FilteredEventListener) obj;
+            var other = (FilteredEventListener) obj;
             return mListener.equals(other.mListener)
                 && Objects.equals(mCategories, other.mCategories)
                 && Objects.equals(mLevels, other.mLevels);

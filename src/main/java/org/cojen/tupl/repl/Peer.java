@@ -159,7 +159,7 @@ final class Peer implements Comparable<Peer> {
 
             if (set == null) {
                 set = new RangeSet();
-                RangeSet existing = (RangeSet) cRangesHandle.compareAndExchange(this, null, set);
+                var existing = (RangeSet) cRangesHandle.compareAndExchange(this, null, set);
                 if (existing == null) {
                     result = set;
                 } else {
@@ -180,7 +180,7 @@ final class Peer implements Comparable<Peer> {
      */
     RangeSet finishedQueries(RangeSet set) {
         if (set.closeIfEmpty()) {
-            RangeSet existing = (RangeSet) cRangesHandle.compareAndExchange(this, set, null);
+            var existing = (RangeSet) cRangesHandle.compareAndExchange(this, set, null);
             if (existing == set) {
                 set = null;
             } else {

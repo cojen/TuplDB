@@ -212,7 +212,7 @@ public interface Index extends View, Closeable {
                 return true;
             }
             if (obj != null && obj.getClass() == Stats.class) {
-                Stats other = (Stats) obj;
+                var other = (Stats) obj;
                 return entryCount == other.entryCount
                     && keyBytes == other.keyBytes
                     && valueBytes == other.valueBytes

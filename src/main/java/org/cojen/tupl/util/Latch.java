@@ -704,7 +704,7 @@ public class Latch {
     }
 
     private WaitNode enqueue(final WaitNode node) {
-        WaitNode prev = (WaitNode) cLastHandle.getAndSet(this, node);
+        var prev = (WaitNode) cLastHandle.getAndSet(this, node);
 
         if (prev == null) {
             mLatchFirst = node;
@@ -981,8 +981,8 @@ public class Latch {
          * Used for latch condition. Caller must hold exclusive latch.
          */
         private void condRemove(LatchCondition queue) {
-            WaitNode prev = (WaitNode) cPrevHandle.get(this);
-            WaitNode next = (WaitNode) cNextHandle.get(this);
+            var prev = (WaitNode) cPrevHandle.get(this);
+            var next = (WaitNode) cNextHandle.get(this);
             if (prev == null) {
                 if ((queue.mHead = next) == null) {
                     queue.mTail = null;

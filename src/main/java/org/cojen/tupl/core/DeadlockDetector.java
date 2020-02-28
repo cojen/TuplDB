@@ -144,7 +144,7 @@ final class DeadlockDetector {
                 return found;
             }
 
-            Lock.LockerHTEntry[] entries = (Lock.LockerHTEntry[]) shared;
+            var entries = (Lock.LockerHTEntry[]) shared;
             for (int i=entries.length; --i>=0; ) {
                 for (Lock.LockerHTEntry e = entries[i]; e != null; ) {
                     Lock.LockerHTEntry next = e.mNext;

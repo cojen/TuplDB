@@ -357,7 +357,7 @@ final class FileTermLog extends Latch implements TermLog {
         Iterator<LKey<Segment>> it = segments.iterator();
 
         if (it.hasNext()) {
-            Segment seg = (Segment) it.next();
+            var seg = (Segment) it.next();
             while (true) {
                 Segment next;
                 if (it.hasNext()) {
@@ -404,7 +404,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         Iterator<LKey<Segment>> it = mSegments.iterator();
         while (it.hasNext()) {
-            Segment seg = (Segment) it.next();
+            var seg = (Segment) it.next();
 
             long endPosition = seg.endPosition();
             if (endPosition > startPosition) {
@@ -670,7 +670,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             for (LKey<Segment> key : mSegments) {
-                Segment segment = (Segment) key;
+                var segment = (Segment) key;
                 segment.acquireExclusive();
                 boolean shouldTruncate = segment.setEndPosition(endPosition);
                 segment.releaseExclusive();
@@ -894,7 +894,7 @@ final class FileTermLog extends Latch implements TermLog {
                 cLogClosedHandle.setVolatile(this, true);
 
                 for (LKey<Segment> key : mSegments) {
-                    Segment segment = (Segment) key;
+                    var segment = (Segment) key;
                     segment.acquireExclusive();
                     try {
                         segment.close(true);
@@ -963,7 +963,7 @@ final class FileTermLog extends Latch implements TermLog {
                 return null;
             }
 
-            Segment startSegment = (Segment) mSegments.floor(key); // findLe
+            var startSegment = (Segment) mSegments.floor(key); // findLe
 
             if (startSegment != null && position < startSegment.endPosition()) {
                 mCaches.mSegments.remove(startSegment.cacheKey(), this);
@@ -991,7 +991,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             // Don't allow segment to encroach on next segment or go beyond term end.
-            Segment nextSegment = (Segment) mSegments.higher(key); // findGt
+            var nextSegment = (Segment) mSegments.higher(key); // findGt
             long endPosition = nextSegment == null ? mLogEndPosition : nextSegment.mStartPosition;
             maxLength = Math.min(maxLength, endPosition - startPosition);
 
@@ -1025,7 +1025,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         acquireExclusive();
         try {
-            Segment segment = (Segment) mSegments.floor(key); // findLe
+            var segment = (Segment) mSegments.floor(key); // findLe
             if (segment != null && position < segment.endPosition()) {
                 cRefCountHandle.getAndAdd(segment, 1);
                 return segment;
@@ -1277,7 +1277,7 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     void uncaught(IOException e) {
-        boolean closed = (boolean) cLogClosedHandle.getVolatile(this);
+        var closed = (boolean) cLogClosedHandle.getVolatile(this);
         if (!closed) {
             Utils.uncaught(e);
         }
@@ -1945,7 +1945,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (io == null) {
                 if (mSegmentClosed) {
-                    boolean closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
+                    var closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
                     if (closed) {
                         throw new IOException("Closed");
                     }
@@ -1981,7 +1981,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (io == null) {
                 if (mSegmentClosed) {
-                    boolean closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
+                    var closed = (boolean) cLogClosedHandle.getVolatile(FileTermLog.this);
                     if (closed) {
                         throw new IOException("Closed");
                     }

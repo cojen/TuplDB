@@ -190,7 +190,7 @@ class GroupJoiner {
             Set<SelectionKey> keys = mSelector.selectedKeys();
 
             for (SelectionKey key : keys) {
-                SocketChannel channel = (SocketChannel) key.channel();
+                var channel = (SocketChannel) key.channel();
 
                 try {
                     if (key.isConnectable()) {
