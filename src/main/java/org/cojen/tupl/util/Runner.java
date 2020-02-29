@@ -117,43 +117,31 @@ public final class Runner extends AbstractExecutorService {
     }
 
     private final ThreadGroup mGroup;
-    private final Latch mLatch;
 
     private Loop mReady;
 
     private Runner(ThreadGroup group) {
         mGroup = group;
-        mLatch = new Latch();
     }
 
     @Override
     public void execute(Runnable task) {
-        if (mLatch.tryAcquireExclusive()) {
-            try {
-                doExecute(task);
-            } finally {
-                mLatch.releaseExclusive();
+        Loop ready;
+        synchronized (this) {
+            ready = mReady;
+            if (ready == null) {
+                new Loop(task).start();
+            } else {
+                Loop prev = ready.mPrev;
+                if (prev != null) {
+                    prev.mNext = null;
+                    ready.mPrev = null;
+                }
+                mReady = prev;
+                ready.mTask = task;
             }
-        } else {
-            mLatch.uponExclusive(() -> doExecute(task));
         }
-    }
-
-    // Caller must hold exclusive latch.
-    private void doExecute(Runnable task) {
-        Loop ready = mReady;
-        if (ready == null) {
-            new Loop(task).start();
-        } else {
-            Loop prev = ready.mPrev;
-            if (prev != null) {
-                prev.mNext = null;
-                ready.mPrev = null;
-            }
-            mReady = prev;
-            ready.mTask = task;
-            ready.mCondition.signal(mLatch);
-        }
+        Parker.unpark(ready);
     }
 
     /**
@@ -196,8 +184,7 @@ public final class Runner extends AbstractExecutorService {
         throw new UnsupportedOperationException();
     }
 
-    // Caller must hold exclusive latch.
-    private void enqueue(Loop ready) {
+    private synchronized void enqueue(Loop ready) {
         Loop prev = mReady;
         if (prev != null) {
             prev.mNext = ready;
@@ -206,8 +193,14 @@ public final class Runner extends AbstractExecutorService {
         mReady = ready;
     }
 
-    // Caller must hold exclusive latch, which is always released by this method.
-    private void remove(Loop exiting) {
+    /**
+     * @return null if removed, else a task to run
+     */
+    private synchronized Runnable tryRemove(Loop exiting) {
+        Runnable task = exiting.mTask;
+        if (task != null) {
+            return task;
+        }
         Loop prev = exiting.mPrev;
         Loop next = exiting.mNext;
         if (next != null) {
@@ -218,22 +211,19 @@ public final class Runner extends AbstractExecutorService {
         if (prev != null) {
             prev.mNext = next;
         }
-        mLatch.releaseExclusive();
+        return null;
     }
 
     private class Loop extends Thread {
         private static final long TIMEOUT = 50_000_000_000L;
         private static final long JITTER = 10_000_000_000L;
 
-        private final LatchCondition mCondition;
-
         private Loop mPrev, mNext;
 
-        private Runnable mTask;
+        private volatile Runnable mTask;
 
         Loop(Runnable task) {
             super(mGroup, (Runnable) null);
-            mCondition = new LatchCondition();
             setDaemon(true);
             setThreadName(this, "Runner-" + mGroup.getName());
             mTask = task;
@@ -244,7 +234,7 @@ public final class Runner extends AbstractExecutorService {
             final String name = getName();
             Runnable task = mTask;
 
-            while (true) {
+            outer: while (true) {
                 mTask = null;
 
                 if (isInterrupted()) {
@@ -272,20 +262,23 @@ public final class Runner extends AbstractExecutorService {
 
                 task = null;
 
-                long timeout = TIMEOUT + ThreadLocalRandom.current().nextLong(JITTER);
-
-                Latch latch = mLatch;
-                latch.acquireExclusive();
                 enqueue(this);
-                int result = mCondition.await(latch, timeout, System.nanoTime() + timeout);
-                task = mTask;
 
-                if (result <= 0 && task == null) {
-                    remove(this);
+                long timeout = TIMEOUT + ThreadLocalRandom.current().nextLong(JITTER);
+                long end = System.nanoTime() + timeout;
+
+                do {
+                    Parker.parkNanos(this, timeout);
+                    task = mTask;
+                    if (task != null) {
+                        continue outer;
+                    }
+                    timeout = end - System.nanoTime();
+                } while (timeout > 0);
+
+                if ((task = tryRemove(this)) == null) {
                     return;
                 }
-
-                latch.releaseExclusive();
             }
         }
     }
