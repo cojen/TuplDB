@@ -147,6 +147,7 @@
             <argument>src/main/java/org/cojen/tupl/tools/PageAccessTransformer.java</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
             <argument>src/main/java/org/cojen/tupl/core</argument>
+            <argument>clean</argument>
           </arguments>
         </configuration>
       </plugin>

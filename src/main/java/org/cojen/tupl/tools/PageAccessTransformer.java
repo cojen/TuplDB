@@ -37,12 +37,34 @@ import java.util.regex.Pattern;
  */
 public class PageAccessTransformer {
     /**
-     * @param args [0]: source directory, [1]: destination directory
+     * @param args [0]: source directory, [1]: destination directory, [2]: "clean" (optional)
      */
     public static void main(String[] args) throws Exception {
         var src = new File(args[0]);
         var dst = new File(args[1]);
+
+        if (args.length > 2 && args[2].equals("clean")) {
+            // Delete all generated files.
+            File[] files = dst.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (!f.isFile()) {
+                        continue;
+                    }
+                    String name = f.getName();
+                    if (!name.startsWith("_")) {
+                        continue;
+                    }
+                    if (!name.endsWith(".java") && !name.endsWith(".class")) {
+                        continue;
+                    }
+                    f.delete();
+                }
+            }
+        }
+
         var pa = new PageAccessTransformer(src, dst);
+
         pa.findFiles();
         pa.transform();
     }
@@ -58,7 +80,7 @@ public class PageAccessTransformer {
 
     private Map<String, Pattern> mNames;
 
-    public PageAccessTransformer(File src, File dst) {
+    PageAccessTransformer(File src, File dst) {
         dirCheck(src);
         dirCheck(dst);
         mSrc = src;
@@ -71,7 +93,7 @@ public class PageAccessTransformer {
         }
     }
 
-    public void findFiles() throws IOException {
+    void findFiles() throws IOException {
         var names = new HashMap<String, Pattern>();
 
         File[] files = mSrc.listFiles();
@@ -91,7 +113,7 @@ public class PageAccessTransformer {
     /**
      * @return set of generated file names
      */
-    public Collection<String> transform() throws IOException {
+    Collection<String> transform() throws IOException {
         var all = new ArrayList<String>(mNames.size());
 
         for (String name : mNames.keySet()) {
