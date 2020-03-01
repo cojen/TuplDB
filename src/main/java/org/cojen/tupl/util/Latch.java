@@ -185,8 +185,9 @@ public class Latch {
      * the continuation is run by the current thread, or it's enqueued to be run by a thread
      * which releases the latch. The releasing thread actually retains the latch and runs the
      * continuation, effectively transferring latch ownership. The continuation must not
-     * explicitly release the latch, and any exception thrown by the continuation is passed to
-     * the uncaught exception handler of the running thread.
+     * explicitly release the latch, although it can downgrade the latch. Any exception thrown
+     * by the continuation is passed to the uncaught exception handler of the running thread,
+     * and then the latch is released.
      *
      * @param cont called with latch held
      */
@@ -320,8 +321,11 @@ public class Latch {
                     if (first instanceof Shared) {
                         // TODO: can this be combined into one downgrade step?
                         downgrade();
-                        doReleaseShared();
-                        return;
+                        if (doReleaseShared()) {
+                            return;
+                        }
+                        trials = 0;
+                        continue;
                     }
 
                     if (first.mWaitState != WaitNode.SIGNALED) {
@@ -356,6 +360,15 @@ public class Latch {
                         ((Runnable) waiter).run();
                     } catch (Throwable e) {
                         Utils.uncaught(e);
+                    }
+                    if (!isHeldExclusive()) {
+                        if (mLatchState <= 0) {
+                            throw new IllegalStateException
+                                ("Illegal latch state: " + mLatchState + ", caused by " + waiter);
+                        }
+                        if (doReleaseShared()) {
+                            return;
+                        }
                     }
                     trials = 0;
                     continue;
@@ -592,10 +605,6 @@ public class Latch {
      * Release a held shared latch.
      */
     public void releaseShared() {
-        doReleaseShared();
-    }
-
-    private void doReleaseShared() {
         int trials = 0;
         while (true) {
             int state = mLatchState;
@@ -624,6 +633,40 @@ public class Latch {
                 }
             } else if (cStateHandle.compareAndSet(this, state, --state)) {
                 return;
+            }
+
+            trials = spin(trials);
+        }
+    }
+
+    /**
+     * @return false if latch is held exclusive now
+     */
+    private boolean doReleaseShared() {
+        // Note: Same as regular releaseShared, except doesn't recurse into the
+        // releaseExclusive method.
+
+        int trials = 0;
+        while (true) {
+            int state = mLatchState;
+
+            WaitNode last = mLatchLast;
+            if (last == null) {
+                if (cStateHandle.compareAndSet(this, state, --state)) {
+                    if (state == 0) {
+                        last = mLatchLast;
+                        if (last != null && cStateHandle.compareAndSet(this, 0, EXCLUSIVE)) {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+            } else if (state == 1) {
+                if (cStateHandle.compareAndSet(this, 1, EXCLUSIVE) || doTryUpgrade()) {
+                    return false;
+                }
+            } else if (cStateHandle.compareAndSet(this, state, --state)) {
+                return true;
             }
 
             trials = spin(trials);

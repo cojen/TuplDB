@@ -463,8 +463,9 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
  the continuation is run by the current thread, or it's enqueued to be run by a thread
  which releases the latch. The releasing thread actually retains the latch and runs the
  continuation, effectively transferring latch ownership. The continuation must not
- explicitly release the latch, and any exception thrown by the continuation is passed to
- the uncaught exception handler of the running thread.</div>
+ explicitly release the latch, although it can downgrade the latch. Any exception thrown
+ by the continuation is passed to the uncaught exception handler of the running thread,
+ and then the latch is released.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>cont</code> - called with latch held</dd>
