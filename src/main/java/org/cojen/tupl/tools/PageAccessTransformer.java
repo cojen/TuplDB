@@ -80,7 +80,7 @@ public class PageAccessTransformer {
 
     private Map<String, Pattern> mNames;
 
-    PageAccessTransformer(File src, File dst) {
+    public PageAccessTransformer(File src, File dst) {
         dirCheck(src);
         dirCheck(dst);
         mSrc = src;
@@ -93,7 +93,7 @@ public class PageAccessTransformer {
         }
     }
 
-    void findFiles() throws IOException {
+    public void findFiles() throws IOException {
         var names = new HashMap<String, Pattern>();
 
         File[] files = mSrc.listFiles();
@@ -113,7 +113,7 @@ public class PageAccessTransformer {
     /**
      * @return set of generated file names
      */
-    Collection<String> transform() throws IOException {
+    public Collection<String> transform() throws IOException {
         var all = new ArrayList<String>(mNames.size());
 
         for (String name : mNames.keySet()) {
