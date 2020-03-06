@@ -577,19 +577,19 @@ class SocketReplicator implements StreamReplicator {
 
     private class Writer extends Accessor implements StreamReplicator.Writer {
         @Override
-        public boolean write(byte[] prefix, byte[] messages, int offset, int length,
-                             long highestPosition)
+        public int write(byte[] prefix, byte[] messages, int offset, int length,
+                         long highestPosition)
             throws IOException
         {
             if (isClosed()) {
-                return false;
+                return -1;
             }
 
             OutputStream out = mOutput;
 
             if (out == null) {
                 close();
-                return false;
+                return -1;
             }
 
             if (prefix != null) {
@@ -598,7 +598,7 @@ class SocketReplicator implements StreamReplicator {
 
             doWrite(out, messages, offset, length);
 
-            return true;
+            return 1;
         }
 
         private void doWrite(OutputStream out, byte[] b, int off, int len) throws IOException {

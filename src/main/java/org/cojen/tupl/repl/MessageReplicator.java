@@ -105,9 +105,10 @@ public interface MessageReplicator extends Replicator {
          * Write a single message to the log. Equivalent to: {@code writeMessage(message, 0,
          * message.length, true)}
          *
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        default boolean writeMessage(byte[] message) throws IOException {
+        default int writeMessage(byte[] message) throws IOException {
             return writeMessage(message, 0, message.length, true);
         }
 
@@ -115,9 +116,10 @@ public interface MessageReplicator extends Replicator {
          * Write a single message to the log. Equivalent to: {@code writeMessage(message,
          * offset, length, true)}
          *
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        default boolean writeMessage(byte[] message, int offset, int length) throws IOException {
+        default int writeMessage(byte[] message, int offset, int length) throws IOException {
             return writeMessage(message, offset, length, true);
         }
 
@@ -128,9 +130,10 @@ public interface MessageReplicator extends Replicator {
          * other threads should be granted access to the writer in the middle of a batch.
          *
          * @param finished pass true for the last message in the batch
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        boolean writeMessage(byte[] message, int offset, int length, boolean finished)
+        int writeMessage(byte[] message, int offset, int length, boolean finished)
             throws IOException;
     }
 }

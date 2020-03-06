@@ -241,9 +241,10 @@ public interface StreamReplicator extends Replicator {
          * Write complete messages to the log. Equivalent to: {@code write(messages, 0,
          * messages.length, }{@link #position position() + }{@code messages.length)}
          *
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        default boolean write(byte[] messages) throws IOException {
+        default int write(byte[] messages) throws IOException {
             return write(messages, 0, messages.length);
         }
 
@@ -251,9 +252,10 @@ public interface StreamReplicator extends Replicator {
          * Write complete messages to the log. Equivalent to: {@code write(messages, offset,
          * length, }{@link #position position() + }{@code length)}
          *
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        default boolean write(byte[] messages, int offset, int length) throws IOException {
+        default int write(byte[] messages, int offset, int length) throws IOException {
             return write(null, messages, offset, length, position() + length);
         }
 
@@ -270,9 +272,10 @@ public interface StreamReplicator extends Replicator {
          *
          * @param highestPosition highest position (exclusive) which can become the commit
          * position
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        default boolean write(byte[] messages, int offset, int length, long highestPosition)
+        default int write(byte[] messages, int offset, int length, long highestPosition)
             throws IOException
         {
             return write(null, messages, offset, length, highestPosition);
@@ -285,9 +288,10 @@ public interface StreamReplicator extends Replicator {
          * position just like any other message
          * @param highestPosition highest position (exclusive) which can become the commit
          * position
-         * @return false only if the writer is deactivated
+         * @return 1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+         * messages and then close the writer
          */
-        boolean write(byte[] prefix, byte[] messages, int offset, int length, long highestPosition)
+        int write(byte[] prefix, byte[] messages, int offset, int length, long highestPosition)
             throws IOException;
     }
 }

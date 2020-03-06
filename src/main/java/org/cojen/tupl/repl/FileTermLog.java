@@ -1468,9 +1468,9 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         @Override
-        public boolean write(byte[] prefix,
-                             byte[] data, int offset, int length,
-                             long highestPosition)
+        public int write(byte[] prefix,
+                         byte[] data, int offset, int length,
+                         long highestPosition)
             throws IOException
         {
             long position = mWriterPosition;
@@ -1479,12 +1479,12 @@ final class FileTermLog extends Latch implements TermLog {
             if (segment == null) {
                 segment = segmentForWriting(position);
                 if (segment == null) {
-                    return false;
+                    return -1;
                 }
                 mWriterSegment = segment;
             }
 
-            boolean result = true;
+            int result = 1;
 
             doWrite: {
                 if (prefix != null) {
@@ -1502,7 +1502,7 @@ final class FileTermLog extends Latch implements TermLog {
                         unreferenced(segment);
                         segment = segmentForWriting(position);
                         if (segment == null) {
-                            result = false;
+                            result = -1;
                             break doWrite;
                         }
                         mWriterSegment = segment;
@@ -1521,7 +1521,7 @@ final class FileTermLog extends Latch implements TermLog {
                     unreferenced(segment);
                     segment = segmentForWriting(position);
                     if (segment == null) {
-                        result = false;
+                        result = -1;
                         break doWrite;
                     }
                     mWriterSegment = segment;

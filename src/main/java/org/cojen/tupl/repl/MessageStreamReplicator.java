@@ -580,8 +580,8 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
-        public synchronized boolean writeMessage(byte[] message, int offset, int length,
-                                                 boolean finished)
+        public synchronized int writeMessage(byte[] message, int offset, int length,
+                                             boolean finished)
             throws IOException
         {
             byte[] prefix;
@@ -623,7 +623,7 @@ final class MessageStreamReplicator implements MessageReplicator {
                 highestPosition = position() + prefix.length + message.length;
             }
 
-            if (!mSource.write(prefix, message, 0, message.length, highestPosition)) {
+            if (mSource.write(prefix, message, 0, message.length, highestPosition) <= 0) {
                 return -1;
             } else {
                 return position();

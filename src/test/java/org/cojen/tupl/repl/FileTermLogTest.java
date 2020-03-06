@@ -109,7 +109,7 @@ public class FileTermLogTest {
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertTrue(writer.write(buf, 0, len, position + len));
+            assertTrue(writer.write(buf, 0, len, position + len) > 0);
             position += len;
             var info = new LogInfo();
             mLog.captureHighest(info);
@@ -176,7 +176,7 @@ public class FileTermLogTest {
             }
             writer = mLog.openWriter(writer.position());
         }
-        assertFalse(writer.write(buf, 0, 1, 9_999_999_999L));
+        assertFalse(writer.write(buf, 0, 1, 9_999_999_999L) > 0);
         writer.release();
 
         assertEquals(position, mLog.endPosition());
@@ -187,7 +187,7 @@ public class FileTermLogTest {
 
         // Permit partial write up to the end.
         writer = mLog.openWriter(position - 1);
-        assertFalse(writer.write(buf, 0, 2, 9_999_999_999L));
+        assertFalse(writer.write(buf, 0, 2, 9_999_999_999L) > 0);
         writer.release();
         
         assertEquals(position, mLog.endPosition());
@@ -226,7 +226,7 @@ public class FileTermLogTest {
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertTrue(writer.write(buf, 0, len, position + len));
+            assertTrue(writer.write(buf, 0, len, position + len) > 0);
             position += len;
         }
 
@@ -420,7 +420,7 @@ public class FileTermLogTest {
             for (int j=0; j<len; j++) {
                 buf[j] = (byte) rnd2.nextInt();
             }
-            assertTrue(writer.write(buf, 0, len, position + len));
+            assertTrue(writer.write(buf, 0, len, position + len) > 0);
             position += len;
             var info = new LogInfo();
             mLog.captureHighest(info);
@@ -1029,14 +1029,14 @@ public class FileTermLogTest {
         reader.release();
 
         writer = mLog.openWriter(0);
-        assertFalse(writer.write(b));
+        assertFalse(writer.write(b) > 0);
         writer.release();
 
         // Some segment overlap. Although the higher portion of the write could be written, the
         // returned amount from the write wouldn't make sense. Ditch it all.
 
         writer = mLog.openWriter(1024 * 1024 - 100);
-        assertFalse(writer.write(b));
+        assertFalse(writer.write(b) > 0);
         writer.release();
 
         // Try again with writers that reference deleted segements.
@@ -1056,7 +1056,7 @@ public class FileTermLogTest {
         mLog.commit(commitPosition2);
         mLog.compact(commitPosition2);
 
-        assertFalse(writer.write(b));
+        assertFalse(writer.write(b) > 0);
         writer.release();
     }
 
@@ -1204,13 +1204,13 @@ public class FileTermLogTest {
     }
 
     private static void write(LogWriter writer, byte[] data) throws IOException {
-        assertTrue(writer.write(data, 0, data.length, writer.position() + data.length));
+        assertTrue(writer.write(data, 0, data.length, writer.position() + data.length) > 0);
     }
 
     private static void write(LogWriter writer, byte[] data, long highestPosition)
         throws IOException
     {
-        assertTrue(writer.write(data, 0, data.length, highestPosition));
+        assertTrue(writer.write(data, 0, data.length, highestPosition) > 0);
     }
 
     private static byte[] concat(byte[]... chunks) {

@@ -170,7 +170,7 @@ public class MessageReplicatorTest {
         assertEquals(Long.MAX_VALUE, reader.termEndPosition());
 
         byte[] message = "hello".getBytes();
-        assertTrue(writer.writeMessage(message));
+        assertTrue(writer.writeMessage(message) > 0);
         assertEquals(writer.position(), writer.waitForCommit(writer.position(), 0));
 
         TestUtils.fastAssertArrayEquals(message, reader.readMessage());
@@ -209,7 +209,7 @@ public class MessageReplicatorTest {
         assertEquals(Long.MAX_VALUE, replica.termEndPosition());
 
         byte[] message = "hello".getBytes();
-        assertTrue(writer.writeMessage(message));
+        assertTrue(writer.writeMessage(message) > 0);
         long highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
@@ -217,7 +217,7 @@ public class MessageReplicatorTest {
         TestUtils.fastAssertArrayEquals(message, replica.readMessage());
 
         message = "world!".getBytes();
-        assertTrue(writer.writeMessage(message));
+        assertTrue(writer.writeMessage(message) > 0);
         highPosition = writer.position();
         assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
@@ -238,7 +238,7 @@ public class MessageReplicatorTest {
         byte[][] messages = {"hello".getBytes(), "world!".getBytes()};
 
         for (byte[] message : messages) {
-            assertTrue(writer.writeMessage(message));
+            assertTrue(writer.writeMessage(message) > 0);
             long highPosition = writer.position();
             assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
@@ -274,7 +274,7 @@ public class MessageReplicatorTest {
 
         for (int size : sizes) {
             byte[] message = TestUtils.randomStr(rnd, size);
-            assertTrue(writer.writeMessage(message));
+            assertTrue(writer.writeMessage(message) > 0);
         }
 
         long highPosition = writer.position();
@@ -344,7 +344,7 @@ public class MessageReplicatorTest {
         for (int q=0; q<20; q++) {
             byte[] message = ("hello-" + q).getBytes();
 
-            assertTrue(writer.writeMessage(message));
+            assertTrue(writer.writeMessage(message) > 0);
             long highPosition = writer.position();
 
             // Note: Actual commit position might be higher, because of control messages which
@@ -400,7 +400,7 @@ public class MessageReplicatorTest {
         byte[][] messages = {"hello".getBytes(), "world!".getBytes()};
 
         for (byte[] message : messages) {
-            assertTrue(writer.writeMessage(message));
+            assertTrue(writer.writeMessage(message) > 0);
             long highPosition = writer.position();
             assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
 
@@ -419,7 +419,7 @@ public class MessageReplicatorTest {
 
         // Writes to the old leader immediately fail.
         byte[] message = "failover".getBytes();
-        assertFalse(writer.writeMessage(message));
+        assertFalse(writer.writeMessage(message) > 0);
         writer.close();
 
         // Try to find the new leader.
@@ -436,7 +436,7 @@ public class MessageReplicatorTest {
                     if (w == null) {
                         writers[j] = w = repl.newWriter();
                     }
-                    if (w != null && w.writeMessage(message)) {
+                    if (w != null && w.writeMessage(message) > 0) {
                         writer = w;
                         writerSlot = j;
                         break find;

@@ -550,14 +550,14 @@ class ReplWriter extends RedoWriter {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    if (!replWrite(buffer, head, buffer.length - head)) {
+                    if (replWrite(buffer, head, buffer.length - head) <= 0) {
                         break;
                     }
 
                     if (head > 0) {
                         // Write the tail section.
                         mBufferHead = 0;
-                        if (!replWrite(buffer, 0, tail)) {
+                        if (replWrite(buffer, 0, tail) <= 0) {
                             break;
                         }
                     }
@@ -571,14 +571,14 @@ class ReplWriter extends RedoWriter {
                     try {
                         if (head < tail) {
                             // No circular wraparound.
-                            if (!replWrite(buffer, head, tail - head)) {
+                            if (replWrite(buffer, head, tail - head) <= 0) {
                                 break;
                             }
                             head = tail;
                         } else {
                             // Write only the head section.
                             int len = buffer.length - head;
-                            if (!replWrite(buffer, head, len)) {
+                            if (replWrite(buffer, head, len) <= 0) {
                                 break;
                             }
                             head = 0;
@@ -633,7 +633,10 @@ class ReplWriter extends RedoWriter {
         mEngine.mController.switchToReplica(mReplWriter);
     }
 
-    private boolean replWrite(byte[] buf, int off, int len) throws IOException {
+    /**
+     * @return 1 if successful, -1 if fully deactivated, or 0 if should flush the buffer
+     */
+    private int replWrite(byte[] buf, int off, int len) throws IOException {
         return mReplWriter.write(buf, off, len, mLastCommitPos);
     }
 }

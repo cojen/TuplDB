@@ -132,14 +132,14 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code>default boolean</code></td>
+<td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D)">write</a></span>&#8203;(byte[]&nbsp;messages)</code></th>
 <td class="colLast">
 <div class="block">Write complete messages to the log.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
-<td class="colFirst"><code>boolean</code></td>
+<td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;prefix,
 byte[]&nbsp;messages,
 int&nbsp;offset,
@@ -150,7 +150,7 @@ long&nbsp;highestPosition)</code></th>
 </td>
 </tr>
 <tr class="altColor" id="i2">
-<td class="colFirst"><code>default boolean</code></td>
+<td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int)">write</a></span>&#8203;(byte[]&nbsp;messages,
 int&nbsp;offset,
 int&nbsp;length)</code></th>
@@ -159,7 +159,7 @@ int&nbsp;length)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code>default boolean</code></td>
+<td class="colFirst"><code>default int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#write(byte%5B%5D,int,int,long)">write</a></span>&#8203;(byte[]&nbsp;messages,
 int&nbsp;offset,
 int&nbsp;length,
@@ -193,13 +193,14 @@ long&nbsp;highestPosition)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="write(byte[])">write</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages)</span>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, 0,
  messages.length, </code><a href="Replicator.Accessor.html#position()"><code>position() + </code></a><code>messages.length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>false only if the writer is deactivated</dd>
+<dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+ messages and then close the writer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -208,15 +209,16 @@ long&nbsp;highestPosition)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="write(byte[],int,int)">write</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages,
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages,
 int&nbsp;offset,
 int&nbsp;length)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Write complete messages to the log. Equivalent to: <code>write(messages, offset,
  length, </code><a href="Replicator.Accessor.html#position()"><code>position() + </code></a><code>length)</code></div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>false only if the writer is deactivated</dd>
+<dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+ messages and then close the writer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -225,11 +227,11 @@ int&nbsp;length)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="write(byte[],int,int,long)">write</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages,
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;messages,
 int&nbsp;offset,
 int&nbsp;length,
 long&nbsp;highestPosition)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Write complete or partial messages to the log. The <code>highestPosition</code> parameter
  defines the new absolute log position which can become the commit position. The
  provided highest position is permitted to exceed the current log size, in
@@ -244,7 +246,8 @@ long&nbsp;highestPosition)</span>
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>false only if the writer is deactivated</dd>
+<dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+ messages and then close the writer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
@@ -253,12 +256,12 @@ long&nbsp;highestPosition)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="write(byte[],byte[],int,int,long)">write</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;prefix,
+<div class="memberSignature"><span class="returnType">int</span>&nbsp;<span class="memberName">write</span>&#8203;(<span class="arguments">byte[]&nbsp;prefix,
 byte[]&nbsp;messages,
 int&nbsp;offset,
 int&nbsp;length,
 long&nbsp;highestPosition)</span>
-       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Write complete or partial messages to the log.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -267,7 +270,8 @@ long&nbsp;highestPosition)</span>
 <dd><code>highestPosition</code> - highest position (exclusive) which can become the commit
  position</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
-<dd>false only if the writer is deactivated</dd>
+<dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
+ messages and then close the writer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
