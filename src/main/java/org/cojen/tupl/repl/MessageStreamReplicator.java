@@ -298,6 +298,11 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public void addCommitListener(LongConsumer listener) {
+            mSource.addCommitListener(listener);
+        }
+
+        @Override
         public void close() {
             mSource.close();
         }
@@ -541,6 +546,11 @@ final class MessageStreamReplicator implements MessageReplicator {
         @Override
         public long commitPosition() {
             return mSource.commitPosition();
+        }
+
+        @Override
+        public void addCommitListener(LongConsumer listener) {
+            mSource.addCommitListener(listener);
         }
 
         @Override

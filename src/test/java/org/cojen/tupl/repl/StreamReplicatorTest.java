@@ -297,6 +297,11 @@ public class StreamReplicatorTest {
         }
 
         @Override
+        public void addCommitListener(LongConsumer listener) {
+            mSource.addCommitListener(listener);
+        }
+
+        @Override
         public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
             return mSource.waitForCommit(position, nanosTimeout);
         }

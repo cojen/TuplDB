@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":18,"i8":6,"i9":18};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":18,"i9":6,"i10":18};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -132,10 +132,17 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addCommitListener(java.util.function.LongConsumer)">addCommitListener</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</code></th>
+<td class="colLast">
+<div class="block">Install a callback which receives a stream of commit position updates.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i1">
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i1">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitPosition()">commitPosition</a></span>()</code></th>
 <td class="colLast">
@@ -143,35 +150,35 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
  position.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#position()">position</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the next log position which will be accessed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#term()">term</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed term being accessed.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termEndPosition()">termEndPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the current term end position, which is Long.MAX_VALUE if unbounded.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#termStartPosition()">termStartPosition</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the position at the start of the term.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a></span>&#8203;(long&nbsp;position,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
@@ -179,14 +186,14 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i7">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#waitForCommit(long,long)">waitForCommit</a></span>&#8203;(long&nbsp;position,
 long&nbsp;nanosTimeout)</code></th>
@@ -194,7 +201,7 @@ long&nbsp;nanosTimeout)</code></th>
 <div class="block">Blocks until the commit position reaches the given position.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>default long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#waitForEndCommit(long)">waitForEndCommit</a></span>&#8203;(long&nbsp;nanosTimeout)</code></th>
 <td class="colLast">
@@ -253,6 +260,21 @@ long&nbsp;nanosTimeout)</code></th>
 <div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">commitPosition</span>()</div>
 <div class="block">Returns the current term commit position, which might be lower than the start
  position.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="addCommitListener(java.util.function.LongConsumer)">addCommitListener</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">addCommitListener</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</span></div>
+<div class="block">Install a callback which receives a stream of commit position updates. Each update
+ is guaranteed to be higher than the previous one. When the received position is -1,
+ the term has ended, and no further updates are received. The commit stream
+ implementation should avoid blocking the thread that calls it, or else the
+ replicator can stall.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if listener is null</dd>
+</dl>
 </section>
 </li>
 <li class="blockList">

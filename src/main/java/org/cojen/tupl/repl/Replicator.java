@@ -230,6 +230,17 @@ public interface Replicator extends Closeable {
         long commitPosition();
 
         /**
+         * Install a callback which receives a stream of commit position updates. Each update
+         * is guaranteed to be higher than the previous one. When the received position is -1,
+         * the term has ended, and no further updates are received. The commit stream
+         * implementation should avoid blocking the thread that calls it, or else the
+         * replicator can stall.
+         *
+         * @throws NullPointerException if listener is null
+         */
+        void addCommitListener(LongConsumer listener);
+
+        /**
          * Invokes the given task when the commit position reaches the requested position. The
          * current commit position is passed to the task, which is -1 if the term ended before
          * the position could be reached. If the task can be run when this method is called,

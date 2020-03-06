@@ -27,6 +27,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -66,6 +67,8 @@ class SocketReplicator implements StreamReplicator {
     private long mPos;
 
     private byte[] mControlMessage;
+
+    private ArrayList<LongConsumer> mListeners;
 
     private TreeMap<Long, LongConsumer> mTasks;
 
@@ -345,6 +348,13 @@ class SocketReplicator implements StreamReplicator {
         return mSuspendPos == 0 ? mPos : mSuspendPos;
     }
 
+    private synchronized void addCommitListener(LongConsumer listener) {
+        if (mListeners == null) {
+            mListeners = new ArrayList<>();
+        }
+        mListeners.add(listener);
+    }
+
     private void uponCommit(long position, LongConsumer task) {
         if (mOutput == null) {
             task.accept(-1);
@@ -435,6 +445,12 @@ class SocketReplicator implements StreamReplicator {
         mPos = position;
         notifyAll();
 
+        if (mListeners != null) {
+            for (LongConsumer listener : mListeners) {
+                listener.accept(position);
+            }
+        }
+
         if (mTasks != null) {
             Iterator<Map.Entry<Long, LongConsumer>> it = mTasks.entrySet().iterator();
             while (it.hasNext()) {
@@ -481,6 +497,11 @@ class SocketReplicator implements StreamReplicator {
         @Override
         public long commitPosition() {
             return SocketReplicator.this.commitPosition();
+        }
+
+        @Override
+        public void addCommitListener(LongConsumer listener) {
+            SocketReplicator.this.addCommitListener(listener);
         }
 
         @Override

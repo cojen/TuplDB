@@ -30,6 +30,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.NavigableSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.SortedSet;
 
@@ -87,14 +88,15 @@ final class FileTermLog extends Latch implements TermLog {
     private long mLogContigPosition;
     private long mLogEndPosition;
 
-    static final VarHandle cLogCommitPositionHandle, cLogHighestPositionHandle;
-
     // Segments are keyed only by their start position.
     private final NavigableSet<LKey<Segment>> mSegments;
 
     private final PriorityQueue<SegmentWriter> mNonContigWriters;
 
     private final Caches mCaches;
+
+    private LongConsumer[] mCommitListeners;
+    private long mLastCommitListenerPos;
 
     private final PriorityQueue<CommitCallback> mCommitTasks;
 
@@ -109,14 +111,6 @@ final class FileTermLog extends Latch implements TermLog {
 
     static {
         try {
-            cLogCommitPositionHandle =
-                MethodHandles.lookup().findVarHandle
-                (FileTermLog.class, "mLogCommitPosition", long.class);
-
-            cLogHighestPositionHandle =
-                MethodHandles.lookup().findVarHandle
-                (FileTermLog.class, "mLogHighestPosition", long.class);
-
             cLogClosedHandle =
                 MethodHandles.lookup().findVarHandle
                 (FileTermLog.class, "mLogClosed", boolean.class);
@@ -493,15 +487,43 @@ final class FileTermLog extends Latch implements TermLog {
             if (commitPosition > endPosition) {
                 commitPosition = endPosition;
             }
-            cLogCommitPositionHandle.setOpaque(this, commitPosition);
+            mLogCommitPosition = commitPosition;
             if (mLogHighestPosition < commitPosition) {
-                cLogHighestPositionHandle.setOpaque
-                    (this, Math.min(commitPosition, mLogContigPosition));
+                mLogHighestPosition = Math.min(commitPosition, mLogContigPosition);
             }
             notifyCommitTasks(doAppliableCommitPosition());
             return;
         }
         releaseExclusive();
+    }
+
+    void addCommitListener(LongConsumer listener) {
+        Objects.requireNonNull(listener);
+
+        acquireExclusive();
+
+        if (doAppliableCommitPosition() >= mLogEndPosition) {
+            downgrade();
+            try {
+                listener.accept(mLogEndPosition);
+                listener.accept(WAIT_TERM_END);
+            } finally {
+                releaseShared();
+            }
+            return;
+        }
+
+        try {
+            if (mCommitListeners == null) {
+                mCommitListeners = new LongConsumer[1];
+            } else {
+                Arrays.copyOf(mCommitListeners, mCommitListeners.length + 1);
+            }
+            mCommitListeners[mCommitListeners.length - 1] = listener;
+        } finally {
+            releaseExclusive();
+        }
+
     }
 
     @Override
@@ -616,21 +638,10 @@ final class FileTermLog extends Latch implements TermLog {
             throw new NullPointerException();
         }
 
-        final long waitFor = task.mPosition;
-
-        quick: {
-            // Same as doAppliableCommitPosition except without any latch held.
-            long commitPosition = Math.min((long) cLogCommitPositionHandle.getOpaque(this),
-                                           (long) cLogHighestPositionHandle.getOpaque(this));
-
-            if (commitPosition >= waitFor) {
-                reached(task, commitPosition);
-                return;
-            }
-        }
-
         uponExclusive(() -> {
             long commitPosition = doAppliableCommitPosition();
+
+            final long waitFor = task.mPosition;
 
             if (commitPosition < waitFor) {
                 if (mLogClosed || waitFor > mLogEndPosition) {
@@ -641,13 +652,16 @@ final class FileTermLog extends Latch implements TermLog {
                 }
             }
 
-            // Note that exclusive latch is still held. Also see the notifyCommitTasks method.
+            // Note that shared latch is still held, and that exclusive latch must be acquired
+            // first. See notifyCommitTasks.
+            downgrade();
             reached(task, commitPosition);
         });
     }
 
     @Override
     public void finishTerm(long endPosition) {
+        LongConsumer[] commitListeners = null;
         List<CommitCallback> removedTasks;
 
         acquireExclusive();
@@ -660,6 +674,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (endPosition == mLogEndPosition) {
+                releaseExclusive();
                 return;
             }
 
@@ -667,6 +682,7 @@ final class FileTermLog extends Latch implements TermLog {
 
             if (endPosition >= mLogEndPosition) {
                 mLogEndPosition = endPosition;
+                releaseExclusive();
                 return;
             }
 
@@ -687,7 +703,7 @@ final class FileTermLog extends Latch implements TermLog {
             }
 
             if (endPosition < mLogHighestPosition) {
-                cLogHighestPositionHandle.setOpaque(this, endPosition);
+                mLogHighestPosition = endPosition;
             }
 
             if (!mNonContigWriters.isEmpty()) {
@@ -704,6 +720,11 @@ final class FileTermLog extends Latch implements TermLog {
 
             removedTasks = new ArrayList<>();
 
+            if (endPosition <= mLastCommitListenerPos) {
+                commitListeners = mCommitListeners;
+                mCommitListeners = null;
+            }
+
             mCommitTasks.removeIf(task -> {
                 if (task.mPosition > endPosition) {
                     removedTasks.add(task);
@@ -711,12 +732,24 @@ final class FileTermLog extends Latch implements TermLog {
                 }
                 return false;
             });
-        } finally {
+        } catch (Throwable e) {
             releaseExclusive();
+            throw e;
         }
 
-        for (CommitCallback task : removedTasks) {
-            reached(task, WAIT_TERM_END);
+        downgrade();
+        try {
+            // Call with shared latch held for consistency. See notifyCommitTasks.
+
+            if (commitListeners != null) {
+                notifyCommitListeners(commitListeners, WAIT_TERM_END);
+            }
+
+            for (CommitCallback task : removedTasks) {
+                reached(task, WAIT_TERM_END);
+            }
+        } finally {
+            releaseShared();
         }
     }
 
@@ -884,6 +917,8 @@ final class FileTermLog extends Latch implements TermLog {
     public void close() throws IOException {
         mSyncLatch.acquireShared();
         try {
+            List<CommitCallback> waiterTasks;
+
             acquireExclusive();
             try {
                 // Wait for any pending truncate tasks to complete first. New tasks cannot be
@@ -904,15 +939,28 @@ final class FileTermLog extends Latch implements TermLog {
                     }
                 }
 
-                for (CommitCallback task : mCommitTasks) {
-                    if (task instanceof CommitWaiter) {
-                        task.reached(WAIT_TERM_END);
-                    }
-                }
+                waiterTasks = new ArrayList<>();
 
-                mCommitTasks.clear();
-            } finally {
+                mCommitTasks.removeIf(task -> {
+                    if (task instanceof CommitWaiter) {
+                        // Wake up blocked threads.
+                        waiterTasks.add(task);
+                    }
+                    return true;
+                });
+            } catch (Throwable e) {
                 releaseExclusive();
+                throw e;
+            }
+
+            downgrade();
+            try {
+                // Call with shared latch held for consistency. See notifyCommitTasks.
+                for (CommitCallback task : waiterTasks) {
+                    reached(task, WAIT_TERM_END);
+                }
+            } finally {
+                releaseShared();
             }
         } finally {
             mSyncLatch.releaseShared();
@@ -1118,7 +1166,7 @@ final class FileTermLog extends Latch implements TermLog {
                     break applyHighest;
                 }
                 if (highestPosition > mLogHighestPosition) {
-                    cLogHighestPositionHandle.setOpaque(this, highestPosition);
+                    mLogHighestPosition = highestPosition;
                     doCaptureHighest(writer);
                     notifyCommitTasks(doAppliableCommitPosition());
                     return;
@@ -1133,28 +1181,94 @@ final class FileTermLog extends Latch implements TermLog {
     /**
      * Caller must acquire exclusive latch, which is always released by this method.
      */
+    @SuppressWarnings("unchecked")
     private void notifyCommitTasks(long commitPosition) {
-        // Note that the latch is held the whole time as callbacks are invoked. This isn't
-        // ideal, but it's the most efficient. The callbacks should either complete quickly or
-        // handoff work to another thread anyhow.
+        if (commitPosition <= mLastCommitListenerPos) {
+            releaseExclusive();
+            return;
+        }
 
-        PriorityQueue<CommitCallback> tasks = mCommitTasks;
+        Object commitTasks = null;
 
         while (true) {
-            CommitCallback task = tasks.peek();
+            CommitCallback task = mCommitTasks.peek();
             if (task == null || commitPosition < task.mPosition) {
                 break;
             }
-            CommitCallback removed = tasks.remove();
+            CommitCallback removed = mCommitTasks.remove();
             assert removed == task;
-            reached(task, commitPosition);
-            if (tasks.isEmpty()) {
-                break;
+            if (commitTasks == null) {
+                commitTasks = task;
+            } else {
+                List list;
+                if (commitTasks instanceof List) {
+                    list = (List) commitTasks;
+                } else {
+                    list = new ArrayList();
+                    list.add(commitTasks);
+                    commitTasks = list;
+                }
+
+                try {
+                    list.add(task);
+                } catch (Throwable e) {
+                    // Rollback.
+                    mCommitTasks.add(task);
+                    for (var t : list) {
+                        mCommitTasks.add((CommitCallback) t);
+                    }
+                    releaseExclusive();
+                    throw e;
+                }
             }
-            commitPosition = doAppliableCommitPosition();
         }
 
-        releaseExclusive();
+        mLastCommitListenerPos = commitPosition;
+
+        LongConsumer[] commitListeners = mCommitListeners;
+        if (commitPosition >= mLogEndPosition) {
+            mCommitListeners = null;
+        }
+
+        downgrade();
+
+        // Note that the shared latch is held the whole time as callbacks are invoked. This
+        // isn't ideal, but it's the most efficient. The callbacks should either complete
+        // quickly or handoff work to another thread anyhow. Keeping the shared latch held has
+        // other benefits, especially for the commit listeners. They can be certain that only
+        // one thread will ever call it at a time, preventing race conditions.
+
+        if (commitListeners != null) {
+            notifyCommitListeners(commitListeners, commitPosition);
+            if (mCommitListeners == null) {
+                notifyCommitListeners(commitListeners, -1);
+            }
+        }
+
+        if (commitTasks != null) {
+            if (commitTasks instanceof List) {
+                for (var t : (List) commitTasks) {
+                    reached((CommitCallback) t, commitPosition);
+                }
+            } else {
+                reached((CommitCallback) commitTasks, commitPosition);
+            }
+        }
+
+        releaseShared();
+    }
+
+    /**
+     * Calls listener.accept and catches all exceptions.
+     */
+    private static void notifyCommitListeners(LongConsumer[] commitListeners, long position) {
+        for (LongConsumer listener : commitListeners) {
+            try {
+                listener.accept(position);
+            } catch (Throwable e) {
+                Utils.uncaught(e);
+            }
+        }
     }
 
     /**
@@ -1346,6 +1460,11 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         public long commitPosition() {
             return FileTermLog.this.appliableCommitPosition();
+        }
+
+        @Override
+        public void addCommitListener(LongConsumer listener) {
+            FileTermLog.this.addCommitListener(listener);
         }
 
         @Override
@@ -1551,6 +1670,11 @@ final class FileTermLog extends Latch implements TermLog {
         @Override
         public long commitPosition() {
             return FileTermLog.this.appliableCommitPosition();
+        }
+
+        @Override
+        public void addCommitListener(LongConsumer listener) {
+            FileTermLog.this.addCommitListener(listener);
         }
 
         @Override

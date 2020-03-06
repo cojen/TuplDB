@@ -947,6 +947,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
+        public void addCommitListener(LongConsumer listener) {
+            mWriter.addCommitListener(listener);
+        }
+
+        @Override
         public boolean write(byte[] prefix,
                              byte[] data, int offset, int length,
                              long highestPosition)
