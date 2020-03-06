@@ -38,6 +38,16 @@ interface LogAccessor extends Replicator.Accessor {
      */
     void uponCommit(CommitCallback task);
 
+    @Override
+    default void uponCommit(long position, LongConsumer task) {
+        uponCommit(new CommitCallback(position) {
+            @Override
+            public void reached(long position) {
+                task.accept(position);
+            }
+        });
+    }
+
     /**
      * Indicate that the accessor isn't intended to be used again, allowing file handles to be
      * closed. Accessing again will reopen them.

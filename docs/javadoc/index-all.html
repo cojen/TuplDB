@@ -518,10 +518,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Commits and exits all transaction scopes.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html" title="interface in org.cojen.tupl.repl"><span class="typeNameLink">CommitCallback</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
-<dd>
-<div class="block">Callback which is invoked when the log commit position reaches a requested position.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#commitLock()">commitLock()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Returns the checkpoint commit lock, which can be held to prevent checkpoints from
@@ -570,8 +566,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Compare the current key to the one given.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html#compareTo(org.cojen.tupl.repl.CommitCallback)">compareTo(CommitCallback)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html" title="interface in org.cojen.tupl.repl">CommitCallback</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl"><span class="typeNameLink">ConfirmationFailureException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Thrown when replication cannot be confirmed.</div>
@@ -2492,10 +2486,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Park without performing more checks than necessary.</div>
 </dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html" title="interface in org.cojen.tupl.repl">CommitCallback</a></dt>
-<dd>
-<div class="block">Returns the requested log commit position.</div>
-</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
 <dd>
 <div class="block">Returns the next log position which will be accessed.</div>
@@ -2597,10 +2587,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/io/OpenOption.html#RANDOM_ACCESS">RANDOM_ACCESS</a></span> - org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/OpenOption.html" title="enum in org.cojen.tupl.io">OpenOption</a></dt>
 <dd>
 <div class="block">Indicate that file will be accessed in random order.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html#reached(long)">reached(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/CommitCallback.html" title="interface in org.cojen.tupl.repl">CommitCallback</a></dt>
-<dd>
-<div class="block">Called when the log commit position has reached the requested position.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Reader.html#read(byte%5B%5D)">read(byte[])</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.Reader.html" title="interface in org.cojen.tupl.repl">StreamReplicator.Reader</a></dt>
 <dd>
@@ -3491,10 +3477,6 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <div class="block">Exclusive lock granted as an upgrade from an owned upgradable lock.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#uponCommit(long,java.util.function.LongConsumer)">uponCommit(long, LongConsumer)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
-<dd>
-<div class="block">Invokes the given task when the commit position reaches the requested position.</div>
-</dd>
-<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#uponCommit(org.cojen.tupl.repl.CommitCallback)">uponCommit(CommitCallback)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
 <dd>
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </dd>

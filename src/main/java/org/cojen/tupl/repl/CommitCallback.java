@@ -21,23 +21,23 @@ package org.cojen.tupl.repl;
  * Callback which is invoked when the log commit position reaches a requested position.
  *
  * @author Brian S O'Neill
- * @see Replicator.Accessor#uponCommit(CommitCallback) uponCommit
  */
-public interface CommitCallback extends Comparable<CommitCallback> {
-    @Override
-    public default int compareTo(CommitCallback other) {
-        return Long.signum(position() - other.position());
+abstract class CommitCallback implements Comparable<CommitCallback> {
+    long mPosition;
+
+    CommitCallback(long position) {
+        mPosition = position;
     }
 
-    /**
-     * Returns the requested log commit position.
-     */
-    public long position();
+    @Override
+    public int compareTo(CommitCallback other) {
+        return Long.signum(mPosition - other.mPosition);
+    }
 
     /**
      * Called when the log commit position has reached the requested position. The current
      * commit position is passed to this method, which is -1 if the term ended before the
      * position could be reached.
      */
-    public void reached(long position);
+    abstract void reached(long position);
 }

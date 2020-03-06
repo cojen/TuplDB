@@ -303,13 +303,23 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
+        }
+
+        @Override
+        public void uponEndCommit(LongConsumer task) {
+            mSource.uponEndCommit(task);
+        }
+
+        @Override
         public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
             return mSource.waitForCommit(position, nanosTimeout);
         }
 
         @Override
-        public void uponCommit(CommitCallback task) {
-            mSource.uponCommit(task);
+        public long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
+            return mSource.waitForEndCommit(nanosTimeout);
         }
 
         @Override
@@ -540,13 +550,23 @@ final class MessageStreamReplicator implements MessageReplicator {
         }
 
         @Override
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
+        }
+
+        @Override
+        public void uponEndCommit(LongConsumer task) {
+            mSource.uponEndCommit(task);
+        }
+
+        @Override
         public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
             return mSource.waitForCommit(position, nanosTimeout);
         }
 
         @Override
-        public void uponCommit(CommitCallback task) {
-            mSource.uponCommit(task);
+        public long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
+            return mSource.waitForEndCommit(nanosTimeout);
         }
 
         @Override

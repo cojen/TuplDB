@@ -35,10 +35,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 import org.cojen.tupl.util.Runner;
 
-import org.cojen.tupl.repl.CommitCallback;
 import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.repl.SnapshotReceiver;
 import org.cojen.tupl.repl.SnapshotSender;
@@ -67,7 +67,7 @@ class SocketReplicator implements StreamReplicator {
 
     private byte[] mControlMessage;
 
-    private TreeMap<Long, CommitCallback> mTasks;
+    private TreeMap<Long, LongConsumer> mTasks;
 
     private volatile boolean mSuspendCommit;
 
@@ -326,9 +326,9 @@ class SocketReplicator implements StreamReplicator {
         mOutput = null;
 
         if (mTasks != null) {
-            for (CommitCallback task : mTasks.values()) {
+            for (LongConsumer task : mTasks.values()) {
                 try {
-                    task.reached(-1);
+                    task.accept(-1);
                 } catch (Throwable ex) {
                     Utils.uncaught(ex);
                 }
@@ -345,16 +345,15 @@ class SocketReplicator implements StreamReplicator {
         return mSuspendPos == 0 ? mPos : mSuspendPos;
     }
 
-    private void uponCommit(CommitCallback task) {
+    private void uponCommit(long position, LongConsumer task) {
         if (mOutput == null) {
-            task.reached(-1);
+            task.accept(-1);
             return;
         }
 
         long actual;
         synchronized (this) {
             actual = mPos;
-            long position = task.position();
             if (actual < position) {
                 if (mTasks == null) {
                     mTasks = new TreeMap<>();
@@ -367,9 +366,9 @@ class SocketReplicator implements StreamReplicator {
         reached(task, actual);
     }
 
-    private void reached(CommitCallback task, long position) {
+    private void reached(LongConsumer task, long position) {
         if (!mSuspendCommit) {
-            task.reached(position);
+            task.accept(position);
             return;
         }
 
@@ -384,7 +383,7 @@ class SocketReplicator implements StreamReplicator {
                 }
             }
 
-            task.reached(position);
+            task.accept(position);
         });
     }
 
@@ -437,9 +436,9 @@ class SocketReplicator implements StreamReplicator {
         notifyAll();
 
         if (mTasks != null) {
-            Iterator<Map.Entry<Long, CommitCallback>> it = mTasks.entrySet().iterator();
+            Iterator<Map.Entry<Long, LongConsumer>> it = mTasks.entrySet().iterator();
             while (it.hasNext()) {
-                Map.Entry<Long, CommitCallback> e = it.next();
+                Map.Entry<Long, LongConsumer> e = it.next();
                 if (e.getKey() > position) {
                     break;
                 }
@@ -485,8 +484,8 @@ class SocketReplicator implements StreamReplicator {
         }
 
         @Override
-        public void uponCommit(CommitCallback task) {
-            SocketReplicator.this.uponCommit(task);
+        public void uponCommit(long position, LongConsumer task) {
+            SocketReplicator.this.uponCommit(position, task);
         }
 
         @Override

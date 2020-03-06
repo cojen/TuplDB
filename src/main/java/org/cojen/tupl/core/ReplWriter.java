@@ -119,7 +119,7 @@ class ReplWriter extends RedoWriter {
 
     @Override
     public final void txnCommitPending(PendingTxn pending) throws IOException {
-        mReplWriter.uponCommit(pending);
+        mReplWriter.uponCommit(pending.mCommitPos, pending::reached);
     }
 
     @Override

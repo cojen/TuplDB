@@ -1057,13 +1057,23 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         @Override
+        public void uponCommit(long position, LongConsumer task) {
+            mWriter.uponCommit(position, task);
+        }
+
+        @Override
+        public void uponEndCommit(LongConsumer task) {
+            mWriter.uponEndCommit(task);
+        }
+
+        @Override
         public long waitForCommit(long position, long nanosTimeout) throws InterruptedIOException {
             return mWriter.waitForCommit(position, nanosTimeout);
         }
 
         @Override
-        public void uponCommit(CommitCallback task) {
-            mWriter.uponCommit(task);
+        public long waitForEndCommit(long nanosTimeout) throws InterruptedIOException {
+            return mWriter.waitForEndCommit(nanosTimeout);
         }
 
         @Override

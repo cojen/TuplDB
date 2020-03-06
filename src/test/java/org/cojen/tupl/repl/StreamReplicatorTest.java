@@ -22,6 +22,8 @@ import java.net.ServerSocket;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.util.function.LongConsumer;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -300,8 +302,8 @@ public class StreamReplicatorTest {
         }
 
         @Override
-        public void uponCommit(CommitCallback task) {
-            mSource.uponCommit(task);
+        public void uponCommit(long position, LongConsumer task) {
+            mSource.uponCommit(position, task);
         }
 
         @Override

@@ -24,15 +24,13 @@ import java.util.concurrent.RecursiveAction;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 
-import org.cojen.tupl.repl.CommitCallback;
-
 /**
  * References an UndoLog and a set of exclusive locks from a transaction ready to be committed.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-final class PendingTxn extends Locker implements CommitCallback {
+final class PendingTxn extends Locker {
     final Thread mThread;
     final long mCommitPos;
     final TransactionContext mContext;
@@ -63,12 +61,6 @@ final class PendingTxn extends Locker implements CommitCallback {
         return mAttachment;
     }
 
-    @Override
-    public long position() {
-        return mCommitPos;
-    }
-
-    @Override
     public void reached(long position) {
         // See Transaction.commit and Transaction.exit for more info regarding commit and
         // rollback logic.

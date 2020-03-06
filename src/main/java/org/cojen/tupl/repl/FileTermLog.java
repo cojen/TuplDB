@@ -36,6 +36,7 @@ import java.util.SortedSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import java.util.function.BiFunction;
+import java.util.function.LongConsumer;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -590,7 +591,7 @@ final class FileTermLog extends Latch implements TermLog {
         }
     }
 
-    static class CommitWaiter extends AbstractCommitCallback {
+    static class CommitWaiter extends CommitCallback {
         final Thread mThread;
         Object mWaiter;
         volatile long mAppliablePosition;
@@ -615,7 +616,7 @@ final class FileTermLog extends Latch implements TermLog {
             throw new NullPointerException();
         }
 
-        final long waitFor = task.position();
+        final long waitFor = task.mPosition;
 
         quick: {
             // Same as doAppliableCommitPosition except without any latch held.
@@ -704,7 +705,7 @@ final class FileTermLog extends Latch implements TermLog {
             removedTasks = new ArrayList<>();
 
             mCommitTasks.removeIf(task -> {
-                if (task.position() > endPosition) {
+                if (task.mPosition > endPosition) {
                     removedTasks.add(task);
                     return true;
                 }
@@ -1141,7 +1142,7 @@ final class FileTermLog extends Latch implements TermLog {
 
         while (true) {
             CommitCallback task = tasks.peek();
-            if (task == null || commitPosition < task.position()) {
+            if (task == null || commitPosition < task.mPosition) {
                 break;
             }
             CommitCallback removed = tasks.remove();
