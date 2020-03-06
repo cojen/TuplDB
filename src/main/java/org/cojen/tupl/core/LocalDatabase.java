@@ -84,6 +84,7 @@ import org.cojen.tupl.LargeValueException;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
@@ -2000,7 +2001,13 @@ public final class LocalDatabase extends CoreDatabase {
      */
     String findHandlerName(int handlerId, byte rkIdPrefix) throws IOException {
         byte[] idKey = newKey(rkIdPrefix, handlerId);
-        byte[] nameBytes = mRegistryKeyMap.load(null, idKey);
+        byte[] nameBytes;
+        try {
+            nameBytes = mRegistryKeyMap.load(null, idKey);
+        } catch (LockTimeoutException e) {
+            // Try again with infinite timeout.
+            nameBytes = null;
+        }
 
         if (nameBytes == null) {
             // Possible race condition with creation of the handler entry by another
@@ -2008,6 +2015,7 @@ public final class LocalDatabase extends CoreDatabase {
             // for the entry lock.
             Transaction txn = newNoRedoTransaction();
             try {
+                txn.lockTimeout(-1, null);
                 nameBytes = mRegistryKeyMap.load(txn, idKey);
             } finally {
                 txn.reset();
@@ -2084,6 +2092,10 @@ public final class LocalDatabase extends CoreDatabase {
 
             final LocalTransaction txn = newAlwaysRedoTransaction();
             try (Cursor nameCursor = mRegistryKeyMap.newCursor(txn)) {
+                // Must wait for the transaction to fully commit, or else the vended handler id
+                // is invalid if the transaction is pending and rolls back.
+                txn.durabilityMode(DurabilityMode.SYNC);
+
                 nameCursor.find(nameKey);
                 idBytes = nameCursor.value();
 
