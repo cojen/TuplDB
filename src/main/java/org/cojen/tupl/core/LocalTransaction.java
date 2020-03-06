@@ -66,11 +66,11 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     LockMode mLockMode;
     long mLockTimeoutNanos;
-    private int mHasState;
+    int mHasState;
     private long mSavepoint;
     long mTxnId;
 
-    private UndoLog mUndoLog;
+    UndoLog mUndoLog;
 
     private Object mAttachment;
 
@@ -238,15 +238,14 @@ public final class LocalTransaction extends Locker implements Transaction {
                 if (undo == null) {
                     int hasState = mHasState;
                     if ((hasState & HAS_COMMIT) != 0) {
-                        long commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
+                        long commitPos = mContext.redoCommitFinal(this);
                         mHasState = hasState & ~(HAS_SCOPE | HAS_COMMIT);
                         if (commitPos != 0) {
-                            if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(commitPos);
-                            } else {
-                                commitPending(commitPos, null);
+                            if (commitPos == -1) {
+                                // Pending.
                                 return;
                             }
+                            mRedo.txnCommitSync(commitPos);
                         }
                     }
                     super.scopeUnlockAll();
@@ -259,7 +258,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                     long commitPos;
                     try {
                         if ((commitPos = (mHasState & HAS_COMMIT)) != 0) {
-                            commitPos = mContext.redoCommitFinal(mRedo, mTxnId, mDurabilityMode);
+                            commitPos = mContext.redoCommitFinal(this);
                             mHasState &= ~(HAS_SCOPE | HAS_COMMIT);
                         }
                         // Indicates that undo log should be truncated instead
@@ -271,15 +270,15 @@ public final class LocalTransaction extends Locker implements Transaction {
                     }
 
                     if (commitPos != 0) {
+                        if (commitPos == -1) {
+                            // Pending.
+                            return;
+                        }
+
                         try {
                             // Durably sync the redo log after releasing the commit lock,
                             // preventing additional blocking.
-                            if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(commitPos);
-                            } else {
-                                commitPending(commitPos, undo);
-                                return;
-                            }
+                            mRedo.txnCommitSync(commitPos);
                         } catch (Throwable e) {
                             undo.uncommit();
                             mContext.uncommitted(mTxnId);
@@ -330,16 +329,13 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    private void commitPending(long commitPos, UndoLog undo) throws IOException {
-        var pending = new PendingTxn(this, commitPos, undo, mHasState);
-
+    PendingTxn preparePending() {
+        var pending = new PendingTxn(this);
         transferExclusive(pending);
-
         mUndoLog = null;
         mHasState = 0;
         mTxnId = 0;
-
-        mRedo.txnCommitPending(pending);
+        return pending;
     }
 
     private void emptyTrash(int hasState) throws IOException {
@@ -399,11 +395,9 @@ public final class LocalTransaction extends Locker implements Transaction {
                     if (cursorId == 0) {
                         long indexId = cursor.mTree.mId;
                         if (value == null) {
-                            commitPos = mContext.redoDeleteCommitFinal
-                                (mRedo, txnId, indexId, key, mDurabilityMode);
+                            commitPos = mContext.redoDeleteCommitFinal(this, indexId, key);
                         } else {
-                            commitPos = mContext.redoStoreCommitFinal
-                                (mRedo, txnId, indexId, key, value, mDurabilityMode);
+                            commitPos = mContext.redoStoreCommitFinal(this, indexId, key, value);
                         }
                     } else {
                         if (value == null) {
@@ -411,7 +405,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                         } else {
                             mContext.redoCursorStore(mRedo, cursorId, txnId, key, value);
                         }
-                        commitPos = mContext.redoCommitFinal(mRedo, txnId, mDurabilityMode);
+                        commitPos = mContext.redoCommitFinal(this);
                     }
                 } catch (Throwable e) {
                     shared.release();
@@ -424,12 +418,11 @@ public final class LocalTransaction extends Locker implements Transaction {
                 if (undo == null) {
                     shared.release();
                     if (commitPos != 0) {
-                        if (mDurabilityMode == DurabilityMode.SYNC) {
-                            mRedo.txnCommitSync(commitPos);
-                        } else {
-                            commitPending(commitPos, null);
+                        if (commitPos == -1) {
+                            // Pending.
                             return;
                         }
+                        mRedo.txnCommitSync(commitPos);
                     }
                     super.scopeUnlockAll();
                 } else {
@@ -437,13 +430,13 @@ public final class LocalTransaction extends Locker implements Transaction {
                     shared.release();
 
                     if (commitPos != 0) {
+                        if (commitPos == -1) {
+                            // Pending.
+                            return;
+                        }
+
                         try {
-                            if (mDurabilityMode == DurabilityMode.SYNC) {
-                                mRedo.txnCommitSync(commitPos);
-                            } else {
-                                commitPending(commitPos, undo);
-                                return;
-                            }
+                            mRedo.txnCommitSync(commitPos);
                         } catch (Throwable e) {
                             undo.uncommit();
                             mContext.uncommitted(mTxnId);

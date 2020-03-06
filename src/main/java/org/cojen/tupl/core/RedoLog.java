@@ -329,11 +329,6 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void txnCommitPending(PendingTxn pending) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     final long encoding() {
         return 0;
     }
@@ -462,7 +457,8 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    long write(boolean flush, byte[] bytes, int offset, final int length, int commitLen)
+    long write(boolean flush, byte[] bytes, int offset, final int length, int commitLen,
+               PendingTxn pending)
         throws IOException
     {
         try {

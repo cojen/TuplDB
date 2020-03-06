@@ -17,9 +17,10 @@
 
 package org.cojen.tupl.core;
 
-import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
-import java.util.concurrent.RecursiveAction;
+import java.io.IOException;
 
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -30,24 +31,53 @@ import org.cojen.tupl.EventType;
  * @author Brian S O'Neill
  */
 /*P*/
-final class PendingTxn extends Locker {
-    final Thread mThread;
-    final long mCommitPos;
+final class PendingTxn extends Locker implements Runnable {
     final TransactionContext mContext;
     final long mTxnId;
     final UndoLog mUndoLog;
     final int mHasState;
+
     private Object mAttachment;
 
-    PendingTxn(LocalTransaction from, long commitPos, UndoLog undo, int hasState) {
+    long mCommitPos;
+
+    volatile PendingTxn mNext;
+    private static final VarHandle cNextHandle;
+
+    static {
+        try {
+            cNextHandle =
+                MethodHandles.lookup().findVarHandle
+                (PendingTxn.class, "mNext", PendingTxn.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
+    PendingTxn(LocalTransaction from) {
         super(from.mManager, from.mHash);
-        mThread = Thread.currentThread();
-        mCommitPos = commitPos;
         mContext = from.mContext;
         mTxnId = from.mTxnId;
-        mUndoLog = undo;
-        mHasState = hasState;
+        mUndoLog = from.mUndoLog;
+        mHasState = from.mHasState;
         mAttachment = from.attachment();
+    }
+
+    /**
+     * @return null if locked, else the next pending txn
+     */
+    PendingTxn tryLockLast() {
+        return (PendingTxn) cNextHandle.compareAndExchange(this, null, this);
+    }
+
+    void unlockLast() {
+        mNext = null;
+    }
+
+    void setNext(PendingTxn next) {
+        while (!cNextHandle.compareAndSet(this, null, next)) {
+            Thread.onSpinWait();
+        }
     }
 
     @Override
@@ -61,44 +91,19 @@ final class PendingTxn extends Locker {
         return mAttachment;
     }
 
-    public void reached(long position) {
-        // See Transaction.commit and Transaction.exit for more info regarding commit and
-        // rollback logic.
-
-        if (Thread.currentThread() == mThread) {
-            // Allow blocking operations in the user thread.
-            finish(position);
-        } else {
-            // Don't block the threads responsible for replication.
-            LocalDatabase db = getDatabase();
-            if (db != null) {
-                db.execute(new RecursiveAction() {
-                    @Override
-                    protected void compute() {
-                        finish(position);
-                    }
-                });
-            }
-        }
-    }
-
-    /**
-     * @param position negative to rollback, else commit
-     */
-    void finish(long position) {
+    @Override
+    public void run() {
+        // FIXME: If attachment implements a specific interface, then call it when transaction
+        // finishes. Better idea: define a Database-level callback which receives the
+        // transaction id, the attachment, and the status. Status of null means committed. This
+        // design allows for null transactions to also receive notification. But why? What can
+        // you do with the notification from a null transaction?
         try {
-            UndoLog undo = mUndoLog;
-
-            if (position < 0) {
-                if (undo != null) {
-                    undo.rollback();
-                }
-                scopeUnlockAll();
-                if (undo != null) {
-                    mContext.unregister(undo);
-                }
+            if (mCommitPos < 0) {
+                doRollback();
             } else {
                 scopeUnlockAll();
+                UndoLog undo = mUndoLog;
                 if (undo != null) {
                     undo.truncate();
                     mContext.unregister(undo);
@@ -108,15 +113,39 @@ final class PendingTxn extends Locker {
                 }
             }
         } catch (Throwable e) {
-            LocalDatabase db = getDatabase();
-            if (db != null && !db.isClosed()) {
-                EventListener listener = db.eventListener();
-                if (listener != null) {
-                    listener.notify(EventType.REPLICATION_PANIC,
-                                    "Unexpected transaction exception: %1$s", e);
-                } else {
-                    Utils.uncaught(e);
-                }
+            uncaught(e);
+        }
+    }
+
+    RuntimeException rollback(Throwable cause) {
+        try {
+            doRollback();
+        } catch (Throwable e) {
+            Utils.suppress(cause, e);
+        }
+        throw Utils.rethrow(cause);
+    }
+
+    private void doRollback() throws IOException {
+        UndoLog undo = mUndoLog;
+        if (undo != null) {
+            undo.rollback();
+        }
+        scopeUnlockAll();
+        if (undo != null) {
+            mContext.unregister(undo);
+        }
+    }
+
+    private void uncaught(Throwable cause) {
+        LocalDatabase db = getDatabase();
+        if (db != null && !db.isClosed()) {
+            EventListener listener = db.eventListener();
+            if (listener != null) {
+                listener.notify(EventType.REPLICATION_PANIC,
+                                "Unexpected transaction exception: %1$s", cause);
+            } else {
+                Utils.uncaught(cause);
             }
         }
     }

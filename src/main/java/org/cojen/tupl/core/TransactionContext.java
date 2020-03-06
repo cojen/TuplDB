@@ -142,7 +142,7 @@ final class TransactionContext extends Latch implements Flushable {
                         // Write out the remaining non-transactional messages.
                         try {
                             mRedoWriterPos = mRedoWriter.write
-                                (false, mRedoBuffer, 0, length, mRedoTerminatePos);
+                                (false, mRedoBuffer, 0, length, mRedoTerminatePos, null);
                         } catch (IOException e) {
                             throw rethrow(e, mRedoWriter.mCloseCause);
                         }
@@ -340,11 +340,7 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    /**
-     * @return non-zero position if caller should call txnCommitSync when it should also wait
-     * for confirmation
-     */
-    long redoRollbackFinal(RedoWriter redo, long txnId) throws IOException {
+    void redoRollbackFinal(RedoWriter redo, long txnId) throws IOException {
         // See comments in redoRollback method.
         DurabilityMode mode = redo.opWriteCheck(DurabilityMode.NO_FLUSH);
 
@@ -352,7 +348,7 @@ final class TransactionContext extends Latch implements Flushable {
         try {
             redoWriteTxnOp(redo, OP_TXN_ROLLBACK_FINAL, txnId);
             redoWriteTerminator(redo);
-            return redoFlushCommit(mode);
+            redoFlushCommit(mode);
         } finally {
             releaseRedoLatch();
         }
@@ -371,16 +367,32 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     /**
-     * @return non-zero position if caller should call txnCommitSync
+     * @return non-zero position if caller should call txnCommitSync; -1 if transaction is pending
      */
-    long redoCommitFinal(RedoWriter redo, long txnId, DurabilityMode mode)
-        throws IOException
-    {
-        mode = redo.opWriteCheck(mode);
+    long redoCommitFinal(LocalTransaction txn) throws IOException {
+        RedoWriter redo = txn.mRedo;
+        DurabilityMode mode = redo.opWriteCheck(txn.mDurabilityMode);
+
+        if (mode == DurabilityMode.SYNC && txn.mDurabilityMode != DurabilityMode.SYNC) {
+            PendingTxn pending = txn.preparePending();
+            try {
+                acquireRedoLatch();
+                try {
+                    redoWriteTxnOp(redo, OP_TXN_COMMIT_FINAL, pending.mTxnId);
+                    redoWriteTerminator(redo);
+                    redoFlush(true, pending);
+                } finally {
+                    releaseRedoLatch();
+                }
+                return -1;
+            } catch (Throwable e) {
+                throw pending.rollback(e);
+            }
+        }
 
         acquireRedoLatch();
         try {
-            redoWriteTxnOp(redo, OP_TXN_COMMIT_FINAL, txnId);
+            redoWriteTxnOp(redo, OP_TXN_COMMIT_FINAL, txn.mTxnId);
             redoWriteTerminator(redo);
             return redoFlushCommit(mode);
         } finally {
@@ -425,18 +437,36 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     /**
-     * @return non-zero position if caller should call txnCommitSync
+     * @return non-zero position if caller should call txnCommitSync; -1 if transaction is pending
      */
-    long redoStoreCommitFinal(RedoWriter redo, long txnId, long indexId,
-                              byte[] key, byte[] value, DurabilityMode mode)
+    long redoStoreCommitFinal(LocalTransaction txn, long indexId, byte[] key, byte[] value)
         throws IOException
     {
         keyCheck(key);
-        mode = redo.opWriteCheck(mode);
+
+        RedoWriter redo = txn.mRedo;
+        DurabilityMode mode = redo.opWriteCheck(txn.mDurabilityMode);
+
+        if (mode == DurabilityMode.SYNC && txn.mDurabilityMode != DurabilityMode.SYNC) {
+            PendingTxn pending = txn.preparePending();
+            try {
+                acquireRedoLatch();
+                try {
+                    doRedoStore(redo, OP_TXN_STORE_COMMIT_FINAL,
+                                pending.mTxnId, indexId, key, value);
+                    redoFlush(true, pending);
+                } finally {
+                    releaseRedoLatch();
+                }
+                return -1;
+            } catch (Throwable e) {
+                throw pending.rollback(e);
+            }
+        }
 
         acquireRedoLatch();
         try {
-            doRedoStore(redo, OP_TXN_STORE_COMMIT_FINAL, txnId, indexId, key, value);
+            doRedoStore(redo, OP_TXN_STORE_COMMIT_FINAL, txn.mTxnId, indexId, key, value);
             return redoFlushCommit(mode);
         } finally {
             releaseRedoLatch();
@@ -471,18 +501,35 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     /**
-     * @return non-zero position if caller should call txnCommitSync
+     * @return non-zero position if caller should call txnCommitSync; -1 if transaction is pending
      */
-    long redoDeleteCommitFinal(RedoWriter redo, long txnId, long indexId,
-                               byte[] key, DurabilityMode mode)
+    long redoDeleteCommitFinal(LocalTransaction txn, long indexId, byte[] key)
         throws IOException
     {
         keyCheck(key);
-        mode = redo.opWriteCheck(mode);
+
+        RedoWriter redo = txn.mRedo;
+        DurabilityMode mode = redo.opWriteCheck(txn.mDurabilityMode);
+
+        if (mode == DurabilityMode.SYNC && txn.mDurabilityMode != DurabilityMode.SYNC) {
+            PendingTxn pending = txn.preparePending();
+            try {
+                acquireRedoLatch();
+                try {
+                    doRedoDelete(redo, OP_TXN_DELETE_COMMIT_FINAL, pending.mTxnId, indexId, key);
+                    redoFlush(true, pending);
+                } finally {
+                    releaseRedoLatch();
+                }
+                return -1;
+            } catch (Throwable e) {
+                throw pending.rollback(e);
+            }
+        }
 
         acquireRedoLatch();
         try {
-            doRedoDelete(redo, OP_TXN_DELETE_COMMIT_FINAL, txnId, indexId, key);
+            doRedoDelete(redo, OP_TXN_DELETE_COMMIT_FINAL, txn.mTxnId, indexId, key);
             return redoFlushCommit(mode);
         } finally {
             releaseRedoLatch();
@@ -805,7 +852,7 @@ final class TransactionContext extends Latch implements Flushable {
         if (length > buffer.length - 4) {
             // Flush and make room for the terminator.
             try {
-                mRedoWriterPos = redo.write(false, buffer, 0, length, commitLen);
+                mRedoWriterPos = redo.write(false, buffer, 0, length, commitLen, null);
             } catch (IOException e) {
                 throw rethrow(e, redo.mCloseCause);
             }
@@ -822,7 +869,7 @@ final class TransactionContext extends Latch implements Flushable {
         boolean flush = mode == DurabilityMode.SYNC || mode == DurabilityMode.NO_SYNC;
 
         try {
-            mRedoWriterPos = redo.write(flush, buffer, 0, length, commitLen);
+            mRedoWriterPos = redo.write(flush, buffer, 0, length, commitLen, null);
         } catch (IOException e) {
             throw rethrow(e, redo.mCloseCause);
         }
@@ -947,7 +994,7 @@ final class TransactionContext extends Latch implements Flushable {
         throws IOException
     {
         try {
-            return redo.write(false, bytes, offset, length, term ? length : 0);
+            return redo.write(false, bytes, offset, length, term ? length : 0, null);
         } catch (IOException e) {
             throw rethrow(e, redo.mCloseCause);
         }
@@ -1103,6 +1150,10 @@ final class TransactionContext extends Latch implements Flushable {
      * @param full true to fully flush through all buffers (used for SYNC/NO_SYNC commit)
      */
     private void redoFlush(boolean full) throws IOException {
+        redoFlush(full, null);
+    }
+
+    private void redoFlush(boolean full, PendingTxn pending) throws IOException {
         int length = mRedoPos;
         if (length == 0) {
             return;
@@ -1130,7 +1181,7 @@ final class TransactionContext extends Latch implements Flushable {
 
         try {
             try {
-                mRedoWriterPos = redo.write(full, buffer, offset, length, commitLen);
+                mRedoWriterPos = redo.write(full, buffer, offset, length, commitLen, pending);
             } catch (IOException e) {
                 throw rethrow(e, redo.mCloseCause);
             }

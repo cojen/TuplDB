@@ -863,8 +863,7 @@ public class ReplicationTest {
         Index lix = mLeader.openIndex("test");
 
         lix.store(null, "k1".getBytes(), "v1".getBytes());
-        fence();
-        mLeaderRepl.disableWrites();
+        disableLeader();
         try {
             // Auto-commit will force a flush, even when using NO_FLUSH mode.
             lix.store(null, "k2".getBytes(), "v2".getBytes());
@@ -890,8 +889,7 @@ public class ReplicationTest {
         c.find("k1".getBytes());
         c.commit("v1".getBytes());
 
-        fence();
-        mLeaderRepl.disableWrites();
+        disableLeader();
 
         c = lix.newCursor(ltxn);
         c.find("k2".getBytes());
@@ -1175,9 +1173,7 @@ public class ReplicationTest {
         ix.store(txn, "k2".getBytes(), "v2".getBytes());
         txn.flush();
 
-        fence();
-
-        mLeaderRepl.disableWrites();
+        disableLeader();
 
         // Force early internal detection of unmodifiable state. Auto-commit will force a
         // flush, even when using NO_FLUSH mode.
@@ -1290,9 +1286,10 @@ public class ReplicationTest {
         ix.load(txn, key2);
         assertEquals(LockResult.OWNED_UPGRADABLE, txn.lockCheck(ix.id(), key2));
         mLeaderWriter2.prepare(txn, null);
-        fence();
 
-        mLeaderRepl.disableWrites();
+        // Cannot wait for ReplController.doSwitchToReplica task to finish, because it hangs
+        // waiting for the prepared transaction to exit (awaitPreparedTransactions).
+        disableLeader(false);
 
         try {
             txn.exit();
@@ -1332,6 +1329,27 @@ public class ReplicationTest {
         byte[] message = ("fence:" + System.nanoTime()).getBytes();
         mLeaderRepl.writeControl(message);
         mReplicaRepl.waitForControl(message);
+    }
+
+    private void disableLeader() throws Exception {
+        disableLeader(true);
+    }
+
+    private void disableLeader(boolean wait) throws Exception {
+        fence();
+        mLeaderRepl.disableWrites();
+
+        if (wait) {
+            // Wait for ReplController.doSwitchToReplica task to finish.
+            for (int i=0; i<100; i++) {
+                if (!mLeader.isLeader()) {
+                    return;
+                }
+                Thread.sleep(100);
+            }
+
+            fail("still the leader");
+        }
     }
 
     private static class Handler implements CustomHandler, PrepareHandler {

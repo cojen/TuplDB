@@ -69,6 +69,7 @@ class SocketReplicator implements StreamReplicator {
     private byte[] mControlMessage;
 
     private ArrayList<LongConsumer> mListeners;
+    private long mLastListenPos;
 
     private TreeMap<Long, LongConsumer> mTasks;
 
@@ -269,6 +270,13 @@ class SocketReplicator implements StreamReplicator {
     public synchronized void suspendCommit(boolean b) {
         mSuspendCommit = b;
         notifyAll();
+
+        if (!b && mListeners != null && mPos > mLastListenPos) {
+            for (LongConsumer listener : mListeners) {
+                listener.accept(mPos);
+            }
+            mLastListenPos = mPos;
+        }
     }
 
     /**
@@ -337,6 +345,12 @@ class SocketReplicator implements StreamReplicator {
                 }
             }
             mTasks = null;
+        }
+
+        if (mListeners != null) {
+            for (LongConsumer listener : mListeners) {
+                listener.accept(-1);
+            }
         }
     }
 
@@ -445,10 +459,11 @@ class SocketReplicator implements StreamReplicator {
         mPos = position;
         notifyAll();
 
-        if (mListeners != null) {
+        if (mListeners != null && position > mLastListenPos && !mSuspendCommit) {
             for (LongConsumer listener : mListeners) {
                 listener.accept(position);
             }
+            mLastListenPos = position;
         }
 
         if (mTasks != null) {

@@ -78,13 +78,6 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
      */
     abstract void txnCommitSync(long commitPos) throws IOException;
 
-    /**
-     * Called after redoCommitFinal.
-     *
-     * @param pending pending transaction committed
-     */
-    abstract void txnCommitPending(PendingTxn pending) throws IOException;
-
     abstract long encoding();
 
     /**
@@ -179,10 +172,12 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
      * @param length never 0
      * @param commitLen {@literal length of message which is fully committable (no torn
      * operations); pass <= 0 if nothing is committable}
+     * @param pending optional
      * @return highest log position afterwards
      */
     // Caller must hold exclusive latch.
-    abstract long write(boolean flush, byte[] bytes, int offset, int length, int commitLen)
+    abstract long write(boolean flush, byte[] bytes, int offset, int length, int commitLen,
+                        PendingTxn pending)
         throws IOException;
 
     /**

@@ -73,13 +73,23 @@ class ReplWriter extends RedoWriter {
 
     volatile boolean mUnmodifiable;
 
+    // Last ones added with mBufferLatch held, but first ones are removed without any latch.
+    // Assumes that the commit stream from Replicator holds a latch of its own.
+    private volatile PendingTxn mFirstPending;
+    private volatile PendingTxn mLastPending;
+
     /**
      * Caller must call start if a writer is supplied.
      */
     ReplWriter(ReplEngine engine, StreamReplicator.Writer writer) {
         mEngine = engine;
         mReplWriter = writer;
-        mBufferLatch = writer == null ? null : new Latch();
+        if (writer == null) {
+            mBufferLatch = null;
+        } else {
+            mBufferLatch = new Latch();
+            writer.addCommitListener(this::finishPending);
+        }
     }
 
     void start() {
@@ -115,11 +125,6 @@ class ReplWriter extends RedoWriter {
         if (!confirm(writer, commitPos)) {
             throw nowUnmodifiable();
         }
-    }
-
-    @Override
-    public final void txnCommitPending(PendingTxn pending) throws IOException {
-        mReplWriter.uponCommit(pending.mCommitPos, pending::reached);
     }
 
     @Override
@@ -197,7 +202,8 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
-    final long write(boolean flush, byte[] bytes, int offset, int length, int commitLen)
+    final long write(boolean flush, byte[] bytes, int offset, int length, int commitLen,
+                     PendingTxn pending)
         throws IOException
     {
         if (mReplWriter == null) {
@@ -218,6 +224,21 @@ class ReplWriter extends RedoWriter {
                 // always be confirmed later.
                 mLastCommitPos = mWritePos + commitLen;
                 mLastCommitTxnId = mLastTxnId;
+
+                if (pending != null) {
+                    // Set position before writing to volatile fields.
+                    pending.mCommitPos = mLastCommitPos;
+                    PendingTxn last = mLastPending;
+                    if (last == null) {
+                        mFirstPending = pending;
+                    } else {
+                        last.setNext(pending);
+                        if (mFirstPending == null) {
+                            mFirstPending = pending;
+                        }
+                    }
+                    mLastPending = pending;
+                }
             }
 
             while (true) {
@@ -370,6 +391,57 @@ class ReplWriter extends RedoWriter {
     @Override
     void stashForRecovery(LocalTransaction txn) {
         mEngine.stashForRecovery(txn);
+    }
+
+    private void finishPending(long commitPos) {
+        PendingTxn pending = mFirstPending;
+        if (pending == null) {
+            return;
+        }
+
+        final PendingTxn first = pending;
+
+        // Read volatile field first to get the correct position.
+        PendingTxn next = pending.mNext;
+
+        if (commitPos < 0) {
+            pending.mCommitPos = -1; // signal rollback
+        } else if (commitPos < pending.mCommitPos) {
+            return;
+        }
+
+        int count = 1;
+
+        while (true) {
+            if (next == null) {
+                // Removing the last node requires special attention.
+                next = pending.tryLockLast();
+                mFirstPending = next;
+                if (next == null) {
+                    mLastPending = null;
+                    pending.unlockLast();
+                    break;
+                }
+            }
+
+            PendingTxn prev = pending;
+            pending = next;
+            next = pending.mNext;
+
+            if (commitPos < 0) {
+                pending.mCommitPos = -1; // signal rollback
+            } else if (commitPos < pending.mCommitPos) {
+                mFirstPending = pending;
+                pending = prev;
+                break;
+            }
+
+            count++;
+        }
+
+        pending.mNext = null;
+
+        mEngine.mFinisher.enqueue(count, first, pending);
     }
 
     void closeConsumerThread() {

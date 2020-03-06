@@ -71,6 +71,9 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     final ReplController mController;
 
+    // Used for finishing pending transactions created by the leader.
+    final PendingTxnFinisher mFinisher;
+
     private final WorkerGroup mWorkerGroup;
 
     private final Latch mDecodeLatch;
@@ -111,6 +114,9 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         mDatabase = db;
 
         mController = new ReplController(this);
+
+        // FIXME: Document maxThreads dual usage?
+        mFinisher = new PendingTxnFinisher(maxThreads);
 
         mDecodeLatch = new Latch();
 
