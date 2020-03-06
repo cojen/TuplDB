@@ -631,6 +631,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      * @param value value to store; pass null to delete
      * @throws UnpositionedCursorException if position is undefined at invocation time
      * @throws ViewConstraintException if value is not permitted
+     * @see CommitCallback
      */
     public default void commit(byte[] value) throws IOException {
         ViewUtils.commit(this, value);

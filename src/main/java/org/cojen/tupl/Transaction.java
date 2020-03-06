@@ -126,11 +126,15 @@ public interface Transaction extends Flushable {
      * current scope is still valid after this method is called, unless an
      * exception is thrown. Call exit or reset to fully release transaction
      * resources.
+     *
+     * @see CommitCallback
      */
     void commit() throws IOException;
 
     /**
      * Commits and exits all transaction scopes.
+     *
+     * @see CommitCallback
      */
     void commitAll() throws IOException;
 
@@ -448,6 +452,18 @@ public interface Transaction extends Flushable {
     default void attach(Object obj) {
         // Throw an exception for compatibility. All known implementations support the feature.
         throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Attach a commit callback to this transaction instance, in place of an ordinary
+     * attachment. It behaves like an ordinary attachment, but it also receives special
+     * attention by pending transactions.
+     *
+     * @throws UnsupportedOperationException if completely unsupported by the transaction
+     * implementation
+     */
+    default void attach(CommitCallback callback) {
+        attach((Object) callback);
     }
 
     /**

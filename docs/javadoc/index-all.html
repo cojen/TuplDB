@@ -175,6 +175,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#attach(org.cojen.tupl.CommitCallback)">attach(CommitCallback)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dd>
+<div class="block">Attach a commit callback to this transaction instance, in place of an ordinary
+ attachment.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#attachment()">attachment()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Returns any attachment which was set earlier.</div>
@@ -521,6 +526,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#commitAll()">commitAll()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Commits and exits all transaction scopes.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/CommitCallback.html" title="interface in org.cojen.tupl"><span class="typeNameLink">CommitCallback</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Defines a pending transaction callback which receives a finish notification.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Database.html#commitLock()">commitLock()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -1275,6 +1284,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Sorter.html#finish()">finish()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
 <dd>
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CommitCallback.html#finished(long,java.lang.Object)">finished(long, Object)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CommitCallback.html" title="interface in org.cojen.tupl">CommitCallback</a></dt>
+<dd>
+<div class="block">Called when a pending transaction has committed or rolled back.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/Sorter.html#finishScan()">finishScan()</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
 <dd>
@@ -2489,6 +2502,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/util/Parker.html#parkNow(java.lang.Object)">parkNow(Object)</a></span> - Static method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Parker.html" title="class in org.cojen.tupl.util">Parker</a></dt>
 <dd>
 <div class="block">Park without performing more checks than necessary.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/CommitCallback.html#pending(long)">pending(long)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CommitCallback.html" title="interface in org.cojen.tupl">CommitCallback</a></dt>
+<dd>
+<div class="block">Called when a transaction is moving to the pending state.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#position()">position()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
 <dd>

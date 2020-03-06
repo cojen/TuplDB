@@ -330,12 +330,7 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     PendingTxn preparePending() {
-        var pending = new PendingTxn(this);
-        transferExclusive(pending);
-        mUndoLog = null;
-        mHasState = 0;
-        mTxnId = 0;
-        return pending;
+        return new PendingTxn(this);
     }
 
     private void emptyTrash(int hasState) throws IOException {

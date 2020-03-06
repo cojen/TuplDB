@@ -22,6 +22,7 @@ import java.lang.invoke.VarHandle;
 
 import java.io.IOException;
 
+import org.cojen.tupl.CommitCallback;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 
@@ -56,11 +57,27 @@ final class PendingTxn extends Locker implements Runnable {
 
     PendingTxn(LocalTransaction from) {
         super(from.mManager, from.mHash);
+
         mContext = from.mContext;
         mTxnId = from.mTxnId;
         mUndoLog = from.mUndoLog;
         mHasState = from.mHasState;
-        mAttachment = from.attachment();
+        Object att = from.attachment();
+        mAttachment = att;
+
+        from.transferExclusive(this);
+
+        from.mUndoLog = null;
+        from.mHasState = 0;
+        from.mTxnId = 0;
+
+        if (att instanceof CommitCallback) {
+            try {
+                ((CommitCallback) att).pending(mTxnId);
+            } catch (Throwable e) {
+                Utils.uncaught(e);
+            }
+        }
     }
 
     /**
@@ -93,14 +110,11 @@ final class PendingTxn extends Locker implements Runnable {
 
     @Override
     public void run() {
-        // FIXME: If attachment implements a specific interface, then call it when transaction
-        // finishes. Better idea: define a Database-level callback which receives the
-        // transaction id, the attachment, and the status. Status of null means committed. This
-        // design allows for null transactions to also receive notification. But why? What can
-        // you do with the notification from a null transaction?
         try {
+            Object status = null;
             if (mCommitPos < 0) {
                 doRollback();
+                status = "Replication failure"; // lame, but it's at least something
             } else {
                 scopeUnlockAll();
                 UndoLog undo = mUndoLog;
@@ -112,8 +126,20 @@ final class PendingTxn extends Locker implements Runnable {
                     FragmentedTrash.emptyTrash(getDatabase().fragmentedTrash(), mTxnId);
                 }
             }
+
+            finished(status);
         } catch (Throwable e) {
-            uncaught(e);
+            LocalDatabase db = getDatabase();
+            if (db != null && !db.isClosed()) {
+                EventListener listener = db.eventListener();
+                if (listener != null) {
+                    listener.notify(EventType.REPLICATION_PANIC,
+                                    "Unexpected transaction exception: %1$s", e);
+                } else {
+                    Utils.uncaught(e);
+                }
+                finished(e);
+            }
         }
     }
 
@@ -137,15 +163,12 @@ final class PendingTxn extends Locker implements Runnable {
         }
     }
 
-    private void uncaught(Throwable cause) {
-        LocalDatabase db = getDatabase();
-        if (db != null && !db.isClosed()) {
-            EventListener listener = db.eventListener();
-            if (listener != null) {
-                listener.notify(EventType.REPLICATION_PANIC,
-                                "Unexpected transaction exception: %1$s", cause);
-            } else {
-                Utils.uncaught(cause);
+    private void finished(Object status) {
+        if (mAttachment instanceof CommitCallback) {
+            try {
+                ((CommitCallback) mAttachment).finished(mTxnId, status);
+            } catch (Throwable e) {
+                Utils.uncaught(e);
             }
         }
     }
