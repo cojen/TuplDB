@@ -1160,7 +1160,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         long nanosTimeout = 1_000_000_000L;
         boolean report = false;
 
-        while (!awaitPreparedTransactions(nanosTimeout, report)) {
+        while (!awaitPreparedTransactions(nanosTimeout, report) && !mDatabase.isClosed()) {
             // Still waiting for prepared transactions to transfer ownership. Double the
             // timeout each time, up to a maximum of one minute.
             nanosTimeout = Math.min(nanosTimeout << 1, 60_000_000_000L);

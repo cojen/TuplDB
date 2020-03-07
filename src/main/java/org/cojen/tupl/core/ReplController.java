@@ -43,13 +43,17 @@ import org.cojen.tupl.util.Runner;
  */
 /*P*/
 final class ReplController extends ReplWriter {
-    private static final VarHandle cCheckpointPosHandle;
+    private static final VarHandle cCheckpointPosHandle, cSwitchingHandle;
 
     static {
         try {
             cCheckpointPosHandle =
                 MethodHandles.lookup().findVarHandle
                 (ReplController.class, "mCheckpointPos", long.class);
+
+            cSwitchingHandle =
+                MethodHandles.lookup().findVarHandle
+                (ReplController.class, "mSwitchingToReplica", boolean.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -385,7 +389,7 @@ final class ReplController extends ReplWriter {
         }
     }
 
-    // Also called by ReplWriter, sometimes with the latch held.
+    // Also called by ReplWriter.
     UnmodifiableReplicaException nowUnmodifiable(StreamReplicator.Writer expect)
         throws DatabaseException
     {
@@ -393,39 +397,48 @@ final class ReplController extends ReplWriter {
         return mEngine.unmodifiable();
     }
 
-    // Must be called without latch held.
+    // Also called by ReplWriter.
     void switchToReplica(StreamReplicator.Writer expect) {
-        if (shouldSwitchToReplica(expect) != null) {
-            // Invoke from a separate thread, avoiding deadlock. This method can be invoked by
-            // ReplWriter while latched, which is an inconsistent order.
-            Runner.start(() -> doSwitchToReplica(expect));
+        if (mEngine.mDatabase.isClosed()) {
+            // Don't bother switching modes, since it won't work properly anyhow.
+            return;
+        }
+
+        ReplWriter redo = mTxnRedoWriter;
+        StreamReplicator.Writer writer = redo.mReplWriter;
+
+        if (writer == null || writer != expect) {
+            // Must be in leader mode, and with the expected writer.
+            return;
+        }
+
+        if (!cSwitchingHandle.compareAndSet(this, false, true)) {
+            // Another thread is doing it.
+            return;
+        }
+
+        // Invoke from a separate thread, because it can block.
+        try {
+            Runner.start(() -> doSwitchToReplica(redo));
+        } catch (Throwable e) {
+            // Panic.
+            mEngine.fail(e);
         }
     }
 
-    private void doSwitchToReplica(StreamReplicator.Writer expect) {
-        ReplWriter redo;
-
-        acquireExclusive();
-        try {
-            redo = shouldSwitchToReplica(expect);
-            if (redo == null) {
-                return;
-            }
-            mSwitchingToReplica = true;
-        } finally {
-            releaseExclusive();
-        }
+    private void doSwitchToReplica(ReplWriter redo) {
+        StreamReplicator.Writer writer = redo.mReplWriter;
 
         long pos;
         try {
-            pos = confirmEnd(expect);
+            pos = confirmEnd(writer);
         } catch (ConfirmationFailureException e) {
             // Position is required, so panic.
             mEngine.fail(e);
             return;
         }
 
-        expect.close();
+        writer.close();
 
         redo.closeConsumerThread();
 
@@ -442,8 +455,13 @@ final class ReplController extends ReplWriter {
         // expected, and so the initial transaction id can be zero.
         mEngine.startReceiving(pos, 0);
 
-        // Use this instance for replica mode. Can only be assigned after engine is at the
-        // correct position.
+        // Use this ReplController instance for replica mode. Can only be assigned after engine
+        // is at the correct position. Note the exclusive latch and the order of the two
+        // volatile assignments. The exclusive latch prevents leaderNotify from assigning to
+        // mTxnRedoWriter, and by assigning it first, there's no race with an immediate call to
+        // switchToReplica. If the assignment was reversed, then a call to switchToReplica
+        // might observe that mTxnRedoWriter still matches and then it will erronously call
+        // doSwitchToReplica again.
         acquireExclusive();
         mTxnRedoWriter = this;
         mSwitchingToReplica = false;
@@ -451,30 +469,5 @@ final class ReplController extends ReplWriter {
 
         // Allow old redo object to be garbage collected.
         mEngine.mDatabase.discardRedoWriter(redo);
-    }
-
-    /**
-     * @return null if shouldn't switch; mTxnRedoWriter otherwise
-     */
-    private ReplWriter shouldSwitchToReplica(StreamReplicator.Writer expect) {
-        if (mSwitchingToReplica) {
-            // Another thread is doing it.
-            return null;
-        }
-
-        if (mEngine.mDatabase.isClosed()) {
-            // Don't bother switching modes, since it won't work properly anyhow.
-            return null;
-        }
-
-        ReplWriter redo = mTxnRedoWriter;
-        StreamReplicator.Writer writer = redo.mReplWriter;
-
-        if (writer == null || writer != expect) {
-            // Must be in leader mode.
-            return null;
-        }
-
-        return redo;
     }
 }
