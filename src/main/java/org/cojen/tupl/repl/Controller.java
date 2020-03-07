@@ -634,10 +634,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean failover() {
+        return doFailover(null);
+    }
+
+    private boolean doFailover(ReplWriter from) {
         Channel peerChan;
 
         acquireExclusive();
         try {
+            if (from != null && mLeaderReplWriter != from) {
+                // Requested from a stale writer.
+                return false;
+            }
+
             // If already a replica return true. If an interim leader, also return true because
             // new writes cannot be accepted. Externally, it's acting like a replica.
             if (mLocalMode == MODE_FOLLOWER || mLocalRole == Role.STANDBY) {
@@ -672,6 +681,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 // Try to send a command, even though it might not be connected.
                 peerChan = foundOne;
+            }
+
+            if (from == null && mLeaderReplWriter != null) {
+                // Let the leader write some more and deactivate when the writer is closed.
+                if (mLeaderReplWriter.deactivateExplicit()) {
+                    return true;
+                }
             }
 
             toFollower("explicit failover");
@@ -910,6 +926,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         private int mProxy;
         private long mWriteAmount;
 
+        private static final int DEACTIVATED = 1, DEACTIVATE_EXPLICIT = 2, DEACTIVATE_STALLED = 3;
+
+        private int mDeactivated;
+        private String mDeactivateReason;
+
         // Set when an exception is thrown when trying to write to the local log. When the
         // writer is closed, the local member should convert to a follower.
         volatile Throwable mException;
@@ -965,11 +986,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             w0: {
                 Channel[] peerChannels;
                 synchronized (this) {
-                    peerChannels = mPeerChannels;
-
-                    if (peerChannels == null) {
-                        // Deactivated.
-                        return -1;
+                    result = 0;
+                    if (mDeactivated != 0) {
+                        if (mDeactivated == DEACTIVATED) {
+                            // Fully deactivated.
+                            return -1;
+                        }
+                        // Actual returned result will be 0 after writer is called.
+                        result = -1;
                     }
 
                     LogWriter writer = mWriter;
@@ -980,15 +1004,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                     position = writer.position();
 
                     try {
-                        result = writer.write(prefix, data, offset, length, highestPosition);
+                        result += writer.write(prefix, data, offset, length, highestPosition);
                     } catch (Throwable e) {
                         mException = e;
-                        deactivate();
+                        fullyDeactivate();
                         throw e;
                     }
 
-                    if (result <= 0) {
-                        deactivate();
+                    if (result < 0) {
+                        fullyDeactivate();
                         return -1;
                     }
 
@@ -999,6 +1023,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         // Only a consensus group of one, so commit changes immediately.
                         mStateLog.commit(highestPosition);
                     }
+
+                    peerChannels = mPeerChannels;
 
                     if (peerChannels.length == 0) {
                         return result;
@@ -1083,14 +1109,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         @Override
         public void close() {
-            deactivate();
+            fullyDeactivate();
             writerClosed(this);
         }
 
         synchronized void update(LogWriter writer, Channel[] peerChannels, boolean selfCommit,
                                  Channel[] proxyChannels)
         {
-            if (mWriter == writer && mPeerChannels != null) {
+            if (mWriter == writer && mDeactivated != DEACTIVATED) {
                 init(peerChannels, selfCommit, proxyChannels);
             }
         }
@@ -1107,9 +1133,45 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        synchronized void deactivate() {
-            mPeerChannels = null;
-            mSelfCommit = false;
+        /**
+         * Called when explicit failover is requested.
+         */
+        boolean deactivateExplicit() {
+            return deactivate(DEACTIVATE_EXPLICIT, null);
+        }
+
+        /**
+         * Called when the commit position is stalled.
+         */
+        boolean deactivateStalled(String message) {
+            return deactivate(DEACTIVATE_STALLED, message);
+        }
+
+        private synchronized boolean deactivate(int mode, String reason) {
+            if (mDeactivated == DEACTIVATED) {
+                return false;
+            }
+            mDeactivated = mode;
+            mDeactivateReason = reason;
+            return true;
+        }
+
+        /**
+         * Called to fully deactivate.
+         */
+        void fullyDeactivate() {
+            int deactivated;
+            synchronized (this) {
+                deactivated = mDeactivated;
+                mDeactivated = DEACTIVATED;
+                mSelfCommit = false;
+            }
+
+            if (deactivated == DEACTIVATE_EXPLICIT) {
+                doFailover(this);
+            } else if (deactivated == DEACTIVATE_STALLED) {
+                toFollower(this, mDeactivateReason);
+            }
         }
     }
 
@@ -1513,9 +1575,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             } else if (mElectionValidated >= 0) {
                 mElectionValidated--;
             } else {
-                toFollower("commit position is stalled: " +
-                           commitPosition + " < " + highestPosition);
-                return;
+                String reason = "commit position is stalled: " +
+                    commitPosition + " < " + highestPosition;
+                if (mLeaderReplWriter == null) {
+                    toFollower(reason);
+                    return;
+                } else {
+                    mLeaderReplWriter.deactivateStalled(reason);
+                }
             }
         } finally {
             releaseExclusive();
@@ -1534,6 +1601,20 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     /**
+     * Only works if called from the current ReplWriter.
+     */
+    private void toFollower(ReplWriter from, String reason) {
+        acquireExclusive();
+        try {
+            if (mLeaderReplWriter == from) {
+                toFollower(reason);
+            }            
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    /**
      * Caller must hold exclusive latch.
      *
      * @param reason pass null if term incremented
@@ -1548,7 +1629,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mLeaderReplWriter != null) {
                 // Deactivate before releasing the log underlying writer, ensuring that it's
                 // not used again afterwards.
-                mLeaderReplWriter.deactivate();
+                mLeaderReplWriter.fullyDeactivate();
             }
 
             if (mLeaderLogWriter != null) {

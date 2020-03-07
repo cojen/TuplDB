@@ -113,7 +113,11 @@ class ReplWriter extends RedoWriter {
 
     @Override
     final boolean failover() throws IOException {
-        return mEngine.mRepl.failover();
+        if (!mEngine.mRepl.failover()) {
+            return false;
+        }
+        drain(true);
+        return true;
     }
 
     @Override
@@ -349,7 +353,18 @@ class ReplWriter extends RedoWriter {
 
     @Override
     void force(boolean metadata) throws IOException {
-        // Wait for consumer to finish writing to the ReplManager.
+        drain(false);
+        mEngine.mRepl.sync();
+    }
+
+    /**
+     * Waits for consumer to finish writing to the ReplManager.
+     */
+    private void drain(boolean checkWrite) throws IOException {
+        if (mBufferLatch == null) {
+            return;
+        }
+
         acquireExclusive();
         mBufferLatch.acquireExclusive();
         try {
@@ -369,12 +384,14 @@ class ReplWriter extends RedoWriter {
                     checkConsumerException();
                 }
             }
+
+            if (checkWrite && mBuffer != null && replWrite(mBuffer, 0, 0) <= 0) {
+                mReplWriter.close();
+            }
         } finally {
             mBufferLatch.releaseExclusive();
             releaseExclusive();
         }
-
-        mEngine.mRepl.sync();
     }
 
     @Override
@@ -550,7 +567,14 @@ class ReplWriter extends RedoWriter {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    if (replWrite(buffer, head, buffer.length - head) <= 0) {
+                    int result;
+                    result = replWrite(buffer, head, buffer.length - head);
+                    if (result <= 0) {
+                        if (result == 0 && head > 0) {
+                            // Write the tail section and then close.
+                            mBufferHead = 0;
+                            replWrite(buffer, 0, tail);
+                        }
                         break;
                     }
 
@@ -567,24 +591,28 @@ class ReplWriter extends RedoWriter {
                 } else if (tail >= 0) {
                     // Buffer is partially full. Consume it with the latch released, to
                     // allow a producer to fill in a bit more.
+                    int result;
                     mBufferLatch.releaseExclusive();
                     try {
                         if (head < tail) {
                             // No circular wraparound.
-                            if (replWrite(buffer, head, tail - head) <= 0) {
-                                break;
-                            }
+                            result = replWrite(buffer, head, tail - head);
                             head = tail;
                         } else {
                             // Write only the head section.
-                            int len = buffer.length - head;
-                            if (replWrite(buffer, head, len) <= 0) {
-                                break;
-                            }
+                            result = replWrite(buffer, head, buffer.length - head);
                             head = 0;
                         }
                     } finally {
                         mBufferLatch.acquireExclusive();
+                    }
+
+                    if (result <= 0) {
+                        if (result < 0 || head == mBufferTail) {
+                            break;
+                        }
+                        // This point is reached when the writer is not yet fully deactivated
+                        // and there's more data to consume.
                     }
 
                     if (head != mBufferTail) {
@@ -624,6 +652,10 @@ class ReplWriter extends RedoWriter {
             }
             mConsumerException = null;
         }
+
+        // Close early if the leader is voluntarily giving up leadership and needs to finish.
+        // This happens when the write returns 0, which indicates a partial deactivation.
+        mReplWriter.close();
 
         mConsumer = null;
         mBuffer = null;
