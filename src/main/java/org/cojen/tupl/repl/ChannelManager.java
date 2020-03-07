@@ -31,10 +31,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -89,7 +91,7 @@ final class ChannelManager {
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int MIN_RECONNECT_DELAY_MILLIS = 10;
     private static final int MAX_RECONNECT_DELAY_MILLIS = 1000;
-    private static final int INITIAL_READ_TIMEOUT_MILLIS = 1000;
+    private static final int INITIAL_READ_TIMEOUT_MILLIS = 5000;
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
     private static final int INIT_HEADER_SIZE = 40;
 
@@ -119,6 +121,7 @@ final class ChannelManager {
     private final Map<SocketAddress, Peer> mPeerMap;
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
+    private final TreeMap<Peer, ServerChannel> mPeerServerChannels;
 
     private long mGroupId;
     private long mLocalMemberId;
@@ -147,8 +150,10 @@ final class ChannelManager {
         mGroupToken = groupToken;
         mUncaughtHandler = uncaughtHandler;
         mPeerMap = new HashMap<>();
-        mPeerSet = new TreeSet<>((a, b) -> Long.compare(a.mMemberId, b.mMemberId));
+        Comparator<Peer> cmp = (a, b) -> Long.compare(a.mMemberId, b.mMemberId);
+        mPeerSet = new TreeSet<>(cmp);
         mChannels = ConcurrentHashMap.newKeySet();
+        mPeerServerChannels = new TreeMap<>(cmp);
         setGroupId(groupId);
     }
 
@@ -282,6 +287,7 @@ final class ChannelManager {
         }
 
         mChannels.clear();
+        mPeerServerChannels.clear();
     }
 
     synchronized boolean isStopped() {
@@ -472,6 +478,7 @@ final class ChannelManager {
             long memberId = channel.mPeer.mMemberId;
             if (tester.test(memberId)) {
                 it.remove();
+                removeIfServerChannel(channel);
                 channel.disconnect();
                 Peer peer = mPeerSet.ceiling(new Peer(memberId)); // findGe
                 if (peer != null && peer.mMemberId == memberId) {
@@ -484,6 +491,14 @@ final class ChannelManager {
 
     synchronized void unregister(SocketChannel channel) {
         mChannels.remove(channel);
+        removeIfServerChannel(channel);
+    }
+
+    // Caller must be synchronized.
+    private void removeIfServerChannel(SocketChannel channel) {
+        if (channel instanceof ServerChannel) {
+            mPeerServerChannels.remove(channel.mPeer, channel);
+        }
     }
 
     private void acceptLoop() {
@@ -564,6 +579,8 @@ final class ChannelManager {
                 return;
             }
 
+            ServerChannel existing = null;
+
             synchronized (this) {
                 Peer peer;
                 if (remoteMemberId == 0) {
@@ -586,6 +603,7 @@ final class ChannelManager {
                     }
                     acceptor = server = new ServerChannel(peer, localServer);
                     mChannels.add(server);
+                    existing = mPeerServerChannels.put(peer, server);
                 }
 
                 encodeLongLE(header, 24, mLocalMemberId);
@@ -595,7 +613,7 @@ final class ChannelManager {
 
             final Consumer<Socket> facceptor = acceptor;
 
-            execute(() -> {
+            Runnable replyTask = () -> {
                 try {
                     s.getOutputStream().write(header);
                     facceptor.accept(s);
@@ -611,7 +629,19 @@ final class ChannelManager {
                     c = (ServerChannel) facceptor;
                 }
                 closeQuietly(c);
-            });
+            };
+
+            if (existing == null) {
+                execute(replyTask);
+            } else {
+                // Wait for existing connection to close first and then reply, to prevent a
+                // flood of active connections. In case no close is received, run a task to
+                // explicitly close the existing channel before the remote side times out.
+                if (!existing.replaced(replyTask)) {
+                    schedule(existing::close, INITIAL_READ_TIMEOUT_MILLIS / 2);
+                }
+            }
+
         } catch (Throwable e) {
             closeQuietly(s);
             closeQuietly(server);
@@ -738,6 +768,8 @@ final class ChannelManager {
         // Probably too small, but start with something.
         private byte[] mWriteBuffer = new byte[128];
 
+        private Runnable mReplacementTask;
+
         SocketChannel(Peer peer, Channel localServer) {
             mPeer = peer;
             mLocalServer = localServer;
@@ -800,6 +832,27 @@ final class ChannelManager {
         }
 
         /**
+         * Called when this channel has been replaced. Run the given task when the channel
+         * closes naturally. A separate task should forcibly call close after a timeout has
+         * elapsed.
+         *
+         * @return true of task was immediately executed
+         * @throws IllegalStateException if already replaced
+         */
+        synchronized boolean replaced(Runnable task) {
+            if (mReplacementTask != null) {
+                throw new IllegalStateException();
+            }
+            if (mSocket == null) {
+                execute(task);
+                return true;
+            } else {
+                mReplacementTask = task;
+                return false;
+            }
+        }
+
+        /**
          * Unregister the channel, disconnect, and don't attempt to reconnect.
          */
         @Override
@@ -813,12 +866,19 @@ final class ChannelManager {
          */
         void disconnect() {
             Socket s;
+            Runnable task;
             synchronized (this) {
                 mLocalServer = null;
                 s = mSocket;
                 mSocket = null;
                 mOut = null;
                 mIn = null;
+                task = mReplacementTask;
+                mReplacementTask = null;
+            }
+
+            if (task != null) {
+                execute(task);
             }
 
             closeQuietly(s);
