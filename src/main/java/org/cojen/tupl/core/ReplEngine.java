@@ -57,7 +57,7 @@ import static org.cojen.tupl.core.Utils.*;
  */
 /*P*/
 class ReplEngine implements RedoVisitor, ThreadFactory {
-    private static final int MAX_QUEUE_SIZE = 100;
+    private static final int MAX_QUEUE_SIZE = 1000;
     private static final int MAX_KEEP_ALIVE_MILLIS = 60_000;
     static final long INFINITE_TIMEOUT = -1L;
     static final String ATTACHMENT = "replication";
