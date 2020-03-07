@@ -166,7 +166,7 @@ final class PendingTxn extends Locker implements Runnable {
     private void finished(Object status) {
         if (mAttachment instanceof CommitCallback) {
             try {
-                ((CommitCallback) mAttachment).finished(mTxnId, status);
+                ((CommitCallback) mAttachment).finished(mTxnId, mCommitPos, status);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }

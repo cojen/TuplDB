@@ -135,7 +135,8 @@ public interface <span class="typeNameLabel">CommitCallback</span></pre>
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finished(long,java.lang.Object)">finished</a></span>&#8203;(long&nbsp;txnId,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finished(long,long,java.lang.Object)">finished</a></span>&#8203;(long&nbsp;txnId,
+long&nbsp;position,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;status)</code></th>
 <td class="colLast">
 <div class="block">Called when a pending transaction has committed or rolled back.</div>
@@ -167,8 +168,9 @@ public interface <span class="typeNameLabel">CommitCallback</span></pre>
 <ul class="blockList">
 <li class="blockList">
 <section class="detail">
-<h3><a id="finished(long,java.lang.Object)">finished</a></h3>
+<h3><a id="finished(long,long,java.lang.Object)">finished</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">finished</span>&#8203;(<span class="arguments">long&nbsp;txnId,
+long&nbsp;position,
 <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;status)</span></div>
 <div class="block">Called when a pending transaction has committed or rolled back. When committed, the
  status is null. When rolled back, the status is an object which can be converted to a
@@ -180,6 +182,7 @@ public interface <span class="typeNameLabel">CommitCallback</span></pre>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>txnId</code> - non-zero transaction id</dd>
+<dd><code>position</code> - log position immediately after the commit operation; is -1 if rolled back</dd>
 <dd><code>status</code> - null if committed, or else non-null if rolled back</dd>
 </dl>
 </section>

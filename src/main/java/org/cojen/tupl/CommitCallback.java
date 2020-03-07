@@ -44,9 +44,10 @@ public interface CommitCallback {
      * pile up in an unfinished state.
      *
      * @param txnId non-zero transaction id
+     * @param position log position immediately after the commit operation; is -1 if rolled back
      * @param status null if committed, or else non-null if rolled back
      */
-    void finished(long txnId, Object status);
+    void finished(long txnId, long position, Object status);
 
     /**
      * Called when a transaction is moving to the pending state. By default this method does
