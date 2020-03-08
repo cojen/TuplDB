@@ -126,7 +126,7 @@ class ReplWriter extends RedoWriter {
         if (writer == null) {
             throw mEngine.unmodifiable();
         }
-        if (!confirm(writer, commitPos)) {
+        if (!confirm(writer, commitPos, -1)) {
             throw nowUnmodifiable();
         }
     }
@@ -231,7 +231,7 @@ class ReplWriter extends RedoWriter {
 
                 if (pending != null) {
                     // Set position before writing to volatile fields.
-                    pending.mCommitPos = mLastCommitPos;
+                    pending.commitPos(mLastCommitPos);
                     PendingTxn last = mLastPending;
                     if (last == null) {
                         mFirstPending = pending;
@@ -352,22 +352,36 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
-    void force(boolean metadata) throws IOException {
-        drain(false);
+    void force(boolean metadata, long nanosTimeout) throws IOException {
+        long commitPos = drain(false);
+
+        if (commitPos > 0) {
+            confirm(mReplWriter, commitPos, nanosTimeout);
+        }
+
         mEngine.mRepl.sync();
     }
 
     /**
      * Waits for consumer to finish writing to the ReplManager.
+     *
+     * @return pending commit position to wait for, or <= 0 if nothing pending
      */
-    private void drain(boolean checkWrite) throws IOException {
+    private long drain(boolean checkWrite) throws IOException {
         if (mBufferLatch == null) {
-            return;
+            return 0;
         }
+
+        long commitPos = 0;
 
         acquireExclusive();
         mBufferLatch.acquireExclusive();
         try {
+            PendingTxn pending = mLastPending;
+            if (pending != null) {
+                commitPos = pending.commitPos();
+            }
+
             if (mBufferTail >= 0 && mBuffer != null) {
                 while (true) {
                     mProducer = Thread.currentThread();
@@ -392,6 +406,8 @@ class ReplWriter extends RedoWriter {
             mBufferLatch.releaseExclusive();
             releaseExclusive();
         }
+
+        return commitPos;
     }
 
     @Override
@@ -422,8 +438,8 @@ class ReplWriter extends RedoWriter {
         PendingTxn next = pending.mNext;
 
         if (commitPos < 0) {
-            pending.mCommitPos = -1; // signal rollback
-        } else if (commitPos < pending.mCommitPos) {
+            pending.commitPos(-1); // signal rollback
+        } else if (commitPos < pending.commitPos()) {
             return;
         }
 
@@ -446,8 +462,8 @@ class ReplWriter extends RedoWriter {
             next = pending.mNext;
 
             if (commitPos < 0) {
-                pending.mCommitPos = -1; // signal rollback
-            } else if (commitPos < pending.mCommitPos) {
+                pending.commitPos(-1); // signal rollback
+            } else if (commitPos < pending.commitPos()) {
                 mFirstPending = pending;
                 pending = prev;
                 break;
@@ -502,12 +518,12 @@ class ReplWriter extends RedoWriter {
      * @param commitPos commit position which was passed to the write method
      * @return false if not leader at the given position
      */
-    static boolean confirm(StreamReplicator.Writer writer, long commitPos)
+    static boolean confirm(StreamReplicator.Writer writer, long commitPos, long nanosTimeout)
         throws ConfirmationFailureException
     {
         long pos;
         try {
-            pos = writer.waitForCommit(commitPos, -1);
+            pos = writer.waitForCommit(commitPos, nanosTimeout);
         } catch (InterruptedIOException e) {
             throw new ConfirmationInterruptedException();
         }
@@ -517,7 +533,7 @@ class ReplWriter extends RedoWriter {
         if (pos == -1) {
             return false;
         }
-        throw unexpectedConfirmation(pos);
+        throw failedConfirmation(pos, nanosTimeout);
     }
 
     /**
@@ -539,12 +555,12 @@ class ReplWriter extends RedoWriter {
         if (pos == -1) {
             throw new ConfirmationFailureException("Closed");
         }
-        throw unexpectedConfirmation(pos);
+        throw failedConfirmation(pos, -1);
     }
 
-    static ConfirmationFailureException unexpectedConfirmation(long pos) {
+    static ConfirmationFailureException failedConfirmation(long pos, long nanosTimeout) {
         if (pos == -2) {
-            return new ConfirmationTimeoutException(-1);
+            return new ConfirmationTimeoutException(nanosTimeout);
         }
         return new ConfirmationFailureException("Unexpected result: " + pos);
     }

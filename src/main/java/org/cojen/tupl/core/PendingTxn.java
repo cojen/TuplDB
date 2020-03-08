@@ -40,13 +40,18 @@ final class PendingTxn extends Locker implements Runnable {
 
     private Object mAttachment;
 
-    long mCommitPos;
+    private volatile long mCommitPos;
+    private static final VarHandle cCommitPosHandle;
 
     volatile PendingTxn mNext;
     private static final VarHandle cNextHandle;
 
     static {
         try {
+            cCommitPosHandle =
+                MethodHandles.lookup().findVarHandle
+                (PendingTxn.class, "mCommitPos", long.class);
+
             cNextHandle =
                 MethodHandles.lookup().findVarHandle
                 (PendingTxn.class, "mNext", PendingTxn.class);
@@ -80,6 +85,14 @@ final class PendingTxn extends Locker implements Runnable {
         }
     }
 
+    long commitPos() {
+        return (long) cCommitPosHandle.getOpaque(this);
+    }
+
+    void commitPos(long pos) {
+        cCommitPosHandle.setOpaque(this, pos);
+    }
+
     /**
      * @return null if locked, else the next pending txn
      */
@@ -111,8 +124,9 @@ final class PendingTxn extends Locker implements Runnable {
     @Override
     public void run() {
         try {
+            long commitPos = commitPos();
             Object status = null;
-            if (mCommitPos < 0) {
+            if (commitPos < 0) {
                 doRollback();
                 status = "Replication failure"; // lame, but it's at least something
             } else {
@@ -127,7 +141,7 @@ final class PendingTxn extends Locker implements Runnable {
                 }
             }
 
-            finished(status);
+            finished(commitPos, status);
         } catch (Throwable e) {
             LocalDatabase db = getDatabase();
             if (db != null && !db.isClosed()) {
@@ -138,7 +152,7 @@ final class PendingTxn extends Locker implements Runnable {
                 } else {
                     Utils.uncaught(e);
                 }
-                finished(e);
+                finished(-1, e);
             }
         }
     }
@@ -163,10 +177,10 @@ final class PendingTxn extends Locker implements Runnable {
         }
     }
 
-    private void finished(Object status) {
+    private void finished(long commitPos, Object status) {
         if (mAttachment instanceof CommitCallback) {
             try {
-                ((CommitCallback) mAttachment).finished(mTxnId, mCommitPos, status);
+                ((CommitCallback) mAttachment).finished(mTxnId, commitPos, status);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }

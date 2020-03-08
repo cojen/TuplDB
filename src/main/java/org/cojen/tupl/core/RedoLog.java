@@ -322,7 +322,7 @@ final class RedoLog extends RedoWriter {
     @Override
     void txnCommitSync(long commitPos) throws IOException {
         try {
-            force(false);
+            force(false, -1);
         } catch (IOException e) {
             throw rethrow(e, mCloseCause);
         }
@@ -533,7 +533,7 @@ final class RedoLog extends RedoWriter {
     }
 
     @Override
-    void force(boolean metadata) throws IOException {
+    void force(boolean metadata, long nanosTimeout) throws IOException {
         FileChannel oldChannel = mOldChannel;
         if (oldChannel != null) {
             // Ensure old file is forced before current file. Proper ordering is critical.

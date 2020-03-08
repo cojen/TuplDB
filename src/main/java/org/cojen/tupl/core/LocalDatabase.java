@@ -2444,7 +2444,7 @@ public final class LocalDatabase extends CoreDatabase {
             context.redoTimestamp(redo, op);
             context.flush();
 
-            redo.force(true);
+            redo.force(true, TimeUnit.SECONDS.toNanos(5));
         } catch (IOException e) {
             // Ignore.
         }
@@ -2475,7 +2475,7 @@ public final class LocalDatabase extends CoreDatabase {
         if (!isClosed() && mRedoWriter != null) {
             mRedoWriter.flush();
             if (level > 0) {
-                mRedoWriter.force(level > 1);
+                mRedoWriter.force(level > 1, -1); // infinite timeout
             }
         }
     }

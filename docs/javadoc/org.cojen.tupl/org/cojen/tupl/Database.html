@@ -980,13 +980,7 @@ byte[]&nbsp;newName)</span>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">sync</span>()
    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Durably flushes all committed transactions. Transactions committed with <a href="DurabilityMode.html#NO_FLUSH">no-flush</a> and <a href="DurabilityMode.html#NO_SYNC">no-sync</a>
- effectively become <a href="DurabilityMode.html#SYNC">sync</a> durable.
-
- <p>When the database is replicated, no-flush and no-sync transactions commit
- asynchronously, and this method doesn't wait for them to be fully committed. The
- transaction must use the <a href="DurabilityMode.html#SYNC">sync</a> mode when commit
- assurance is required, and then this method can be called afterwards to achieve a
- stronger durability guarantee.</div>
+ effectively become <a href="DurabilityMode.html#SYNC">sync</a> durable.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>

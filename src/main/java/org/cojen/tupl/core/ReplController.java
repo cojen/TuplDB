@@ -229,7 +229,7 @@ final class ReplController extends ReplWriter {
         ReplWriter redo = mCheckpointRedoWriter;
         StreamReplicator.Writer writer = redo.mReplWriter;
 
-        if (writer != null && !confirm(writer, mCheckpointPos)) {
+        if (writer != null && !confirm(writer, mCheckpointPos, -1)) {
             // Leadership lost, so checkpoint no higher than the position that the next leader
             // starts from. The transaction id can be zero, because the next leader always
             // writes a reset operation to the redo log.
@@ -247,13 +247,12 @@ final class ReplController extends ReplWriter {
 
         // Make sure that durable replication data is caught up to the local database.
 
-        syncConfirm(mCheckpointPos);
+        syncConfirm(mCheckpointPos, -1);
     }
 
-    private void syncConfirm(long position) throws IOException {
-        if (!mRepl.syncCommit(position, -1)) {
-            // Unexpected.
-            throw new ConfirmationTimeoutException(-1);
+    private void syncConfirm(long position, long nanosTimeout) throws IOException {
+        if (!mRepl.syncCommit(position, nanosTimeout)) {
+            throw new ConfirmationTimeoutException(nanosTimeout);
         }
     }
     
@@ -279,7 +278,7 @@ final class ReplController extends ReplWriter {
     }
 
     @Override
-    void force(boolean metadata) throws IOException {
+    void force(boolean metadata, long nanosTimeout) throws IOException {
         // Interpret metadata option as a durability confirmation request.
 
         if (metadata) {
@@ -292,7 +291,7 @@ final class ReplController extends ReplWriter {
                     pos = writer.commitPosition();
                 }
 
-                syncConfirm(pos);
+                syncConfirm(pos, nanosTimeout);
 
                 // Also inform that the log can be compacted, in case it was rejected the last
                 // time. This method (force) can be called outside the regular checkpoint
@@ -312,7 +311,7 @@ final class ReplController extends ReplWriter {
             }
         }
 
-        super.force(metadata);
+        super.force(metadata, nanosTimeout);
     }
 
     @Override
