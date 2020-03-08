@@ -48,7 +48,7 @@ final class ReplDecoder extends RedoDecoder {
      * @return true if switched to leader
      */
     boolean catchup() {
-        return ((In) mIn).catchup();
+        return ((In) mIn).catchup(mDecodeLatch);
     }
 
     /**
@@ -101,7 +101,7 @@ final class ReplDecoder extends RedoDecoder {
             }
         }
 
-        boolean catchup() {
+        boolean catchup(Latch decodeLatch) {
             StreamReplicator.Reader reader = mReader;
 
             while (true) {
@@ -121,8 +121,16 @@ final class ReplDecoder extends RedoDecoder {
                         break;
                     }
 
-                    if (reader.position() >= commitPosition) {
-                        return false;
+                    long readerPos = reader.position();
+                    if (readerPos >= commitPosition && readerPos < reader.termEndPosition()) {
+                        // Check if decode thread is caught up.
+                        decodeLatch.acquireShared();
+                        long decodePos = mPos;
+                        decodeLatch.releaseShared();
+                        if (decodePos >= commitPosition) {
+                            return false;
+                        }
+                        // Keep waiting.
                     }
 
                     // Delay and double each time, up to 100 millis. Crude, but it means that no
