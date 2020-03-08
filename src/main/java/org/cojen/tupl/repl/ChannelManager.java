@@ -33,6 +33,7 @@ import java.net.SocketAddress;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -122,6 +123,7 @@ final class ChannelManager {
     private final TreeSet<Peer> mPeerSet;
     private final Set<SocketChannel> mChannels;
     private final TreeMap<Peer, ServerChannel> mPeerServerChannels;
+    private final Set<Socket> mFreshSockets;
 
     private long mGroupId;
     private long mLocalMemberId;
@@ -154,6 +156,7 @@ final class ChannelManager {
         mPeerSet = new TreeSet<>(cmp);
         mChannels = ConcurrentHashMap.newKeySet();
         mPeerServerChannels = new TreeMap<>(cmp);
+        mFreshSockets = new HashSet<>();
         setGroupId(groupId);
     }
 
@@ -270,10 +273,6 @@ final class ChannelManager {
      * members.
      */
     synchronized void stop() {
-        if (mServerSocket == null) {
-            return;
-        }
-
         if (!mKeepServerSocket) {
             closeQuietly(mServerSocket);
         }
@@ -286,8 +285,13 @@ final class ChannelManager {
             channel.disconnect();
         }
 
+        for (Socket s : mFreshSockets) {
+            closeQuietly(s);
+        }
+
         mChannels.clear();
         mPeerServerChannels.clear();
+        mFreshSockets.clear();
     }
 
     synchronized boolean isStopped() {
@@ -582,6 +586,12 @@ final class ChannelManager {
             ServerChannel existing = null;
 
             synchronized (this) {
+                if (mServerSocket == null) {
+                    // Stopped.
+                    closeQuietly(s);
+                    return;
+                }
+
                 Peer peer;
                 if (remoteMemberId == 0) {
                     // Anonymous connection.
@@ -607,6 +617,10 @@ final class ChannelManager {
                 }
 
                 encodeLongLE(header, 24, mLocalMemberId);
+
+                // Don't lose the socket if stopped before the task can run. After it runs, the
+                // socket is tracked by the acceptor, which might be a ServerChannel.
+                mFreshSockets.add(s);
             }
 
             encodeHeaderCrc(header);
@@ -615,6 +629,9 @@ final class ChannelManager {
 
             Runnable replyTask = () -> {
                 try {
+                    synchronized (ChannelManager.this) {
+                        mFreshSockets.remove(s);
+                    }
                     s.getOutputStream().write(header);
                     facceptor.accept(s);
                     return;
@@ -623,12 +640,11 @@ final class ChannelManager {
                 } catch (Throwable e) {
                     mUncaughtHandler.accept(e);
                 }
-                Closeable c = s;
+                closeQuietly(s);
                 if (facceptor instanceof ServerChannel) {
                     // Closing the ServerChannel also unregisters it.
-                    c = (ServerChannel) facceptor;
+                    closeQuietly((ServerChannel) facceptor);
                 }
-                closeQuietly(c);
             };
 
             if (existing == null) {
