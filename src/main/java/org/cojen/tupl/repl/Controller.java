@@ -75,6 +75,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
     private static final int COMMIT_CONFLICT_REPORT_MILLIS = 60000;
     private static final int CONNECTING_THRESHOLD_MILLIS = 10000;
+    private static final int LAG_TIMEOUT_MILLIS = 1000;
 
     // Smallest validation value is 1, but boost it to avoiding stalling too soon. If the local
     // member is the group leader and hasn't observed the commit position advancing over this
@@ -634,17 +635,22 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public boolean failover() {
-        return doFailover(null);
+        return doFailover(null, false);
     }
 
-    private boolean doFailover(ReplWriter from) {
+    private boolean doFailover(ReplWriter from, boolean lagCheck) {
         Channel peerChan;
 
         acquireExclusive();
         try {
-            if (from != null && mLeaderReplWriter != from) {
-                // Requested from a stale writer.
-                return false;
+            if (from != mLeaderReplWriter) {
+                if (lagCheck) {
+                    // Writer was created or changed, so assume not lagging behind.
+                    return false;
+                } else if (from != null) {
+                    // Requested from a stale writer.
+                    return false;
+                }
             }
 
             // If already a replica return true. If an interim leader, also return true because
@@ -683,14 +689,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 peerChan = foundOne;
             }
 
-            if (from == null && mLeaderReplWriter != null) {
+            if (!lagCheck && from == null && mLeaderReplWriter != null) {
                 // Let the leader write some more and deactivate when the writer is closed.
                 if (mLeaderReplWriter.deactivateExplicit()) {
                     return true;
                 }
             }
 
-            toFollower("explicit failover");
+            if (lagCheck) {
+                toFollower("lagging behind");
+            } else {
+                toFollower("explicit failover");
+            }
 
             mCandidateStall = FAILOVER_STALL;
         } finally {
@@ -1168,7 +1178,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             if (deactivated == DEACTIVATE_EXPLICIT) {
-                doFailover(this);
+                doFailover(this, false);
             } else if (deactivated == DEACTIVATE_STALLED) {
                 toFollower(this, mDeactivateReason);
             }
@@ -2171,6 +2181,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseExclusive();
             uncaught(e);
             return;
+        }
+
+        if (position > 0) {
+            // Schedule a task which forces a failover if a writer isn't created in time. This
+            // implies that the member is lagging behind and shouldn't be the leader.
+            ReplWriter old = mLeaderReplWriter; // expected to be null
+            mScheduler.schedule(() -> doFailover(old, true), LAG_TIMEOUT_MILLIS);
         }
 
         if (!mRemovingStaleMembers) {

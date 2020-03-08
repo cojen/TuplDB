@@ -104,6 +104,11 @@ public class MessageReplicatorTest {
                 .localSocket(sockets[i])
                 .proxyWrites(proxy);
 
+            if (false) {
+                // Debug printing.
+                mConfigs[i].eventListener((level, msg) -> System.out.println(level + ": " + msg));
+            }
+
             if (i > 0) {
                 mConfigs[i].addSeed(sockets[0].getLocalSocketAddress());
                 mConfigs[i].localRole(replicaRole);
@@ -465,5 +470,60 @@ public class MessageReplicatorTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void falseFailover() throws Exception {
+        // Test that the new leader is lagging behind and loses leadership.
+
+        MessageReplicator[] repls = startGroup(2, Role.NORMAL, true, false);
+        assertTrue(repls.length == 2);
+
+        Writer writer = repls[0].newWriter();
+
+        byte[] message = "hello".getBytes();
+        assertTrue(writer.writeMessage(message) > 0);
+        long highPosition = writer.position();
+        assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+
+        Reader reader = repls[1].newReader(0, true);
+        TestUtils.fastAssertArrayEquals(message, reader.readMessage());
+
+        message = "world".getBytes();
+        assertTrue(writer.writeMessage(message) > 0);
+        highPosition = writer.position();
+        assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+
+        assertTrue(repls[0].failover());
+
+        long start = System.nanoTime();
+
+        // Verify deactivating and then force a close.
+        assertTrue(writer.writeMessage(new byte[0]) == 0); // write a final empty message
+        writer.close();
+
+        Reader reader2 = repls[0].newReader(highPosition, true);
+        assertTrue(reader2.readMessage().length == 0); // read the empty message
+        highPosition = reader2.position();
+
+        // End of term.
+        assertNull(reader2.readMessage());
+        reader2.close();
+
+        reader2 = repls[0].newReader(highPosition, false);
+
+        // Leadership flipped back.
+        assertNull(reader2.readMessage());
+        reader2.close();
+
+        long duration = System.nanoTime() - start;
+
+        // At least one second to flip back, based on default LAG_TIMEOUT_MILLIS.
+        assertTrue(duration >= 1_000_000_000L);
+
+        // Affirm leadership.
+        writer = repls[0].newWriter();
+        assertNotNull(writer);
+        assertTrue(writer.writeMessage("flipped".getBytes()) > 0);
     }
 }
