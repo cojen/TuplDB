@@ -161,5 +161,5 @@ public interface ValueAccessor extends Closeable {
      * Closes the accessor, but doesn't flush any OutputStream instances.
      */
     @Override
-    public void close();
+    public void close() throws IOException;
 }

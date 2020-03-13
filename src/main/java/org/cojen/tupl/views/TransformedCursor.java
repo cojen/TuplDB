@@ -38,7 +38,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public final class TransformedCursor extends CoreValueAccessor implements Cursor {
+public final class TransformedCursor extends CoreValueAccessor implements ScannerCursor {
     private final Cursor mSource;
     private final Transformer mTransformer;
 
@@ -554,6 +554,11 @@ public final class TransformedCursor extends CoreValueAccessor implements Cursor
         mKey = null;
         mValue = null;
         mSource.reset();
+    }
+
+    @Override
+    public void close() {
+        reset();
     }
 
     @Override

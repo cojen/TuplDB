@@ -354,6 +354,32 @@ public class ViewUtils {
         return value == Cursor.NOT_LOADED ? value : Utils.cloneArray(value);
     }
 
+    public static boolean step(Cursor c) throws IOException {
+        try {
+            c.next();
+            return c.key() != null;
+        } catch (UnpositionedCursorException e) {
+            return false;
+        } catch (Throwable e) {
+            throw Utils.fail(c, e);
+        }
+    }
+
+    public static boolean step(Cursor c, long amount) throws IOException {
+        if (amount > 0) {
+            try {
+                c.skip(amount);
+            } catch (UnpositionedCursorException e) {
+                return false;
+            } catch (Throwable e) {
+                throw Utils.fail(c, e);
+            }
+        } else if (amount < 0) {
+            throw new IllegalArgumentException();
+        }
+        return c.key() != null;
+    }
+
     @FunctionalInterface
     public static interface LockAction {
         LockResult lock(Transaction txn, byte[] key)

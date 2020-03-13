@@ -39,6 +39,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
 import org.cojen.tupl.VerificationObserver;
 
+import org.cojen.tupl.views.ScannerCursor;
 import org.cojen.tupl.views.ViewUtils;
 
 import static org.cojen.tupl.core.PageOps.*;
@@ -51,7 +52,7 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class BTreeCursor extends CoreValueAccessor implements Cursor {
+class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
@@ -4508,6 +4509,11 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
         }
 
         unregister();
+    }
+
+    @Override
+    public final void close() {
+        reset();
     }
 
     /**

@@ -36,7 +36,7 @@ import org.cojen.tupl.UnmodifiableViewException;
  *
  * @author Brian S O'Neill
  */
-abstract class WrappedCursor implements Cursor {
+abstract class WrappedCursor implements ScannerCursor {
     protected final Cursor source;
 
     protected WrappedCursor(Cursor source) {
@@ -434,7 +434,7 @@ abstract class WrappedCursor implements Cursor {
      * {@inheritDoc}
      */
     @Override
-    public void close() {
+    public void close() throws IOException {
         source.close();
     }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright 2020 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -27,48 +27,25 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Simple Scanner implementation which wraps a Cursor.
+ * Interface which combines Scanner and Cursor together.
  *
  * @author Brian S O'Neill
- * @see ScannerCursor
+ * @see CursorScanner
  */
-public class CursorScanner implements Scanner {
-    protected final Cursor mCursor;
+public interface ScannerCursor extends Scanner, Cursor {
+    @Override
+    public Comparator<byte[]> comparator();
 
-    /**
-     * @param cursor positioned at the first entry
-     */
-    public CursorScanner(Cursor cursor) throws IOException {
-        mCursor = cursor;
+    @Override
+    public default boolean step() throws IOException {
+        return ViewUtils.step(this);
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        return mCursor.comparator();
+    public default boolean step(long amount) throws IOException {
+        return ViewUtils.step(this, amount);
     }
 
     @Override
-    public byte[] key() {
-        return mCursor.key();
-    }
-
-    @Override
-    public byte[] value() {
-        return mCursor.value();
-    }
-
-    @Override
-    public boolean step() throws IOException {
-        return ViewUtils.step(mCursor);
-    }
-
-    @Override
-    public boolean step(long amount) throws IOException {
-        return ViewUtils.step(mCursor, amount);
-    }
-
-    @Override
-    public void close() throws IOException {
-        mCursor.close();
-    }
+    public void close() throws IOException;
 }

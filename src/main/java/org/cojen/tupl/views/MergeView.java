@@ -75,12 +75,19 @@ abstract class MergeView implements View {
     }
 
     @Override
-    public Cursor newCursor(Transaction txn) {
+    public MergeCursor newCursor(Transaction txn) {
         Cursor first = mFirst.newCursor(Transaction.BOGUS);
         first.autoload(false);
         Cursor second = mSecond.newCursor(Transaction.BOGUS);
         second.autoload(false);
         return newCursor(txn, this, first, second);
+    }
+
+    @Override
+    public MergeCursor newScanner(Transaction txn) throws IOException {
+        var c = newCursor(txn);
+        c.first();
+        return c;
     }
 
     @Override

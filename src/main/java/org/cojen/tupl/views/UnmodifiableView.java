@@ -28,6 +28,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.UnmodifiableViewException;
@@ -96,6 +97,13 @@ public final class UnmodifiableView implements Index {
     @Override
     public Cursor newCursor(Transaction txn) {
         return new UnmodifiableCursor(mSource.newCursor(txn));
+    }
+
+    @Override
+    public Scanner newScanner(Transaction txn) throws IOException {
+        var c = new UnmodifiableCursor(mSource.newCursor(txn));
+        c.first();
+        return c;
     }
 
     @Override

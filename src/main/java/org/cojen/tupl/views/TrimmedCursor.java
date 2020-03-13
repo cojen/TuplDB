@@ -33,7 +33,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-final class TrimmedCursor implements Cursor {
+final class TrimmedCursor implements ScannerCursor {
     private final TrimmedView mView;
     private final Cursor mSource;
     private final int mTrim;
@@ -328,5 +328,11 @@ final class TrimmedCursor implements Cursor {
     public void reset() {
         mKey = null;
         mSource.reset();
+    }
+
+    @Override
+    public void close() throws IOException {
+        mKey = null;
+        mSource.close();
     }
 }

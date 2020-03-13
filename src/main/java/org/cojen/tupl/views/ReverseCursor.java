@@ -33,7 +33,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-final class ReverseCursor implements Cursor {
+final class ReverseCursor implements ScannerCursor {
     private final Cursor mSource;
 
     ReverseCursor(Cursor source) {
@@ -304,7 +304,7 @@ final class ReverseCursor implements Cursor {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         mSource.close();
     }
 }

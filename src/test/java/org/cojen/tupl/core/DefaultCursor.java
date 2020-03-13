@@ -178,7 +178,7 @@ class DefaultCursor implements Cursor {
     }
 
     @Override
-    public void close() {
+    public void close() throws IOException {
         mSource.close();
     }
 }

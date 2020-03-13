@@ -35,7 +35,7 @@ import static org.cojen.tupl.views.BoundedView.*;
  *
  * @author Brian S O'Neill
  */
-final class BoundedCursor implements Cursor {
+final class BoundedCursor implements ScannerCursor {
     final BoundedView mView;
     final Cursor mSource;
 
@@ -625,6 +625,12 @@ final class BoundedCursor implements Cursor {
     @Override
     public void reset() {
         mSource.reset();
+        mOutOfBounds = false;
+    }
+
+    @Override
+    public void close() throws IOException {
+        mSource.close();
         mOutOfBounds = false;
     }
 }
