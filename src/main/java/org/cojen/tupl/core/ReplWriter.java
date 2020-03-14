@@ -286,11 +286,21 @@ class ReplWriter extends RedoWriter {
                     // The buffer is empty, so allow filling the whole thing. Note that this is
                     // an intermediate state, which implies that the buffer is full. After the
                     // arraycopy, the tail is set correctly.
+                    amt = buffer.length;
                     if (length != 0) {
+                        if (length >= amt) {
+                            // Bypass the buffer entirely.
+                            mWritePos += length;
+                            if (replWrite(bytes, offset, length) > 0) {
+                                return mWritePos;
+                            }
+                            mReplWriter.close();
+                            throw nowUnmodifiable();
+                        }
+
                         mBufferHead = 0;
                         mBufferTail = 0;
                     }
-                    amt = buffer.length;
                 }
 
                 if (length <= amt) {
@@ -583,8 +593,7 @@ class ReplWriter extends RedoWriter {
                     // Buffer is full, so consume everything with the latch held.
 
                     // Write the head section.
-                    int result;
-                    result = replWrite(buffer, head, buffer.length - head);
+                    int result = replWrite(buffer, head, buffer.length - head);
                     if (result <= 0) {
                         if (result == 0 && head > 0) {
                             // Write the tail section and then close.

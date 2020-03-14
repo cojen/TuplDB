@@ -151,6 +151,23 @@ public class ReplicationTest {
     }
 
     @Test
+    public void largeStore() throws Exception {
+        final Index test = mLeader.openIndex("test");
+
+        byte[] message = new byte[1_000_000];
+        new Random().nextBytes(message);
+
+        test.store(null, "hello".getBytes(), message);
+        test.store(null, "hello2".getBytes(), "world".getBytes());
+
+        fence();
+
+        Index rtest = mReplica.openIndex("test");
+        fastAssertArrayEquals(message, rtest.load(null, "hello".getBytes()));
+        fastAssertArrayEquals("world".getBytes(), rtest.load(null, "hello2".getBytes()));
+    }
+
+    @Test
     public void lockRelease() throws Exception {
         // Test that shared and upgradable locks are released while waiting for a transaction
         // to fully commit.
