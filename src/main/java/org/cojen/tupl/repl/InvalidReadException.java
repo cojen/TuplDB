@@ -23,10 +23,10 @@ package org.cojen.tupl.repl;
  * @author Brian S O'Neill
  */
 public class InvalidReadException extends IllegalStateException {
-    InvalidReadException() {
+    public InvalidReadException() {
     }
 
-    InvalidReadException(String message) {
+    public InvalidReadException(String message) {
         super(message);
     }
 }
