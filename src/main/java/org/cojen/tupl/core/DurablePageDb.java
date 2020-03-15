@@ -840,6 +840,9 @@ final class DurablePageDb extends PageDb {
         // complete.
         encodeLongLE(buffer, I_MAGIC_NUMBER, INCOMPLETE_RESTORE);
 
+        int commitNumber = decodeIntLE(buffer, I_COMMIT_NUMBER);
+        long pageCount = decodeLongLE(buffer, I_MANAGER_HEADER + PageManager.I_TOTAL_PAGE_COUNT);
+
         if (crypto != null) {
             try {
                 crypto.encryptPage(0, pa.pageSize(), buffer, 0);
@@ -856,7 +859,29 @@ final class DurablePageDb extends PageDb {
             pa.writePage(0, bufferPage);
             pa.sync(false);
 
-            long index = 1;
+            // Read header 1 to determine the correct page count, and then preallocate.
+            {
+                readFully(in, buffer, 0, buffer.length);
+                pa.writePage(1, p_transferTo(buffer, bufferPage));
+
+                if (crypto != null) {
+                    try {
+                        crypto.decryptPage(0, buffer.length, buffer, 0);
+                    } catch (GeneralSecurityException e) {
+                        throw new DatabaseException(e);
+                    }
+                }
+
+                if (decodeIntLE(buffer, I_COMMIT_NUMBER) > commitNumber) {
+                    // Header 1 is newer, so it has the correct page count.
+                    pageCount = decodeLongLE
+                        (buffer, I_MANAGER_HEADER + PageManager.I_TOTAL_PAGE_COUNT);
+                }
+
+                pa.expandPageCount(pageCount);
+            }
+
+            long index = 2;
             while (true) {
                 int amt = in.read(buffer);
                 if (amt < 0) {
