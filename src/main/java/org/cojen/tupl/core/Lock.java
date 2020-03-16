@@ -127,10 +127,9 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
-        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         // Await for shared lock.
-        int w = queueSX.awaitShared(latch, nanosTimeout, nanosEnd);
+        int w = queueSX.awaitShared(latch, nanosTimeout);
         queueSX = mQueueSX;
 
         if (queueSX == null) {
@@ -204,10 +203,9 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
-        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         // Await for upgradable lock.
-        int w = queueU.await(latch, nanosTimeout, nanosEnd);
+        int w = queueU.await(latch, nanosTimeout);
         queueU = mQueueU;
 
         if (queueU == null) {
@@ -268,10 +266,9 @@ final class Lock {
         }
 
         locker.mWaitingFor = this;
-        long nanosEnd = nanosTimeout < 0 ? 0 : (System.nanoTime() + nanosTimeout);
 
         // Await for exclusive lock.
-        int w = queueSX.await(latch, nanosTimeout, nanosEnd);
+        int w = queueSX.await(latch, nanosTimeout);
         queueSX = mQueueSX;
 
         if (queueSX == null) {

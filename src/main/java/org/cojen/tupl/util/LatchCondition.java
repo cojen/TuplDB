@@ -106,6 +106,23 @@ public class LatchCondition {
      *
      * @param latch latch being used by this condition
      * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
+     */
+    public final int awaitShared(Latch latch, long nanosTimeout) {
+        long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
+        return awaitShared(latch, nanosTimeout, nanosEnd);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by the caller, which is released and then re-acquired by this method.
+     *
+     * <p>A shared waiter intends to access a resource with shared access, and it can be
+     * signaled specially. After waiting, the caller is responsible for signaling the next
+     * shared waiter.
+     *
+     * @param latch latch being used by this condition
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
      * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
