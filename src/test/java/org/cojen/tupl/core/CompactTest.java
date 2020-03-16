@@ -457,6 +457,7 @@ public class CompactTest {
             }
         };
 
+        comp.setPriority((Thread.NORM_PRIORITY + Thread.MAX_PRIORITY) / 2);
         comp.start();
 
         final Index ix = openTestIndex();
@@ -482,6 +483,8 @@ public class CompactTest {
                 byte[] key = ("key" + k).getBytes();
                 ix.delete(Transaction.BOGUS, key);
             }
+
+            Thread.sleep(10);
 
             seed++;
         }
