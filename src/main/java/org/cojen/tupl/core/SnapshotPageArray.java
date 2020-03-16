@@ -566,7 +566,7 @@ final class SnapshotPageArray extends PageArray {
                     throw e;
                 }
             } catch (Throwable e) {
-                abort(e);
+                closeQuietly(this, e);
             } finally {
                 c.reset();
             }
@@ -609,14 +609,6 @@ final class SnapshotPageArray extends PageArray {
             unregister(this);
             closeQuietly(mPageCopyIndex.mDatabase);
             mTempFileManager.deleteTempFile(mTempFile);
-        }
-
-        private void abort(Throwable e) {
-            try {
-                close(e);
-            } catch (IOException e2) {
-                // Ignore.
-            }
         }
 
         private IOException aborted(Throwable cause) {
