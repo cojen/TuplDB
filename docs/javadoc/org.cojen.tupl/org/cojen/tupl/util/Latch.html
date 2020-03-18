@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,27 +72,22 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.util</a></div>
 <h1 title="Class Latch" class="title">Class Latch</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
 <div class="inheritance">org.cojen.tupl.util.Latch</div>
 </div>
 <section class="description">
@@ -102,7 +97,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">Latch</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
 <div class="block">Non-reentrant read-write latch, designed for throughout over fairness. Implementation
  doesn't track thread ownership or check for illegal usage. As a result, it typically
  outperforms ReentrantLock and built-in Java synchronization. Although latch acquisition is
@@ -281,7 +276,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="altColor" id="i12">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -322,7 +317,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </tr>
 <tr class="altColor" id="i18">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(java.lang.Runnable)">uponExclusive</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(java.lang.Runnable)">uponExclusive</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
 </td>
@@ -332,10 +327,10 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -426,13 +421,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <section class="detail">
 <h3><a id="tryAcquireExclusiveNanos(long)">tryAcquireExclusiveNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">tryAcquireExclusiveNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -447,18 +442,18 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <section class="detail">
 <h3><a id="acquireExclusiveInterruptibly()">acquireExclusiveInterruptibly</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">acquireExclusiveInterruptibly</span>()
-                                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="uponExclusive(java.lang.Runnable)">uponExclusive</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively. When acquired,
  the continuation is run by the current thread, or it's enqueued to be run by a thread
  which releases the latch. The releasing thread actually retains the latch and runs the
@@ -516,13 +511,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <section class="detail">
 <h3><a id="tryAcquireSharedNanos(long)">tryAcquireSharedNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">tryAcquireSharedNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -541,7 +536,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <section class="detail">
 <h3><a id="acquireSharedUncontendedNanos(long)">acquireSharedUncontendedNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">acquireSharedUncontendedNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -550,7 +545,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <dd>-1 if not acquired due to contention with other shared requests, 0 if timed out,
  or 1 if acquired</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -565,11 +560,11 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <section class="detail">
 <h3><a id="acquireSharedInterruptibly()">acquireSharedInterruptibly</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">acquireSharedInterruptibly</span>()
-                                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -598,10 +593,10 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <li class="blockList">
 <section class="detail">
 <h3><a id="toString()">toString</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">toString</span>()</div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">toString</span>()</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </section>
 </li>
@@ -611,8 +606,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -657,5 +652,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

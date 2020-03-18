@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
@@ -102,7 +97,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>This is a functional interface and can therefore be used as the assignment target for a lambda expression or method reference.</dd>
 </dl>
 <hr>
-<pre><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang" class="externalLink">@FunctionalInterface</a>
+<pre><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang" class="externalLink">@FunctionalInterface</a>
 public interface <span class="typeNameLabel">Filter</span>
 extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a></pre>
 <div class="block">View transformer which filters out entries which don't belong. Implementations only need to
@@ -185,11 +180,11 @@ byte[]&nbsp;tkey)</code></th>
 <h3><a id="isAllowed(byte[],byte[])">isAllowed</a></h3>
 <div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isAllowed</span>&#8203;(<span class="arguments">byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Return true if the given key and value are not to be filtered out.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -199,7 +194,7 @@ byte[]&nbsp;value)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">transformValue</span>&#8203;(<span class="arguments">byte[]&nbsp;value,
 byte[]&nbsp;key,
 byte[]&nbsp;tkey)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
@@ -211,7 +206,7 @@ byte[]&nbsp;tkey)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>transformed value or null to discard entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -221,7 +216,7 @@ byte[]&nbsp;tkey)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">inverseTransformValue</span>&#8203;(<span class="arguments">byte[]&nbsp;tvalue,
 byte[]&nbsp;key,
 byte[]&nbsp;tkey)</span>
-                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>,
+                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl>
@@ -235,7 +230,7 @@ byte[]&nbsp;tkey)</span>
 <dd>inverse transformed value, or null to delete the value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if inverse transformation of given value is not supported</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -245,8 +240,8 @@ byte[]&nbsp;tkey)</span>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -291,5 +286,7 @@ byte[]&nbsp;tkey)</span>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

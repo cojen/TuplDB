@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,27 +72,22 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.util</a></div>
 <h1 title="Class Clutch" class="title">Class Clutch</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
 <div class="inheritance"><a href="Latch.html" title="class in org.cojen.tupl.util">org.cojen.tupl.util.Latch</a>
 <div class="inheritance">org.cojen.tupl.util.Clutch</div>
 </div>
@@ -300,7 +295,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </td>
 </tr>
 <tr class="rowColor" id="i13">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#toString()">toString</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -341,7 +336,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </tr>
 <tr class="rowColor" id="i19">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(java.lang.Runnable)">uponExclusive</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponExclusive(java.lang.Runnable)">uponExclusive</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively.</div>
 </td>
@@ -356,10 +351,10 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <!--   -->
 </a><code><a href="Latch.html#downgrade()">downgrade</a>, <a href="Latch.html#hasQueuedThreads()">hasQueuedThreads</a>, <a href="Latch.html#release(boolean)">release</a>, <a href="Latch.html#releaseEither()">releaseEither</a>, <a href="Latch.html#releaseExclusive()">releaseExclusive</a></code></div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -442,7 +437,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <section class="detail">
 <h3><a id="tryAcquireExclusiveNanos(long)">tryAcquireExclusiveNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">tryAcquireExclusiveNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#tryAcquireExclusiveNanos(long)">Latch</a></code></span></div>
 <div class="block">Attempt to acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
@@ -451,7 +446,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -471,21 +466,21 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <section class="detail">
 <h3><a id="acquireExclusiveInterruptibly()">acquireExclusiveInterruptibly</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">acquireExclusiveInterruptibly</span>()
-                                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#acquireExclusiveInterruptibly()">Latch</a></code></span></div>
 <div class="block">Acquire the exclusive latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="Latch.html#acquireExclusiveInterruptibly()">acquireExclusiveInterruptibly</a></code>&nbsp;in class&nbsp;<code><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="uponExclusive(java.lang.Runnable)">uponExclusive</a></h3>
-<div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
+<div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponExclusive</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;cont)</span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#uponExclusive(java.lang.Runnable)">Latch</a></code></span></div>
 <div class="block">Invokes the given continuation upon the latch being acquired exclusively. When acquired,
  the continuation is run by the current thread, or it's enqueued to be run by a thread
@@ -541,7 +536,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <section class="detail">
 <h3><a id="tryAcquireSharedNanos(long)">tryAcquireSharedNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">tryAcquireSharedNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#tryAcquireSharedNanos(long)">Latch</a></code></span></div>
 <div class="block">Attempt to acquire a shared latch, aborting if interrupted.</div>
 <dl>
@@ -550,7 +545,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - pass negative for infinite timeout</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -572,7 +567,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <section class="detail">
 <h3><a id="acquireSharedUncontendedNanos(long)">acquireSharedUncontendedNanos</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">acquireSharedUncontendedNanos</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#acquireSharedUncontendedNanos(long)">Latch</a></code></span></div>
 <div class="block">Like tryAcquireSharedNanos, except blocks if an exclusive latch is held.</div>
 <dl>
@@ -584,7 +579,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <dd>-1 if not acquired due to contention with other shared requests, 0 if timed out,
  or 1 if acquired</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -604,14 +599,14 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <section class="detail">
 <h3><a id="acquireSharedInterruptibly()">acquireSharedInterruptibly</a></h3>
 <div class="memberSignature"><span class="modifiers">public final</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">acquireSharedInterruptibly</span>()
-                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
+                                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></span></div>
 <div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="Latch.html#acquireSharedInterruptibly()">Latch</a></code></span></div>
 <div class="block">Acquire a shared latch, aborting if interrupted.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="Latch.html#acquireSharedInterruptibly()">acquireSharedInterruptibly</a></code>&nbsp;in class&nbsp;<code><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/InterruptedException.html?is-external=true" title="class or interface in java.lang" class="externalLink">InterruptedException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -644,7 +639,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 <li class="blockList">
 <section class="detail">
 <h3><a id="toString()">toString</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">toString</span>()</div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">toString</span>()</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
 <dd><code><a href="Latch.html#toString()">toString</a></code>&nbsp;in class&nbsp;<code><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></code></dd>
@@ -665,8 +660,8 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -711,5 +706,7 @@ extends <a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a></pre
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

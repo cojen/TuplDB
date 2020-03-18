@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,33 +72,28 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.io</a></div>
 <h1 title="Class DirectAccess" class="title">Class DirectAccess</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
 <div class="inheritance">org.cojen.tupl.io.DirectAccess</div>
 </div>
 <section class="description">
 <hr>
 <pre>public class <span class="typeNameLabel">DirectAccess</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
 <div class="block">Backdoor access to DirectByteBuffer.</div>
 </section>
 <section class="summary">
@@ -148,7 +143,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>static long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getAddress(java.nio.Buffer)">getAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;buf)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getAddress(java.nio.Buffer)">getAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;buf)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i1">
@@ -157,7 +152,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="altColor" id="i2">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepare(long,int)">prepare</a></span>&#8203;(long&nbsp;ptr,
 int&nbsp;length)</code></th>
 <td class="colLast">
@@ -166,7 +161,7 @@ int&nbsp;length)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ref(long,int)">ref</a></span>&#8203;(long&nbsp;ptr,
 int&nbsp;length)</code></th>
 <td class="colLast">
@@ -174,7 +169,7 @@ int&nbsp;length)</code></th>
 </td>
 </tr>
 <tr class="altColor" id="i4">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ref2(long,int)">ref2</a></span>&#8203;(long&nbsp;ptr,
 int&nbsp;length)</code></th>
 <td class="colLast">
@@ -183,7 +178,7 @@ int&nbsp;length)</code></th>
 </tr>
 <tr class="rowColor" id="i5">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unref(java.nio.ByteBuffer)">unref</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unref(java.nio.ByteBuffer)">unref</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</code></th>
 <td class="colLast">
 <div class="block">Optionally unreference a buffer.</div>
 </td>
@@ -193,10 +188,10 @@ int&nbsp;length)</code></th>
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -216,7 +211,7 @@ int&nbsp;length)</code></th>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">DirectAccess</span>()</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </section>
 </li>
@@ -233,14 +228,14 @@ int&nbsp;length)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="prepare(long,int)">prepare</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">prepare</span>&#8203;(<span class="arguments">long&nbsp;ptr,
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">prepare</span>&#8203;(<span class="arguments">long&nbsp;ptr,
 int&nbsp;length)</span></div>
 <div class="block">Returns an instance-specific thread-local ByteBuffer which references any memory
  address. The position is set to zero, the limit and capacity are set to the given
  length.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </section>
 </li>
@@ -253,38 +248,38 @@ int&nbsp;length)</span></div>
 <li class="blockList">
 <section class="detail">
 <h3><a id="ref(long,int)">ref</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">ref</span>&#8203;(<span class="arguments">long&nbsp;ptr,
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">ref</span>&#8203;(<span class="arguments">long&nbsp;ptr,
 int&nbsp;length)</span></div>
 <div class="block">Returns a thread-local ByteBuffer which references any memory address. The position is
  set to zero, the limit and capacity are set to the given length.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="ref2(long,int)">ref2</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">ref2</span>&#8203;(<span class="arguments">long&nbsp;ptr,
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a></span>&nbsp;<span class="memberName">ref2</span>&#8203;(<span class="arguments">long&nbsp;ptr,
 int&nbsp;length)</span></div>
 <div class="block">Returns a second independent thread-local ByteBuffer.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="getAddress(java.nio.Buffer)">getAddress</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;buf)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">getAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;buf)</span></div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="unref(java.nio.ByteBuffer)">unref</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">unref</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">unref</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</span></div>
 <div class="block">Optionally unreference a buffer. The garbage collector does not attempt to free memory
  referenced by a ByteBuffer created by this class.</div>
 </section>
@@ -295,8 +290,8 @@ int&nbsp;length)</span></div>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -341,5 +336,7 @@ int&nbsp;length)</span></div>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

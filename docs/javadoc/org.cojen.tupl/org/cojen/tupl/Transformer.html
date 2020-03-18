@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
@@ -102,7 +97,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>This is a functional interface and can therefore be used as the assignment target for a lambda expression or method reference.</dd>
 </dl>
 <hr>
-<pre><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang" class="externalLink">@FunctionalInterface</a>
+<pre><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang" class="externalLink">@FunctionalInterface</a>
 public interface <span class="typeNameLabel">Transformer</span></pre>
 <div class="block">Interface which supports filtering and transforming the entries within a <a href="View.html" title="interface in org.cojen.tupl"><code>View</code></a>. For pure filtering, consider implementing a <a href="Filter.html" title="interface in org.cojen.tupl"><code>Filter</code></a> instead.</div>
 <dl>
@@ -161,7 +156,7 @@ byte[]&nbsp;tkey)</code></th>
 </td>
 </tr>
 <tr class="altColor" id="i4">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Boolean.html?is-external=true" title="class or interface in java.lang" class="externalLink">Boolean</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Boolean.html?is-external=true" title="class or interface in java.lang" class="externalLink">Boolean</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requireValue()">requireValue</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns true by default, indicating that the transform methods always require a value
@@ -169,8 +164,8 @@ byte[]&nbsp;tkey)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i5">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#transformedComparator(java.util.Comparator)">transformedComparator</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;&nbsp;original)</code></th>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#transformedComparator(java.util.Comparator)">transformedComparator</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;&nbsp;original)</code></th>
 <td class="colLast">
 <div class="block">Returns the view comparator, after transformation.</div>
 </td>
@@ -226,7 +221,7 @@ byte[]&nbsp;tkey)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="requireValue()">requireValue</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Boolean.html?is-external=true" title="class or interface in java.lang" class="externalLink">Boolean</a></span>&nbsp;<span class="memberName">requireValue</span>()</div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Boolean.html?is-external=true" title="class or interface in java.lang" class="externalLink">Boolean</a></span>&nbsp;<span class="memberName">requireValue</span>()</div>
 <div class="block">Returns true by default, indicating that the transform methods always require a value
  instance to be provided. When false is returned, values aren't loaded unless explicitly
  requested. Return null to always use a cursor, in which case the <a href="#transformValue(org.cojen.tupl.Cursor,byte%5B%5D)"><code>transformValue</code></a> variant which accepts a cursor should be
@@ -243,7 +238,7 @@ byte[]&nbsp;tkey)</code></th>
 <div class="memberSignature"><span class="returnType">byte[]</span>&nbsp;<span class="memberName">transformValue</span>&#8203;(<span class="arguments">byte[]&nbsp;value,
 byte[]&nbsp;key,
 byte[]&nbsp;tkey)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Transform or filter out the given value. This method is only called when loading a value
  from a view.</div>
 <dl>
@@ -254,7 +249,7 @@ byte[]&nbsp;tkey)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>transformed value or null to discard entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -263,7 +258,7 @@ byte[]&nbsp;tkey)</span>
 <h3><a id="transformValue(org.cojen.tupl.Cursor,byte[])">transformValue</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">transformValue</span>&#8203;(<span class="arguments"><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor,
 byte[]&nbsp;tkey)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Transform or filter out the given value. This method is only called when loading from a
  positioned a cursor. Default implementation always forces the value to be loaded, unless
  <a href="#requireValue()"><code>requireValue</code></a> returns false.</div>
@@ -275,7 +270,7 @@ byte[]&nbsp;tkey)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>transformed value or null to discard entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -286,7 +281,7 @@ byte[]&nbsp;tkey)</span>
 byte[]&nbsp;key,
 byte[]&nbsp;tkey)</span>
                               throws <span class="exceptions"><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a>,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Apply an inverse transformation of the given value, if supported. This method is only
  called when attempting to store the value into the view. Default implementation always
  throws a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a>.</div>
@@ -299,7 +294,7 @@ byte[]&nbsp;tkey)</span>
 <dd>inverse transformed value, or null to delete the value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if inverse transformation of given value is not supported</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -307,7 +302,7 @@ byte[]&nbsp;tkey)</span>
 <section class="detail">
 <h3><a id="transformKey(org.cojen.tupl.Cursor)">transformKey</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">transformKey</span>&#8203;(<span class="arguments"><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor)</span>
-                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Transform or filter out the given key. This method is only called after positioning a
  cursor. Default implementation returns the same key.</div>
 <dl>
@@ -317,7 +312,7 @@ byte[]&nbsp;tkey)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>transformed key or null to discard entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -385,14 +380,14 @@ byte[]&nbsp;tkey)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="transformedComparator(java.util.Comparator)">transformedComparator</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">transformedComparator</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;&nbsp;original)</span></div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">transformedComparator</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;&nbsp;original)</span></div>
 <div class="block">Returns the view comparator, after transformation. Default implementation returns the
  same comparator.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>original</code> - comparator of view before transformation</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transformed view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transformed view is unordered</dd>
 </dl>
 </section>
 </li>
@@ -402,8 +397,8 @@ byte[]&nbsp;tkey)</span>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -448,5 +443,7 @@ byte[]&nbsp;tkey)</span>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

@@ -24,9 +24,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -51,18 +51,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="Uses of Interface org.cojen.tupl.Index" class="title">Uses of Interface<br>org.cojen.tupl.Index</h1>
@@ -146,7 +141,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>default <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#findIndex(java.lang.String)">findIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#findIndex(java.lang.String)">findIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns the given named index, returning null if not found.</div>
 </td>
@@ -188,7 +183,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code>default <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#openIndex(java.lang.String)">openIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#openIndex(java.lang.String)">openIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
@@ -208,7 +203,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </thead>
 <tbody>
 <tr class="altColor">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#deleteIndex(org.cojen.tupl.Index)">deleteIndex</a></span>&#8203;(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
@@ -241,7 +236,7 @@ int&nbsp;height)</code></th>
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">VerificationObserver.</span><code><span class="memberNameLink"><a href="../VerificationObserver.html#indexComplete(org.cojen.tupl.Index,boolean,java.lang.String)">indexComplete</a></span>&#8203;(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
 boolean&nbsp;passed,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message)</code></th>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message)</code></th>
 <td class="colLast">
 <div class="block">Called after index verification has finished.</div>
 </td>
@@ -257,7 +252,7 @@ byte[]&nbsp;newName)</code></th>
 <tr class="altColor">
 <td class="colFirst"><code>default void</code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#renameIndex(org.cojen.tupl.Index,java.lang.String)">renameIndex</a></span>&#8203;(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;newName)</code></th>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;newName)</code></th>
 <td class="colLast">
 <div class="block">Renames the given index to the one given.</div>
 </td>
@@ -325,5 +320,7 @@ int&nbsp;height)</code></th>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

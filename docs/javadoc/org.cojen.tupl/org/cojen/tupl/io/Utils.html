@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,33 +72,28 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.io</a></div>
 <h1 title="Class Utils" class="title">Class Utils</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
 <div class="inheritance">org.cojen.tupl.io.Utils</div>
 </div>
 <section class="description">
 <hr>
 <pre>public class <span class="typeNameLabel">Utils</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
 <div class="block">Generic data and I/O utility methods.</div>
 </section>
 <section class="summary">
@@ -150,48 +145,48 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close(java.io.Closeable,java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close(java.io.Closeable,java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Closes a resource, which may throw a new exception.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeOnFailure(java.io.Closeable,java.lang.Throwable)">closeOnFailure</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeOnFailure(java.io.Closeable,java.lang.Throwable)">closeOnFailure</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Closes the given resource, passing the cause if the resource implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io"><code>CauseCloseable</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor" id="i2">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.Closeable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.Closeable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</code></th>
 <td class="colLast">
 <div class="block">Closes a resource without throwing another exception.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i3">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.Closeable,java.lang.Throwable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.Closeable,java.lang.Throwable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Closes a resource without throwing another exception.</div>
 </td>
 </tr>
 <tr class="altColor" id="i4">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.IOException,java.io.Closeable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.IOException,java.io.Closeable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</code></th>
 <td class="colLast">
 <div class="block">Closes a resource without throwing another exception.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i5">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.IOException,java.io.Closeable,java.lang.Throwable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#closeQuietly(java.io.IOException,java.io.Closeable,java.lang.Throwable)">closeQuietly</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Closes a resource without throwing another exception.</div>
 </td>
@@ -271,14 +266,14 @@ int&nbsp;end)</code></th>
 </tr>
 <tr class="rowColor" id="i15">
 <td class="colFirst"><code>static boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(java.nio.Buffer)">delete</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;bb)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(java.nio.Buffer)">delete</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;bb)</code></th>
 <td class="colLast">
 <div class="block">Attempt to delete the given direct or mapped byte buffer.</div>
 </td>
 </tr>
 <tr class="altColor" id="i16">
 <td class="colFirst"><code>static boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(java.nio.ByteBuffer)">delete</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#delete(java.nio.ByteBuffer)">delete</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</code></th>
 <td class="colLast">
 <div class="block">Attempt to delete the given direct or mapped byte buffer.</div>
 </td>
@@ -366,7 +361,7 @@ int&nbsp;end)</code></th>
 </tr>
 <tr class="altColor" id="i26">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readFully(java.io.InputStream,byte%5B%5D,int,int)">readFully</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readFully(java.io.InputStream,byte%5B%5D,int,int)">readFully</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in,
 byte[]&nbsp;b,
 int&nbsp;off,
 int&nbsp;len)</code></th>
@@ -376,33 +371,33 @@ int&nbsp;len)</code></th>
 </td>
 </tr>
 <tr class="rowColor" id="i27">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rethrow(java.lang.Throwable)">rethrow</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rethrow(java.lang.Throwable)">rethrow</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
 <td class="colLast">
 <div class="block">Rethrows the given exception without the compiler complaining about it being checked or
  not.</div>
 </td>
 </tr>
 <tr class="altColor" id="i28">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rethrow(java.lang.Throwable,java.lang.Throwable)">rethrow</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rethrow(java.lang.Throwable,java.lang.Throwable)">rethrow</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Rethrows the given exception without the compiler complaining about it being checked or
  not.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i29">
-<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rootCause(java.lang.Throwable)">rootCause</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
+<td class="colFirst"><code>static <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#rootCause(java.lang.Throwable)">rootCause</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
 <td class="colLast">
 <div class="block">Returns the root cause of the given exception.</div>
 </td>
 </tr>
 <tr class="altColor" id="i30">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#suppress(java.lang.Throwable,java.lang.Throwable)">suppress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;target,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;toSuppress)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#suppress(java.lang.Throwable,java.lang.Throwable)">suppress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;target,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;toSuppress)</code></th>
 <td class="colLast">
 <div class="block">Add a suppressed exception without creating a circular reference or throwing a new
  exception.</div>
@@ -410,7 +405,7 @@ int&nbsp;len)</code></th>
 </tr>
 <tr class="rowColor" id="i31">
 <td class="colFirst"><code>static void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uncaught(java.lang.Throwable)">uncaught</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uncaught(java.lang.Throwable)">uncaught</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</code></th>
 <td class="colLast">
 <div class="block">Convenience method to pass the given exception to the current thread's uncaught
  exception handler.</div>
@@ -421,10 +416,10 @@ int&nbsp;len)</code></th>
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -733,51 +728,51 @@ int&nbsp;offset)</span></div>
 <li class="blockList">
 <section class="detail">
 <h3><a id="readFully(java.io.InputStream,byte[],int,int)">readFully</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">readFully</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in,
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">readFully</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in,
 byte[]&nbsp;b,
 int&nbsp;off,
 int&nbsp;len)</span>
-                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Fully reads the required length of bytes, throwing an EOFException if the end of stream
  is reached too soon.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="delete(java.nio.Buffer)">delete</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">delete</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;bb)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">delete</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/Buffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">Buffer</a>&nbsp;bb)</span></div>
 <div class="block">Attempt to delete the given direct or mapped byte buffer.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="delete(java.nio.ByteBuffer)">delete</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">delete</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">delete</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/nio/ByteBuffer.html?is-external=true" title="class or interface in java.nio" class="externalLink">ByteBuffer</a>&nbsp;bb)</span></div>
 <div class="block">Attempt to delete the given direct or mapped byte buffer.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="closeOnFailure(java.io.Closeable,java.lang.Throwable)">closeOnFailure</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeOnFailure</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span>
-                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeOnFailure</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span>
+                                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Closes the given resource, passing the cause if the resource implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io"><code>CauseCloseable</code></a>. The cause is then rethrown, wrapped by <a href="../CorruptDatabaseException.html" title="class in org.cojen.tupl"><code>CorruptDatabaseException</code></a>
- if not an <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink"><code>IOException</code></a> or unchecked.</div>
+ if not an <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink"><code>IOException</code></a> or unchecked.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="closeQuietly(java.io.Closeable)">closeQuietly</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</span></div>
 <div class="block">Closes a resource without throwing another exception.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -788,8 +783,8 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="closeQuietly(java.io.Closeable,java.lang.Throwable)">closeQuietly</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
 <div class="block">Closes a resource without throwing another exception.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -801,8 +796,8 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="closeQuietly(java.io.IOException,java.io.Closeable)">closeQuietly</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource)</span></div>
 <div class="block">Closes a resource without throwing another exception. If closing a chain of resources,
  pass in the first caught exception, and all others are discarded.</div>
 <dl>
@@ -817,9 +812,9 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="closeQuietly(java.io.IOException,java.io.Closeable,java.lang.Throwable)">closeQuietly</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span>&nbsp;<span class="memberName">closeQuietly</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a>&nbsp;first,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
 <div class="block">Closes a resource without throwing another exception. If closing a chain of resources,
  pass in the first caught exception, and all others are discarded.</div>
 <dl>
@@ -835,23 +830,23 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="close(java.io.Closeable,java.lang.Throwable)">close</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">close</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">close</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a>&nbsp;resource,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Closes a resource, which may throw a new exception.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>cause</code> - passed to resource if it implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io"><code>CauseCloseable</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="suppress(java.lang.Throwable,java.lang.Throwable)">suppress</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">suppress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;target,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;toSuppress)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">suppress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;target,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;toSuppress)</span></div>
 <div class="block">Add a suppressed exception without creating a circular reference or throwing a new
  exception.</div>
 <dl>
@@ -864,7 +859,7 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="rootCause(java.lang.Throwable)">rootCause</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></span>&nbsp;<span class="memberName">rootCause</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></span>&nbsp;<span class="memberName">rootCause</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
 <div class="block">Returns the root cause of the given exception.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -875,7 +870,7 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="uncaught(java.lang.Throwable)">uncaught</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uncaught</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uncaught</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
 <div class="block">Convenience method to pass the given exception to the current thread's uncaught
  exception handler.</div>
 </section>
@@ -883,7 +878,7 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="rethrow(java.lang.Throwable)">rethrow</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></span>&nbsp;<span class="memberName">rethrow</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></span>&nbsp;<span class="memberName">rethrow</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e)</span></div>
 <div class="block">Rethrows the given exception without the compiler complaining about it being checked or
  not. Use as follows: <code>throw rethrow(e)</code></div>
 </section>
@@ -891,8 +886,8 @@ int&nbsp;len)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="rethrow(java.lang.Throwable,java.lang.Throwable)">rethrow</a></h3>
-<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></span>&nbsp;<span class="memberName">rethrow</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
+<div class="memberSignature"><span class="modifiers">public static</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/RuntimeException.html?is-external=true" title="class or interface in java.lang" class="externalLink">RuntimeException</a></span>&nbsp;<span class="memberName">rethrow</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;e,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
 <div class="block">Rethrows the given exception without the compiler complaining about it being checked or
  not. The exception can have a root cause initialized, which will be the root cause of
  the one given. Use as follows: <code>throw rethrow(e, cause)</code></div>
@@ -908,8 +903,8 @@ int&nbsp;len)</span>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -954,5 +949,7 @@ int&nbsp;len)</span>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

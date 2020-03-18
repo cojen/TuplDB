@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
@@ -95,11 +90,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Updater</span>
-extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
+extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
 <div class="block">Scans through all entries in a view, updating them along the way. Updater implementations
  which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
  exception thrown by an updating action automatically closes the Updater.
@@ -230,13 +225,13 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <section class="detail">
 <h3><a id="update(byte[])">update</a></h3>
 <div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">update</span>&#8203;(<span class="arguments">byte[]&nbsp;value)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Update the current value and then step to the next entry. Pass null to delete the entry.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no more entries remain and updater has been closed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -244,13 +239,13 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <section class="detail">
 <h3><a id="updateAll(org.cojen.tupl.EntryFunction)">updateAll</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">updateAll</span>&#8203;(<span class="arguments"><a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Applies the given updating action for each remaining entry, and then closes the updater.
  An entry is updated to the value returned by the action, or it's deleted when the action
  returns null. If the action returns <a href="#NO_UPDATE"><code>NO_UPDATE</code></a>, then no update is performed.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -258,14 +253,14 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <section class="detail">
 <h3><a id="flush()">flush</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">flush</span>()
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Ensures that any queued update operations are applied; flushing is automatically
  performed when the updater is closed.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true#flush()" title="class or interface in java.io" class="externalLink">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true#flush()" title="class or interface in java.io" class="externalLink">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -275,8 +270,8 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -321,5 +316,7 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

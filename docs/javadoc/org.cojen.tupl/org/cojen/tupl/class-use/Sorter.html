@@ -24,9 +24,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -51,18 +51,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="Uses of Interface org.cojen.tupl.Sorter" class="title">Uses of Interface<br>org.cojen.tupl.Sorter</h1>
@@ -107,7 +102,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../Sorter.html" title="interface in org.cojen.tupl">Sorter</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#newSorter(java.util.concurrent.Executor)">newSorter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/Executor.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">Executor</a>&nbsp;executor)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../Database.html#newSorter(java.util.concurrent.Executor)">newSorter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/Executor.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">Executor</a>&nbsp;executor)</code></th>
 <td class="colLast">
 <div class="block">Returns a new Sorter instance, which uses the given executor for running parallel
  tasks.</div>
@@ -149,5 +144,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.repl</a></div>
@@ -95,7 +90,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -103,7 +98,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Replicator</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Defines common features available to all types of replicators.</div>
 </section>
 <section class="summary">
@@ -177,8 +172,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="rowColor" id="i1">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#connect(java.net.SocketAddress)">connect</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#connect(java.net.SocketAddress)">connect</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="colLast">
 <div class="block">Connect to any replication group member, for any particular use.</div>
 </td>
@@ -206,7 +201,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="rowColor" id="i5">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localAddress()">localAddress</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -248,14 +243,14 @@ boolean&nbsp;follow)</code></th>
 </tr>
 <tr class="rowColor" id="i11">
 <td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requestSnapshot(java.util.Map)">requestSnapshot</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requestSnapshot(java.util.Map)">requestSnapshot</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </td>
 </tr>
 <tr class="altColor" id="i12">
 <td class="colFirst"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</code></th>
 <td class="colLast">
 <div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
  expected to be called only by newly joined members.</div>
@@ -263,14 +258,14 @@ boolean&nbsp;follow)</code></th>
 </tr>
 <tr class="rowColor" id="i13">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
 <tr class="altColor" id="i14">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</code></th>
 <td class="colLast">
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member.</div>
@@ -304,10 +299,10 @@ long&nbsp;nanosTimeout)</code></th>
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></h3>
+<h3>Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></h3>
 <a id="methods.inherited.from.class.java.io.Closeable">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code></div>
 </section>
 </li>
 </ul>
@@ -334,20 +329,20 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="start()">start</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">start</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Start accepting replication data, to be called for new or existing members. For newly
  restored members, the start method must be called to update its role.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="restore(java.util.Map)">restore</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">restore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">restore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Start by receiving a <a href="#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
  expected to be called only by newly joined members. New members are initially
  <a href="Role.html#RESTORING">restoring</a>, so call the start method after restoration to
@@ -358,17 +353,17 @@ long&nbsp;nanosTimeout)</code></th>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>null if no snapshot could be found and replicator hasn't started</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if already started</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if already started</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="requestSnapshot(java.util.Map)">requestSnapshot</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">requestSnapshot</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
-                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="returnType"><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></span>&nbsp;<span class="memberName">requestSnapshot</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;options)</span>
+                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot. An
  <a href="#snapshotRequestAcceptor(java.util.function.Consumer)">acceptor</a> must be installed on the group member
  being connected to for the request to succeed.
@@ -382,15 +377,15 @@ long&nbsp;nanosTimeout)</code></th>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>null if no snapshot could be found</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if a snapshot was found, but requesting it failed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">snapshotRequestAcceptor</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</span></div>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">snapshotRequestAcceptor</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</span></div>
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -405,7 +400,7 @@ long&nbsp;nanosTimeout)</code></th>
 <div class="block">Returns true if committed data exists at the given position.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
 </dl>
 </section>
 </li>
@@ -432,7 +427,7 @@ boolean&nbsp;follow)</span></div>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if position is lower than the start position, or if
  position is higher than the commit position</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if replicator is closed</dd>
 </dl>
 </section>
 </li>
@@ -449,7 +444,7 @@ boolean&nbsp;follow)</span></div>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </section>
 </li>
@@ -469,8 +464,8 @@ boolean&nbsp;follow)</span></div>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>writer or null if not the leader</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the given position is negative</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the given position is negative</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </section>
 </li>
@@ -479,7 +474,7 @@ boolean&nbsp;follow)</span></div>
 <h3><a id="syncCommit(long,long)">syncCommit</a></h3>
 <div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">syncCommit</span>&#8203;(<span class="arguments">long&nbsp;position,
 long&nbsp;nanosTimeout)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns immediately if all data up to the given committed position is durable, or else
  durably persists all data up to the highest position.</div>
 <dl>
@@ -489,8 +484,8 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if position is too high</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if position is too high</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -498,13 +493,13 @@ long&nbsp;nanosTimeout)</span>
 <section class="detail">
 <h3><a id="compact(long)">compact</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">compact</span>&#8203;(<span class="arguments">long&nbsp;position)</span>
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>position</code> - lowest position which must be retained</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -517,7 +512,7 @@ long&nbsp;nanosTimeout)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="localAddress()">localAddress</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></span>&nbsp;<span class="memberName">localAddress</span>()</div>
+<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a></span>&nbsp;<span class="memberName">localAddress</span>()</div>
 </section>
 </li>
 <li class="blockList">
@@ -531,22 +526,22 @@ long&nbsp;nanosTimeout)</span>
 <li class="blockList">
 <section class="detail">
 <h3><a id="connect(java.net.SocketAddress)">connect</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a></span>&nbsp;<span class="memberName">connect</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a></span>&nbsp;<span class="memberName">connect</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Connect to any replication group member, for any particular use. An <a href="#socketAcceptor(java.util.function.Consumer)">acceptor</a> must be installed on the group member being connected to for
  the connect to succeed.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if not given a member address or if the connect fails</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/ConnectException.html?is-external=true" title="class or interface in java.net" class="externalLink">ConnectException</a></code> - if not given a member address or if the connect fails</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">socketAcceptor</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</span></div>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">socketAcceptor</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/Consumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/Socket.html?is-external=true" title="class or interface in java.net" class="externalLink">Socket</a>&gt;&nbsp;acceptor)</span></div>
 <div class="block">Install a callback to be invoked when plain connections are established to the local
  group member. No new connections are accepted (of any type) until the callback returns.</div>
 <dl>
@@ -559,13 +554,13 @@ long&nbsp;nanosTimeout)</span>
 <section class="detail">
 <h3><a id="sync()">sync</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">sync</span>()
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Durably persist all data up to the highest position. The highest term, the highest
  position, and the commit position are all recovered when reopening the
  replicator. Incomplete data beyond this is discarded.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -573,13 +568,13 @@ long&nbsp;nanosTimeout)</span>
 <section class="detail">
 <h3><a id="failover()">failover</a></h3>
 <div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">failover</span>()
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Attempt to switch the replication role from leader to replica. If successful, or if
  already a replica, true is returned. When false is returned, the role is likely still
  the leader, possibly because no replicas exist to failover to.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -589,8 +584,8 @@ long&nbsp;nanosTimeout)</span>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -635,5 +630,7 @@ long&nbsp;nanosTimeout)</span>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

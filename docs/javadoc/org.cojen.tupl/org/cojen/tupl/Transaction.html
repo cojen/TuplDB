@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
@@ -95,11 +90,11 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Transaction</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
 <div class="block">Defines a logical unit of work. Transaction instances can only be safely
  used by one thread at a time, and they must be <a href="#reset()"><code>reset</code></a> when no
  longer needed. Instances can be exchanged by threads, as long as a
@@ -184,7 +179,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#attach(java.lang.Object)">attach</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#attach(java.lang.Object)">attach</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
 <td class="colLast">
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it.</div>
 </td>
@@ -198,7 +193,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 </td>
 </tr>
 <tr class="altColor" id="i2">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#attachment()">attachment</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns any attachment which was set earlier.</div>
@@ -352,14 +347,14 @@ long&nbsp;nanosTimeout)</code></th>
 <tr class="altColor" id="i22">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
 <div class="block">Sets the lock timeout for the current scope.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i23">
 <td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockTimeout(java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#lockTimeout(java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</code></th>
 <td class="colLast">
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </td>
@@ -399,7 +394,7 @@ long&nbsp;nanosTimeout)</code></th>
 </tr>
 <tr class="altColor" id="i28">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset(java.lang.Throwable)">reset</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset(java.lang.Throwable)">reset</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">
 <div class="block">Reset the transaction due to the given cause.</div>
 </td>
@@ -502,7 +497,7 @@ long&nbsp;nanosTimeout)</code></th>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>mode</code> - new lock mode</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if mode is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if mode is null</dd>
 </dl>
 </section>
 </li>
@@ -517,7 +512,7 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">lockTimeout</span>&#8203;(<span class="arguments">long&nbsp;timeout,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
 <div class="block">Sets the lock timeout for the current scope. A negative timeout is
  infinite.</div>
 <dl>
@@ -529,7 +524,7 @@ long&nbsp;nanosTimeout)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="lockTimeout(java.util.concurrent.TimeUnit)">lockTimeout</a></h3>
-<div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">lockTimeout</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
+<div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">lockTimeout</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a>&nbsp;unit)</span></div>
 <div class="block">Returns the current lock timeout, in the given unit.</div>
 </section>
 </li>
@@ -546,7 +541,7 @@ long&nbsp;nanosTimeout)</code></th>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>mode</code> - new durability mode</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if mode is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if mode is null</dd>
 </dl>
 </section>
 </li>
@@ -567,7 +562,7 @@ long&nbsp;nanosTimeout)</code></th>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="InvalidTransactionException.html" title="class in org.cojen.tupl">InvalidTransactionException</a></code> - if transaction is broken or was invalidated by
  an earlier exception</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction is bogus</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction is bogus</dd>
 <dd><code><a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></code></dd>
 </dl>
 </section>
@@ -576,14 +571,14 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="commit()">commit</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">commit</span>()
-     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Commits all modifications made within the current transaction scope. The
  current scope is still valid after this method is called, unless an
  exception is thrown. Call exit or reset to fully release transaction
  resources.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="CommitCallback.html" title="interface in org.cojen.tupl"><code>CommitCallback</code></a></dd>
 </dl>
@@ -593,11 +588,11 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="commitAll()">commitAll</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">commitAll</span>()
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Commits and exits all transaction scopes.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 <dt><span class="seeLabel">See Also:</span></dt>
 <dd><a href="CommitCallback.html" title="interface in org.cojen.tupl"><code>CommitCallback</code></a></dd>
 </dl>
@@ -607,11 +602,11 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="enter()">enter</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">enter</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Enters a nested transaction scope.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -619,13 +614,13 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="exit()">exit</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">exit</span>()
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Exits the current transaction scope, rolling back all uncommitted
  modifications made within. The transaction is still valid after this
  method is called, unless an exception is thrown.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -633,7 +628,7 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="reset()">reset</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">reset</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
 
  <pre>
@@ -644,14 +639,14 @@ long&nbsp;nanosTimeout)</code></th>
  </pre></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="reset(java.lang.Throwable)">reset</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">reset</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">reset</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span></div>
 <div class="block">Reset the transaction due to the given cause. This provides an opportunity to prevent
  this transaction from being used any further. No exception is thrown when invoking this
  method.</div>
@@ -680,7 +675,7 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 </dl>
@@ -767,7 +762,7 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
@@ -793,7 +788,7 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 </dl>
@@ -928,7 +923,7 @@ byte[]&nbsp;key)</span></div>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>locked index id</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held</dd>
 </dl>
 </section>
 </li>
@@ -943,7 +938,7 @@ byte[]&nbsp;key)</span></div>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>locked key; instance is not cloned</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held</dd>
 </dl>
 </section>
 </li>
@@ -958,7 +953,7 @@ byte[]&nbsp;key)</span></div>
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
  crossing a scope boundary, or if unlocking a non-immediate upgrade</dd>
 </dl>
 </section>
@@ -974,7 +969,7 @@ byte[]&nbsp;key)</span></div>
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
  crossing a scope boundary, or if too many shared locks, or if unlocking a non-immediate
  upgrade</dd>
 </dl>
@@ -989,7 +984,7 @@ byte[]&nbsp;key)</span></div>
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if combining an acquire with an
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no locks held, or if combining an acquire with an
  upgrade</dd>
 </dl>
 </section>
@@ -1010,7 +1005,7 @@ byte[]&nbsp;key)</span></div>
 <li class="blockList">
 <section class="detail">
 <h3><a id="attach(java.lang.Object)">attach</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">attach</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</span></div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">attach</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</span></div>
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it. Attachments
  can become visible to other threads as a result of a <a href="LockTimeoutException.html" title="class in org.cojen.tupl"><code>LockTimeoutException</code></a>. A
  happens-before relationship is guaranteed only if the attachment is set before the
@@ -1021,7 +1016,7 @@ byte[]&nbsp;key)</span></div>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>obj</code> - the object to be attached; may be null</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
  implementation</dd>
 </dl>
 </section>
@@ -1035,7 +1030,7 @@ byte[]&nbsp;key)</span></div>
  attention by pending transactions.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if completely unsupported by the transaction
  implementation</dd>
 </dl>
 </section>
@@ -1043,7 +1038,7 @@ byte[]&nbsp;key)</span></div>
 <li class="blockList">
 <section class="detail">
 <h3><a id="attachment()">attachment</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">attachment</span>()</div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">attachment</span>()</div>
 <div class="block">Returns any attachment which was set earlier.</div>
 <dl>
 <dt><span class="returnLabel">Returns:</span></dt>
@@ -1055,16 +1050,16 @@ byte[]&nbsp;key)</span></div>
 <section class="detail">
 <h3><a id="flush()">flush</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">flush</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Manually flush all buffered changes made by this transaction to the shared redo
  log. Flushing is performed automatically when the buffer fills up, or when the
  transaction is committed. Flushing can be used in conjunction with replication, to
  ensure that locks and changes are visible to replicas before the transaction commits.</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true#flush()" title="class or interface in java.io" class="externalLink">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true#flush()" title="class or interface in java.io" class="externalLink">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -1074,8 +1069,8 @@ byte[]&nbsp;key)</span></div>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -1120,5 +1115,7 @@ byte[]&nbsp;key)</span></div>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

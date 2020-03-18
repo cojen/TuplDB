@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -57,18 +57,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="All&amp;nbsp;Classes" class="title">All&nbsp;Classes</h1>
@@ -101,7 +96,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="altColor" id="i2">
 <td class="colFirst"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></td>
 <th class="colLast" scope="row">
-<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
+<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/javax/crypto/Cipher.html?is-external=true" title="class or interface in javax.crypto" class="externalLink"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
 </th>
 </tr>
 <tr class="rowColor" id="i3">
@@ -251,13 +246,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="altColor" id="i26">
 <td class="colFirst"><a href="org.cojen.tupl/org/cojen/tupl/EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></td>
 <th class="colLast" scope="row">
-<div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiConsumer</code></a>.</div>
+<div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiConsumer</code></a>.</div>
 </th>
 </tr>
 <tr class="rowColor" id="i27">
 <td class="colFirst"><a href="org.cojen.tupl/org/cojen/tupl/EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a></td>
 <th class="colLast" scope="row">
-<div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiFunction</code></a>.</div>
+<div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiFunction</code></a>.</div>
 </th>
 </tr>
 <tr class="altColor" id="i28">
@@ -270,7 +265,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="rowColor" id="i29">
 <td class="colFirst"><a href="org.cojen.tupl/org/cojen/tupl/EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></td>
 <th class="colLast" scope="row">
-<div class="block">Event listener implementation which passes events to a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">logger</a>.</div>
+<div class="block">Event listener implementation which passes events to a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">logger</a>.</div>
 </th>
 </tr>
 <tr class="altColor" id="i30">
@@ -736,5 +731,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
@@ -127,7 +122,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
+<td class="colFirst"><code>default <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#comparator()">comparator</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
@@ -509,7 +504,7 @@ int&nbsp;trim)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="comparator()">comparator</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">comparator</span>()</div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Comparator.html?is-external=true" title="class or interface in java.util" class="externalLink">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="memberName">comparator</span>()</div>
 <div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
 </section>
 </li>
@@ -524,7 +519,7 @@ int&nbsp;trim)</code></th>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new unpositioned cursor</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 </dl>
 </section>
 </li>
@@ -532,7 +527,7 @@ int&nbsp;trim)</code></th>
 <section class="detail">
 <h3><a id="newScanner(org.cojen.tupl.Transaction)">newScanner</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span>&nbsp;<span class="memberName">newScanner</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a new scanner over this view.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -540,8 +535,8 @@ int&nbsp;trim)</code></th>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new scanner positioned at the first entry in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -549,7 +544,7 @@ int&nbsp;trim)</code></th>
 <section class="detail">
 <h3><a id="newUpdater(org.cojen.tupl.Transaction)">newUpdater</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a></span>&nbsp;<span class="memberName">newUpdater</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a new updater over this view. When providing a transaction which acquires locks
  (or the transaction is null), upgradable locks are acquired for each entry visited by
  the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
@@ -562,8 +557,8 @@ int&nbsp;trim)</code></th>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>a new updater positioned at the first entry in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -572,7 +567,7 @@ int&nbsp;trim)</code></th>
 <h3><a id="newAccessor(org.cojen.tupl.Transaction,byte[])">newAccessor</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></span>&nbsp;<span class="memberName">newAccessor</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</span>
-                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl">accessing</a> values in chunks,
  permitting them to be larger than what can fit in main memory. Essentially, this is a
  convenience method which disables <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a>, and then
@@ -587,10 +582,10 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>non-null cursor</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -602,7 +597,7 @@ byte[]&nbsp;key)</span>
  mode is null, a default mode is selected.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if not supported</dd>
 </dl>
 </section>
 </li>
@@ -610,14 +605,14 @@ byte[]&nbsp;key)</span>
 <section class="detail">
 <h3><a id="isEmpty()">isEmpty</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">isEmpty</span>()
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Non-transactionally determines if the view has nothing in it. If any transactions are
  concurrently accessing the view, the implementation might return false even though the
  count method would have returned zero. A return value of true always guarantees that the
  count is zero. In other words, false negatives are possible, but false positives aren't.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -626,7 +621,7 @@ byte[]&nbsp;key)</span>
 <h3><a id="count(byte[],byte[])">count</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">count</span>&#8203;(<span class="arguments">byte[]&nbsp;lowKey,
 byte[]&nbsp;highKey)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Non-transactionally counts the number of entries within the given range. Implementations
  of this method typically scan over the entries, and so it shouldn't be expected to run
  in constant time.</div>
@@ -635,7 +630,7 @@ byte[]&nbsp;highKey)</span>
 <dd><code>lowKey</code> - inclusive lowest key in the counted range; pass null for open range</dd>
 <dd><code>highKey</code> - exclusive highest key in the counted range; pass null for open range</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -646,7 +641,7 @@ byte[]&nbsp;highKey)</span>
 boolean&nbsp;lowInclusive,
 byte[]&nbsp;highKey,
 boolean&nbsp;highInclusive)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Non-transactionally counts the number of entries within the given range. Implementations
  of this method typically scan over the entries, and so it shouldn't be expected to run
  in constant time.</div>
@@ -657,7 +652,7 @@ boolean&nbsp;highInclusive)</span>
 <dd><code>highKey</code> - highest key in the counted range; pass null for open range</dd>
 <dd><code>highInclusive</code> - true for inclusive key, false for exclusive, ignored if key is null</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -666,7 +661,7 @@ boolean&nbsp;highInclusive)</span>
 <h3><a id="load(org.cojen.tupl.Transaction,byte[])">load</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">load</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -678,9 +673,9 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>copy of value, or null if entry doesn't exist</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -689,7 +684,7 @@ byte[]&nbsp;key)</span>
 <h3><a id="exists(org.cojen.tupl.Transaction,byte[])">exists</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">exists</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Checks if an entry for the given key exists. This method should be called only if the
  value doesn't need to be loaded or stored &mdash; calling exists and then calling a load
  or store method is typically less efficient than skipping the exists check entirely.
@@ -703,9 +698,9 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>true if entry exists</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -715,7 +710,7 @@ byte[]&nbsp;key)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">store</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Unconditionally associates a value with the given key.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -726,10 +721,10 @@ byte[]&nbsp;value)</span>
 <dd><code>key</code> - non-null key</dd>
 <dd><code>value</code> - value to store; pass null to delete</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -739,7 +734,7 @@ byte[]&nbsp;value)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">exchange</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -752,10 +747,10 @@ byte[]&nbsp;value)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>copy of previous value, or null if none</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -765,7 +760,7 @@ byte[]&nbsp;value)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">insert</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Associates a value with the given key, unless a corresponding value already
  exists. Equivalent to: <a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)"><code>update(txn,
  key, null, value)</code></a>
@@ -780,10 +775,10 @@ byte[]&nbsp;value)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if entry already exists</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -793,7 +788,7 @@ byte[]&nbsp;value)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">replace</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
@@ -806,10 +801,10 @@ byte[]&nbsp;value)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no existing entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -819,7 +814,7 @@ byte[]&nbsp;value)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">update</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Associates a value with the given key, but only if the given value differs from the
  existing value.
 
@@ -833,10 +828,10 @@ byte[]&nbsp;value)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if given value matches existing value</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -847,7 +842,7 @@ byte[]&nbsp;value)</span>
 byte[]&nbsp;key,
 byte[]&nbsp;oldValue,
 byte[]&nbsp;newValue)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.
 
@@ -862,10 +857,10 @@ byte[]&nbsp;newValue)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if existing value doesn't match</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if entry is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -874,7 +869,7 @@ byte[]&nbsp;newValue)</span>
 <h3><a id="delete(org.cojen.tupl.Transaction,byte[])">delete</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">delete</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Unconditionally removes the entry associated with the given key. Equivalent to:
  <a href="#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)"><code>replace(txn, key, null)</code></a>
 
@@ -887,10 +882,10 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if no existing entry</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if remove is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -900,7 +895,7 @@ byte[]&nbsp;key)</span>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">remove</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Removes the entry associated with the given key, but only if the given value
  matches. Equivalent to: <a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)"><code>update(txn,
  key, value, null)</code></a>
@@ -915,10 +910,10 @@ byte[]&nbsp;value)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>false if existing value doesn't match</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if remove is not permitted</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -941,8 +936,8 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
 </dl>
 </section>
@@ -970,8 +965,8 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
@@ -998,8 +993,8 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if too many shared locks</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted or timed out</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -1029,7 +1024,7 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
@@ -1056,7 +1051,7 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted, timed out, or illegal upgrade</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -1086,7 +1081,7 @@ long&nbsp;nanosTimeout)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#TIMED_OUT_LOCK"><code>TIMED_OUT_LOCK</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code></dd>
@@ -1114,7 +1109,7 @@ byte[]&nbsp;key)</span>
 <dd><a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or
  <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted, timed out, or illegal upgrade</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
@@ -1132,7 +1127,7 @@ byte[]&nbsp;key)</span>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd><a href="LockResult.html#UNOWNED"><code>UNOWNED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if transaction belongs to another database instance</dd>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if key is not allowed</dd>
 </dl>
 </section>
@@ -1149,8 +1144,8 @@ byte[]&nbsp;key)</span>
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </section>
 </li>
@@ -1166,8 +1161,8 @@ byte[]&nbsp;key)</span>
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </section>
 </li>
@@ -1183,8 +1178,8 @@ byte[]&nbsp;key)</span>
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </section>
 </li>
@@ -1200,8 +1195,8 @@ byte[]&nbsp;key)</span>
  insert a key outside its range.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if key is null</dd>
 </dl>
 </section>
 </li>
@@ -1220,9 +1215,9 @@ int&nbsp;trim)</span></div>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>trim</code> - amount of prefix length to trim from all keys in the view</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if prefix is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if trim is longer than prefix</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/UnsupportedOperationException.html?is-external=true" title="class or interface in java.lang" class="externalLink">UnsupportedOperationException</a></code> - if view is unordered</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if prefix is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if trim is longer than prefix</dd>
 </dl>
 </section>
 </li>
@@ -1237,7 +1232,7 @@ int&nbsp;trim)</span></div>
  insert an entry not supported by the transformer.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transformer is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if transformer is null</dd>
 </dl>
 </section>
 </li>
@@ -1251,7 +1246,7 @@ int&nbsp;trim)</span></div>
  insert an entry not supported by the filter.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if filter is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if filter is null</dd>
 </dl>
 </section>
 </li>
@@ -1272,8 +1267,8 @@ int&nbsp;trim)</span></div>
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="Combiner.html#first()"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the union</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </section>
@@ -1295,8 +1290,8 @@ int&nbsp;trim)</span></div>
 <dd><code>combiner</code> - combines common entries together; pass null to always choose the <a href="Combiner.html#first()"><code>first</code></a></dd>
 <dd><code>second</code> - required second view in the intersection</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </section>
@@ -1317,8 +1312,8 @@ int&nbsp;trim)</span></div>
 <dd><code>combiner</code> - combines common entries together; pass null to always <a href="Combiner.html#discard()"><code>discard</code></a> them</dd>
 <dd><code>second</code> - required second view in the difference</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if second view is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if the views don't define a consistent ordering, as
  specified by their comparators</dd>
 </dl>
 </section>
@@ -1368,8 +1363,8 @@ int&nbsp;trim)</span></div>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -1414,5 +1409,7 @@ int&nbsp;trim)</span></div>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

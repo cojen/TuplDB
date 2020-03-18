@@ -24,9 +24,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -51,18 +51,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="Uses of Package org.cojen.tupl" class="title">Uses of Package<br>org.cojen.tupl</h1>
@@ -204,13 +199,13 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tr class="altColor">
 <th class="colFirst" scope="row"><a href="class-use/EntryConsumer.html#org.cojen.tupl">EntryConsumer</a></th>
 <td class="colLast">
-<div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiConsumer</code></a>.</div>
+<div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiConsumer</code></a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
 <th class="colFirst" scope="row"><a href="class-use/EntryFunction.html#org.cojen.tupl">EntryFunction</a></th>
 <td class="colLast">
-<div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiFunction</code></a>.</div>
+<div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiFunction.html?is-external=true" title="class or interface in java.util.function" class="externalLink"><code>BiFunction</code></a>.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -460,5 +455,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

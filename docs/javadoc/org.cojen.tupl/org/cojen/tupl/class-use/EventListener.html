@@ -24,9 +24,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -51,18 +51,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="Uses of Interface org.cojen.tupl.EventListener" class="title">Uses of Interface<br>org.cojen.tupl.EventListener</h1>
@@ -109,7 +104,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <td class="colFirst"><code>class&nbsp;</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="../EventLogger.html" title="class in org.cojen.tupl">EventLogger</a></span></code></th>
 <td class="colLast">
-<div class="block">Event listener implementation which passes events to a <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">logger</a>.</div>
+<div class="block">Event listener implementation which passes events to a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">logger</a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
@@ -135,7 +130,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code>default <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../EventListener.html#ignore(java.util.logging.Level...)">ignore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../EventListener.html#ignore(java.util.logging.Level...)">ignore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
 <td class="colLast">
 <div class="block">Returns a filtered listener which never observes the given event levels.</div>
 </td>
@@ -149,7 +144,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </tr>
 <tr class="altColor">
 <td class="colFirst"><code>default <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../EventListener.html#observe(java.util.logging.Level...)">observe</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">EventListener.</span><code><span class="memberNameLink"><a href="../EventListener.html#observe(java.util.logging.Level...)">observe</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
 <td class="colLast">
 <div class="block">Returns a filtered listener which only observes the given event levels.</div>
 </td>
@@ -227,5 +222,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

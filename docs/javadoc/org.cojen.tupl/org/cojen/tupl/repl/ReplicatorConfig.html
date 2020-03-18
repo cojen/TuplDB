@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,38 +72,33 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.repl</a></div>
 <h1 title="Class ReplicatorConfig" class="title">Class ReplicatorConfig</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
 <div class="inheritance">org.cojen.tupl.repl.ReplicatorConfig</div>
 </div>
 <section class="description">
 <dl>
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a></code></dd>
 </dl>
 <hr>
 <pre>public class <span class="typeNameLabel">ReplicatorConfig</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
-implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
+implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Cloneable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Cloneable</a></pre>
 <div class="block">Configuration options used when opening a replicator.</div>
 <dl>
 <dt><span class="seeLabel">See Also:</span></dt>
@@ -158,14 +153,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.lang.String)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;addressString)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.lang.String)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;addressString)</code></th>
 <td class="colLast">
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i1">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.lang.String,int)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;hostname,
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.lang.String,int)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;hostname,
 int&nbsp;port)</code></th>
 <td class="colLast">
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
@@ -173,14 +168,14 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="altColor" id="i2">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.net.SocketAddress)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addSeed(java.net.SocketAddress)">addSeed</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="colLast">
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i3">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#baseFile(java.io.File)">baseFile</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#baseFile(java.io.File)">baseFile</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file)</code></th>
 <td class="colLast">
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
@@ -188,7 +183,7 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="altColor" id="i4">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#baseFilePath(java.lang.String)">baseFilePath</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;path)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#baseFilePath(java.lang.String)">baseFilePath</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;path)</code></th>
 <td class="colLast">
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
@@ -209,7 +204,7 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="rowColor" id="i7">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#eventListener(java.util.function.BiConsumer)">eventListener</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;listener)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#eventListener(java.util.function.BiConsumer)">eventListener</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;listener)</code></th>
 <td class="colLast">
 <div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
 </td>
@@ -224,7 +219,7 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#listenAddress(java.net.SocketAddress)">listenAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#listenAddress(java.net.SocketAddress)">listenAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="colLast">
 <div class="block">Optionally restrict the socket address for accepting connections, which can be a
  wildcard address.</div>
@@ -232,7 +227,7 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="altColor" id="i10">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localAddress(java.net.SocketAddress)">localAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localAddress(java.net.SocketAddress)">localAddress</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="colLast">
 <div class="block">Set the local member socket address and port.</div>
 </td>
@@ -254,7 +249,7 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="rowColor" id="i13">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localSocket(java.net.ServerSocket)">localSocket</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ServerSocket.html?is-external=true" title="class or interface in java.net" class="externalLink">ServerSocket</a>&nbsp;ss)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#localSocket(java.net.ServerSocket)">localSocket</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/ServerSocket.html?is-external=true" title="class or interface in java.net" class="externalLink">ServerSocket</a>&nbsp;ss)</code></th>
 <td class="colLast">
 <div class="block">Explicitly specify a connected local socket, intended only for testing.</div>
 </td>
@@ -269,14 +264,14 @@ int&nbsp;port)</code></th>
 </tr>
 <tr class="rowColor" id="i15">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#serverSocketFactory(javax.net.ServerSocketFactory)">serverSocketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#serverSocketFactory(javax.net.ServerSocketFactory)">serverSocketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</code></th>
 <td class="colLast">
 <div class="block">Set a factory for creating new server-side sockets.</div>
 </td>
 </tr>
 <tr class="altColor" id="i16">
 <td class="colFirst"><code><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketFactory(javax.net.SocketFactory)">socketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#socketFactory(javax.net.SocketFactory)">socketFactory</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</code></th>
 <td class="colLast">
 <div class="block">Set a factory for creating new client-side sockets.</div>
 </td>
@@ -286,10 +281,10 @@ int&nbsp;port)</code></th>
 </div>
 </div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -322,24 +317,24 @@ int&nbsp;port)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="baseFile(java.io.File)">baseFile</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">baseFile</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">baseFile</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/File.html?is-external=true" title="class or interface in java.io" class="externalLink">File</a>&nbsp;file)</span></div>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if file is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if file is null</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="baseFilePath(java.lang.String)">baseFilePath</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">baseFilePath</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;path)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">baseFilePath</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;path)</span></div>
 <div class="block">Set the base file name for the replicator, which must reside in an ordinary file
  directory.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if path is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if path is null</dd>
 </dl>
 </section>
 </li>
@@ -359,7 +354,7 @@ int&nbsp;port)</code></th>
  different replication groups from communicating with each other.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if groupToken is zero</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if groupToken is zero</dd>
 </dl>
 </section>
 </li>
@@ -367,47 +362,47 @@ int&nbsp;port)</code></th>
 <section class="detail">
 <h3><a id="localPort(int)">localPort</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localPort</span>&#8203;(<span class="arguments">int&nbsp;port)</span>
-                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
+                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
 <div class="block">Set the local member socket port, for accepting connections on any address. Calling this
  overrides any explicitly set local address or listen address.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="localAddress(java.net.SocketAddress)">localAddress</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
 <div class="block">Set the local member socket address and port.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null or a wildcard address</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null or a wildcard address</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="listenAddress(java.net.SocketAddress)">listenAddress</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">listenAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">listenAddress</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
 <div class="block">Optionally restrict the socket address for accepting connections, which can be a
  wildcard address.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="localSocket(java.net.ServerSocket)">localSocket</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localSocket</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/ServerSocket.html?is-external=true" title="class or interface in java.net" class="externalLink">ServerSocket</a>&nbsp;ss)</span>
-                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">localSocket</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/ServerSocket.html?is-external=true" title="class or interface in java.net" class="externalLink">ServerSocket</a>&nbsp;ss)</span>
+                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
 <div class="block">Explicitly specify a connected local socket, intended only for testing.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -422,49 +417,49 @@ int&nbsp;port)</code></th>
  has started. Role changes also require consensus.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if role is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if role is null</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="addSeed(java.lang.String)">addSeed</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;addressString)</span>
-                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;addressString)</span>
+                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></span></div>
 <div class="block">Add a remote member address for allowing the local member to join the group. Opening a
  replicator for the first time without any seeds indicates that a new replication group
  is to be formed. If the local member is already in a group, the seeds are ignored.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if addressString is null or malformed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if addressString is null or malformed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/UnknownHostException.html?is-external=true" title="class or interface in java.net" class="externalLink">UnknownHostException</a></code></dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="addSeed(java.lang.String,int)">addSeed</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;hostname,
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;hostname,
 int&nbsp;port)</span></div>
 <div class="block">Add a remote member address for allowing the local member to join the group. Opening a
  replicator for the first time without any seeds indicates that a new replication group
  is to be formed. If the local member is already in a group, the seeds are ignored.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if hostname is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if hostname is null</dd>
 </dl>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="addSeed(java.net.SocketAddress)">addSeed</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">addSeed</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/net/SocketAddress.html?is-external=true" title="class or interface in java.net" class="externalLink">SocketAddress</a>&nbsp;addr)</span></div>
 <div class="block">Add a remote member address for allowing the local member to join the group. Opening a
  replicator for the first time without any seeds indicates that a new replication group
  is to be formed. If the local member is already in a group, the seeds are ignored.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if address is null</dd>
 </dl>
 </section>
 </li>
@@ -479,21 +474,21 @@ int&nbsp;port)</span></div>
 <li class="blockList">
 <section class="detail">
 <h3><a id="eventListener(java.util.function.BiConsumer)">eventListener</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">eventListener</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;listener)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">eventListener</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/BiConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">BiConsumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&gt;&nbsp;listener)</span></div>
 <div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="socketFactory(javax.net.SocketFactory)">socketFactory</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">socketFactory</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">socketFactory</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/javax/net/SocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">SocketFactory</a>&nbsp;factory)</span></div>
 <div class="block">Set a factory for creating new client-side sockets.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="serverSocketFactory(javax.net.ServerSocketFactory)">serverSocketFactory</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">serverSocketFactory</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</span></div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">serverSocketFactory</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/javax/net/ServerSocketFactory.html?is-external=true" title="class or interface in javax.net" class="externalLink">ServerSocketFactory</a>&nbsp;factory)</span></div>
 <div class="block">Set a factory for creating new server-side sockets.</div>
 </section>
 </li>
@@ -503,7 +498,7 @@ int&nbsp;port)</span></div>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></span>&nbsp;<span class="memberName">clone</span>()</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </section>
 </li>
@@ -513,8 +508,8 @@ int&nbsp;port)</span></div>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -559,5 +554,7 @@ int&nbsp;port)</span></div>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

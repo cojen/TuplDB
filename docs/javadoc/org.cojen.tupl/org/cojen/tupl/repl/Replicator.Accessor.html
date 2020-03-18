@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,20 +72,15 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl.repl</a></div>
@@ -95,7 +90,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -107,7 +102,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </dl>
 <hr>
 <pre>public static interface <span class="typeNameLabel">Replicator.Accessor</span>
-extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Direct interface for accessing replication data, for a given term.</div>
 </section>
 <section class="summary">
@@ -132,7 +127,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addCommitListener(java.util.function.LongConsumer)">addCommitListener</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addCommitListener(java.util.function.LongConsumer)">addCommitListener</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</code></th>
 <td class="colLast">
 <div class="block">Install a callback which receives a stream of commit position updates.</div>
 </td>
@@ -181,14 +176,14 @@ extends <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/ja
 <tr class="rowColor" id="i7">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponCommit(long,java.util.function.LongConsumer)">uponCommit</a></span>&#8203;(long&nbsp;position,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </td>
 </tr>
 <tr class="altColor" id="i8">
 <td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</code></th>
 <td class="colLast">
 <div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
 </td>
@@ -265,7 +260,7 @@ long&nbsp;nanosTimeout)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="addCommitListener(java.util.function.LongConsumer)">addCommitListener</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">addCommitListener</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</span></div>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">addCommitListener</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;listener)</span></div>
 <div class="block">Install a callback which receives a stream of commit position updates. Each update
  is guaranteed to be higher than the previous one. When the received position is -1,
  the term has ended, and no further updates are received. The commit stream
@@ -273,7 +268,7 @@ long&nbsp;nanosTimeout)</code></th>
  replicator can stall.</div>
 <dl>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if listener is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/NullPointerException.html?is-external=true" title="class or interface in java.lang" class="externalLink">NullPointerException</a></code> - if listener is null</dd>
 </dl>
 </section>
 </li>
@@ -281,7 +276,7 @@ long&nbsp;nanosTimeout)</code></th>
 <section class="detail">
 <h3><a id="uponCommit(long,java.util.function.LongConsumer)">uponCommit</a></h3>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponCommit</span>&#8203;(<span class="arguments">long&nbsp;position,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</span></div>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</span></div>
 <div class="block">Invokes the given task when the commit position reaches the requested position. The
  current commit position is passed to the task, which is -1 if the term ended before
  the position could be reached. If the task can be run when this method is called,
@@ -291,7 +286,7 @@ long&nbsp;nanosTimeout)</code></th>
 <li class="blockList">
 <section class="detail">
 <h3><a id="uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponEndCommit</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</span></div>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uponEndCommit</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/function/LongConsumer.html?is-external=true" title="class or interface in java.util.function" class="externalLink">LongConsumer</a>&nbsp;task)</span></div>
 <div class="block">Invokes the given task when the commit position reaches the end of the term. The
  current commit position is passed to the task, which is -1 if the accessor is
  closed. If the task can be run when this method is called, then the current thread
@@ -303,7 +298,7 @@ long&nbsp;nanosTimeout)</code></th>
 <h3><a id="waitForCommit(long,long)">waitForCommit</a></h3>
 <div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">waitForCommit</span>&#8203;(<span class="arguments">long&nbsp;position,
 long&nbsp;nanosTimeout)</span>
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
 <div class="block">Blocks until the commit position reaches the given position.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -312,7 +307,7 @@ long&nbsp;nanosTimeout)</span>
 <dd>current commit position, or -1 if deactivated before the position could be
  reached, or -2 if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -320,7 +315,7 @@ long&nbsp;nanosTimeout)</span>
 <section class="detail">
 <h3><a id="waitForEndCommit(long)">waitForEndCommit</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">waitForEndCommit</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></span></div>
 <div class="block">Blocks until the commit position reaches the end of the term.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
@@ -329,7 +324,7 @@ long&nbsp;nanosTimeout)</span>
 <dd>current commit position, or -1 if closed before the position could be
  reached, or -2 if timed out</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -339,9 +334,9 @@ long&nbsp;nanosTimeout)</span>
 <div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">close</span>()</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 </section>
 </li>
@@ -351,8 +346,8 @@ long&nbsp;nanosTimeout)</span>
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -397,5 +392,7 @@ long&nbsp;nanosTimeout)</span>
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

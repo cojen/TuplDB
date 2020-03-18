@@ -24,9 +24,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -51,18 +51,13 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
+<div class="flexContent">
 <main role="main">
 <div class="header">
 <h1 title="Uses of Interface org.cojen.tupl.ext.CustomHandler" class="title">Uses of Interface<br>org.cojen.tupl.ext.CustomHandler</h1>
@@ -107,7 +102,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../../Database.html#customWriter(java.lang.String)">customWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Database.</span><code><span class="memberNameLink"><a href="../../Database.html#customWriter(java.lang.String)">customWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
 <td class="colLast">
 <div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
 </td>
@@ -128,7 +123,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <tbody>
 <tr class="altColor">
 <td class="colFirst"><code><a href="../../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../DatabaseConfig.html#customHandlers(java.util.Map)">customHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;? extends <a href="../CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</code></th>
+<th class="colSecond" scope="row"><span class="typeNameLabel">DatabaseConfig.</span><code><span class="memberNameLink"><a href="../../DatabaseConfig.html#customHandlers(java.util.Map)">customHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/Map.html?is-external=true" title="class or interface in java.util" class="externalLink">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>,&#8203;? extends <a href="../CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="colLast">
 <div class="block">Provide handlers for recovering custom transactional operations.</div>
 </td>
@@ -169,5 +164,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>

@@ -30,9 +30,9 @@ loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<header role="banner">
+<div class="flexBox">
+<header role="banner" class="flexHeader">
 <nav role="navigation">
-<div class="fixedNav">
 <!-- ========= START OF TOP NAVBAR ======= -->
 <div class="topNav"><a id="navbar.top">
 <!--   -->
@@ -72,30 +72,25 @@ loadScripts(document, 'script');</script>
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
-<a id="skip.navbar.top">
-<!--   -->
-</a>
 <!-- ========= END OF TOP NAVBAR ========= -->
-</div>
-<div class="navPadding">&nbsp;</div>
-<script type="text/javascript"><!--
-$('.navPadding').css('padding-top', $('.fixedNav').css("height"));
-//-->
-</script>
+<div class="skipNav"><a id="skip.navbar.top">
+<!--   -->
+</a></div>
 </nav>
 </header>
-<!-- ======== START OF CLASS DATA ======== -->
+<div class="flexContent">
 <main role="main">
+<!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
 <div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h1 title="Class LockTimeoutException" class="title">Class LockTimeoutException</h1>
 </div>
 <div class="contentContainer">
-<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
-<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Throwable</a>
-<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Exception</a>
-<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">java.io.IOException</a>
+<div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Object</a>
+<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Throwable</a>
+<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Exception.html?is-external=true" title="class or interface in java.lang" class="externalLink">java.lang.Exception</a>
+<div class="inheritance"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">java.io.IOException</a>
 <div class="inheritance"><a href="DatabaseException.html" title="class in org.cojen.tupl">org.cojen.tupl.DatabaseException</a>
 <div class="inheritance"><a href="LockFailureException.html" title="class in org.cojen.tupl">org.cojen.tupl.LockFailureException</a>
 <div class="inheritance">org.cojen.tupl.LockTimeoutException</div>
@@ -108,7 +103,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <section class="description">
 <dl>
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Serializable.html?is-external=true" title="class or interface in java.io" class="externalLink">Serializable</a></code></dd>
 </dl>
 <dl>
 <dt>Direct Known Subclasses:</dt>
@@ -150,7 +145,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </tr>
 <tr class="rowColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(long,java.lang.Object)">LockTimeoutException</a></span>&#8203;(long&nbsp;nanosTimeout,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment)</code></th>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 </tbody>
@@ -177,12 +172,12 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#getMessage()">getMessage</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i1">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ownerAttachment()">ownerAttachment</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
@@ -195,7 +190,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i3">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></code></td>
+<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#unit()">unit</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
@@ -209,15 +204,15 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <!--   -->
 </a><code><a href="LockFailureException.html#isRecoverable()">isRecoverable</a></code></div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></h3>
 <a id="methods.inherited.from.class.java.lang.Throwable">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#addSuppressed(java.lang.Throwable)" title="class or interface in java.lang" class="externalLink">addSuppressed</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#fillInStackTrace()" title="class or interface in java.lang" class="externalLink">fillInStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#getCause()" title="class or interface in java.lang" class="externalLink">getCause</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#getLocalizedMessage()" title="class or interface in java.lang" class="externalLink">getLocalizedMessage</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#getStackTrace()" title="class or interface in java.lang" class="externalLink">getStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#getSuppressed()" title="class or interface in java.lang" class="externalLink">getSuppressed</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#initCause(java.lang.Throwable)" title="class or interface in java.lang" class="externalLink">initCause</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace()" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace(java.io.PrintStream)" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace(java.io.PrintWriter)" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#setStackTrace(java.lang.StackTraceElement%5B%5D)" title="class or interface in java.lang" class="externalLink">setStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#addSuppressed(java.lang.Throwable)" title="class or interface in java.lang" class="externalLink">addSuppressed</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#fillInStackTrace()" title="class or interface in java.lang" class="externalLink">fillInStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#getCause()" title="class or interface in java.lang" class="externalLink">getCause</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#getLocalizedMessage()" title="class or interface in java.lang" class="externalLink">getLocalizedMessage</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#getStackTrace()" title="class or interface in java.lang" class="externalLink">getStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#getSuppressed()" title="class or interface in java.lang" class="externalLink">getSuppressed</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#initCause(java.lang.Throwable)" title="class or interface in java.lang" class="externalLink">initCause</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace()" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace(java.io.PrintStream)" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#printStackTrace(java.io.PrintWriter)" title="class or interface in java.lang" class="externalLink">printStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#setStackTrace(java.lang.StackTraceElement%5B%5D)" title="class or interface in java.lang" class="externalLink">setStackTrace</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a></code></div>
 <div class="inheritedList">
-<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
+<h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 </section>
 </li>
 </ul>
@@ -245,7 +240,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <section class="detail">
 <h3><a id="&lt;init&gt;(long,java.lang.Object)">LockTimeoutException</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">LockTimeoutException</span>&#8203;(<span class="arguments">long&nbsp;nanosTimeout,
-<a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment)</span></div>
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;attachment)</span></div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>nanosTimeout</code> - negative is interpreted as infinite wait</dd>
@@ -265,10 +260,10 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <li class="blockList">
 <section class="detail">
 <h3><a id="getMessage()">getMessage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">getMessage</span>()</div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a></span>&nbsp;<span class="memberName">getMessage</span>()</div>
 <dl>
 <dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true#getMessage()" title="class or interface in java.lang" class="externalLink">getMessage</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true#getMessage()" title="class or interface in java.lang" class="externalLink">getMessage</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></code></dd>
 </dl>
 </section>
 </li>
@@ -281,7 +276,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <li class="blockList">
 <section class="detail">
 <h3><a id="ownerAttachment()">ownerAttachment</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">ownerAttachment</span>()</div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></span>&nbsp;<span class="memberName">ownerAttachment</span>()</div>
 <div class="block">Returns the object which was <a href="Transaction.html#attach(java.lang.Object)">attached</a> to the current
  lock owner shortly after the timeout occurred. If an exclusive lock request failed
  because any shared locks were held, only the first discovered attachment is provided.</div>
@@ -290,7 +285,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 <li class="blockList">
 <section class="detail">
 <h3><a id="unit()">unit</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></span>&nbsp;<span class="memberName">unit</span>()</div>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/TimeUnit.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">TimeUnit</a></span>&nbsp;<span class="memberName">unit</span>()</div>
 </section>
 </li>
 </ul>
@@ -299,8 +294,8 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </ul>
 </section>
 </div>
-</main>
 <!-- ========= END OF CLASS DATA ========= -->
+</main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
@@ -345,5 +340,7 @@ extends <a href="LockFailureException.html" title="class in org.cojen.tupl">Lock
 </nav>
 <p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
+</div>
+</div>
 </body>
 </html>
