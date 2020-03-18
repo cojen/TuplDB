@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import java.util.logging.Level;
+import static java.lang.System.Logger.Level;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -86,11 +86,11 @@ public class EventListenerTest {
         assertTrue(filtered == filtered.ignore(EventType.Category.DEBUG));
 
         listener = new Listener();
-        filtered = listener.ignore(Level.FINE);
+        filtered = listener.ignore(Level.DEBUG);
         filtered.notify(EventType.DEBUG, "hello");
         filtered.notify(EventType.CHECKPOINT_FAILED, "world");
         assertEquals("[CHECKPOINT_FAILED:world:[]]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.ignore(Level.FINE));
+        assertTrue(filtered == filtered.ignore(Level.DEBUG));
         listener.mEvents.clear();
         filtered = filtered.ignore(Level.WARNING);
         filtered.notify(EventType.DEBUG, "hello");

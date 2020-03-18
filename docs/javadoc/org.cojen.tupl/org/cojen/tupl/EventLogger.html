@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -99,7 +99,7 @@ loadScripts(document, 'script');</script>
 <pre>public final class <span class="typeNameLabel">EventLogger</span>
 extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>
 implements <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></pre>
-<div class="block">Event listener implementation which passes events to a <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">logger</a>.</div>
+<div class="block">Event listener implementation which passes events to a logger.</div>
 </section>
 <section class="summary">
 <ul class="blockList">
@@ -122,10 +122,16 @@ implements <a href="EventListener.html" title="interface in org.cojen.tupl">Even
 <tr class="altColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E()">EventLogger</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Passes events to the global logger.</div>
+<div class="block">Passes events to the global <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink"><code>Logger</code></a>.</div>
 </td>
 </tr>
 <tr class="rowColor">
+<th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(java.lang.System.Logger)">EventLogger</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger</a>&nbsp;logger)</code></th>
+<td class="colLast">
+<div class="block">Passes events to the given logger.</div>
+</td>
+</tr>
+<tr class="altColor">
 <th class="colConstructorName" scope="row"><code><span class="memberNameLink"><a href="#%3Cinit%3E(java.util.logging.Logger)">EventLogger</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Logger</a>&nbsp;logger)</code></th>
 <td class="colLast">
 <div class="block">Passes events to the given logger.</div>
@@ -155,6 +161,16 @@ implements <a href="EventListener.html" title="interface in org.cojen.tupl">Even
 </thead>
 <tbody>
 <tr class="altColor" id="i0">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr class="rowColor" id="i1">
+<td class="colFirst"><code>int</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#hashCode()">hashCode</a></span>()</code></th>
+<td class="colLast">&nbsp;</td>
+</tr>
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#notify(org.cojen.tupl.EventType,java.lang.String,java.lang.Object...)">notify</a></span>&#8203;(<a href="EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type,
 <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;message,
@@ -169,12 +185,12 @@ implements <a href="EventListener.html" title="interface in org.cojen.tupl">Even
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></h3>
 <a id="methods.inherited.from.class.java.lang.Object">
 <!--   -->
-</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
+</a><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#clone()" title="class or interface in java.lang" class="externalLink">clone</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#finalize()" title="class or interface in java.lang" class="externalLink">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#getClass()" title="class or interface in java.lang" class="externalLink">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notify()" title="class or interface in java.lang" class="externalLink">notify</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#notifyAll()" title="class or interface in java.lang" class="externalLink">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#toString()" title="class or interface in java.lang" class="externalLink">toString</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait()" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long)" title="class or interface in java.lang" class="externalLink">wait</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#wait(long,int)" title="class or interface in java.lang" class="externalLink">wait</a></code></div>
 <div class="inheritedList">
 <h3>Methods inherited from interface&nbsp;org.cojen.tupl.<a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></h3>
 <a id="methods.inherited.from.class.org.cojen.tupl.EventListener">
 <!--   -->
-</a><code><a href="EventListener.html#ignore(java.util.logging.Level...)">ignore</a>, <a href="EventListener.html#ignore(org.cojen.tupl.EventType.Category...)">ignore</a>, <a href="EventListener.html#isObserved(java.util.logging.Level)">isObserved</a>, <a href="EventListener.html#isObserved(org.cojen.tupl.EventType)">isObserved</a>, <a href="EventListener.html#isObserved(org.cojen.tupl.EventType.Category)">isObserved</a>, <a href="EventListener.html#observe(java.util.logging.Level...)">observe</a>, <a href="EventListener.html#observe(org.cojen.tupl.EventType.Category...)">observe</a></code></div>
+</a><code><a href="EventListener.html#ignore(java.lang.System.Logger.Level...)">ignore</a>, <a href="EventListener.html#ignore(org.cojen.tupl.EventType.Category...)">ignore</a>, <a href="EventListener.html#isObserved(java.lang.System.Logger.Level)">isObserved</a>, <a href="EventListener.html#isObserved(org.cojen.tupl.EventType)">isObserved</a>, <a href="EventListener.html#isObserved(org.cojen.tupl.EventType.Category)">isObserved</a>, <a href="EventListener.html#observe(java.lang.System.Logger.Level...)">observe</a>, <a href="EventListener.html#observe(org.cojen.tupl.EventType.Category...)">observe</a></code></div>
 </section>
 </li>
 </ul>
@@ -192,13 +208,20 @@ implements <a href="EventListener.html" title="interface in org.cojen.tupl">Even
 <section class="detail">
 <h3><a id="&lt;init&gt;()">EventLogger</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">EventLogger</span>()</div>
-<div class="block">Passes events to the global logger.</div>
+<div class="block">Passes events to the global <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink"><code>Logger</code></a>.</div>
 </section>
 </li>
 <li class="blockList">
 <section class="detail">
 <h3><a id="&lt;init&gt;(java.util.logging.Logger)">EventLogger</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">EventLogger</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Logger.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Logger</a>&nbsp;logger)</span></div>
+<div class="block">Passes events to the given logger.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="&lt;init&gt;(java.lang.System.Logger)">EventLogger</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">EventLogger</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger</a>&nbsp;logger)</span></div>
 <div class="block">Passes events to the given logger.</div>
 </section>
 </li>
@@ -223,6 +246,26 @@ implements <a href="EventListener.html" title="interface in org.cojen.tupl">Even
 <dd><code><a href="EventListener.html#notify(org.cojen.tupl.EventType,java.lang.String,java.lang.Object...)">notify</a></code>&nbsp;in interface&nbsp;<code><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></dd>
 <dd><code>message</code> - event message format</dd>
 <dd><code>args</code> - arguments for message</dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="equals(java.lang.Object)">equals</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">equals</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a>&nbsp;obj)</span></div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#equals(java.lang.Object)" title="class or interface in java.lang" class="externalLink">equals</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="hashCode()">hashCode</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">int</span>&nbsp;<span class="memberName">hashCode</span>()</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true#hashCode()" title="class or interface in java.lang" class="externalLink">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></code></dd>
 </dl>
 </section>
 </li>

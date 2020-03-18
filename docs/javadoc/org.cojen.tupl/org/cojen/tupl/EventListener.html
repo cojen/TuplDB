@@ -124,7 +124,7 @@ loadScripts(document, 'script');</script>
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>default <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ignore(java.util.logging.Level...)">ignore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#ignore(java.lang.System.Logger.Level...)">ignore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>...&nbsp;levels)</code></th>
 <td class="colLast">
 <div class="block">Returns a filtered listener which never observes the given event levels.</div>
 </td>
@@ -138,7 +138,7 @@ loadScripts(document, 'script');</script>
 </tr>
 <tr class="altColor" id="i2">
 <td class="colFirst"><code>default boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isObserved(java.util.logging.Level)">isObserved</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>&nbsp;level)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isObserved(java.lang.System.Logger.Level)">isObserved</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>&nbsp;level)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
 <tr class="rowColor" id="i3">
@@ -160,7 +160,7 @@ loadScripts(document, 'script');</script>
 </tr>
 <tr class="altColor" id="i6">
 <td class="colFirst"><code>default <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#observe(java.util.logging.Level...)">observe</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#observe(java.lang.System.Logger.Level...)">observe</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>...&nbsp;levels)</code></th>
 <td class="colLast">
 <div class="block">Returns a filtered listener which only observes the given event levels.</div>
 </td>
@@ -216,8 +216,8 @@ loadScripts(document, 'script');</script>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="isObserved(java.util.logging.Level)">isObserved</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">isObserved</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>&nbsp;level)</span></div>
+<h3><a id="isObserved(java.lang.System.Logger.Level)">isObserved</a></h3>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">isObserved</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>&nbsp;level)</span></div>
 </section>
 </li>
 <li class="blockList">
@@ -229,8 +229,8 @@ loadScripts(document, 'script');</script>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="observe(java.util.logging.Level...)">observe</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="memberName">observe</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</span></div>
+<h3><a id="observe(java.lang.System.Logger.Level...)">observe</a></h3>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="memberName">observe</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>...&nbsp;levels)</span></div>
 <div class="block">Returns a filtered listener which only observes the given event levels.</div>
 </section>
 </li>
@@ -243,8 +243,8 @@ loadScripts(document, 'script');</script>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="ignore(java.util.logging.Level...)">ignore</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="memberName">ignore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.logging/java/util/logging/Level.html?is-external=true" title="class or interface in java.util.logging" class="externalLink">Level</a>...&nbsp;levels)</span></div>
+<h3><a id="ignore(java.lang.System.Logger.Level...)">ignore</a></h3>
+<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="memberName">ignore</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/System.Logger.Level.html?is-external=true" title="class or interface in java.lang" class="externalLink">System.Logger.Level</a>...&nbsp;levels)</span></div>
 <div class="block">Returns a filtered listener which never observes the given event levels.</div>
 </section>
 </li>

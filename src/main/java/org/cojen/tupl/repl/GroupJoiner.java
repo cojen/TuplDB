@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import static java.lang.System.Logger.Level;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,8 +40,6 @@ import java.util.TreeSet;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-
-import java.util.logging.Level;
 
 import org.cojen.tupl.io.Utils;
 

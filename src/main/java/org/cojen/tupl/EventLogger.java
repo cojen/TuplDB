@@ -17,21 +17,24 @@
 
 package org.cojen.tupl;
 
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.logging.LogRecord;
+
+import java.util.Objects;
 
 import org.cojen.tupl.core.Utils;
 
 /**
- * Event listener implementation which passes events to a {@linkplain Logger logger}.
+ * Event listener implementation which passes events to a logger.
  *
  * @author Brian S O'Neill
  */
 public final class EventLogger implements EventListener {
-    private final Logger mLogger;
+    private final Object mLogger;
 
     /**
-     * Passes events to the global logger.
+     * Passes events to the global {@link Logger}.
      */
     public EventLogger() {
         this(Logger.getGlobal());
@@ -41,36 +44,101 @@ public final class EventLogger implements EventListener {
      * Passes events to the given logger.
      */
     public EventLogger(Logger logger) {
-        if (logger == null) {
-            throw null;
-        }
-        mLogger = logger;
+        mLogger = Objects.requireNonNull(logger);
+    }
+
+    /**
+     * Passes events to the given logger.
+     */
+    public EventLogger(System.Logger logger) {
+        mLogger = Objects.requireNonNull(logger);
     }
 
     @Override
     public void notify(EventType type, String message, Object... args) {
         try {
-            if (mLogger.isLoggable(type.level)) {
-                String msg = type.category + ": " + String.format(message, args);
-                var record = new LogRecord(type.level, msg);
-                record.setSourceClassName(null);
-                record.setSourceMethodName(null);
-
-                for (Object obj : args) {
-                    if (obj instanceof Throwable) {
-                        Throwable thrown = record.getThrown();
-                        if (thrown != null) {
-                            Utils.suppress(thrown, (Throwable) obj);
-                        } else {
-                            record.setThrown((Throwable) obj);
-                        }
-                    }
+            if (mLogger instanceof System.Logger) {
+                var logger = (System.Logger) mLogger;
+                if (logger.isLoggable(type.level)) {
+                    logger.log(type.level, (java.util.ResourceBundle) null,
+                               makeMessage(type, message, args), makeThrown(args));
                 }
-
-                mLogger.log(record);
+            } else {
+                notify((Logger) mLogger, type, message, args);
             }
         } catch (Throwable e) {
             // Ignore, and so this listener is safe for the caller.
         }
+    }
+
+    private static void notify(Logger logger,
+                               EventType type, String message, Object... args)
+    {
+        Level level;
+        switch (type.level) {
+        case ALL:
+            level = Level.ALL;
+            break;
+        case TRACE:
+            level = Level.FINER;
+            break;
+        case DEBUG:
+            level = Level.FINE;
+            break;
+        case INFO:
+            level = Level.INFO;
+            break;
+        case WARNING:
+            level = Level.WARNING;
+            break;
+        case ERROR: default:
+            level = Level.SEVERE;
+            break;
+        case OFF:
+            level = Level.OFF;
+            break;
+        }
+
+        if (logger.isLoggable(level)) {
+            var record = new LogRecord(level, makeMessage(type, message, args));
+            record.setSourceClassName(null);
+            record.setSourceMethodName(null);
+            record.setThrown(makeThrown(args));
+            logger.log(record);
+        }
+    }
+
+    private static String makeMessage(EventType type, String message, Object... args) {
+        return type.category + ": " + String.format(message, args);
+    }
+
+    private static Throwable makeThrown(Object... args) {
+        Throwable thrown = null;
+        for (Object obj : args) {
+            if (obj instanceof Throwable) {
+                if (thrown != null) {
+                    Utils.suppress(thrown, (Throwable) obj);
+                } else {
+                    thrown = (Throwable) obj;
+                }
+            }
+        }
+        return thrown;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj instanceof EventLogger) {
+            return mLogger.equals(((EventLogger) obj).mLogger);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return mLogger.hashCode();
     }
 }

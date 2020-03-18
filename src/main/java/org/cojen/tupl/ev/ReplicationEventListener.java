@@ -30,7 +30,7 @@ import org.cojen.tupl.EventType;
  *
  * @author Brian S O'Neill
  */
-public final class ReplicationEventListener implements BiConsumer<Level, String> {
+public final class ReplicationEventListener implements BiConsumer<System.Logger.Level, String> {
     private final EventListener mListener;
 
     public ReplicationEventListener(EventListener listener) {
@@ -38,20 +38,21 @@ public final class ReplicationEventListener implements BiConsumer<Level, String>
     }
 
     @Override
-    public void accept(Level level, String message) {
+    public void accept(System.Logger.Level level, String message) {
         EventType type;
-        int value = level.intValue();
-
-        if (value <= Level.FINE.intValue()) {
+        switch (level) {
+        case DEBUG:
             type = EventType.REPLICATION_DEBUG;
-        } else if (value <= Level.INFO.intValue()) {
+            break;
+        case INFO:
             type = EventType.REPLICATION_INFO;
-        } else if (value <= Level.WARNING.intValue()) {
+            break;
+        case WARNING:
             type = EventType.REPLICATION_WARNING;
-        } else if (value < Level.OFF.intValue()) {
+            break;
+        case ERROR: default:
             type = EventType.REPLICATION_PANIC;
-        } else {
-            return;
+            break;
         }
 
         mListener.notify(type, message);

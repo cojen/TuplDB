@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import static java.lang.System.Logger.Level;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -52,8 +54,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.ObjLongConsumer;
-
-import java.util.logging.Level;
 
 import java.util.zip.Checksum;
 import java.util.zip.CRC32C;

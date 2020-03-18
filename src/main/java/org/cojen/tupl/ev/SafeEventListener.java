@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.ev;
 
-import java.util.logging.Level;
-
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventLogger;
 import org.cojen.tupl.EventPrinter;
@@ -66,7 +64,7 @@ public class SafeEventListener implements EventListener {
     }
 
     @Override
-    public boolean isObserved(Level level) {
+    public boolean isObserved(System.Logger.Level level) {
         return mListener.isObserved(level);
     }
 

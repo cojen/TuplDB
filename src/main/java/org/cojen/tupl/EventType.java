@@ -17,7 +17,7 @@
 
 package org.cojen.tupl;
 
-import java.util.logging.Level;
+import static java.lang.System.Logger.Level;
 
 /**
  * Defines the various types of events that an {@link EventListener EventListener} can receive.
@@ -26,7 +26,7 @@ import java.util.logging.Level;
  */
 public enum EventType {
     /** General debug event type. */
-    DEBUG(Category.DEBUG, Level.FINE),
+    DEBUG(Category.DEBUG, Level.DEBUG),
 
     /** Signals the beginning of cache initialization. */
     CACHE_INIT_BEGIN(Category.CACHE_INIT, Level.INFO),
@@ -50,9 +50,9 @@ public enum EventType {
     /** Signals that a prepared transaction held by the leader hasn't been released yet. */
     RECOVERY_AWAIT_RELEASE(Category.RECOVERY, Level.WARNING),
     /** Prepared transactions remain, but no handler is installed. */
-    RECOVERY_NO_HANDLER(Category.RECOVERY, Level.SEVERE),
+    RECOVERY_NO_HANDLER(Category.RECOVERY, Level.ERROR),
     /** An uncaught exception from a recovery handler. */
-    RECOVERY_HANDLER_UNCAUGHT(Category.RECOVERY, Level.SEVERE),
+    RECOVERY_HANDLER_UNCAUGHT(Category.RECOVERY, Level.ERROR),
     /** Signals the end of database recovery, reporting the duration. */
     RECOVERY_COMPLETE(Category.RECOVERY, Level.INFO),
 
@@ -66,13 +66,13 @@ public enum EventType {
     /** Snapshot restore progress event. */
     REPLICATION_RESTORE(Category.REPLICATION, Level.INFO),
     /** Generic debug message from the replication system. */
-    REPLICATION_DEBUG(Category.REPLICATION, Level.FINE),
+    REPLICATION_DEBUG(Category.REPLICATION, Level.DEBUG),
     /** Generic info message from the replication system. */
     REPLICATION_INFO(Category.REPLICATION, Level.INFO),
     /** Generic warning message from the replication system. */
     REPLICATION_WARNING(Category.REPLICATION, Level.WARNING),
     /** Unhandled in the replication system, and the database must be shutdown. */
-    REPLICATION_PANIC(Category.REPLICATION, Level.SEVERE),
+    REPLICATION_PANIC(Category.REPLICATION, Level.ERROR),
 
     /** Signals the beginning of a checkpoint. */
     CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
@@ -86,7 +86,7 @@ public enum EventType {
     CHECKPOINT_COMPLETE(Category.CHECKPOINT, Level.INFO),
 
     /** Signals that an unhandled exception has occurred, and the database must be shutdown. */
-    PANIC_UNHANDLED_EXCEPTION(Category.PANIC, Level.SEVERE);
+    PANIC_UNHANDLED_EXCEPTION(Category.PANIC, Level.ERROR);
 
     public final Category category;
     public final Level level;

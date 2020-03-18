@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.repl;
 
-import java.util.logging.Level;
+import static java.lang.System.Logger.Level;
 
 /**
  * 
@@ -59,7 +59,7 @@ final class ErrorCodes {
     static Level levelFor(byte errorCode) {
         switch (errorCode) {
         default:
-            return Level.SEVERE;
+            return Level.ERROR;
         case VERSION_MISMATCH:
         case NO_CONSENSUS:
         case NO_LEADER:

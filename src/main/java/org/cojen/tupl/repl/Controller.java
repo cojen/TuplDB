@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import static java.lang.System.Logger.Level;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -44,8 +46,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
-
-import java.util.logging.Level;
 
 import javax.net.SocketFactory;
 
@@ -1335,7 +1335,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void requestMissingData(final long startPosition, final long endPosition) {
-        event(Level.FINE, () ->
+        event(Level.DEBUG, () ->
               String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
                             endPosition - startPosition, startPosition, endPosition));
 
@@ -1360,7 +1360,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         long requestSize;
         if (channels.length <= 1) {
             if (channels.length == 0) {
-                event(Level.SEVERE, "No peers to request data from");
+                event(Level.ERROR, "No peers to request data from");
                 return;
             }
             requestSize = remaining;
@@ -2031,7 +2031,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (!e.isFatal()) {
                     b.append(". Restarting might rollback the conflict and resolve the issue.");
                 }
-                mEventListener.accept(Level.SEVERE, b.toString());
+                mEventListener.accept(Level.ERROR, b.toString());
             }
 
             mLastConflictReport = now;

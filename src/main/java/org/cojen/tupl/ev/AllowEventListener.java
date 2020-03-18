@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.ev;
 
-import java.util.logging.Level;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -44,7 +42,7 @@ public final class AllowEventListener extends FilteredEventListener {
             categorySet = new HashSet<>(Arrays.asList(categories));
         }
 
-        Set<Level> levelSet;
+        Set<System.Logger.Level> levelSet;
         if (listener instanceof AllowEventListener) {
             var allowed = (AllowEventListener) listener;
             listener = allowed.mListener;
@@ -57,10 +55,10 @@ public final class AllowEventListener extends FilteredEventListener {
         return make(original, listener, categorySet, levelSet);
     }
 
-    public static EventListener make(EventListener listener, Level... levels) {
+    public static EventListener make(EventListener listener, System.Logger.Level... levels) {
         final EventListener original = listener;
 
-        Set<Level> levelSet;
+        Set<System.Logger.Level> levelSet;
         if (levels.length == 0) {
             levelSet = Collections.emptySet();
         } else {
@@ -81,14 +79,15 @@ public final class AllowEventListener extends FilteredEventListener {
     }
 
     private static EventListener make(EventListener original, EventListener listener,
-                                      Set<EventType.Category> categories, Set<Level> levels)
+                                      Set<EventType.Category> categories,
+                                      Set<System.Logger.Level> levels)
     {
         var newListener = new AllowEventListener(listener, categories, levels);
         return newListener.equals(original) ? original : newListener;
     }
 
     AllowEventListener(EventListener listener,
-                       Set<EventType.Category> categories, Set<Level> levels)
+                       Set<EventType.Category> categories, Set<System.Logger.Level> levels)
     {
         super(listener, categories, levels);
     }
@@ -99,7 +98,7 @@ public final class AllowEventListener extends FilteredEventListener {
     }
 
     @Override
-    public boolean isObserved(Level level) {
+    public boolean isObserved(System.Logger.Level level) {
         return mLevels == null || mLevels.contains(level);
     }
 

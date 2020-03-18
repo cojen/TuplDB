@@ -17,8 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.util.logging.Level;
-
 import org.cojen.tupl.ev.AllowEventListener;
 import org.cojen.tupl.ev.DisallowEventListener;
 
@@ -45,7 +43,7 @@ public interface EventListener {
         return true;
     }
 
-    public default boolean isObserved(Level level) {
+    public default boolean isObserved(System.Logger.Level level) {
         return true;
     }
 
@@ -59,7 +57,7 @@ public interface EventListener {
     /**
      * Returns a filtered listener which only observes the given event levels.
      */
-    public default EventListener observe(Level... levels) {
+    public default EventListener observe(System.Logger.Level... levels) {
         return AllowEventListener.make(this, levels);
     }
 
@@ -73,7 +71,7 @@ public interface EventListener {
     /**
      * Returns a filtered listener which never observes the given event levels.
      */
-    public default EventListener ignore(Level... levels) {
+    public default EventListener ignore(System.Logger.Level... levels) {
         return DisallowEventListener.make(this, levels);
     }
 }

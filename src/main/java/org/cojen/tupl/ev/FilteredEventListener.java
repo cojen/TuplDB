@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.ev;
 
-import java.util.logging.Level;
-
 import java.util.Objects;
 import java.util.Set;
 
@@ -32,10 +30,10 @@ import org.cojen.tupl.EventType;
  */
 abstract class FilteredEventListener extends SafeEventListener {
     protected final Set<EventType.Category> mCategories;
-    protected final Set<Level> mLevels;
+    protected final Set<System.Logger.Level> mLevels;
 
     FilteredEventListener(EventListener listener,
-                          Set<EventType.Category> categories, Set<Level> levels)
+                          Set<EventType.Category> categories, Set<System.Logger.Level> levels)
     {
         super(listener);
         mCategories = categories;

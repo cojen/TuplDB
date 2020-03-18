@@ -24,7 +24,7 @@ import java.io.PrintStream;
  *
  * @author Brian S O'Neill
  */
-public class EventPrinter implements EventListener {
+public final class EventPrinter implements EventListener {
     private final PrintStream mOut;
 
     /**
@@ -38,10 +38,7 @@ public class EventPrinter implements EventListener {
      * Prints events to the given stream.
      */
     public EventPrinter(PrintStream out) {
-        if (out == null) {
-            throw null;
-        }
-        mOut = out;
+        mOut = java.util.Objects.requireNonNull(out);
     }
 
     @Override

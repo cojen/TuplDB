@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.repl;
 
+import static java.lang.System.Logger.Level;
+
 import java.io.File;
 
 import java.net.InetAddress;
@@ -29,8 +31,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import java.util.function.BiConsumer;
-
-import java.util.logging.Level;
 
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
