@@ -202,6 +202,7 @@ public class WorkerTest {
         int prev = Integer.MAX_VALUE;
         for (int count : counts.values()) {
             sum += count;
+            // FIXME: java.lang.AssertionError: 102 <= 98
             assertTrue(count + " <= " + prev, count <= prev);
             prev = count;
         }
