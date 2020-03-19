@@ -28,8 +28,6 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.WriteFailureException;
 
-import static org.cojen.tupl.core.PageManager.ALLOC_NORMAL;
-import static org.cojen.tupl.core.PageManager.ALLOC_RESERVE;
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.scramble;
 
@@ -85,7 +83,7 @@ final class PageQueue implements IntegerRef {
 
     private final PageManager mManager;
     private final int mPageSize;
-    private final int mAllocMode;
+    private final boolean mIsReserve;
     private final boolean mAggressive;
 
     // These fields are guarded by remove lock provided by caller.
@@ -124,27 +122,26 @@ final class PageQueue implements IntegerRef {
      * @param manager used for allocating and deleting pages for the queue itself
      */
     static PageQueue newRegularFreeList(PageManager manager) {
-        return new PageQueue(manager, ALLOC_NORMAL, false, null);
+        return new PageQueue(manager, false, false, null);
     }
 
     /**
      * @param manager used for allocating and deleting pages for the queue itself
      */
     static PageQueue newRecycleFreeList(PageManager manager) {
-        return new PageQueue(manager, ALLOC_NORMAL, true, null);
+        return new PageQueue(manager, false, true, null);
     }
 
     /**
      * @param manager used for allocating and deleting pages for the queue itself
-     * @param allocMode ALLOC_NORMAL or ALLOC_RESERVE
      * @param aggressive pass true if most appended pages are safe to remove
      */
-    private PageQueue(PageManager manager, int allocMode, boolean aggressive,
+    private PageQueue(PageManager manager, boolean isReserve, boolean aggressive,
                       ReentrantLock appendLock)
     {
         mManager = manager;
         mPageSize = manager.pageSize();
-        mAllocMode = allocMode;
+        mIsReserve = isReserve;
         mAggressive = aggressive;
 
         mRemoveHead = p_callocPage(manager.directPageSize());
@@ -187,7 +184,7 @@ final class PageQueue implements IntegerRef {
         // call into the recycle list, since free list nodes cannot safely be recycled.
         // Allocate as non-aggressive, preventing page manager from raiding pages that were
         // deleted instead of recycled. Full reclamation is possible only after a checkpoint.
-        var queue = new PageQueue(mManager, ALLOC_RESERVE, false, mAppendLock);
+        var queue = new PageQueue(mManager, true, false, mAppendLock);
 
         // All nodes must be deleted when compaction aborts and the reserve list is raided.
         queue.mReserveReclaimUpperBound = Long.MAX_VALUE;
@@ -222,10 +219,10 @@ final class PageQueue implements IntegerRef {
 
         if (debugListener != null) {
             String type;
-            if (mAllocMode == ALLOC_NORMAL) {
-                type = mAggressive ? "Recycle" : "Regular";
-            } else {
+            if (mIsReserve) {
                 type = "Reserve";
+            } else {
+                type = mAggressive ? "Recycle" : "Regular";
             }
 
             debugListener.notify(EventType.DEBUG, "%1$s free list REMOVE_PAGE_COUNT: %2$d",
@@ -257,7 +254,7 @@ final class PageQueue implements IntegerRef {
      * @param upperBound inclusive; pages greater than the upper bound are discarded
      */
     void reclaim(ReentrantLock removeLock, long upperBound) throws IOException {
-        if (mAllocMode != ALLOC_RESERVE) {
+        if (!mIsReserve) {
             throw new IllegalStateException();
         }
 
@@ -316,7 +313,7 @@ final class PageQueue implements IntegerRef {
         try {
             pageId = mRemoveHeadFirstPageId;
 
-            if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(pageId)) {
+            if (mManager.isPageOutOfBounds(pageId) && !mIsReserve) {
                 throw new CorruptDatabaseException
                     ("Invalid page id in free list: " + pageId + "; list node: " + mRemoveHeadId);
             }
@@ -336,7 +333,7 @@ final class PageQueue implements IntegerRef {
 
             oldHeadId = mRemoveHeadId;
 
-            if (mAllocMode == ALLOC_RESERVE && oldHeadId > mReserveReclaimUpperBound) {
+            if (mIsReserve && oldHeadId > mReserveReclaimUpperBound) {
                 // Don't add to free list if not in the reclamation range.
                 oldHeadId = 0;
             }
@@ -373,7 +370,12 @@ final class PageQueue implements IntegerRef {
 
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
-        if (mAllocMode != ALLOC_RESERVE && mManager.isPageOutOfBounds(id)) {
+        if (mManager.isPageOutOfBounds(id)) {
+            if (id == 0 && mIsReserve) {
+                // Reserve list permits the next node to be null at the end.
+                mRemoveHeadId = 0;
+                return;
+            }
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         var head = readRemoveNode(id);
@@ -393,9 +395,7 @@ final class PageQueue implements IntegerRef {
         LocalDatabase cache = mManager.mPageCache;
         Node node;
 
-        if (cache == null || mAllocMode == ALLOC_RESERVE
-            || (node = cache.nodeMapGetAndRemove(id)) == null)
-        {
+        if (cache == null || mIsReserve || (node = cache.nodeMapGetAndRemove(id)) == null) {
             mManager.mPageArray.readPage(id, head);
         } else {
             if (node.mCachedState != Node.CACHED_CLEAN) {
@@ -496,13 +496,13 @@ final class PageQueue implements IntegerRef {
         mDrainInProgress = true;
         try {
             // Can throw an IOException, so do this before changing any state.
-            long newTailId = mManager.allocPage(mAllocMode);
+            long newTailId = mManager.allocPage(mIsReserve);
 
             /*P*/ byte[] tailBuf;
             Node node;
 
             LocalDatabase cache = mManager.mPageCache;
-            if (cache == null || mAllocMode == ALLOC_RESERVE) {
+            if (cache == null || mIsReserve) {
                 tailBuf = mAppendTail;
                 node = null;
             } else {
@@ -639,7 +639,7 @@ final class PageQueue implements IntegerRef {
      * duplicates exist. Only should be called for reserve list.
      */
     boolean verifyPageRange(long startId, long endId) throws IOException {
-        if (mAllocMode != ALLOC_RESERVE) {
+        if (!mIsReserve) {
             throw new AssertionError();
         }
 

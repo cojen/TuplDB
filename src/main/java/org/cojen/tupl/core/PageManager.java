@@ -74,11 +74,6 @@ final class PageManager {
     // Accessed by PageQueue with append or remove lock held.
     LocalDatabase mPageCache;
 
-    static final int
-        ALLOC_TRY_RESERVE = -1, // Create pages: no.  Compaction zone: yes
-        ALLOC_NORMAL = 0,       // Create pages: yes. Compaction zone: no
-        ALLOC_RESERVE = 1;      // Create pages: yes. Compaction zone: yes
-
     /**
      * Create a new PageManager.
      */
@@ -231,14 +226,14 @@ final class PageManager {
      * @return non-zero page id
      */
     public long allocPage() throws IOException {
-        return allocPage(ALLOC_NORMAL);
+        return allocPage(false);
     }
 
     /**
-     * @param mode ALLOC_TRY_RESERVE, ALLOC_NORMAL, ALLOC_RESERVE
-     * @return 0 if mode is ALLOC_TRY_RESERVE and free lists are empty
+     * @param forReserve true if the new pages cannot be created if the free lists are empty
+     * @return 0 if reserve is true and free lists are empty
      */
-    long allocPage(int mode) throws IOException {
+    long allocPage(boolean forReserve) throws IOException {
         while (true) {
             long pageId;
             alloc: {
@@ -265,7 +260,7 @@ final class PageManager {
                     break alloc;
                 }
 
-                if (mode >= ALLOC_NORMAL) {
+                if (!forReserve) {
                     // Expand the file or abort compaction.
 
                     PageQueue reserve = mReserveList;
@@ -296,8 +291,13 @@ final class PageManager {
                 return pageId;
             }
 
-            if (mode == ALLOC_NORMAL && pageId >= mCompactionTargetPageCount && mCompacting) {
-                // Page is in the compaction zone, so allocate another.
+            if (pageId >= mCompactionTargetPageCount && mCompacting) {
+                // Page is in the compaction zone, so allocate another. Pages allocated for the
+                // reserve list itself must also follow this restriction, even though it might
+                // seem safe. The problem is that the when the reserve list is reclaimed
+                // following a compaction, new allocations which can increase the page count
+                // run concurrently. This can then cause reserve list nodes to be written over,
+                // corrupting them.
                 mReserveList.append(pageId, true);
                 continue;
             }
@@ -446,7 +446,7 @@ final class PageManager {
             mRemoveLock.unlock();
         }
 
-        long initPageId = allocPage(ALLOC_TRY_RESERVE);
+        long initPageId = allocPage(true);
         if (initPageId == 0) {
             return false;
         }
