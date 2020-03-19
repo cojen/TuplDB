@@ -333,7 +333,7 @@ final class PosixFileIO extends AbstractFileIO {
     static long lseekFd(int fd, long fileOffset, int whence) throws IOException {
         long result = lseek(fd, fileOffset, whence);
         if (result == -1) {
-            throw lastErrorToException();
+            throw lastErrorToException(fileOffset);
         }
         return result;
     }
@@ -343,7 +343,7 @@ final class PosixFileIO extends AbstractFileIO {
             int amt = pread(fd, bufPtr, length, fileOffset);
             if (amt <= 0) {
                 if (amt < 0) {
-                    throw lastErrorToException();
+                    throw lastErrorToException(fileOffset);
                 }
                 if (length > 0) {
                     throw new EOFException("Attempt to read past end of file: " + fileOffset);
@@ -363,7 +363,7 @@ final class PosixFileIO extends AbstractFileIO {
         while (true) {
             int amt = pwrite(fd, bufPtr, length, fileOffset);
             if (amt < 0) {
-                throw lastErrorToException();
+                throw lastErrorToException(fileOffset);
             }
             length -= amt;
             if (length <= 0) {
@@ -420,7 +420,7 @@ final class PosixFileIO extends AbstractFileIO {
     static long mmapFd(long length, int prot, int flags, int fd, long offset) throws IOException {
         long ptr = mmap(0, length, prot, flags, fd, offset);
         if (ptr == -1) {
-            throw lastErrorToException();
+            throw lastErrorToException(offset);
         }
         return ptr;
     }
@@ -439,6 +439,10 @@ final class PosixFileIO extends AbstractFileIO {
 
     static IOException lastErrorToException() {
         return new IOException(errorMessage(Native.getLastError()));
+    }
+
+    static IOException lastErrorToException(long offset) {
+        return new IOException(errorMessage(Native.getLastError()) + ": offset=" + offset);
     }
 
     static String errorMessage(int errnum) {
@@ -581,8 +585,8 @@ final class PosixFileIO extends AbstractFileIO {
         @Override
         public int fallocate(int fd, long pos, long length) {
             final var fstore = new Fstore.ByReference();
-            fstore.fst_flags   = 4;   // F_ALLOCATEALL - allocate all requested space or none at all.
-            fstore.fst_posmode = 3;   // F_PEOFPOSMODE
+            fstore.fst_flags   = 4; // F_ALLOCATEALL - allocate all requested space or none at all.
+            fstore.fst_posmode = 3; // F_PEOFPOSMODE
             fstore.fst_offset  = 0;
             fstore.fst_length  = length;
 
