@@ -540,19 +540,22 @@ public class CompactTest {
 
         txn.commit();
 
-        // Compact will work this time now that undo log is gone.
-        mDb.compactFile(null, 0.9);
-        Database.Stats stats3 = mDb.stats();
-
-        try {
-            assertTrue(stats3.freePages() < stats2.freePages());
-            assertTrue(stats3.totalPages() < stats2.totalPages());
-        } catch (AssertionError e) {
-            // Can fail if delayed by concurrent test load. Retry.
+        for (int i=3; --i>=0; ) {
+            // Compact will work this time now that undo log is gone.
             mDb.compactFile(null, 0.9);
-            stats3 = mDb.stats();
-            assertTrue(stats3.freePages() < stats2.freePages());
-            assertTrue(stats3.totalPages() < stats2.totalPages());
+            Database.Stats stats3 = mDb.stats();
+
+            try {
+                assertTrue(stats3.freePages() < stats2.freePages());
+                assertTrue(stats3.totalPages() < stats2.totalPages());
+                break;
+            } catch (AssertionError e) {
+                // Can fail if delayed by concurrent test load.
+                if (i == 0) {
+                    throw e;
+                }
+                // Retry.
+            }
         }
     }
 
