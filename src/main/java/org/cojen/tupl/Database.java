@@ -606,11 +606,16 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract boolean isLeader();
 
     /**
-     * Registers the given task to start in separate thread when the database instance has
+     * Registers the given task to start in a separate thread when the database instance has
      * become the leader. If already the leader, the task is started immediately. The task is
-     * started at most once per registration.
+     * started at most once per registration, and a second task is called when leadership is
+     * lost. It too is called in a separate thread, and at most once per registration. Note
+     * that if leadership is quickly lost, the second task might run before the first task.
+     *
+     * @param acquired called when leadership is acquired (can be null)
+     * @param lost called when leadership is lost (can be null)
      */
-    public abstract void uponLeader(Runnable task);
+    public abstract void uponLeader(Runnable acquired, Runnable lost);
 
     /**
      * If the database instance is currently acting as a leader, attempt to give up leadership

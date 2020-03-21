@@ -60,8 +60,10 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
         return true;
     }
 
-    void uponLeader(Runnable task) {
-        Runner.start(task);
+    void uponLeader(Runnable acquired, Runnable lost) {
+        if (acquired != null) {
+            Runner.start(acquired);
+        }
     }
 
     /**

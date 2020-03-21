@@ -2733,11 +2733,13 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public void uponLeader(Runnable task) {
+    public void uponLeader(Runnable acquired, Runnable lost) {
         if (mRedoWriter == null) {
-            Runner.start(task);
+            if (acquired != null) {
+                Runner.start(acquired);
+            }
         } else {
-            mRedoWriter.uponLeader(task);
+            mRedoWriter.uponLeader(acquired, lost);
         }
     }
 

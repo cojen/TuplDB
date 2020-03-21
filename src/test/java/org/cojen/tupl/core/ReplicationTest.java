@@ -72,7 +72,7 @@ public class ReplicationTest {
         mLeader = newTempDatabase(getClass(), config);
 
         var latch = new CountDownLatch(1);
-        mLeader.uponLeader(() -> latch.countDown());
+        mLeader.uponLeader(() -> latch.countDown(), null);
         assertTrue(latch.await(10, TimeUnit.SECONDS));
 
         config.customHandlers(Map.of("TestHandler", mReplicaHandler));

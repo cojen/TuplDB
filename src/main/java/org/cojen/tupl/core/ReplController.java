@@ -320,20 +320,31 @@ final class ReplController extends ReplWriter {
     }
 
     @Override
-    void uponLeader(Runnable task) {
+    void uponLeader(Runnable acquired, Runnable lost) {
         acquireExclusive();
         try {
-            if (isLeader()) {
-                Runner.start(task);
-            } else {
-                if (mLeaderNotifyCondition == null) {
-                    mLeaderNotifyCondition = new LatchCondition();
-                }
-
-                mLeaderNotifyCondition.uponSignal(this, () -> Runner.start(task));
-            }
+            doUponLeader(acquired, lost);
         } finally {
             releaseExclusive();
+        }
+    }
+
+    // Caller must hold exclusive latch.
+    private void doUponLeader(Runnable acquired, Runnable lost) {
+        if (isLeader()) {
+            if (acquired != null) {
+                Runner.start(acquired);
+            }
+            if (lost != null) {
+                mTxnRedoWriter.mReplWriter.uponCommit(Long.MAX_VALUE, pos -> Runner.start(lost));
+            }
+        } else {
+            if (mLeaderNotifyCondition == null) {
+                mLeaderNotifyCondition = new LatchCondition();
+            }
+
+            // When signaled and with the latch held, need to check everything again.
+            mLeaderNotifyCondition.uponSignal(this, () -> doUponLeader(acquired, lost));
         }
     }
 

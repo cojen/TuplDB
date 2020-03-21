@@ -490,9 +490,10 @@ byte[]&nbsp;newName)</code></th>
 </tr>
 <tr class="rowColor" id="i41">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;acquired,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;lost)</code></th>
 <td class="colLast">
-<div class="block">Registers the given task to start in separate thread when the database instance has
+<div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader.</div>
 </td>
 </tr>
@@ -1094,11 +1095,19 @@ double&nbsp;target)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="uponLeader(java.lang.Runnable)">uponLeader</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;task)</span></div>
-<div class="block">Registers the given task to start in separate thread when the database instance has
+<h3><a id="uponLeader(java.lang.Runnable,java.lang.Runnable)">uponLeader</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;acquired,
+<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;lost)</span></div>
+<div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader. If already the leader, the task is started immediately. The task is
- started at most once per registration.</div>
+ started at most once per registration, and a second task is called when leadership is
+ lost. It too is called in a separate thread, and at most once per registration. Note
+ that if leadership is quickly lost, the second task might run before the first task.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>acquired</code> - called when leadership is acquired (can be null)</dd>
+<dd><code>lost</code> - called when leadership is lost (can be null)</dd>
+</dl>
 </section>
 </li>
 <li class="blockList">
