@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -25,9 +27,11 @@ import org.cojen.tupl.util.Runner;
  * @author Brian S O'Neill
  */
 /*P*/
-final class PendingTxnFinisher implements Runnable {
+final class PendingTxnFinisher extends Latch implements Runnable {
     // FIXME: Actually spin up more threads.
     private final int mMaxThreads;
+
+    private final LatchCondition mCondition;
 
     private PendingTxn mFirst, mLast;
 
@@ -39,20 +43,26 @@ final class PendingTxnFinisher implements Runnable {
 
     PendingTxnFinisher(int maxThreads) {
         mMaxThreads = maxThreads;
+        mCondition = new LatchCondition();
     }
 
-    synchronized void enqueue(int count, PendingTxn first, PendingTxn last) {
-        if (mLast == null) {
-            mFirst = first;
-        } else {
-            mLast.mNext = first;
-        }
-        mLast = last;
-        if (!mRunning) {
-            Runner.start("PendingTxnFinisher", this);
-            mRunning = true;
-        } else {
-            notify();
+    void enqueue(int count, PendingTxn first, PendingTxn last) {
+        acquireExclusive();
+        try {
+            if (mLast == null) {
+                mFirst = first;
+            } else {
+                mLast.mNext = first;
+            }
+            mLast = last;
+            if (!mRunning) {
+                Runner.start("PendingTxnFinisher", this);
+                mRunning = true;
+            } else {
+                mCondition.signal(this);
+            }
+        } finally {
+            releaseExclusive();
         }
     }
 
@@ -61,7 +71,8 @@ final class PendingTxnFinisher implements Runnable {
         while (true) {
             boolean waited = false;
             PendingTxn pending;
-            synchronized (this) {
+            acquireExclusive();
+            try {
                 while (true) {
                     pending = mFirst;
                     if (pending != null) {
@@ -74,12 +85,11 @@ final class PendingTxnFinisher implements Runnable {
                         mRunning = false;
                         return;
                     }
-                    try {
-                        wait(10_000);
-                    } catch (InterruptedException e) {
-                    }
+                    mCondition.await(this, 10_000_000_000L);
                     waited = true;
                 }
+            } finally {
+                releaseExclusive();
             }
 
             pending.run();
