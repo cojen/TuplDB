@@ -269,7 +269,7 @@ final class ReplController extends ReplWriter {
 
     @Override
     DurabilityMode opWriteCheck(DurabilityMode mode) throws IOException {
-        throw mEngine.unmodifiable();
+        throw unmodifiable();
     }
 
     @Override
@@ -340,9 +340,11 @@ final class ReplController extends ReplWriter {
     /**
      * Called by ReplEngine when local instance has become the leader.
      *
-     * @return new leader redo writer, or null if failed
+     * @return new leader redo writer
      */
     ReplWriter leaderNotify(StreamReplicator.Writer writer) throws IOException {
+        Objects.requireNonNull(writer);
+
         acquireExclusive();
         try {
             // Note: Signal isn't delivered until after latch is released.
@@ -393,7 +395,7 @@ final class ReplController extends ReplWriter {
         throws DatabaseException
     {
         switchToReplica(expect);
-        return mEngine.unmodifiable();
+        return unmodifiable();
     }
 
     // Also called by ReplWriter.

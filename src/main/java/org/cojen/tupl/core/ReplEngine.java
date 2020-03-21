@@ -1580,11 +1580,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         closeQuietly(mDatabase, e);
     }
 
-    UnmodifiableReplicaException unmodifiable() throws DatabaseException {
-        mDatabase.checkClosed();
-        return new UnmodifiableReplicaException();
-    }
-
     private static long mix(long txnId) {
         return HASH_SPREAD * txnId;
     }

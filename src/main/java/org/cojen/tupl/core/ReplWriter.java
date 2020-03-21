@@ -124,7 +124,7 @@ class ReplWriter extends RedoWriter {
     public final void txnCommitSync(long commitPos) throws IOException {
         StreamReplicator.Writer writer = mReplWriter;
         if (writer == null) {
-            throw mEngine.unmodifiable();
+            throw unmodifiable();
         }
         if (!confirm(writer, commitPos, -1)) {
             throw nowUnmodifiable();
@@ -190,6 +190,11 @@ class ReplWriter extends RedoWriter {
         throw fail();
     }
 
+    private static UnsupportedOperationException fail() {
+        // ReplController subclass supports checkpoint operations.
+        return new UnsupportedOperationException();
+    }
+
     @Override
     DurabilityMode opWriteCheck(DurabilityMode mode) throws IOException {
         // All redo methods which accept a DurabilityMode must always use SYNC mode. This
@@ -211,7 +216,7 @@ class ReplWriter extends RedoWriter {
         throws IOException
     {
         if (mReplWriter == null) {
-            throw mEngine.unmodifiable();
+            throw unmodifiable();
         }
 
         mBufferLatch.acquireExclusive();
@@ -512,9 +517,9 @@ class ReplWriter extends RedoWriter {
         }
     }
 
-    private UnsupportedOperationException fail() {
-        // ReplController subclass supports checkpoint operations.
-        return new UnsupportedOperationException();
+    UnmodifiableReplicaException unmodifiable() throws DatabaseException {
+        mEngine.mDatabase.checkClosed();
+        return new UnmodifiableReplicaException();
     }
 
     private UnmodifiableReplicaException nowUnmodifiable() throws DatabaseException {
