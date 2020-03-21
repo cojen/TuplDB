@@ -141,7 +141,7 @@ final class PendingTxn extends Locker implements Runnable {
                 }
             }
 
-            finished(commitPos, status);
+            finished(status);
         } catch (Throwable e) {
             LocalDatabase db = getDatabase();
             if (db != null && !db.isClosed()) {
@@ -152,7 +152,7 @@ final class PendingTxn extends Locker implements Runnable {
                 } else {
                     Utils.uncaught(e);
                 }
-                finished(-1, e);
+                finished(e);
             }
         }
     }
@@ -177,10 +177,10 @@ final class PendingTxn extends Locker implements Runnable {
         }
     }
 
-    private void finished(long commitPos, Object status) {
+    private void finished(Object status) {
         if (mAttachment instanceof CommitCallback) {
             try {
-                ((CommitCallback) mAttachment).finished(mTxnId, commitPos, status);
+                ((CommitCallback) mAttachment).finished(mTxnId, status);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }

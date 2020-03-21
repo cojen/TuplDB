@@ -18,15 +18,19 @@
 package org.cojen.tupl;
 
 /**
- * Defines a pending transaction callback which receives a finish notification. To be
+ * Defines a callback which is notified when a pending transaction has finished. To be
  * effective, the callback must be {@linkplain Transaction#attach(CommitCallback) attached}
  * prior to committing the transaction. If an exception is thrown by the initial commit
  * invocation, the callback isn't invoked.
  *
- * <p>A pending transaction is defined as replicated and uses the {@link DurabilityMode#NO_SYNC
- * NO_SYNC} or {@link DurabilityMode#NO_FLUSH NO_FLUSH} durability mode.  A replicated
- * transaction which uses the {@link DurabilityMode#SYNC SYNC} durability mode blocks the
- * committing thread until replication is confirmed.
+ * <p>A pending transaction is one which is replicated, and it uses the {@link
+ * DurabilityMode#NO_SYNC NO_SYNC} or {@link DurabilityMode#NO_FLUSH NO_FLUSH} durability mode.
+ * A replicated transaction which uses the {@link DurabilityMode#SYNC SYNC} durability mode
+ * blocks the committing thread until replication is confirmed, and the callback isn't invoked.
+ *
+ * <p>A unique callback instance can be allocated per transaction, or an instance can be shared
+ * for multiple transactions. When the callback is shared, thread safety must be taken into
+ * consideration.
  *
  * @author Brian S O'Neill
  *
@@ -44,10 +48,9 @@ public interface CommitCallback {
      * pile up in an unfinished state.
      *
      * @param txnId non-zero transaction id
-     * @param position log position immediately after the commit operation; is -1 if rolled back
      * @param status null if committed, or else non-null if rolled back
      */
-    void finished(long txnId, long position, Object status);
+    void finished(long txnId, Object status);
 
     /**
      * Called when a transaction is moving to the pending state. By default this method does
