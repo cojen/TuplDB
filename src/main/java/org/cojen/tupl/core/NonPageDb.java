@@ -39,9 +39,6 @@ import static org.cojen.tupl.core.PageOps.*;
  */
 final class NonPageDb extends PageDb {
     private final int mPageSize;
-    private final PageCache mCache;
-
-    private final int mAllocMode;
 
     private final AtomicLong mAllocId;
     private final LongAdder mFreePageCount;
@@ -51,11 +48,8 @@ final class NonPageDb extends PageDb {
     /**
      * @param cache optional
      */
-    NonPageDb(int pageSize, PageCache cache) {
+    NonPageDb(int pageSize) {
         mPageSize = pageSize;
-        mCache = cache;
-
-        mAllocMode = cache == null ? NodeGroup.MODE_NO_EVICT : 0;
 
         // Next assigned id is 2, the first legal identifier.
         mAllocId = new AtomicLong(1);
@@ -89,7 +83,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public int allocMode() {
-        return mAllocMode;
+        return NodeGroup.MODE_NO_EVICT;
     }
 
     @Override
@@ -143,10 +137,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public void readPage(long id, /*P*/ byte[] page) throws IOException {
-        PageCache cache = mCache;
-        if (cache == null || !cache.remove(id, page, 0, pageSize())) {
-            fail(false);
-        }
+        fail(false);
     }
 
     @Override
@@ -163,10 +154,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public void writePage(long id, /*P*/ byte[] page) throws IOException {
-        PageCache cache = mCache;
-        if (cache == null || !cache.add(id, page, 0, false)) {
-            fail(true);
-        }
+        fail(true);
     }
 
     @Override
@@ -176,24 +164,7 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public void cachePage(long id, /*P*/ byte[] page) throws IOException {
-        PageCache cache = mCache;
-        if (cache != null && !cache.add(id, page, 0, false)) {
-            fail(true);
-        }
-    }
-
-    @Override
-    public void uncachePage(long id) throws IOException {
-        PageCache cache = mCache;
-        if (cache != null) {
-            cache.remove(id, p_null(), 0, 0);
-        }
-    }
-
-    @Override
     public void deletePage(long id, boolean force) throws IOException {
-        uncachePage(id);
         mFreePageCount.increment();
     }
 
@@ -263,9 +234,6 @@ final class NonPageDb extends PageDb {
 
     @Override
     public void close() {
-        if (mCache != null) {
-            mCache.close();
-        }
     }
 
     @Override

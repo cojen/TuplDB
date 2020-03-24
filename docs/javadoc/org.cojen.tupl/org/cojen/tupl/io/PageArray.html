@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":6,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":6,"i14":10,"i15":6,"i16":10,"i17":6,"i18":10,"i19":6,"i20":10,"i21":10,"i22":10,"i23":6,"i24":10,"i25":10,"i26":6,"i27":10,"i28":6,"i29":10,"i30":10,"i31":6,"i32":10,"i33":10};
+<script type="text/javascript">var data = {"i0":10,"i1":6,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":6,"i10":10,"i11":6,"i12":10,"i13":6,"i14":10,"i15":6,"i16":10,"i17":10,"i18":10,"i19":6,"i20":10,"i21":10,"i22":6,"i23":10,"i24":6,"i25":10,"i26":6,"i27":10,"i28":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -155,66 +155,32 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <tbody>
 <tr class="altColor" id="i0">
 <td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachePage(long,byte%5B%5D)">cachePage</a></span>&#8203;(long&nbsp;index,
-byte[]&nbsp;src)</code></th>
-<td class="colLast">
-<div class="block">If supported, copies a page into the cache, but does not write it.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i1">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachePage(long,byte%5B%5D,int)">cachePage</a></span>&#8203;(long&nbsp;index,
-byte[]&nbsp;src,
-int&nbsp;offset)</code></th>
-<td class="colLast">
-<div class="block">If supported, copies a page into the cache, but does not write it.</div>
-</td>
-</tr>
-<tr class="altColor" id="i2">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachePage(long,long)">cachePage</a></span>&#8203;(long&nbsp;index,
-long&nbsp;srcPtr)</code></th>
-<td class="colLast">
-<div class="block">If supported, copies a page into the cache, but does not write it.</div>
-</td>
-</tr>
-<tr class="rowColor" id="i3">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#cachePage(long,long,int)">cachePage</a></span>&#8203;(long&nbsp;index,
-long&nbsp;srcPtr,
-int&nbsp;offset)</code></th>
-<td class="colLast">
-<div class="block">If supported, copies a page into the cache, but does not write it.</div>
-</td>
-</tr>
-<tr class="altColor" id="i4">
-<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="rowColor" id="i1">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close(java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="altColor" id="i2">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#copyPage(long,long)">copyPage</a></span>&#8203;(long&nbsp;srcIndex,
 long&nbsp;dstIndex)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i7">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#copyPageFromPointer(long,long)">copyPageFromPointer</a></span>&#8203;(long&nbsp;srcPointer,
 long&nbsp;dstIndex)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i8">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#directPagePointer(long)">directPagePointer</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i9">
+<tr class="rowColor" id="i5">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#directPageSize()">directPageSize</a></span>()</code></th>
 <td class="colLast">
@@ -222,12 +188,12 @@ long&nbsp;dstIndex)</code></th>
  to allocate for direct I/O.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
+<tr class="altColor" id="i6">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#dirtyPage(long)">dirtyPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i11">
+<tr class="rowColor" id="i7">
 <td class="colFirst"><code>byte[]</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,byte%5B%5D)">evictPage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;buf)</code></th>
@@ -236,7 +202,7 @@ byte[]&nbsp;buf)</code></th>
  be returned.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#evictPage(long,long)">evictPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;bufPtr)</code></th>
@@ -245,68 +211,68 @@ long&nbsp;bufPtr)</code></th>
  be returned.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#expandPageCount(long)">expandPageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Attempt to expand the total count of pages.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
+<tr class="altColor" id="i10">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isDirectIO()">isDirectIO</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i15">
+<tr class="rowColor" id="i11">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i16">
+<tr class="altColor" id="i12">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isFullyMapped()">isFullyMapped</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i17">
+<tr class="rowColor" id="i13">
 <td class="colFirst"><code>abstract boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i18">
+<tr class="altColor" id="i14">
 <td class="colFirst"><code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open()">open</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Attempt to open or reopen the page array.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i19">
+<tr class="rowColor" id="i15">
 <td class="colFirst"><code>abstract long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageCount()">pageCount</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 </td>
 </tr>
-<tr class="altColor" id="i20">
+<tr class="altColor" id="i16">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageCountLimit()">pageCountLimit</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Return maximum allowed page count, or -1 if not applicable.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i21">
+<tr class="rowColor" id="i17">
 <td class="colFirst"><code>int</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#pageSize()">pageSize</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Returns the fixed size of all pages in the array, in bytes.</div>
 </td>
 </tr>
-<tr class="altColor" id="i22">
+<tr class="altColor" id="i18">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D)">readPage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;dst)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i23">
+<tr class="rowColor" id="i19">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;dst,
@@ -314,13 +280,13 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i24">
+<tr class="altColor" id="i20">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long)">readPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;dstPtr)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i25">
+<tr class="rowColor" id="i21">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;dstPtr,
@@ -328,35 +294,28 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="altColor" id="i26">
+<tr class="altColor" id="i22">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i27">
+<tr class="rowColor" id="i23">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncPage(long)">syncPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="colLast">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr class="altColor" id="i28">
+<tr class="altColor" id="i24">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#truncatePageCount(long)">truncatePageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="colLast">
 <div class="block">Attempt to truncate the total count of pages.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i29">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uncachePage(long)">uncachePage</a></span>&#8203;(long&nbsp;index)</code></th>
-<td class="colLast">
-<div class="block">If supported, removes a page from the cache.</div>
-</td>
-</tr>
-<tr class="altColor" id="i30">
+<tr class="rowColor" id="i25">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D)">writePage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;src)</code></th>
@@ -364,7 +323,7 @@ byte[]&nbsp;src)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i31">
+<tr class="altColor" id="i26">
 <td class="colFirst"><code>abstract void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;src,
@@ -373,7 +332,7 @@ int&nbsp;offset)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="altColor" id="i32">
+<tr class="rowColor" id="i27">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long)">writePage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;srcPtr)</code></th>
@@ -381,7 +340,7 @@ long&nbsp;srcPtr)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
+<tr class="altColor" id="i28">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;srcPtr,
@@ -552,7 +511,7 @@ int&nbsp;length)</span>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>index</code> - zero-based page index to read</dd>
 <dd><code>dst</code> - receives read data</dd>
-<dd><code>offset</code> - offset into data dstfer</dd>
+<dd><code>offset</code> - offset into data buffer</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IndexOutOfBoundsException</a></code> - if index is negative</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code> - if index is greater than or equal to page count</dd>
@@ -712,92 +671,6 @@ long&nbsp;bufPtr)</span>
 <dd>replacement buffer, or same instance if replacement was not performed</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IndexOutOfBoundsException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IndexOutOfBoundsException</a></code> - if index is negative</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="cachePage(long,byte[])">cachePage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">cachePage</span>&#8203;(<span class="arguments">long&nbsp;index,
-byte[]&nbsp;src)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">If supported, copies a page into the cache, but does not write it. Cached copy can be
- removed when read again or be evicted sooner. Default implementation does nothing.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>src</code> - data to write</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="cachePage(long,byte[],int)">cachePage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">cachePage</span>&#8203;(<span class="arguments">long&nbsp;index,
-byte[]&nbsp;src,
-int&nbsp;offset)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">If supported, copies a page into the cache, but does not write it. Cached copy can be
- removed when read again or be evicted sooner. Default implementation does nothing.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>src</code> - data to write</dd>
-<dd><code>offset</code> - offset into data buffer</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="cachePage(long,long)">cachePage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">cachePage</span>&#8203;(<span class="arguments">long&nbsp;index,
-long&nbsp;srcPtr)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">If supported, copies a page into the cache, but does not write it. Cached copy can be
- removed when read again or be evicted sooner. Default implementation does nothing.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>srcPtr</code> - data to write</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="cachePage(long,long,int)">cachePage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">cachePage</span>&#8203;(<span class="arguments">long&nbsp;index,
-long&nbsp;srcPtr,
-int&nbsp;offset)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">If supported, copies a page into the cache, but does not write it. Cached copy can be
- removed when read again or be evicted sooner. Default implementation does nothing.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dd><code>srcPtr</code> - data to write</dd>
-<dd><code>offset</code> - offset into data buffer</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="uncachePage(long)">uncachePage</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">uncachePage</span>&#8203;(<span class="arguments">long&nbsp;index)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">If supported, removes a page from the cache. Default implementation does nothing.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>index</code> - zero-based page index to write</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>
 </section>

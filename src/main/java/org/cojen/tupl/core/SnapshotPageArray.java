@@ -49,19 +49,17 @@ import static org.cojen.tupl.core.Utils.*;
 final class SnapshotPageArray extends PageArray {
     private final PageArray mSource;
     private final PageArray mRawSource;
-    private final PageCache mCache;
 
     private volatile Object mSnapshots;
 
     /**
      * @param cache optional
      */
-    SnapshotPageArray(PageArray source, PageArray rawSource, PageCache cache) {
+    SnapshotPageArray(PageArray source, PageArray rawSource) {
         super(source.pageSize());
         mSource = source;
         // Snapshot does not decrypt pages.
         mRawSource = rawSource;
-        mCache = cache;
     }
 
     @Override
@@ -112,45 +110,35 @@ final class SnapshotPageArray extends PageArray {
 
     @Override
     public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-        PageCache cache = mCache;
-        if (cache == null || !cache.remove(index, dst, offset, length)) {
-            mSource.readPage(index, dst, offset, length);
-        }
+        mSource.readPage(index, dst, offset, length);
     }
 
     @Override
     public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-        PageCache cache = mCache;
-        if (cache == null || !cache.remove(index, dstPtr, offset, length)) {
-            mSource.readPage(index, dstPtr, offset, length);
-        }
+        mSource.readPage(index, dstPtr, offset, length);
     }
 
     @Override
     public void writePage(long index, byte[] src, int offset) throws IOException {
         preWritePage(index);
-        cachePage(index, src, offset);
         mSource.writePage(index, src, offset);
     }
 
     @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         preWritePage(index);
-        cachePage(index, srcPtr, offset);
         mSource.writePage(index, srcPtr, offset);
     }
 
     @Override
     public byte[] evictPage(long index, byte[] buf) throws IOException {
         preWritePage(index);
-        cachePage(index, buf, 0);
         return mSource.evictPage(index, buf);
     }
 
     @Override
     public long evictPage(long index, long bufPtr) throws IOException {
         preWritePage(index);
-        cachePage(index, bufPtr, 0);
         return mSource.evictPage(index, bufPtr);
     }
 
@@ -170,34 +158,7 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
-    public void cachePage(long index, byte[] src, int offset) {
-        PageCache cache = mCache;
-        if (cache != null) {
-            cache.add(index, src, offset, true);
-        }
-    }
-
-    @Override
-    public void cachePage(long index, long srcPtr, int offset) {
-        PageCache cache = mCache;
-        if (cache != null) {
-            cache.add(index, srcPtr, offset, true);
-        }
-    }
-
-    @Override
-    public void uncachePage(long index) {
-        PageCache cache = mCache;
-        if (cache != null) {
-            cache.remove(index, p_null(), 0, 0);
-        }
-    }
-
-    @Override
     public long directPagePointer(long index) throws IOException {
-        if (mCache != null) {
-            throw new IllegalStateException();
-        }
         return mSource.directPagePointer(index);
     }
 
@@ -219,10 +180,6 @@ final class SnapshotPageArray extends PageArray {
     }
 
     private void preCopyPage(long dstIndex) throws IOException {
-        if (mCache != null) {
-            throw new IllegalStateException();
-        }
-
         if (dstIndex < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(dstIndex));
         }
@@ -244,9 +201,6 @@ final class SnapshotPageArray extends PageArray {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        if (mCache != null) {
-            mCache.close();
-        }
         mSource.close(cause);
     }
 

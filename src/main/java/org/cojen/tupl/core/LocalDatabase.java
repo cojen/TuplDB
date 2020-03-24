@@ -469,14 +469,6 @@ public final class LocalDatabase extends CoreDatabase {
 
             final long cacheInitStart = System.nanoTime();
 
-            // Create or retrieve optional page cache.
-            PageCache cache = launcher.pageCache(mEventListener);
-
-            if (cache != null) {
-                // Update launcher such that info file is correct.
-                launcher.mSecondaryCacheSize = cache.capacity();
-            }
-
             /*P*/ // [|
             /*P*/ // boolean fullyMapped = false;
             /*P*/ // ]
@@ -489,15 +481,14 @@ public final class LocalDatabase extends CoreDatabase {
             if (dataFiles == null) {
                 PageArray dataPageArray = launcher.mDataPageArray;
                 if (dataPageArray == null) {
-                    mPageDb = new NonPageDb(pageSize, cache);
+                    mPageDb = new NonPageDb(pageSize);
                 } else {
                     dataPageArray = dataPageArray.open();
                     Crypto crypto = launcher.mCrypto;
                     mPageDb = DurablePageDb.open
-                        (debugListener, dataPageArray, cache, crypto, openMode == OPEN_DESTROY);
+                        (debugListener, dataPageArray, crypto, openMode == OPEN_DESTROY);
                     /*P*/ // [|
-                    /*P*/ // fullyMapped = crypto == null && cache == null
-                    /*P*/ //               && dataPageArray.isFullyMapped();
+                    /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
                 }
             } else {
@@ -508,12 +499,12 @@ public final class LocalDatabase extends CoreDatabase {
                     pageDb = DurablePageDb.open
                         (debugListener, explicitPageSize, pageSize,
                          dataFiles, options,
-                         cache, launcher.mCrypto, openMode == OPEN_DESTROY);
+                         launcher.mCrypto, openMode == OPEN_DESTROY);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
                     }
-                    pageDb = new NonPageDb(pageSize, cache);
+                    pageDb = new NonPageDb(pageSize);
                 }
 
                 mPageDb = pageDb;
@@ -2251,7 +2242,7 @@ public final class LocalDatabase extends CoreDatabase {
             // Delete old redo log files.
             deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, null, launcher.mCrypto, in);
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, launcher.mCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2275,7 +2266,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, options, null, launcher.mCrypto, in);
+                (pageSize, dataFiles, options, launcher.mCrypto, in);
 
             try {
                 restored.close();

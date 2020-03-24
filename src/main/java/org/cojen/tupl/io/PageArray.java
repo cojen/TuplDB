@@ -103,7 +103,7 @@ public abstract class PageArray implements CauseCloseable {
     /**
      * @param index zero-based page index to read
      * @param dst receives read data
-     * @param offset offset into data dstfer
+     * @param offset offset into data buffer
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
@@ -213,58 +213,6 @@ public abstract class PageArray implements CauseCloseable {
     public long evictPage(long index, long bufPtr) throws IOException {
         writePage(index, bufPtr);
         return bufPtr;
-    }
-
-    /**
-     * If supported, copies a page into the cache, but does not write it. Cached copy can be
-     * removed when read again or be evicted sooner. Default implementation does nothing.
-     *
-     * @param index zero-based page index to write
-     * @param src data to write
-     */
-    public void cachePage(long index, byte[] src) throws IOException {
-        cachePage(index, src, 0);
-    }
-
-    /**
-     * If supported, copies a page into the cache, but does not write it. Cached copy can be
-     * removed when read again or be evicted sooner. Default implementation does nothing.
-     *
-     * @param index zero-based page index to write
-     * @param src data to write
-     * @param offset offset into data buffer
-     */
-    public void cachePage(long index, byte[] src, int offset) throws IOException {
-    }
-
-    /**
-     * If supported, copies a page into the cache, but does not write it. Cached copy can be
-     * removed when read again or be evicted sooner. Default implementation does nothing.
-     *
-     * @param index zero-based page index to write
-     * @param srcPtr data to write
-     */
-    public void cachePage(long index, long srcPtr) throws IOException {
-        cachePage(index, srcPtr, 0);
-    }
-
-    /**
-     * If supported, copies a page into the cache, but does not write it. Cached copy can be
-     * removed when read again or be evicted sooner. Default implementation does nothing.
-     *
-     * @param index zero-based page index to write
-     * @param srcPtr data to write
-     * @param offset offset into data buffer
-     */
-    public void cachePage(long index, long srcPtr, int offset) throws IOException {
-    }
-
-    /**
-     * If supported, removes a page from the cache. Default implementation does nothing.
-     *
-     * @param index zero-based page index to write
-     */
-    public void uncachePage(long index) throws IOException {
     }
 
     // Only expected to be called when isFullyMapped.

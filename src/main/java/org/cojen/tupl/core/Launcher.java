@@ -71,7 +71,6 @@ public final class Launcher implements Cloneable {
     PageArray mDataPageArray;
     long mMinCacheBytes;
     long mMaxCacheBytes;
-    long mSecondaryCacheSize;
     DurabilityMode mDurabilityMode;
     LockUpgradeRule mLockUpgradeRule;
     long mLockTimeoutNanos;
@@ -152,14 +151,6 @@ public final class Launcher implements Cloneable {
 
     public void maxCacheSize(long maxBytes) {
         mMaxCacheBytes = maxBytes;
-    }
-
-    public void secondaryCacheSize(long size) {
-        if (size < 0) {
-            // Reserve use of negative size.
-            throw new IllegalArgumentException();
-        }
-        mSecondaryCacheSize = size;
     }
 
     public void durabilityMode(DurabilityMode durabilityMode) {
@@ -301,23 +292,6 @@ public final class Launcher implements Cloneable {
         } catch (CloneNotSupportedException e) {
             throw rethrow(e);
         }
-    }
-
-    /**
-     * Optionally returns a new or shared page cache.
-     */
-    PageCache pageCache(EventListener listener) {
-        long size = mSecondaryCacheSize;
-        if (size <= 0) {
-            return null;
-        }
-
-        if (listener != null) {
-            listener.notify(EventType.CACHE_INIT_BEGIN,
-                            "Initializing %1$d bytes for secondary cache", size);
-        }
-
-        return new StripedPageCache(size, mPageSize);
     }
 
     /**

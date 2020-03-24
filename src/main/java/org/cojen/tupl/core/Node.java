@@ -859,13 +859,9 @@ final class Node extends Clutch implements DatabaseAccess {
             // Check if <= 0 (already evicted).
             long id = id();
             if (id > 0) {
-                PageDb pageDb = db.mPageDb;
-                if (mCachedState == CACHED_CLEAN) {
-                    // Try to move to a secondary cache.
-                    pageDb.cachePage(id, mPage);
-                } else {
+                if (mCachedState != CACHED_CLEAN) {
                     var page = prepareWrite();
-                    var newPage = pageDb.evictPage(id, page);
+                    var newPage = db.mPageDb.evictPage(id, page);
                     if (newPage != page) {
                         mPage = newPage;
                     }
