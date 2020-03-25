@@ -540,7 +540,7 @@ public class CompactTest {
 
         txn.commit();
 
-        for (int i=3; --i>=0; ) {
+        for (int i=10; --i>=0; ) {
             // Compact will work this time now that undo log is gone.
             mDb.compactFile(null, 0.9);
             Database.Stats stats3 = mDb.stats();
@@ -555,6 +555,7 @@ public class CompactTest {
                     throw e;
                 }
                 // Retry.
+                sleep(1000);
             }
         }
     }
