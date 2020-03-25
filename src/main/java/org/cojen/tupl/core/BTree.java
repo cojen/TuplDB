@@ -853,8 +853,8 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    long countCursors() {
-        return mRoot.countCursors();
+    long countCursors(boolean strict) {
+        return mRoot.countCursors(strict);
     }
 
     @Override

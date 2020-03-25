@@ -4509,7 +4509,7 @@ final class Node extends Clutch implements DatabaseAccess {
             p_bytePut(page, vloc++, vlen);
         } else {
             vlen--;
-            if (vlen <= 8192) {
+            if (vlen < 8192) {
                 p_bytePut(page, vloc++, 0x80 | vfrag | (vlen >> 8));
                 p_bytePut(page, vloc++, vlen);
             } else {
@@ -5920,7 +5920,7 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * Count the number of cursors bound to this node.
      */
-    long countCursors() {
+    long countCursors(boolean strict) {
         // Attempt an exclusive latch to prevent frames from being visited multiple times due
         // to recycling.
         if (tryAcquireExclusive()) {
@@ -5943,7 +5943,12 @@ final class Node extends Clutch implements DatabaseAccess {
         // concurrently removed are skipped over. A shared latch is required to prevent
         // observing an in-flight split, which breaks iteration due to rebinding.
 
-        acquireShared();
+        if (strict) {
+            acquireShared();
+        } else if (!tryAcquireShared()) {
+            return -1;
+        }
+
         try {
             CursorFrame frame = mLastCursorFrame;
 

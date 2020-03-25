@@ -80,8 +80,10 @@ abstract class Tree implements Index {
 
     /**
      * Count the number of cursors bound to the tree.
+     *
+     * @param strict pass false to fail-fast when trying to latch nodes, preventing deadlocks
      */
-    abstract long countCursors();
+    abstract long countCursors(boolean strict);
 
     abstract void writeCachePrimer(DataOutput dout) throws IOException;
 

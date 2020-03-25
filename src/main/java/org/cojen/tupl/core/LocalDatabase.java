@@ -2343,6 +2343,13 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Stats stats() {
+        return stats(true);
+    }
+
+    /**
+     * @param strict pass false to fail-fast when trying to latch nodes, preventing deadlocks
+     */
+    private Stats stats(boolean strict) {
         var stats = new Stats();
 
         stats.pageSize = mPageSize;
@@ -2356,13 +2363,13 @@ public final class LocalDatabase extends CoreDatabase {
                 Tree tree = treeRef.get();
                 if (tree != null) {
                     openTreesCount++;
-                    cursorCount += tree.countCursors();
+                    cursorCount += tree.countCursors(strict);
                 }
             }
 
-            cursorCount += countCursors(mRegistry) + countCursors(mRegistryKeyMap)
-                + countCursors(mFragmentedTrash) + countCursors(mCursorRegistry)
-                + countCursors(mPreparedTxns);
+            cursorCount += countCursors(mRegistry, strict) + countCursors(mRegistryKeyMap, strict)
+                + countCursors(mFragmentedTrash, strict) + countCursors(mCursorRegistry, strict)
+                + countCursors(mPreparedTxns, strict);
 
             stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
@@ -2395,8 +2402,8 @@ public final class LocalDatabase extends CoreDatabase {
     /**
      * @param tree can be null
      */
-    private static long countCursors(BTree tree) {
-        return tree == null ? 0 : tree.countCursors();
+    private static long countCursors(BTree tree, boolean strict) {
+        return tree == null ? 0 : tree.countCursors(strict);
     }
 
     static class RedoClose extends ShutdownHook.Weak<LocalDatabase> {
@@ -4476,7 +4483,8 @@ public final class LocalDatabase extends CoreDatabase {
         }
 
         if (fail == null) {
-            String stats = stats().toString();
+            // Strict is false, to avoid deadlock when caller is holding latches.
+            String stats = stats(false).toString();
             if (mPageDb.isDurable()) {
                 throw new CacheExhaustedException(stats);
             } else {

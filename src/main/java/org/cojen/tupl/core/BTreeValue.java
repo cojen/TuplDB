@@ -1557,7 +1557,7 @@ final class BTreeValue {
                                        final int fHeaderLoc, final long growth)
         throws IOException
     {
-        final int fOffset = fHeaderLoc - kHeaderLoc;
+        int fOffset = fHeaderLoc - kHeaderLoc;
         final long newEntryLen = fOffset + vLen + growth;
         final Node node = frame.mNode;
 
@@ -1568,8 +1568,10 @@ final class BTreeValue {
 
         final BTree tree = cursor.mTree;
 
+        int newValueLen = vLen + (int) growth;
+
         try {
-            final var newValue = new byte[vLen + (int) growth];
+            final var newValue = new byte[newValueLen];
             final var page = node.mPage;
             p_copyToArray(page, fHeaderLoc, newValue, 0, vLen);
 
@@ -1587,6 +1589,14 @@ final class BTreeValue {
             tree.finishSplitCritical(frame, node);
             // Finishing the split causes the node latch to be re-acquired, so start over.
             return -2;
+        }
+
+        if (newValueLen > 8192 && vLen <= 8192) {
+            // Raw value header likely changed format and might be one byte longer. This never
+            // happens when using the default page size of 4096 bytes, because the raw value
+            // doesn't fit. Because the header value might have already been using the longer
+            // format, start over. Also see truncateFragmented.
+            return -1;
         }
 
         return p_ushortGetLE(node.mPage, node.searchVecStart() + frame.mNodePos) + fOffset;
@@ -1883,7 +1893,7 @@ final class BTreeValue {
         // Note: It's sometimes possible to convert from the 3-byte field to the 2-byte field.
         // It requires that the value be shifted over, and so it's not worth the trouble.
 
-        if (vLen <= 8192) {
+        if ((p_byteGet(page, loc) & 0x20) == 0) {
             p_bytePut(page, loc++, 0xc0 | ((newLen - 1) >> 8));
             p_bytePut(page, loc++, newLen - 1);
         } else {
