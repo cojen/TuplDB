@@ -371,11 +371,6 @@ final class PageQueue implements IntegerRef {
     // Caller must hold remove lock.
     private void loadRemoveNode(long id) throws IOException {
         if (mManager.isPageOutOfBounds(id)) {
-            if (id == 0 && mIsReserve) {
-                // Reserve list permits the next node to be null at the end.
-                mRemoveHeadId = 0;
-                return;
-            }
             throw new CorruptDatabaseException("Invalid node id in free list: " + id);
         }
         var head = readRemoveNode(id);
@@ -495,8 +490,9 @@ final class PageQueue implements IntegerRef {
 
         mDrainInProgress = true;
         try {
-            // Can throw an IOException, so do this before changing any state.
-            long newTailId = mManager.allocPage(mIsReserve);
+            // Can throw an IOException, so do this before changing any state. Note that
+            // newTailId must always be a valid page, even for the reserve list.
+            long newTailId = mManager.allocPage();
 
             /*P*/ byte[] tailBuf;
             Node node;

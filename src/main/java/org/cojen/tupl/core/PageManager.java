@@ -226,14 +226,6 @@ final class PageManager {
      * @return non-zero page id
      */
     public long allocPage() throws IOException {
-        return allocPage(false);
-    }
-
-    /**
-     * @param forReserve true if the new pages cannot be created if the free lists are empty
-     * @return 0 if reserve is true and free lists are empty
-     */
-    long allocPage(boolean forReserve) throws IOException {
         while (true) {
             long pageId;
             alloc: {
@@ -260,31 +252,29 @@ final class PageManager {
                     break alloc;
                 }
 
-                if (!forReserve) {
-                    // Expand the file or abort compaction.
+                // Expand the file or abort compaction.
 
-                    PageQueue reserve = mReserveList;
-                    if (reserve != null) {
-                        if (mCompacting) {
-                            // Only do a volatile write the first time.
-                            mCompacting = false;
-                        }
-                        // Attempt to raid the reserves.
-                        if (mReclaimUpperBound == Long.MIN_VALUE) {
-                            pageId = reserve.tryRemove(lock);
-                            if (pageId != 0) {
-                                // Lock has been released as a side-effect.
-                                return pageId;
-                            }
+                PageQueue reserve = mReserveList;
+                if (reserve != null) {
+                    if (mCompacting) {
+                        // Only do a volatile write the first time.
+                        mCompacting = false;
+                    }
+                    // Attempt to raid the reserves.
+                    if (mReclaimUpperBound == Long.MIN_VALUE) {
+                        pageId = reserve.tryRemove(lock);
+                        if (pageId != 0) {
+                            // Lock has been released as a side-effect.
+                            return pageId;
                         }
                     }
+                }
 
-                    try {
-                        pageId = increasePageCount();
-                    } catch (Throwable e) {
-                        lock.unlock();
-                        throw e;
-                    }
+                try {
+                    pageId = increasePageCount();
+                } catch (Throwable e) {
+                    lock.unlock();
+                    throw e;
                 }
 
                 lock.unlock();
@@ -446,9 +436,18 @@ final class PageManager {
             mRemoveLock.unlock();
         }
 
-        long initPageId = allocPage(true);
+        // Short version of what allocPage does, except it can't increase page count.
+        long initPageId = mRecycleFreeList.tryUnappend();
         if (initPageId == 0) {
-            return false;
+            mRemoveLock.lock();
+            initPageId = mRecycleFreeList.tryRemove(mRemoveLock);
+            if (initPageId == 0) {
+                initPageId = mRegularFreeList.tryRemove(mRemoveLock);
+                if (initPageId == 0) {
+                    mRemoveLock.unlock();
+                    return false;
+                }
+            }
         }
 
         PageQueue reserve;
