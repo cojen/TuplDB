@@ -118,6 +118,7 @@ class SocketReplicator implements StreamReplicator {
 
         if (mServerSocket != null) {
             // Local host is the replica. Wait for leader to connect.
+            mServerSocket.setSoTimeout(60);
             Socket s = mServerSocket.accept();
             mLocalAddress = (InetSocketAddress) s.getLocalSocketAddress();
             mInput = s.getInputStream();
